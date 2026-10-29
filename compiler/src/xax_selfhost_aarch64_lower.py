@@ -2313,10 +2313,12 @@ def _view(tables):
         e.for_("vw_q", 0, p["vw_n"], atomics)
         # S15f.4 (ADR-325): a bare-metal image has no function-wide register allocation (``compile_linux_function`` is
         # the Linux and Android profiles'): the frame path or the legacy register path from the function's own graph.
-        from xax_selfhost_aarch64_frame import G_A64RAW
+        # S15e.6h.1 (ADR-354): so has an Android profile outside ``ANDROID_ARM64_GENERAL_IDENTITIES`` (``G_A64ANDROID`` 1).
+        from xax_selfhost_aarch64_frame import G_A64ANDROID, G_A64RAW
         from xax_selfhost_views_backend import GLOBALS
 
-        e.if_(e.ne(e.ld(GLOBALS + G_A64RAW), 0), lambda: (_call(e, "a64f_function", p["f"], p["fidx"]), _call(e, "a64_image_add", p["fidx"]), e.give(1)))
+        e.if_(e.either(e.ne(e.ld(GLOBALS + G_A64RAW), 0), e.eq(e.ld(GLOBALS + G_A64ANDROID), 1)),
+              lambda: (_call(e, "a64f_function", p["f"], p["fidx"]), _call(e, "a64_image_add", p["fidx"]), e.give(1)))
         e.var("vw_any", 0)
 
         def scan():
@@ -2364,8 +2366,9 @@ def _view(tables):
             e.while_(lambda: e.ne(p["vw_go"], 0), once)
             _simplify(e, True)
 
-        e.if_(e.ne(p["vw_any"], 0), inline, lambda: _simplify(e, False))
-        _call(e, "layout")
+        # ``compile_linux_function`` builds the lowering view (``inline_leaf_calls``) only for the Linux ABI; an Android
+        # profile (S15e.6h.1, ADR-354) lowers the function's graph as parsed.
+        e.if_(e.eq(e.ld(GLOBALS + G_A64ANDROID), 0), lambda: (e.if_(e.ne(p["vw_any"], 0), inline, lambda: _simplify(e, False)), _call(e, "layout")))
         _call(e, "positions")
         # ``compile_linux_function`` returns None for an ineligible view: S15e.2b (ADR-316), the frame path from the
         # function's own graph (or the legacy register path, which declines).  Eligibility reads types only.
