@@ -71,6 +71,16 @@ def _fn(e: E, fidx, field: int):
     return e.add(e.add(_ra(e, J_FNS), e.mul(fidx, FN_WORDS)), field)
 
 
+def _adr(e: E, position, target, register):
+    """``adr`` of ``register`` at text byte ``position`` addressing ``target`` (S15e.6h.1): NONE out of the signed 21-bit
+    range (the bootstrap's AARCH64-ADR-RANGE)."""
+    displacement = e.sub(e.add(target, 1 << 40), position)  # biased: 2^40 + target - position
+    in_range = e.both(e.le((1 << 40) - (1 << 20), displacement), e.lt(displacement, (1 << 40) + (1 << 20)))
+    imm = e.and_(e.sub(displacement, 1 << 40), 0x1FFFFF)
+    word = e.add(e.add(e.add(0x10000000, e.mul(e.and_(imm, 3), 1 << 29)), e.mul(e.and_(e.udiv(imm, 4), 0x7FFFF), 32)), register)
+    return e.sel(in_range, word, NONE)
+
+
 def _bl(e: E, position, target):
     """``bl`` from text byte ``position`` to ``target`` (both 4-aligned); NONE out of the signed 26-bit range."""
     displacement = e.sub(e.add(target, 1 << 40), position)  # biased: 2^40 + target - position
@@ -94,8 +104,9 @@ def image_prologue(e: E):
 
 
 def _image_add_fn(tables):
-    """Stage function ``fidx``'s emitted code, its calls (position, callee or declaration, 1 when foreign), and its node
-    ranges; ``I_OK`` falls when a capacity is reached (the host then assembles)."""
+    """Stage function ``fidx``'s emitted code, its calls (position, callee, declaration or addressed function, and the
+    kind: 0 direct, 1 foreign, ``2 + register`` a code address), and its node ranges; ``I_OK`` falls when a capacity is
+    reached (the host then assembles)."""
     from xax_selfhost_aarch64_emit import X_CALLS, X_CODE, X_LEN, X_NCALLS, X_NRANGES, X_RANGES, _a
 
     def build(e: E):
@@ -114,10 +125,11 @@ def _image_add_fn(tables):
             e.var("sa_src", e.add(_a(e, X_CALLS), e.mul(p["sa_k"], 2)))
             e.var("sa_t", e.ld(e.add(p["sa_src"], 1)))
             e.var("sa_dst", e.add(_ra(e, J_CALLS), e.mul(e.add(_ra(e, J_NCALLS), p["sa_k"]), 3)))
-            e.var("sa_foreign", e.flag(e.le(1 << 40, p["sa_t"])))
+            e.var("sa_kind", e.sel(e.lt(p["sa_t"], 1 << 40), 0, e.sel(e.lt(p["sa_t"], 1 << 41), 1, e.add(2, e.udiv(p["sa_t"], 1 << 42)))))
             e.st(p["sa_dst"], e.ld(p["sa_src"]))
-            e.st(e.add(p["sa_dst"], 1), e.sub(p["sa_t"], e.mul(p["sa_foreign"], 1 << 40)))
-            e.st(e.add(p["sa_dst"], 2), p["sa_foreign"])
+            e.st(e.add(p["sa_dst"], 1), e.sel(e.lt(p["sa_t"], 1 << 40), p["sa_t"], e.sel(e.lt(p["sa_t"], 1 << 41), e.sub(p["sa_t"], 1 << 40),
+                                                                                     e.sub(e.urem(p["sa_t"], 1 << 42), 1 << 41))))
+            e.st(e.add(p["sa_dst"], 2), p["sa_kind"])
 
         e.for_("sa_k", 0, _a(e, X_NCALLS), call)
         _set_ra(e, J_NCALLS, e.add(_ra(e, J_NCALLS), _a(e, X_NCALLS)))
@@ -207,10 +219,13 @@ def _image_finish_fn(tables):
         e.for_("if_s", 1, members, insert)
         # The stub's 16 bytes, then one thunk per distinct (library, name) in bundle call order; a bare-metal image
         # (S15f.4, ADR-325) is the bundle alone.
-        from xax_selfhost_aarch64_frame import G_A64RAW
+        from xax_selfhost_aarch64_frame import G_A64ANDROID, G_A64RAW
         from xax_selfhost_views_backend import GLOBALS
 
-        e.var("if_raw", e.ld(GLOBALS + G_A64RAW))
+        # S15e.6h.1 (ADR-354): an Android shared object's bundle is the bundle alone too, its foreign calls left for the
+        # container (``xax_selfhost_android_elf``) to bind to its thunks.
+        e.var("if_android", e.flag(e.ne(e.ld(GLOBALS + G_A64ANDROID), 0)))
+        e.var("if_raw", e.flag(e.either(e.ne(e.ld(GLOBALS + G_A64RAW), 0), e.ne(p["if_android"], 0))))
         _set_ra(e, I_LEN, 0)
         e.if_(e.eq(p["if_raw"], 0), lambda: (_put_text(e, 0, 8), _put_text(e, 0, 8)))
         e.var("if_thunks", _ra(e, J_THUNKS))  # (declaration, text offset, C import) per thunk
@@ -260,7 +275,7 @@ def _image_finish_fn(tables):
 
             e.if_(e.eq(p["if_found"], NONE), make)
 
-        function_calls(lambda: e.if_(e.ne(e.ld(e.add(p["if_cat"], 2)), 0), thunk_for))
+        e.if_(e.eq(p["if_android"], 0), lambda: function_calls(lambda: e.if_(e.eq(e.ld(e.add(p["if_cat"], 2)), 1), thunk_for)))
         _set_ra(e, J_NTHUNKS, p["if_nt"])
         e.if_(e.ne(p["if_raw"], 0), lambda: _ok(e, e.eq(p["if_nt"], 0)))  # a foreign call: the bootstrap decides
         # The bundle: each function at a 16-byte boundary.
@@ -291,6 +306,18 @@ def _image_finish_fn(tables):
             _patch(e, p["if_site"], p["if_word"])
 
         function_calls(lambda: e.if_(e.eq(e.ld(e.add(p["if_cat"], 2)), 0), direct))
+
+        def address():
+            from xax_selfhost_general_view import G_CIDX
+
+            e.var("if_site", e.add(e.add(p["if_base"], e.ld(_fn(e, p["if_f"], 6))), e.ld(p["if_cat"])))
+            e.var("if_target", e.ld(e.add(_g(e, G_CIDX), e.ld(e.add(p["if_cat"], 1)))))
+            _ok(e, e.ne(p["if_target"], NONE))
+            e.var("if_word", _adr(e, p["if_site"], e.add(p["if_base"], e.ld(_fn(e, p["if_target"], 6))), e.sub(e.ld(e.add(p["if_cat"], 2)), 2)))
+            _ok(e, e.ne(p["if_word"], NONE))  # the bootstrap fails (AARCH64-ADR-RANGE)
+            _patch(e, p["if_site"], p["if_word"])
+
+        function_calls(lambda: e.if_(e.le(2, e.ld(e.add(p["if_cat"], 2))), address))
         # The record's status and bundle code (the foreign calls not yet bound).
         _set_ra(e, I_CURSOR, IMAGE_AT)
         _out(e, 1)
@@ -321,7 +348,7 @@ def _image_finish_fn(tables):
             _ok(e, e.ne(p["if_word"], NONE))  # the bootstrap fails (AARCH64-CALL-RANGE)
             _patch(e, p["if_site"], p["if_word"])
 
-        function_calls(lambda: e.if_(e.ne(e.ld(e.add(p["if_cat"], 2)), 0), foreign))
+        e.if_(e.eq(p["if_android"], 0), lambda: function_calls(lambda: e.if_(e.eq(e.ld(e.add(p["if_cat"], 2)), 1), foreign)))
 
         def raw():
             _set_ra(e, I_ELEN, 0)
@@ -615,7 +642,7 @@ def _image_record_fn(tables):
                     _out_input(e, p["ir_s_sym"], p["ir_s_symn"])
                     e.set("ir_n", e.add(p["ir_n"], 1))
 
-                e.if_(e.ne(e.ld(e.add(p["ir_at"], 2)), 0), foreign)
+                e.if_(e.eq(e.ld(e.add(p["ir_at"], 2)), 1), foreign)
 
             e.for_("ir_c", 0, e.ld(_fn(e, p["ir_f"], 3)), call)
 

@@ -30,7 +30,7 @@ from __future__ import annotations
 from xax_compiler import IntCompare, Operation, RESOURCE_EFFECT_OPERATIONS
 import xax_selfhost_diagnostics as D
 from xax_selfhost_aarch64_emit import X_LEN, X_NCALLS, X_NFIX, X_NRANGES, X_RANGES, RANGE_CAP, _a, _branch, _emit, _label, _set_a
-from xax_selfhost_aarch64_frame import F_NEXT_LABEL, _brk, _movimm, _new_label, _record_call
+from xax_selfhost_aarch64_frame import F_NEXT_LABEL, _brk, _movimm, _new_label, _record_address, _record_call
 from xax_selfhost_facts import E, NONE, _function
 from xax_selfhost_general_frame import _bits_width, _form
 from xax_selfhost_general_ranges import _attribute, _block_at, _node_at
@@ -62,7 +62,13 @@ QUIET = tuple(sorted(int(op) for op in (Operation.STACK_END, *RESOURCE_EFFECT_OP
 LOWERED = tuple(sorted(int(op) for op in (
     Operation.ADD_WRAP, Operation.SUB_WRAP, Operation.MUL_WRAP, Operation.INT_COMPARE, Operation.CONSTANT, Operation.CALL_DIRECT,
     Operation.HEAP_VIEW, Operation.LOAD_BITS_LE, Operation.STORE_BITS_LE, Operation.STACK_ALLOC, Operation.ADDRESS_OFFSET,
-    Operation.STACK_END, *RESOURCE_EFFECT_OPERATIONS)))
+    Operation.STACK_END, *RESOURCE_EFFECT_OPERATIONS,
+    # S15e.6h.1 (ADR-354): an Android shared object's JNI code.
+    Operation.CALL_FOREIGN, Operation.CALL_INDIRECT, Operation.FUNCTION_ADDRESS, Operation.TARGET_OP)))
+CALL_KINDS = {Operation.CALL_DIRECT: 0, Operation.CALL_FOREIGN: 1, Operation.CALL_INDIRECT: 2}
+# The JNI reference-word target operations (``ANDROID_JNI_REFERENCE_WORD_*_OPERATION``): the handle is the jvalue word.
+JNI_REFERENCE_WORDS = (11, 12, 13)
+TARGET_OP_IDENTITIES = (b"android-arm64-v8a-shared-v1", b"android-arm64-v8a-shared-v2", b"android-arm64-v8a-shared-v3")
 
 
 def _op(operation) -> int:
@@ -487,24 +493,77 @@ def _copy_edge_fn(tables):
     return _function(("edge",), build, tables)
 
 
+def _cycle(e: E, at, count, name: str):
+    """``_parallel_moves_have_cycle`` of the ``count`` (destination, source, width) triples at ``at`` (none equal): 1 when
+    no pending move can go first."""
+    p = e.p
+    e.var(f"{name}_live", e.alloc(e.add(count, 1)))
+    _ok(e, e.ne(p[f"{name}_live"], NONE))
+    e.for_(f"{name}_q", 0, count, lambda: e.st(e.add(p[f"{name}_live"], p[f"{name}_q"]), 1))
+    e.var(name, 0)
+    e.var(f"{name}_left", count)
+
+    def step():
+        e.var(f"{name}_safe", NONE)
+
+        def check():
+            e.var(f"{name}_dst", e.ld(e.add(at, e.mul(p[f"{name}_i"], 3))))
+            e.var(f"{name}_read", 0)
+            e.for_(f"{name}_j", 0, count, lambda: e.if_(e.both(e.ne(e.ld(e.add(p[f"{name}_live"], p[f"{name}_j"])), 0),
+                                                                e.eq(e.ld(e.add(e.add(at, e.mul(p[f"{name}_j"], 3)), 1)), p[f"{name}_dst"])),
+                                                         lambda: e.set(f"{name}_read", 1)))
+            e.if_(e.both(e.eq(p[f"{name}_safe"], NONE), e.eq(p[f"{name}_read"], 0)), lambda: e.set(f"{name}_safe", p[f"{name}_i"]))
+
+        e.for_(f"{name}_i", 0, count, lambda: e.if_(e.ne(e.ld(e.add(p[f"{name}_live"], p[f"{name}_i"])), 0), check))
+        e.if_(e.eq(p[f"{name}_safe"], NONE), lambda: (e.set(name, 1), e.set(f"{name}_left", 0)), lambda: (
+            e.st(e.add(p[f"{name}_live"], p[f"{name}_safe"]), 0), e.set(f"{name}_left", e.sub(p[f"{name}_left"], 1))))
+
+    e.while_(lambda: e.lt(0, p[f"{name}_left"]), step)
+    return p[name]
+
+
 def _call_node_fn(tables):
-    """A direct call: ``prepare_real_call`` (the operands in registers, every value live after the call spilled with its
-    register kept, the operands shuffled to ``x0``-``x7``), ``bl``, then ``finish_real_call`` (every register killed,
-    the slots of values not live after it freed, the result in ``x0``)."""
+    """A call (``kind``: 0 direct, 1 foreign, 2 indirect, S15e.6h.1): ``prepare_real_call`` (the operands in
+    registers, every value live after the call spilled with its register kept, the operands shuffled to ``x0``-``x7``),
+    ``bl`` (to the callee or the foreign symbol) or ``blr x10`` (the function pointer, moved to ``x10`` first, or
+    reloaded from its slot when the argument moves form a cycle), then ``finish_real_call`` (every register killed, the
+    slots of values not live after it freed, the result in ``x0``)."""
     def build(e: E):
         p = e.p
-        node, position = p["node"], p["position"]
+        node, position, kind = p["node"], p["position"], p["kind"]
         n = _g(e, G_VCOUNT)
         e.var("cn_n", 0)
         e.var("cn_ops", e.alloc(9))
         _ok(e, e.ne(p["cn_ops"], NONE))
+        e.var("cn_first", e.flag(e.eq(kind, 2)))  # an indirect call's function pointer is not an argument
 
         def operand():
             e.var("cn_o", _operand(e, node, p["cn_k"]))
             e.if_(e.ne(_t(e, S_WIDTH, p["cn_o"]), 0), lambda: (_ok(e, e.lt(p["cn_n"], 8)), e.st(e.add(p["cn_ops"], p["cn_n"]), p["cn_o"]),
                                                                e.set("cn_n", e.add(p["cn_n"], 1))))
 
-        e.for_("cn_k", 0, _f(e, node, N_NOPS), operand)
+        e.for_("cn_k", p["cn_first"], _f(e, node, N_NOPS), operand)
+        e.var("cn_fp", NONE)
+        e.var("cn_fpr", NONE)
+        e.var("cn_cycle", 0)
+
+        def pointer():
+            e.set("cn_fp", _operand(e, node, 0))
+            _ok(e, e.ne(_t(e, S_WIDTH, p["cn_fp"]), 0))
+            e.set("cn_fpr", _ensure(e, p["cn_fp"], position))
+            e.for_("cn_k", 0, p["cn_n"], lambda: _ensure(e, e.ld(e.add(p["cn_ops"], p["cn_k"])), position))
+            # ``_call_argument_moves``: the operands in registers that are not in their argument register.
+            e.var("cn_am", e.alloc(3 * MOVE_CAP))
+            _ok(e, e.ne(p["cn_am"], NONE))
+            e.var("cn_na", 0)
+            e.for_("cn_k", 0, p["cn_n"], lambda: (e.var("cn_o", e.ld(e.add(p["cn_ops"], p["cn_k"]))), e.if_(
+                e.both(e.ne(_t(e, S_REG, p["cn_o"]), NONE), e.ne(_t(e, S_REG, p["cn_o"]), _select(e, p["cn_k"], ARGUMENTS))),
+                lambda: _put_move(e, "cn_am", "cn_na", (_select(e, p["cn_k"], ARGUMENTS), _t(e, S_REG, p["cn_o"]), _t(e, S_WIDTH, p["cn_o"]))))))
+            e.set("cn_cycle", _cycle(e, p["cn_am"], p["cn_na"], "cn_cy"))
+            e.if_(e.ne(p["cn_cycle"], 0), lambda: _call(e, "a64l_spill", p["cn_fp"], 1),
+                  lambda: e.if_(e.ne(p["cn_fpr"], SCRATCH), lambda: _mov(e, SCRATCH, p["cn_fpr"], 64)))
+
+        e.if_(e.eq(kind, 2), pointer)
         e.for_("cn_k", 0, p["cn_n"], lambda: _ensure(e, e.ld(e.add(p["cn_ops"], p["cn_k"])), position))
         # Live after the call: in a register or a slot, and used later in the block.
         e.for_("cn_v", 0, n, lambda: _set_t(e, S_LIVE, p["cn_v"], e.flag(e.both(
@@ -534,9 +593,33 @@ def _call_node_fn(tables):
         e.for_("cn_k", 0, p["cn_n"], lambda: (e.var("cn_o", e.ld(e.add(p["cn_ops"], p["cn_k"]))), e.if_(
             e.eq(_t(e, S_REG, p["cn_o"]), NONE), lambda: (_location(e, p["cn_o"], "cn_kind", "cn_where"),
                                                           _ls(e, True, _select(e, p["cn_k"], ARGUMENTS), p["cn_where"], _t(e, S_WIDTH, p["cn_o"]))))))
-        _callee_object(e, node, "cn_callee")
-        _ok(e, e.ne(p["cn_callee"], NONE))
-        _record_call(e, p["cn_callee"])
+
+        def direct():
+            _callee_object(e, node, "cn_callee")
+            _ok(e, e.ne(p["cn_callee"], NONE))
+            _record_call(e, p["cn_callee"])
+
+        def foreign():
+            from xax_selfhost_aarch64_emit import _foreign_class, foreign_abi_rule
+            from xax_selfhost_aarch64_frame import F_FN
+            from xax_selfhost_general_view import N_GRAPH, N_OPSAT
+            from xax_selfhost_views_backend import _reference
+
+            e.var("cn_decl", _reference(e, _f(e, node, N_GRAPH), e.rd(e.sub(_f(e, node, N_OPSAT), 1))))
+            _ok(e, e.ne(p["cn_decl"], NONE))
+            e.var("cn_class", _foreign_class(e, p["cn_decl"], "cn_abi"))
+            foreign_abi_rule(e, p["cn_class"], "cn_abi", _a(e, F_FN))
+            _record_call(e, e.add(p["cn_decl"], 1 << 40))
+
+        def indirect():
+            def reload():
+                _ok(e, e.ne(_t(e, S_SPILL, p["cn_fp"]), NONE))  # ``backing_offset[function_pointer]``: the bootstrap's KeyError
+                _ls(e, True, SCRATCH, _t(e, S_SPILL, p["cn_fp"]), 64)
+
+            e.if_(e.ne(p["cn_cycle"], 0), reload)
+            _emit(e, e.add(0xD63F0000, SCRATCH << 5))  # blr x10
+
+        e.if_(e.eq(kind, 0), direct, lambda: e.if_(e.eq(kind, 1), foreign, indirect))
         e.for_("cn_v", 0, n, lambda: e.if_(e.ne(_t(e, S_REG, p["cn_v"]), NONE), lambda: _unbind(e, p["cn_v"])))
         e.for_("cn_v", 0, n, lambda: e.if_(e.both(e.ne(_t(e, S_SPID, p["cn_v"]), NONE), e.eq(_t(e, S_LIVE, p["cn_v"]), 0)),
                                            lambda: _call(e, "a64l_release", p["cn_v"])))
@@ -545,7 +628,63 @@ def _call_node_fn(tables):
                                                              lambda: e.set("cn_res", _output(e, node, p["cn_k"]))))
         e.if_(e.ne(p["cn_res"], NONE), lambda: _call(e, "a64l_define", p["cn_res"], RESULT))
         e.give(1)
-    return _function(("node", "position"), build, tables)
+    return _function(("node", "position", "kind"), build, tables)
+
+
+def _target_opcode_fn(tables):
+    """The ``encoding_opcode`` of target operation ``operation`` in the native target ``target`` (its profile-4
+    contracts, ``decode_native_target``'s layout); the target must be an Android profile up to v3 (the bootstrap's
+    AARCH64-TARGET-OP-PACKAGE otherwise) and list the operation.  NONE declines."""
+    from xax_selfhost_views_backend import G_PAY, _at, _payload_uleb
+
+    def build(e: E):
+        p = e.p
+        e.var("to_at", _at(e, G_PAY, p["target"]))
+        e.var("to_idn", _payload_uleb(e, "to_at"))
+        e.var("to_known", 0)
+        for k, identity in enumerate(TARGET_OP_IDENTITIES):
+            e.var(f"to_m{k}", e.flag(e.eq(p["to_idn"], len(identity))))
+            for j, byte in enumerate(identity):
+                e.if_(e.both(e.ne(p[f"to_m{k}"], 0), e.ne(e.rd(e.add(p["to_at"], j)), byte)), lambda k=k: e.set(f"to_m{k}", 0))
+            e.if_(e.ne(p[f"to_m{k}"], 0), lambda: e.set("to_known", 1))
+        _ok(e, e.ne(p["to_known"], 0))
+        e.set("to_at", e.add(p["to_at"], p["to_idn"]))
+        e.var("to_profile", _payload_uleb(e, "to_at"))
+        e.var("to_arch", _payload_uleb(e, "to_at"))
+        for _ in range(4):  # abi, format, word bits, pointer bits
+            _payload_uleb(e, "to_at")
+        _ok(e, e.both(e.eq(p["to_profile"], 4), e.eq(p["to_arch"], 3)))
+        _payload_uleb(e, "to_at")  # stack alignment
+        _payload_uleb(e, "to_at")  # shadow space
+        e.var("to_n", _payload_uleb(e, "to_at"))
+        e.for_("to_q", 0, p["to_n"], lambda: _payload_uleb(e, "to_at"))
+        _payload_uleb(e, "to_at")  # result register
+        for _ in range(3):  # scratch registers, operations, terminators
+            e.var("to_n", _payload_uleb(e, "to_at"))
+            e.for_("to_q", 0, p["to_n"], lambda: _payload_uleb(e, "to_at"))
+        e.var("to_count", _payload_uleb(e, "to_at"))
+        e.var("to_found", NONE)
+
+        def contract():
+            e.var("to_id", _payload_uleb(e, "to_at"))
+            _payload_uleb(e, "to_at")  # semantic code
+            e.var("to_enc", _payload_uleb(e, "to_at"))
+            e.if_(e.both(e.eq(p["to_found"], NONE), e.eq(p["to_id"], p["operation"])), lambda: e.set("to_found", p["to_enc"]))
+            for _ in range(2):  # the operand and result signatures
+                e.var("to_n", _payload_uleb(e, "to_at"))
+                e.for_("to_q", 0, e.mul(p["to_n"], 3), lambda: _payload_uleb(e, "to_at"))
+            e.var("to_n", _payload_uleb(e, "to_at"))  # scopes
+            e.for_("to_q", 0, p["to_n"], lambda: _payload_uleb(e, "to_at"))
+            _payload_uleb(e, "to_at")  # source space
+            _payload_uleb(e, "to_at")  # destination space
+            e.set("to_at", e.add(p["to_at"], 2))  # synchronizes, may block
+            e.var("to_n", _payload_uleb(e, "to_at"))  # the runtime dependency
+            e.set("to_at", e.add(p["to_at"], p["to_n"]))
+
+        e.for_("to_k", 0, p["to_count"], contract)
+        _ok(e, e.ne(p["to_found"], NONE))
+        e.give(p["to_found"])
+    return _function(("target", "operation"), build, tables)
 
 
 # -- nodes ------------------------------------------------------------------------------------------------------------
@@ -679,6 +818,66 @@ def _load_node(e: E, node, result, m):
     _call(e, "a64l_define", result, p["lo_dst"])
 
 
+def _function_address(e: E, node, result, m):
+    """``function.address`` (S15e.6h.1): a fresh register, ``adr`` to the addressed function bound at assembly."""
+    from xax_selfhost_general_view import N_GRAPH, N_OPSAT
+    from xax_selfhost_views_backend import _reference
+
+    p = e.p
+    e.var("fa_target", _reference(e, _f(e, node, N_GRAPH), e.rd(e.sub(_f(e, node, N_OPSAT), 1))))
+    _ok(e, e.ne(p["fa_target"], NONE))
+    e.var("fa_reg", _acquire(e, m))
+    _record_address(e, p["fa_reg"], p["fa_target"])
+    _call(e, "a64l_define", result, p["fa_reg"])
+
+
+def _target_op(e: E, node, result, m):
+    """An Android ``target.op`` (S15e.6h.1): a JNI reference word is its handle (the handle's register when it dies
+    here, else a copy); any other is a 32- or 64-bit load at the contract's ``encoding_opcode`` from its one operand
+    (into that operand's register when it dies here).  Any other shape declines (the bootstrap fails)."""
+    from xax_selfhost_general_view import N_GRAPH, N_OPSAT
+    from xax_selfhost_views_backend import _reference
+
+    p = e.p
+    e.var("tg_target", _reference(e, _f(e, node, N_GRAPH), e.rd(e.sub(_f(e, node, N_OPSAT), 1))))
+    _ok(e, e.ne(p["tg_target"], NONE))
+    e.var("tg_id", _attribute(e, node, 0))
+    e.var("tg_enc", _call(e, "a64l_target_opcode", p["tg_target"], p["tg_id"]))
+    e.var("tg_src", NONE)
+    e.var("tg_mo", 0)
+    e.for_("tg_k", 0, _f(e, node, N_NOPS), lambda: e.if_(e.ne(_t(e, S_WIDTH, _operand(e, node, p["tg_k"])), 0), lambda: (
+        e.set("tg_src", _operand(e, node, p["tg_k"])), e.set("tg_mo", e.add(p["tg_mo"], 1)))))
+    _ok(e, e.both(e.eq(p["tg_mo"], 1), e.ne(result, NONE)))
+    _ok(e, e.ne(_t(e, S_WIDTH, result), 0))
+    e.var("tg_dies", e.flag(e.eq(_t(e, S_LAST, p["tg_src"]), m)))
+
+    def reference_word():
+        _ok(e, e.both(e.eq(_t(e, S_WIDTH, p["tg_src"]), 64), e.eq(_t(e, S_WIDTH, result), 64)))
+        e.var("tg_reg", _ensure(e, p["tg_src"], m))
+
+        def copy():
+            e.var("tg_dst", _acquire(e, m, p["tg_src"]))
+            _mov(e, p["tg_dst"], p["tg_reg"], 64)
+            _call(e, "a64l_define", result, p["tg_dst"])
+
+        e.if_(e.ne(p["tg_dies"], 0), lambda: _call(e, "a64l_define", result, p["tg_reg"]), copy)
+
+    def load():
+        e.var("tg_width", _t(e, S_WIDTH, result))
+        e.var("tg_scale", e.sel(e.eq(p["tg_width"], 64), 8, 4))
+        # ``_load_from_register``: 32 or 64 bits, an aligned offset below 4096 units (else the bootstrap fails).
+        _ok(e, e.both(_in(e, p["tg_width"], (32, 64)), e.eq(e.urem(p["tg_enc"], p["tg_scale"]), 0), e.lt(e.udiv(p["tg_enc"], p["tg_scale"]), 4096)))
+        e.var("tg_base", _ensure(e, p["tg_src"], m))
+        e.var("tg_dst", e.sel(e.ne(p["tg_dies"], 0), p["tg_base"], NONE))
+        e.if_(e.eq(p["tg_dies"], 0), lambda: e.set("tg_dst", _acquire(e, m, p["tg_src"])))
+        opcode = e.sel(e.eq(p["tg_width"], 64), 0xF9400000, 0xB9400000)
+        _emit(e, e.add(e.add(e.add(opcode, e.mul(e.udiv(p["tg_enc"], p["tg_scale"]), 1 << 10)), e.mul(p["tg_base"], 1 << 5)), p["tg_dst"]))
+        e.if_(e.ne(p["tg_dies"], 0), lambda: _call(e, "a64l_release", p["tg_src"]))
+        _call(e, "a64l_define", result, p["tg_dst"])
+
+    e.if_(_in(e, p["tg_id"], JNI_REFERENCE_WORDS), reference_word, load)
+
+
 def _node_fn(tables):
     """Node ``m`` of block ``bi`` and its semantic range."""
     def build(e: E):
@@ -700,9 +899,13 @@ def _node_fn(tables):
         def direct():
             _callee_object(e, node, "nd_callee")
             _ok(e, e.ne(p["nd_callee"], NONE))
-            e.if_(e.eq(_call(e, "erased", p["nd_callee"]), 0), lambda: _call(e, "a64l_call", node, m))
+            e.if_(e.eq(_call(e, "erased", p["nd_callee"]), 0), lambda: _call(e, "a64l_call", node, m, 0))
 
         e.if_(e.eq(op, _op(Operation.CALL_DIRECT)), direct)
+        e.if_(e.eq(op, _op(Operation.CALL_FOREIGN)), lambda: _call(e, "a64l_call", node, m, 1))
+        e.if_(e.eq(op, _op(Operation.CALL_INDIRECT)), lambda: _call(e, "a64l_call", node, m, 2))
+        e.if_(e.eq(op, _op(Operation.FUNCTION_ADDRESS)), lambda: _function_address(e, node, result, m))
+        e.if_(e.eq(op, _op(Operation.TARGET_OP)), lambda: _target_op(e, node, result, m))
 
         def ranged():
             e.var("nd_r", _a(e, X_NRANGES))
@@ -953,6 +1156,7 @@ def _prepare_fn(tables):
             e.if_(e.eq(p["lp_op"], _op(Operation.STACK_ALLOC)), stack)
             e.if_(e.eq(p["lp_op"], _op(Operation.ADDRESS_OFFSET)), offset)
             e.if_(e.eq(p["lp_op"], _op(Operation.CALL_DIRECT)), direct)
+            e.if_(_in(e, p["lp_op"], (_op(Operation.CALL_FOREIGN), _op(Operation.CALL_INDIRECT))), lambda: e.set("lp_calls", 1))
 
         e.for_("lp_bi", 0, _g(e, G_BCOUNT), lambda: (e.var("lp_b", _block_at(e, p["lp_bi"])), e.for_("lp_m", 0, _f(e, p["lp_b"], B_NNODES), node)))
         _set_s(e, S_HASCALL, p["lp_calls"])
@@ -1047,6 +1251,6 @@ def add_legacy_functions(add, tables):
     are added before)."""
     for name, builder in (("a64l_bind", _bind_fn), ("a64l_release", _release_fn), ("a64l_define", _define_fn), ("a64l_spill", _spill_fn),
                           ("a64l_acquire", _acquire_fn), ("a64l_ensure", _ensure_fn), ("a64l_moves", _moves_fn), ("a64l_edge", _copy_edge_fn),
-                          ("a64l_call", _call_node_fn), ("a64l_node", _node_fn), ("a64l_term", _term_fn), ("a64l_block", _block_fn),
+                          ("a64l_call", _call_node_fn), ("a64l_target_opcode", _target_opcode_fn), ("a64l_node", _node_fn), ("a64l_term", _term_fn), ("a64l_block", _block_fn),
                           ("a64l_prepare", _prepare_fn), ("a64l_function", _legacy_fn)):
         add(name, builder(tables))
