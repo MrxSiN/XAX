@@ -1,0 +1,69 @@
+{
+ "report": "bfx_v2",
+ "date": "2026-10-29",
+ "status": "EXECUTED",
+ "scope": "BFX id 02 (no count, END byte, offset ADD/MUL/CHECK/MOVE) in the strict decoder, importer and compile_bfx; hosts rebound by reference; bbc.exe rebuilt with the generic SDK recipe",
+ "base_revision": "94a54ae",
+ "parents": {
+  "import_bfx.xax": "previous main store",
+  "compile.xax": "previous main store",
+  "compile_windows.xax": "previous main store",
+  "bbc.xax": "previous main store"
+ },
+ "roots": {
+  "import_bfx.xax": "8161e35166281fe6e308e11868338e397b82b3f1fc4e8185e9f0fbd8ce3cfe69",
+  "bfx.xax": "717e7c29e5464b49ec86b8142257a24fecc1bc6a6dfe03de361c19de045b1fd8",
+  "compile.xax": "13a9f0abfae69968a020686b6078f9517cbb393c697d908c0ec628a284d9cf8e",
+  "compile_windows.xax": "42dc658bf7344a3e3d59815d97caddf0fd8b264bf89cf69f8af3456ff99f9ed7",
+  "bbc.xax": "89b4949e3f04ae368260916c788e16e47f7a7704fbeab0a99153d426b267e35e"
+ },
+ "stores_sha256": {
+  "import_bfx.xax": "39dfa733da614753512f82c4df20d958b0ab39cab270e0310cb951927c9458d9",
+  "bfx.xax": "c5d675395608ec397037f5fb88112234db9c1680ae248c8d80507f7aa75cef6b",
+  "compile.xax": "b2a99de9de15cae2fe81d321671e5c19fd0965522205c74477fe1758ecf086fc",
+  "compile_windows.xax": "984bb68245b80f9d0eca4d21cabd729363660a7b8d4cbd76eedd5db9c272a5c2",
+  "bbc.xax": "41774b0d0cf92c5bdcc9e6e3ec42bdb6d9f132ac8cbd8e87eedea4ee38a69229"
+ },
+ "transactions": {
+  "1_importer_emitter.edit": {
+   "sha256": "4ab60037cc45e1137d3d85cf4435c697beb71d3efb926be6f269e3d11a71a859",
+   "bytes": 480364
+  },
+  "2_importer_decoder.edit": {
+   "sha256": "09c0dbb87499ae8f854b8cd67666faf415a9112425893fec7932b1b42e8ff2a9",
+   "bytes": 5299
+  },
+  "3_coordinator.edit": {
+   "sha256": "55bc8040f07fb238905e0af0f6a7708f74ebcee97d61b741b277aac1c9ac2a59",
+   "bytes": 7403
+  },
+  "4_facade.edit": {
+   "sha256": "32fdb9b77b8c1f68640e3cce31178cf65e57d55ef2d94efcc3a4e4dca33c79c1",
+   "bytes": 496494
+  },
+  "5_compile_windows.edit": {
+   "sha256": "a44758c7664496526d66818466eb0c24e633d85be306479a2bd202f43a9e03c0",
+   "bytes": 989605
+  },
+  "6_bbc.edit": {
+   "sha256": "e79e6e0351afeba4b4cad445043a9221acc096b2f781f8d98db1424159664a00",
+   "bytes": 989799
+  }
+ },
+ "verification": "each record fully verified with the reference verifier, saved, and rejected as stale on replay against its result",
+ "reference_execution": [
+  "import_bfx in the reference executor on BBC records: 17 benchmark programs at O1 and 6 at O0, each framed into bbc-windows-x86_64.xax and built by the native driver in the previous bbc.exe; every output matched",
+  "compile_bfx in the reference executor on a transfer-loop program at O0 and O1: records equal the standalone fold.bf output"
+ ],
+ "native": {
+  "bbc_exe_sha256": "733433ebbc8d688c2715f92861dd735349eb5ca3d620ac59ee6223903c73b6e6",
+  "bbc_exe_bytes": 16118784,
+  "bootstrap": "build_bbc recipe (driver recipe for driver.xax functions and large entry variants, BBC recipe otherwise), Python 3.12, 1,360 s",
+  "windows": "Windows 11 x86-64 native execution, not emulation: 52 programs x levels built and run, 0 failures; mandelbrot O0 still declines (exit 5)",
+  "android": "android-arm64 artifacts built for 9 of 12 program/level pairs (factor O0 and mandelbrot decline as before); no device was attached, so Android execution is not claimed"
+ },
+ "generic_sdk_changed": false,
+ "authoring_transport": "external Python scripts using xax_compiler constructors and xax_selfhost_edit.edit_record (not committed)",
+ "bbc_evidence": "https://github.com/MrxSiN/BBC/blob/main/evidence/fold_v2.json",
+ "failures": []
+}
