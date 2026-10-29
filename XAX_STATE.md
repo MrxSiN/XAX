@@ -1767,3 +1767,21 @@ The XAX JVM program now builds callbacks: JDK streams and comparators that call 
 - Still open:
   - The selfhost closure and full-selfhost evidence have not been re-run against the new stores.
   - The serial rerun of the seven crashed tests.
+
+## S15e.6, S15g and the full test run after them — 2026-10-29 (ADR-340 to ADR-353)
+
+- Android's layers are XAX programs that `build` asks first: the APK container, v2 signing, the binary manifest and `resources.arsc`, the bridge DEX, the multi-export ELF container, the unsigned and managed carrier decisions, and the JVM-to-DEX lowering and writer (S15e.6a-S15e.6g). The driver's Android path is drafted as four steps (S15e.6h, ADR-351). Until those steps are done, the whole compiler's blocker still names Android packages.
+- The DEX bridge frontend was split into two graphs to fit the graph decoder's capacity (ADR-352).
+- The views backend's closure work stack now grows; it used to decline once one function called the same helper more times than its store had objects (ADR-353). The backend and driver stores were regenerated, the ledger rebased, and the seed rotated to `f968cdd7…` (seed = C1 = C2).
+- S15g evidence was re-run on the final stores with `XAX_REQUIRE_NATIVE=1`:
+  - x86-64, closure (8 B1 images and 28 stores, all agreeing), full self-host, and the Python-free seed.
+  - The Linux x86-64 production compiler holds B0-B6, and its seed requires no Python.
+- The full suite (`-n 2`, before ADR-353): 1594 passed, 59 skipped, 13 failed, 3 errors. The fixed regression:
+  - The S11 driver declined the four stores the work stack overflowed.
+  - After the fix, those four stores, store regeneration, the driver suites and the evolution test pass: 42 passed, 324 subtests.
+- The four tests whose xdist workers crashed under memory pressure pass serially: `test_argument_counts`, the general driver's self-rebuild, the evolution test and `test_declared_rejections`.
+- Environmental failures:
+  - `tiktoken` is not installed.
+  - The `compiler` package import needs the repository root on `sys.path` (`test_oi03`, `test_oi06`, the `test_oi07`-`test_oi09` collection errors).
+  - Wheel builds fail on this host's setuptools (`install_layout`).
+- Already failing before this work: `test_windows_construct_platform_is_on_the_host_surface`. `xax_contract`'s construct platforms lack `android-libxposed`, added in `06f9675`.
