@@ -718,8 +718,11 @@ class EncodingTests(unittest.TestCase):
 
 
 class BuildTests(unittest.TestCase):
-    @unittest.skipUnless(importlib.util.find_spec("setuptools"), "UNAVAILABLE: setuptools is not installed, so the wheel cannot be built")
     def test_wheel_build_is_reproducible(self):
+        from _wheel_host import SKIP_REASON, host_builds_wheels
+
+        if not host_builds_wheels():
+            self.skipTest(SKIP_REASON)
         project = Path(__file__).parents[1]
         environment = os.environ.copy()
         environment["SOURCE_DATE_EPOCH"] = "946684800"
