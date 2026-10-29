@@ -2,7 +2,7 @@ import json
 import unittest
 from pathlib import Path
 
-from compiler.benchmarks.bench_oi08_effect_edges import (
+from benchmarks.bench_oi08_effect_edges import (
     EffectEncodingError,
     EffectOrder,
     branch_fixture,

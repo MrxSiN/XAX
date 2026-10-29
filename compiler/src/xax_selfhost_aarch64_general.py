@@ -35,10 +35,10 @@ from xax_selfhost_facts import E, H_ARENA, H_ARENA_END, NONE, _function
 import xax_selfhost_diagnostics as D
 from xax_selfhost_views_backend import (
     _FN, ARENA_END, CID_WORDS, G_ERASED, G_IFACE, G_NI, G_O, G_ORDER, G_PAY, G_REC, G_REFS, G_S, G_SUP, G_SUP_AT,
-    G_SUPT, G_SUPT_AT, G_TW, GLOBALS, NI_ENTITY, NI_OP, NativeProgram, _at, _borrowed, _call, _cid_at, _cid_less,
+    G_SUPT, G_SUPT_AT, G_TW, GLOBALS, NI_ENTITY, NI_OP, NI_RESULTS, NativeProgram, _at, _borrowed, _call, _cid_at, _cid_less,
     _cid_words, _erased, _find, _g, _kind, _node_info, _ok, _payload_uleb, _reference, _target_list, _term_end, _type_form,
 )
-from xax_selfhost_aarch64_frame import G_A64RAW
+from xax_selfhost_aarch64_frame import G_A64ANDROID, G_A64RAW
 from xax_selfhost_x86_64_general import (
     COUNT_AT, ENTRY_CONTRACT_EXPECTED, FRAME, F_AT, F_BLOCKS, F_FN, F_GRAPH, F_NODES, GENERAL_ARENA_AT, GENERAL_ARENA_END, G_ENTRY, G_FRAMES,
     G_GROUPOF, G_LALIGN, G_LSIZE, G_LSTACK, G_MEMBERS, G_MTAB, G_NARGS, G_TABI, G_TARGET, G_TFMT, ORDER_AT, OK, _group_interface,
@@ -51,6 +51,11 @@ LINUX_AARCH64_ABI = 5
 ELF_FORMATS = (6, 7)  # AARCH64_LINUX_ELF_EXEC_FORMAT, AARCH64_LINUX_ELF_DYNAMIC_FORMAT
 BAREMETAL_ABI, RAW_FORMAT = 3, 1  # S15f.4 (ADR-325): the bare-metal load-image and atomic profiles
 DECLINE_OPERATIONS = (int(Operation.FUNCTION_ADDRESS),)  # code addresses: the bootstrap's bundle carries their fixups
+# S15e.6h.1 (ADR-354): an Android shared object's bundle (``compile_aarch64_bundle_bound_target`` of its exports): the
+# Android ABI and ELF formats; the profiles with function-wide register allocation (``ANDROID_ARM64_GENERAL_IDENTITIES``).
+ANDROID_ABI, ANDROID_FORMATS = 4, (4, 5)
+ANDROID_REGALLOC_IDENTITIES = (b"android-arm64-v8a-shared-v4", b"android-arm64-v8a-shared-v5")
+CODE_ENTRY_PREFIX, ANDROID_C_ABI = b"code-entry:", b"android-aapcs64-c"  # a lend entry's ABI is never the Android one
 
 # The bootstrap's rejections this program decides: (code, rule) by site.
 RULES = (
@@ -62,7 +67,12 @@ RULES = (
     ("XAX.AARCH64.UNSUPPORTED_TERMINATOR", "AARCH64-TERMINATOR-TARGET-SUPPORTED"),
     ("XAX.FOREIGN.ABI", "AARCH64-FOREIGN-ABI"),  # during code generation (``_require_foreign_abi``)
     ("XAX.AARCH64.FRAME", "AARCH64-FRAME-SIZE"),  # S15e.2b (ADR-316): the frame path's layout
+    # S15e.6h.1 (ADR-354): ``_require_android_entry`` of an Android bundle's code address.
+    ("XAX.AARCH64.FOREIGN_ENTRY", "AARCH64-FOREIGN-ENTRY-TARGET"),
+    ("XAX.AARCH64.FOREIGN_ENTRY", "AARCH64-ENTRY-SIGNATURE"),
 )
+LEND_ENTRY_ABI = b"sysv-x86_64-c-lend"  # ``foreign_entry_abi`` of a ``code-entry:<LEND_ENTRY_ABI>:`` type
+ENTRY_SIGNATURE_EXPECTED = "<=8 64-bit integer/pointer parameters, <=1 integer/pointer result"
 SITE = {rule: site for site, (_code, rule) in enumerate(RULES)}
 
 
@@ -142,7 +152,8 @@ def _node(tables):
         e.var("nraw", e.ld(e.add(ni, NI_OP)))
         e.var("nop", e.sel(e.eq(p["nraw"], int(Operation.CALL_GROUP_MEMBER)), int(Operation.CALL_DIRECT), p["nraw"]))
         op = p["nop"]
-        _ok(e, e.not_(e.either(*(e.eq(op, item) for item in DECLINE_OPERATIONS))))
+        e.var("nandroid", e.ld(GLOBALS + G_A64ANDROID))
+        _ok(e, e.either(e.not_(e.either(*(e.eq(op, item) for item in DECLINE_OPERATIONS))), e.ne(p["nandroid"], 0)))
         supported = e.both(e.lt(op, 256), e.ne(_at(e, G_SUP, e.sel(e.lt(op, 256), op, 0)), 0))
         _reject(e, supported, "AARCH64-OP-TARGET-SUPPORTED", p["g"], lambda: _target_list(e, G_SUP_AT), lambda: D.integer(e, op))
         e.var("nvisit", NONE - 1)
@@ -168,8 +179,114 @@ def _node(tables):
             e.if_(e.both(fresh, e.eq(_call(e, "erased", p["nc"]), 0)), lambda: e.set("nvisit", p["nc"]))
 
         e.if_(e.eq(op, int(Operation.CALL_DIRECT)), callee)
+
+        def address():
+            """S15e.6h.1: ``function.address`` on an Android bundle visits the addressed function (erased or not) after
+            ``_require_android_entry``'s checks of a code-entry type (``a64_android_entry``)."""
+            entity = e.ld(e.add(ni, NI_ENTITY))
+            _ok(e, e.ne(entity, NONE))
+            e.var("na", _reference(e, p["g"], entity))
+            _ok(e, e.both(e.ne(p["na"], NONE), e.eq(_kind(e, p["na"]), int(Kind.FUNCTION))))
+            e.var("nres", e.ld(e.add(ni, NI_RESULTS)))
+            _ok(e, e.le(1, e.rd(p["nres"])))
+            e.var("nrtype", _reference(e, p["g"], e.rd(e.add(p["nres"], 1))))
+            _ok(e, e.ne(p["nrtype"], NONE))
+            _call(e, "a64_android_entry", p["nrtype"], p["na"], p["g"])
+            e.if_(e.eq(e.ld(e.add(_g(e, G_TW), p["na"])), 0), lambda: e.set("nvisit", p["na"]))
+
+        e.if_(e.both(e.eq(op, int(Operation.FUNCTION_ADDRESS)), e.ne(p["nandroid"], 0)), address)
         e.give(p["nvisit"])
     return _function(("g", "f", "member"), build, tables)
+
+
+def _bytes_equal(e: E, at, length, value: bytes, name: str):
+    """1 when the ``length`` input bytes at ``at`` are ``value``."""
+    p = e.p
+    e.var(name, e.flag(e.eq(length, len(value))))
+    for k, byte in enumerate(value):
+        e.if_(e.both(e.ne(p[name], 0), e.ne(e.rd(e.add(at, k)), byte)), lambda: e.set(name, 0))
+    return p[name]
+
+
+def _android_entry(tables):
+    """``foreign_entry_abi`` of the code address type ``t`` and, when it names one, ``_require_android_entry`` of
+    function ``f`` (its address taken in graph ``g``): ``android-aapcs64-c`` (the Android bundle is ABI 4), else
+    ``AARCH64-FOREIGN-ENTRY-TARGET`` on ``g``; at most eight parameters each a 64-bit integer or a pointer and at most
+    one integer or pointer result, else ``AARCH64-ENTRY-SIGNATURE`` on ``f``.  1, or NONE."""
+    def build(e: E):
+        p = e.p
+        e.if_(e.ne(_type_form(e, p["t"]), 2), lambda: e.give(1))
+        e.var("ae_at", _at(e, G_PAY, p["t"]))
+        _payload_uleb(e, "ae_at")  # the form
+        _payload_uleb(e, "ae_at")  # the address space
+        e.var("ae_elem", _reference(e, p["t"], _payload_uleb(e, "ae_at")))
+        _ok(e, e.ne(p["ae_elem"], NONE))
+        e.if_(e.ne(_type_form(e, p["ae_elem"]), 6), lambda: e.give(1))
+        e.var("ae_id", _at(e, G_PAY, p["ae_elem"]))
+        _payload_uleb(e, "ae_id")  # the form
+        e.var("ae_n", _payload_uleb(e, "ae_id"))
+        e.var("ae_prefix", 1)
+        e.if_(e.lt(p["ae_n"], len(CODE_ENTRY_PREFIX)), lambda: e.set("ae_prefix", 0))
+        for k, byte in enumerate(CODE_ENTRY_PREFIX):
+            e.if_(e.both(e.ne(p["ae_prefix"], 0), e.ne(e.rd(e.add(p["ae_id"], k)), byte)), lambda: e.set("ae_prefix", 0))
+        e.if_(e.eq(p["ae_prefix"], 0), lambda: e.give(1))
+        e.var("ae_abi", e.add(p["ae_id"], len(CODE_ENTRY_PREFIX)))
+        e.var("ae_abin", e.sub(p["ae_n"], len(CODE_ENTRY_PREFIX)))
+        # A lend entry (``code-entry:sysv-x86_64-c-lend:...``) names the lend ABI, never the Android one.
+        lend = CODE_ENTRY_PREFIX + LEND_ENTRY_ABI + b":"
+        e.var("ae_lend", e.flag(e.le(len(lend), p["ae_n"])))
+        for k, byte in enumerate(lend):
+            e.if_(e.both(e.ne(p["ae_lend"], 0), e.ne(e.rd(e.add(p["ae_id"], k)), byte)), lambda: e.set("ae_lend", 0))
+        e.var("ae_ok", e.flag(e.both(e.eq(p["ae_lend"], 0), e.ne(_bytes_equal(e, p["ae_abi"], p["ae_abin"], ANDROID_C_ABI, "ae_android"), 0))))
+
+        def target_expected():
+            D.put(e, D.T_LIST)
+            D.put(e, 2)
+            D.text(e, ANDROID_C_ABI.decode())
+            D.integer(e, ANDROID_ABI)
+
+        def target_actual():
+            D.put(e, D.T_LIST)
+            D.put(e, 2)
+            e.if_(e.ne(p["ae_lend"], 0), lambda: D.text(e, LEND_ENTRY_ABI.decode()), lambda: _call(e, "text_at", p["ae_abi"], p["ae_abin"]))
+            D.integer(e, ANDROID_ABI)
+
+        _reject(e, e.ne(p["ae_ok"], 0), "AARCH64-FOREIGN-ENTRY-TARGET", p["g"], target_expected, target_actual)
+        e.var("ae_i", _call(e, "interface", p["f"]))
+        e.var("ae_np", e.ld(e.add(p["ae_i"], 1)))
+        e.var("ae_rt", e.add(e.add(p["ae_i"], 2), p["ae_np"]))
+
+        def width(t, name):
+            """``_sysv_like_width``: a bits value's width, 64 for a pointer, else 0."""
+            e.var(f"{name}_t", t)
+            e.var(name, 0)
+            e.if_(e.eq(_type_form(e, p[f"{name}_t"]), 2), lambda: e.set(name, 64))
+
+            def bits():
+                e.var(f"{name}_at", _at(e, G_PAY, p[f"{name}_t"]))
+                _payload_uleb(e, f"{name}_at")
+                e.set(name, _payload_uleb(e, f"{name}_at"))
+
+            e.if_(e.eq(_type_form(e, p[f"{name}_t"]), 1), bits)
+            return p[name]
+
+        e.var("ae_sig", e.flag(e.both(e.le(p["ae_np"], 8), e.le(e.ld(p["ae_rt"]), 1))))
+        e.for_("ae_q", 0, p["ae_np"], lambda: e.if_(e.ne(width(e.ld(e.add(e.add(p["ae_i"], 2), p["ae_q"])), "ae_pw"), 64), lambda: e.set("ae_sig", 0)))
+        e.for_("ae_q", 0, e.ld(p["ae_rt"]), lambda: e.if_(e.eq(width(e.ld(e.add(e.add(p["ae_rt"], 1), p["ae_q"])), "ae_rw"), 0), lambda: e.set("ae_sig", 0)))
+
+        def signature_actual():
+            D.put(e, D.T_LIST)
+            D.put(e, 2)
+            D.put(e, D.T_LIST)
+            D.put(e, p["ae_np"])
+            e.for_("ae_q", 0, p["ae_np"], lambda: D.cid(e, _cid_words(e, e.ld(e.add(e.add(p["ae_i"], 2), p["ae_q"])))))
+            D.put(e, D.T_LIST)
+            D.put(e, e.ld(p["ae_rt"]))
+            e.for_("ae_q", 0, e.ld(p["ae_rt"]), lambda: D.cid(e, _cid_words(e, e.ld(e.add(e.add(p["ae_rt"], 1), p["ae_q"])))))
+
+        _reject(e, e.ne(p["ae_sig"], 0), "AARCH64-ENTRY-SIGNATURE", p["f"], lambda: D.text(e, ENTRY_SIGNATURE_EXPECTED), signature_actual)
+        e.give(1)
+    return _function(("t", "f", "g"), build, tables)
 
 
 def _push(e: E, f):
@@ -268,8 +385,9 @@ def _frontend(tables):
         target = p["target"]
         _ok(e, e.eq(_kind(e, target), int(Kind.TARGET)))
         e.var("ta", _at(e, G_PAY, target))
-        identity = _payload_uleb(e, "ta")
-        e.set("ta", e.add(p["ta"], identity))
+        e.var("t_idn", _payload_uleb(e, "ta"))
+        e.var("t_id", p["ta"])
+        e.set("ta", e.add(p["ta"], p["t_idn"]))
         fields = [_payload_uleb(e, "ta") for _ in range(6)]  # profile, architecture, abi, format, word, pointer bits
         e.var("t_arch", fields[1])
         e.var("t_abi", fields[2])
@@ -300,7 +418,13 @@ def _frontend(tables):
         # S15f.4 (ADR-325): a bare-metal load image (ABI 3, format 1) is ``build``'s raw AArch64 image, the bundle's code.
         e.var("t_raw", e.flag(e.both(e.eq(p["t_abi"], BAREMETAL_ABI), e.eq(p["t_fmt"], RAW_FORMAT))))
         e.st(GLOBALS + G_A64RAW, p["t_raw"])
-        _reject(e, e.either(linux, e.ne(p["t_raw"], 0)), "LINUX-AARCH64-ELF-EXEC-TARGET", target, target_expected, target_actual)
+        # S15e.6h.1 (ADR-354): an Android shared object's bundle; the host names its roots (the exports' functions).
+        e.var("t_android", e.flag(e.both(e.eq(p["t_abi"], ANDROID_ABI), e.either(*(e.eq(p["t_fmt"], f) for f in ANDROID_FORMATS)))))
+        e.var("t_aregs", 0)
+        for k, identity in enumerate(ANDROID_REGALLOC_IDENTITIES):
+            e.if_(e.ne(_bytes_equal(e, p["t_id"], p["t_idn"], identity, f"t_reg{k}"), 0), lambda: e.set("t_aregs", 1))
+        e.st(GLOBALS + G_A64ANDROID, e.mul(p["t_android"], e.add(1, p["t_aregs"])))
+        _reject(e, e.either(linux, e.ne(p["t_raw"], 0), e.ne(p["t_android"], 0)), "LINUX-AARCH64-ELF-EXEC-TARGET", target, target_expected, target_actual)
         _payload_uleb(e, "ta")  # stack alignment
         _payload_uleb(e, "ta")  # shadow space
         e.var("t_nargs", _payload_uleb(e, "ta"))
@@ -317,7 +441,7 @@ def _frontend(tables):
         # The Linux profiles are ``_general_aarch64_target`` (floats, aggregates or sums); another target: the bootstrap.
         sup = _g(e, G_SUP)
         general = e.either(*(e.ne(e.ld(e.add(sup, int(op))), 0) for op in (Operation.FLOAT_ADD, Operation.AGGREGATE_MAKE, Operation.SUM_MAKE)))
-        _ok(e, e.either(general, e.ne(p["t_raw"], 0)))
+        _ok(e, e.either(general, e.ne(p["t_raw"], 0), e.ne(p["t_android"], 0)))
 
         # 2. The process entry (``validate_process_entry``).
         e.var("entry", e.call(_FN["find"], 1))
@@ -368,11 +492,35 @@ def _frontend(tables):
             contract = e.both(e.eq(p["emp"], 0), e.le(p["emr"], 1), e.ne(p["einteger"], 0))
             _reject(e, contract, "LINUX-PROCESS-ENTRY-CONTRACT", entry, lambda: D.text(e, ENTRY_CONTRACT_EXPECTED), contract_actual)
 
-        e.if_(e.eq(p["t_raw"], 0), process_entry, lambda: _ok(e, e.eq(_kind(e, entry), int(Kind.FUNCTION))))  # AARCH64-ENTRY-FUNCTIONS
+        e.if_(e.both(e.eq(p["t_raw"], 0), e.eq(p["t_android"], 0)), process_entry,
+              lambda: _ok(e, e.eq(_kind(e, entry), int(Kind.FUNCTION))))  # AARCH64-ENTRY-FUNCTIONS
 
-        # 3. The closure, depth first in the bootstrap's order.
+        # 3. The closure, depth first in the bootstrap's order (an Android bundle: from each root in turn).
         e.st(GLOBALS + G_MEMBERS, 0)
         e.var("depth", 0)
+        e.var("roots_at", NONE)
+
+        def android_roots():
+            """After the extents, the audit word and the trap heads: the roots (count, CIDs)."""
+            e.var("rs", p["ext_at"])
+            e.var("rs_n", e.rd(p["rs"]))
+            e.set("rs", e.add(p["rs"], 1))
+            e.for_("rs_k", 0, p["rs_n"], lambda: e.set("rs", e.add(e.add(e.add(p["rs"], CID_WORDS), 1), e.mul(e.rd(e.add(p["rs"], CID_WORDS)), 5))))
+            e.set("rs", e.add(p["rs"], 1))  # the audit word
+            e.var("rs_n", e.rd(p["rs"]))
+            e.set("rs", e.add(p["rs"], 1))
+
+            def graph():
+                e.set("rs", e.add(p["rs"], CID_WORDS))
+                e.var("rs_b", e.rd(p["rs"]))
+                e.set("rs", e.add(p["rs"], 1))
+                e.for_("rs_j", 0, p["rs_b"], lambda: e.set("rs", e.add(e.add(p["rs"], 2), e.rd(e.add(p["rs"], 1)))))
+
+            e.for_("rs_k", 0, p["rs_n"], graph)
+            _ok(e, e.lt(0, e.rd(p["rs"])))  # AARCH64-ENTRY-FUNCTIONS: one or more
+            e.set("roots_at", p["rs"])
+
+        e.if_(e.ne(p["t_android"], 0), android_roots)
         _push(e, entry)
 
         def step():
@@ -406,6 +554,13 @@ def _frontend(tables):
             e.if_(e.ne(e.ld(e.add(fr, F_NODES)), 0), node, terminator)
 
         e.while_(lambda: e.ne(p["depth"], 0), step)
+
+        def root():
+            e.var("rt", e.call(_FN["find"], e.add(e.add(p["roots_at"], 1), e.mul(p["rt_k"], CID_WORDS))))
+            _ok(e, e.both(e.ne(p["rt"], NONE), e.eq(_kind(e, e.sel(e.eq(p["rt"], NONE), entry, p["rt"])), int(Kind.FUNCTION))))
+            e.if_(e.eq(e.ld(e.add(_g(e, G_TW), p["rt"])), 0), lambda: (_push(e, p["rt"]), e.while_(lambda: e.ne(p["depth"], 0), step)))
+
+        e.if_(e.ne(p["t_android"], 0), lambda: e.for_("rt_k", 1, e.rd(p["roots_at"]), root))
 
         # 4. The image order: the closure by CID.
         order = _g(e, G_ORDER)
@@ -461,6 +616,7 @@ def build_aarch64_program():
 
     add("abi_layout", _layout(tables))
     add("prologue", _prologue(tables))
+    add("a64_android_entry", _android_entry(tables))
     add("node", _node(tables))
     add_lower_functions(add, tables)
     program = add("frontend", _frontend(tables))
@@ -488,11 +644,11 @@ def _read_record(read):
     return read(IMAGE_AT, end - IMAGE_AT) if IMAGE_AT < end <= IMAGE_END else []
 
 
-def _executable(words, closure, reader, target_cid: bytes):
-    """The ``LinuxAarch64Executable`` of the record, or None when it says "not decided"."""
+def _parsed_record(words, closure, target_cid: bytes):
+    """``(bundle, ELF bytes, the bundle's file offset, needed libraries)`` of the record, or None when it says "not
+    decided"."""
     from xax_aarch64 import Aarch64Bundle
     from xax_artifact import ArtifactSemanticRange
-    from xax_linux_aarch64 import LinuxAarch64Executable
 
     if not words or words[0] != 1:
         return None
@@ -531,8 +687,20 @@ def _executable(words, closure, reader, target_cid: bytes):
         ranges.append(ArtifactSemanticRange(cid, None, None, base, base + length))
         ranges.extend(nodes)
     bundle = Aarch64Bundle(code, target_cid, tuple((cid, base) for cid, base, _length, _nodes in placed), tuple(foreign), tuple(ranges))
+    return bundle, elf, code_offset, needed
+
+
+def _executable(words, closure, reader, target_cid: bytes):
+    """The ``LinuxAarch64Executable`` of the record, or None when it says "not decided"."""
+    from xax_artifact import ArtifactSemanticRange
+    from xax_linux_aarch64 import LinuxAarch64Executable
+
+    parsed = _parsed_record(words, closure, target_cid)
+    if parsed is None:
+        return None
+    bundle, elf, code_offset, needed = parsed
     file_ranges = tuple(ArtifactSemanticRange(item.function_cid, item.block_index, item.node_index, code_offset + item.start, code_offset + item.end)
-                        for item in ranges)
+                        for item in bundle.semantic_ranges)
     return LinuxAarch64Executable(elf, bundle, target_cid, file_ranges, needed)
 
 
@@ -618,3 +786,43 @@ def aarch64_raw_image(reader, function_cid: bytes, target_object, *, frontend: s
         if image != expected:
             raise AssertionError("S15f.4 bare-metal AArch64 images disagree")
     return image
+
+
+def android_bundle_with_xax(reader, function_cids, target_object, required: bool = False):
+    """S15e.6h.1 (ADR-354): ``compile_aarch64_bundle_bound_target`` of an Android shared object's export functions as
+    the XAX program builds it (the program reads the roots after the trap heads), or None when it cannot run or
+    declines, unless ``required``.  It raises the ``XaxError`` the program wrote when it rejects."""
+    import xax_native
+    from xax_compiler import XaxError, fail, store_resolver
+    from xax_riscv64 import _cid_words
+    from xax_selfhost_diagnostics import decode_diagnostic
+    from xax_selfhost_x86_64_general import collect_order, general_object_table
+
+    roots = tuple(dict.fromkeys(function_cids))
+    native = native_aarch64() if roots else None
+    table = None if native is None else general_object_table(reader, roots[0], target_object)
+    words, members = table if table is not None else (None, {})
+    if words is not None:
+        words = [*words, len(roots), *(word for cid in roots for word in _cid_words(cid))]
+
+    def collect(read):
+        order = collect_order(read)
+        return order, decode_diagnostic(read), (None if order is None else _read_record(read))
+
+    outcome = None if words is None else native.run(words, collect)
+    order, diagnostic, record = outcome if outcome is not None else (None, None, None)
+    if diagnostic is not None:
+        raise XaxError(diagnostic)
+    bundle = None
+    if order is not None:
+        resolve = store_resolver(reader)
+        closure = tuple(members[cid] if cid in members else resolve(cid) for cid in order)
+        parsed = _parsed_record(record, closure, target_object.cid)
+        bundle = None if parsed is None else parsed[0]
+    if bundle is None:
+        if native is not None:
+            xax_native.declined("aarch64-general", 1)
+        if required:
+            fail("XAX.AARCH64.GENERAL", roots[0].hex() if roots else "bundle", "AARCH64-XAX-GENERAL", "built by the XAX AArch64 program",
+                 "unavailable or declined")
+    return bundle

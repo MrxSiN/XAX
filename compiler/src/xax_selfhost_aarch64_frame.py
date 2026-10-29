@@ -576,6 +576,9 @@ def _machine_operands(e: E, node, skip_first, name: str):
 # -- eligibility for the other paths -------------------------------------------------------------------------------
 
 G_A64RAW = 191  # GLOBALS slot: 1 for a bare-metal load image (S15f.4, ADR-325), whose frames share no slots
+# GLOBALS slot (S15e.6h.1, ADR-354): an Android shared object's bundle, 1 for a profile without function-wide register
+# allocation (``android-arm64-v8a-shared-v3``), 2 for one with it (v4, v5); 0 otherwise.
+G_A64ANDROID = 189
 
 
 def _general(e: E):
@@ -981,11 +984,11 @@ def _layout_fn(tables):
                 "fl_r", 0, _f(e, p["fl_nd"], N_NRES), lambda: add(_output(e, p["fl_nd"], p["fl_r"])))))
 
         e.for_("fl_bi", 0, _g(e, G_BCOUNT), gather)
-        # Slots are shared by disjoint hulls only on the Linux profiles; a bare-metal image keeps one slot per value in
-        # gathering order (S15f.4, ADR-325).
+        # Slots are shared by disjoint hulls only on the Linux profiles; a bare-metal image (S15f.4, ADR-325) and an
+        # Android shared object (S15e.6h.1, ADR-354) keep one slot per value in gathering order.
         from xax_selfhost_views_backend import GLOBALS
 
-        e.var("fl_share", e.flag(e.eq(e.ld(GLOBALS + G_A64RAW), 0)))
+        e.var("fl_share", e.flag(e.both(e.eq(e.ld(GLOBALS + G_A64RAW), 0), e.eq(e.ld(GLOBALS + G_A64ANDROID), 0))))
 
         def share():
             _call(e, "a64f_hulls")
@@ -1590,6 +1593,18 @@ def _record_call(e: E, target):
     _emit(e, 0x94000000)
 
 
+def _record_address(e: E, register, target):
+    """``assembler.address`` (S15e.6h.1, ADR-354): the position and the addressed function ``target`` (``+ 2 ** 41 +
+    register * 2 ** 42``, a call record of the third kind), then ``adr`` bound at assembly."""
+    p = e.p
+    e.var("ra_n", _a(e, X_NCALLS))
+    _ok(e, e.lt(p["ra_n"], CALL_CAP))
+    e.st(e.add(_a(e, X_CALLS), e.mul(p["ra_n"], 2)), _a(e, X_LEN))
+    e.st(e.add(_a(e, X_CALLS), e.add(e.mul(p["ra_n"], 2), 1)), e.add(e.add(target, 1 << 41), e.mul(register, 1 << 42)))
+    _set_a(e, X_NCALLS, e.add(p["ra_n"], 1))
+    _emit(e, e.add(0x10000000, register))
+
+
 def _call_fn(tables):
     """Direct calls (an erased proof function is none), syscalls and C imports: ``marshal_call``.  1, or 0 when the
     node is not a call."""
@@ -1609,23 +1624,9 @@ def _call_fn(tables):
             e.var("mc_decl", _reference(e, _f(e, node, N_GRAPH), e.rd(e.sub(_f(e, node, N_OPSAT), 1))))
             _ok(e, e.ne(p["mc_decl"], NONE))
             e.var("mc_class", _foreign_class(e, p["mc_decl"], "mc_abi"))
-            from xax_selfhost_x86_64_general import G_TFMT
-            from xax_selfhost_views_backend import GLOBALS
+            from xax_selfhost_aarch64_emit import foreign_abi_rule
 
-            e.var("mc_dynamic", e.flag(e.eq(e.ld(GLOBALS + G_TFMT), 7)))
-            allowed = e.either(e.eq(p["mc_class"], ABI_SYSCALL_CLASS), e.both(e.eq(p["mc_class"], ABI_C_CLASS), e.ne(p["mc_dynamic"], 0)))
-
-            def write():
-                from xax_selfhost_aarch64_general import SITE
-
-                e.call(_FN["diagnostic"], SITE["AARCH64-FOREIGN-ABI"], e.ld(_call(e, "interface", _a(e, F_FN))))
-                D.put(e, D.T_LIST)
-                D.put(e, e.add(1, p["mc_dynamic"]))
-                D.text(e, SYSCALL_ABI.decode())
-                e.if_(e.ne(p["mc_dynamic"], 0), lambda: D.text(e, C_ABI.decode()))
-                _call(e, "text_at", p["mc_abi_cur"], p["mc_abi_alen"])
-
-            D.reject_unless(e, allowed, write)
+            foreign_abi_rule(e, p["mc_class"], "mc_abi", _a(e, F_FN))
             e.set("mc_target", e.add(p["mc_decl"], 1 << 40))
 
         e.if_(e.eq(op, _op(Operation.CALL_DIRECT)), direct, foreign)

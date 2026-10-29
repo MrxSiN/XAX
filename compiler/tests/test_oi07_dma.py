@@ -2,7 +2,7 @@ import json
 import unittest
 from pathlib import Path
 
-from compiler.benchmarks.bench_oi07_dma import collect_evidence, fixture
+from benchmarks.bench_oi07_dma import collect_evidence, fixture
 from xax_accelerator import compile_dma_flow, inspect_deployment, run_dma_deployment
 from xax_compiler import (
     DmaAction,
