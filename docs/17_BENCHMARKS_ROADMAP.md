@@ -1,5 +1,20 @@
 # XAX Stage 17 — Benchmark Specification and Staged Implementation Roadmap
 
+## Contents
+
+- [1. Purpose and scope](#1-purpose-and-scope)
+- [2. Normative definitions](#2-normative-definitions)
+- [3. Canonical benchmark case model](#3-canonical-benchmark-case-model)
+- [4. Runtime and compiler benchmark family](#4-runtime-and-compiler-benchmark-family)
+- [5. AI-efficiency benchmark family](#5-ai-efficiency-benchmark-family)
+- [6. Global benchmark invariants](#6-global-benchmark-invariants)
+- [7. Invalid or rejected alternatives](#7-invalid-or-rejected-alternatives)
+- [8. Interfaces and subsystem dependencies](#8-interfaces-and-subsystem-dependencies)
+- [9. Staged implementation roadmap](#9-staged-implementation-roadmap)
+- [10. Open issues requiring implementation evidence](#10-open-issues-requiring-implementation-evidence)
+- [11. Falsification criteria](#11-falsification-criteria)
+- [12. Universal replacement benchmarks (2026-10-02)](#12-universal-replacement-benchmarks-2026-10-02)
+
 ## 1. Purpose and scope
 
 This document defines how XAX is to be measured and in what order the first complete implementation is to be constructed.

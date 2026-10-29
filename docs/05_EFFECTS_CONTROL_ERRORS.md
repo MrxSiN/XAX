@@ -1,5 +1,24 @@
 # XAX Stage 05 — Effects, Control Flow, Calls, and Error Semantics
 
+## Contents
+
+- [1. Purpose and scope](#1-purpose-and-scope)
+- [2. Normative definitions](#2-normative-definitions)
+- [3. Effect model](#3-effect-model)
+- [4. Effect summaries and calls](#4-effect-summaries-and-calls)
+- [5. Ordinary control flow](#5-ordinary-control-flow)
+- [6. Evaluation-order guarantees](#6-evaluation-order-guarantees)
+- [7. Recoverable error semantics](#7-recoverable-error-semantics)
+- [8. Foreign exception interoperability](#8-foreign-exception-interoperability)
+- [9. Effect inference, storage, and compression](#9-effect-inference-storage-and-compression)
+- [10. Verifier obligations](#10-verifier-obligations)
+- [11. Optimization freedoms](#11-optimization-freedoms)
+- [12. Invariants](#12-invariants)
+- [13. Rejected alternatives](#13-rejected-alternatives)
+- [14. Interfaces and dependencies](#14-interfaces-and-dependencies)
+- [15. Open issues requiring implementation evidence](#15-open-issues-requiring-implementation-evidence)
+- [16. Falsification criteria](#16-falsification-criteria)
+
 ## 1. Purpose and scope
 
 This document defines the canonical XAX semantics for effect ordering, ordinary control flow, function calls, recoverable errors, fatal traps, and foreign exception interoperability.

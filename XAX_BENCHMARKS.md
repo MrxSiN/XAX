@@ -2,7 +2,40 @@
 
 This document defines benchmark methodology, result templates, and current result status. Raw observations are stored separately. No result is fabricated.
 
-## 1. Purpose
+## Contents
+
+- [Part I — Benchmark specification](#part-i--benchmark-specification)
+  - [1. Purpose](#1-purpose)
+  - [2. Benchmark case schema](#2-benchmark-case-schema)
+  - [3. Global validity and fairness rules](#3-global-validity-and-fairness-rules)
+  - [4. Runtime/compiler benchmark family](#4-runtimecompiler-benchmark-family)
+  - [5. Target-cost-model validation](#5-target-cost-model-validation)
+  - [6. AI-efficiency benchmark family](#6-ai-efficiency-benchmark-family)
+  - [7. Context-scaling experiment](#7-context-scaling-experiment)
+  - [8. Serialization/compiler-service microbenchmarks](#8-serializationcompiler-service-microbenchmarks)
+  - [9. Reproducibility protocol](#9-reproducibility-protocol)
+  - [10. Anti-cherry-picking rules](#10-anti-cherry-picking-rules)
+  - [11. Result templates](#11-result-templates)
+  - [12. Milestone gating](#12-milestone-gating)
+  - [13. Falsification conditions](#13-falsification-conditions)
+- [Part II — Results](#part-ii--results)
+  - [14. Current result status](#14-current-result-status)
+  - [M14 recursive self-hosting/closure evidence — non-performance](#m14-recursive-self-hostingclosure-evidence--non-performance)
+  - [Tiny AI-native C vs XAX experiment](#tiny-ai-native-c-vs-xax-experiment)
+  - [Android libxposed API-102 structural evidence — non-runtime](#android-libxposed-api-102-structural-evidence--non-runtime)
+  - [Compiler-latency fast paths — 2026-10-02 (timed, host-local)](#compiler-latency-fast-paths--2026-10-02-timed-host-local)
+  - [15. Universal-replacement benchmarks](#15-universal-replacement-benchmarks)
+  - [JVM response-v6 complete token result (2026-10-07, ADR-190/191)](#jvm-response-v6-complete-token-result-2026-10-07-adr-190191)
+  - [JVM response-v9 median token gate met (2026-10-07, ADR-194)](#jvm-response-v9-median-token-gate-met-2026-10-07-adr-194)
+  - [JVM response-v10 same-prefill pilot (2026-10-07, ADR-195)](#jvm-response-v10-same-prefill-pilot-2026-10-07-adr-195)
+  - [JVM response-v12 minimal-client same-prefill run (2026-10-07, ADR-196)](#jvm-response-v12-minimal-client-same-prefill-run-2026-10-07-adr-196)
+  - [JVM multi-file R5 corpus v5 (2026-10-08, ADR-197)](#jvm-multi-file-r5-corpus-v5-2026-10-08-adr-197)
+- [Part III — Host setup](#part-iii--host-setup)
+  - [Host setup for the full test and benchmark suite](#host-setup-for-the-full-test-and-benchmark-suite)
+
+## Part I — Benchmark specification
+
+### 1. Purpose
 
 The benchmark suite has two co-equal families:
 
@@ -13,7 +46,7 @@ XAX does not satisfy its founding objectives merely by winning one family while 
 
 Every result MUST identify exact benchmark-suite version, compiler/toolchain revision, semantic root, target/platform package, build policy, model/tokenizer where applicable, and measurement environment.
 
-## 2. Benchmark case schema
+### 2. Benchmark case schema
 
 Every case has a machine-readable logical record equivalent to:
 
@@ -41,7 +74,7 @@ Changing semantic requirements, inputs, baseline flags, target configuration, or
 
 Measured/profile data remains non-semantic.
 
-## 3. Global validity and fairness rules
+### 3. Global validity and fairness rules
 
 1. Correct semantics precede performance measurement.
 2. Invalid programs receive no invented performance value.
@@ -60,9 +93,9 @@ Measured/profile data remains non-semantic.
 15. Semantic weakening is valid only when every compared implementation receives the same relaxed contract.
 16. Simulated benchmark outcomes are forbidden; missing capability is reported unavailable.
 
-## 4. Runtime/compiler benchmark family
+### 4. Runtime/compiler benchmark family
 
-### 4.1 Metrics
+#### 4.1 Metrics
 
 Where meaningful, collect:
 
@@ -83,7 +116,7 @@ Where meaningful, collect:
 
 Use `not_applicable`, not fabricated zero, for inapplicable metrics.
 
-### 4.2 Build-policy separation
+#### 4.2 Build-policy separation
 
 Published suites SHOULD distinguish at least:
 
@@ -94,7 +127,7 @@ Published suites SHOULD distinguish at least:
 
 Compile-time/memory cost of expensive modes remains visible.
 
-### 4.3 C/Rust baseline rules
+#### 4.3 C/Rust baseline rules
 
 CPU/native runtime comparisons that judge performance MUST include an optimized C or C++ baseline and at least one implementation outside C/C++ (§15.0). When used, C/Rust baselines MUST:
 
@@ -107,7 +140,7 @@ CPU/native runtime comparisons that judge performance MUST include an optimized 
 
 A case need not include C/Rust when fair expression would change the semantic contract.
 
-### 4.4 Assembly baseline rules
+#### 4.4 Assembly baseline rules
 
 Assembly comparisons are limited to kernels with a credible expert, vendor, published, or otherwise independently reviewable implementation.
 
@@ -115,7 +148,7 @@ If the assembly baseline relies on alignment, vector width, target features, rel
 
 No result supports a universal “faster than assembly” claim.
 
-### 4.5 Runtime case classes
+#### 4.5 Runtime case classes
 
 The initial suite SHOULD include, as implementation milestones permit:
 
@@ -135,7 +168,7 @@ The initial suite SHOULD include, as implementation milestones permit:
 - accelerator/GPU kernels when target path exists;
 - compiler self-build stages after self-hosting milestones.
 
-## 5. Target-cost-model validation
+### 5. Target-cost-model validation
 
 For candidate variants, preserve both predicted and measured values.
 
@@ -148,9 +181,9 @@ Candidate sets MUST contain materially different legal implementations; testing 
 
 Objectives that cannot be credibly measured on a target are marked unvalidated.
 
-## 6. AI-efficiency benchmark family
+### 6. AI-efficiency benchmark family
 
-### 6.1 Required representation arms
+#### 6.1 Required representation arms
 
 The first decisive family compares identical semantic tasks using:
 
@@ -163,7 +196,7 @@ Later replacement-scale studies (§15) additionally include, where relevant: Rus
 
 The tokenizer-native arm is valid only when the evaluated model/tokenizer actually supports the dedicated vocabulary/integration. Otherwise it is `unavailable`.
 
-### 6.2 Required task classes
+#### 6.2 Required task classes
 
 The initial corpus MUST include:
 
@@ -182,7 +215,7 @@ The initial corpus MUST include:
 
 Each task defines the desired semantic end state independently of representation.
 
-### 6.3 AI metrics
+#### 6.3 AI metrics
 
 For every attempted task record:
 
@@ -209,7 +242,7 @@ For every attempted task record:
 
 Token accounting uses the exact evaluated tokenizer.
 
-### 6.4 Fairness across representations
+#### 6.4 Fairness across representations
 
 All arms receive:
 
@@ -222,7 +255,7 @@ Representation-specific protocol instructions may explain mechanics but may not 
 
 If an arm must regenerate a larger unit because it lacks local mutation, that cost remains part of the result.
 
-## 7. Context-scaling experiment
+### 7. Context-scaling experiment
 
 Hold the requested local semantic edit and its dependency neighborhood constant while increasing unrelated project content.
 
@@ -232,7 +265,7 @@ A successful local-query architecture should have context growth dominated by th
 
 A harness that serializes the entire repository into each request invalidates this experiment.
 
-## 8. Serialization/compiler-service microbenchmarks
+### 8. Serialization/compiler-service microbenchmarks
 
 Before runtime code generation exists, valid benchmark categories include:
 
@@ -249,9 +282,7 @@ Before runtime code generation exists, valid benchmark categories include:
 - deterministic diagnostic construction;
 - transaction apply/verify/commit cost.
 
-## 9. Current measured results
-
-## 9. Reproducibility protocol
+### 9. Reproducibility protocol
 
 A published benchmark run records at least:
 
@@ -278,7 +309,7 @@ Timing measurements SHOULD report raw per-run observations or sufficient summary
 
 Outlier handling, warm-up, CPU/device frequency controls, affinity, power state, background-load policy, and timer source MUST be declared when relevant.
 
-## 10. Anti-cherry-picking rules
+### 10. Anti-cherry-picking rules
 
 A published summary MUST NOT:
 
@@ -293,9 +324,9 @@ A published summary MUST NOT:
 - publish only final successful AI outputs while excluding failed/repair attempts;
 - approximate tokenizer-native results using ordinary text and label them tokenizer-native.
 
-## 11. Result templates
+### 11. Result templates
 
-### 11.1 Runtime case result
+#### 11.1 Runtime case result
 
 ```text
 RuntimeResult {
@@ -321,7 +352,7 @@ RuntimeResult {
 }
 ```
 
-### 11.2 AI case result
+#### 11.2 AI case result
 
 ```text
 AIResult {
@@ -349,7 +380,7 @@ AIResult {
 }
 ```
 
-### 11.3 Aggregate summary
+#### 11.3 Aggregate summary
 
 ```text
 Aggregate {
@@ -368,7 +399,7 @@ Aggregate {
 
 The aggregate never replaces per-case data.
 
-## 12. Milestone gating
+### 12. Milestone gating
 
 A benchmark becomes valid only after the implementation capability it measures exists. The staged gates are defined in `XAX_IMPLEMENTATION_ROADMAP.md`.
 
@@ -381,7 +412,7 @@ Examples:
 - before self-hosting subset: no self-build benchmarks;
 - before GPU/accelerator path: accelerator performance unavailable.
 
-## 13. Falsification conditions
+### 13. Falsification conditions
 
 The architecture must be reconsidered if reproducible fair measurements establish any of the following after reasonable implementation maturity:
 
@@ -398,7 +429,9 @@ The architecture must be reconsidered if reproducible fair measurements establis
 
 A falsified claim is recorded as falsified. Benchmark definitions must not be changed after results merely to preserve a preferred conclusion.
 
-## 14. Current result status
+## Part II — Results
+
+### 14. Current result status
 
 No comparative runtime or model-driven AI-efficiency benchmark has been run.
 
@@ -414,39 +447,39 @@ Section 9 records one exploratory static representation-token comparison using t
 `compiler/benchmarks/m6_response_budget_smoke.json` records deterministic non-timing response-byte-budget accounting reproduced by `bench_response_budget.py`. For the three-node workspace query, the unbounded one-page response is **424 bytes**. An exact **178-byte** budget forces three positive-progress pages of **171 / 171 / 178 bytes**, exposing one entity per page with continuations `1 / 2 / none`; total returned bytes increase to **520** because pagination metadata and repeated framing are retained rather than hidden. This is transport accounting only. It is not a model-token measurement and makes no AI-efficiency or timing claim.
 
 
-### M6 relation-transaction accounting smoke
+#### M6 relation-transaction accounting smoke
 
 `compiler/benchmarks/m6_relation_transaction_smoke.json` is reproduced by `bench_relation_transaction.py`. It is a deterministic **non-timing** accounting/conformance record for the first operand/use relation mutation. The one-mutation `ReplaceUse` transaction uses a generation-scoped root alias and encodes to **24 bootstrap transaction bytes**. In the harness fixture it changes `add(p0,p1)` to `add(p1,p1)`, changing the direct function result for `(2,3)` from **5 to 6**, rebuilds/verifies **6** affected objects, reuses **1** reachable object, and retains one direct caller relationship to the rebuilt callee. These values are implementation/accounting evidence only; they are not tokenizer, model-efficiency, compile-time, or runtime-performance results.
 
-### M6 node-deletion accounting smoke
+#### M6 node-deletion accounting smoke
 
 `compiler/benchmarks/m6_delete_node_smoke.json` is reproduced by `bench_delete_node.py`. It is a deterministic **non-timing** accounting/conformance record for the first containment-preconditioned node deletion. The one-mutation `DeleteNode` transaction uses a generation-scoped root alias and encodes to **17 bootstrap transaction bytes**. In the harness fixture it deletes one unused constant from a two-node callee, deterministically renumbers the surviving arithmetic node and return reference, preserves the callee result for `(2,3)` at **5**, rebuilds/verifies **6** affected objects, reuses **2** reachable objects, and retains one direct caller relationship to the rebuilt callee. These values are implementation/accounting evidence only; they are not tokenizer, model-efficiency, compile-time, or runtime-performance results.
 
-### M6 proof-dependency accounting smoke
+#### M6 proof-dependency accounting smoke
 
 `compiler/benchmarks/m6_proof_dependency_smoke.json` is reproduced by `bench_proof_dependency.py`. It is a deterministic **non-timing** accounting/conformance record for verifier-status proof reads. The `proof` query returns local dependency handle `P0.0` without exposing a persistent semantic CID and accounts **299 bootstrap response bytes**. A one-mutation transaction guarded by that dependency uses **22 bootstrap transaction bytes**, changes the fixed fixture result from **5 to 6**, rebuilds/verifies **4** affected objects, and reuses **4** reachable objects. Reusing the same proof handle after its semantic subject changes rejects as `XAX.WORKSPACE.PROOF_CONFLICT` / `WORKSPACE-PROOF-DEPENDENCY`. These values are byte-accounting/conformance evidence only; they are not tokenizer, model-efficiency, formal-proof, compile-time, or runtime-performance results.
 
-### M6 pure-node insertion accounting smoke
+#### M6 pure-node insertion accounting smoke
 
 `compiler/benchmarks/m6_insert_node_smoke.json` is reproduced by `bench_insert_node.py`. It is a deterministic **non-timing** accounting/conformance record for the first exact-position pure-node insertion plus same-transaction consumption of the new result. The two context queries expose **4 entities in 576 bootstrap response bytes**. The generation-root transaction contains `InsertPureNode` plus `ReplaceUse`, uses transaction-local result `I4.R0`, and encodes to **43 bootstrap transaction bytes**. In the fixed fixture it changes 3 nodes to 4 and the function result from **5 to 12**, rebuilds/verifies **5** affected objects, and reuses **4** reachable objects. These values are implementation/accounting evidence only; they are not tokenizer, model-efficiency, compile-time, or runtime-performance results.
 
-### M6 control-edge argument accounting smoke
+#### M6 control-edge argument accounting smoke
 
 `compiler/benchmarks/m6_edge_argument_smoke.json` is reproduced by `bench_edge_argument.py`. It is a deterministic **non-timing** accounting/conformance record for the first exact-position block-terminator edge-argument reconnect. The bootstrap context query exposes **2 node entities in 301 response bytes**. The generation-root transaction contains one `DisconnectEdgeArgument` and one `ConnectEdgeArgument`, changes edge argument 0 from source parameter 0 to source parameter 1, and encodes to **39 bootstrap transaction bytes**. In the fixed one-caller fixture the callee result for `(2,3,300)` changes from **2 to 3**, rebuilds/verifies **6** affected objects, reuses **4** reachable objects, and retains one direct caller relationship. These values are implementation/accounting evidence only; they are not tokenizer, model-efficiency, compile-time, or runtime-performance results.
 
-### M6 candidate-only verify/rollback accounting smoke
+#### M6 candidate-only verify/rollback accounting smoke
 
 `compiler/benchmarks/m6_candidate_verify_smoke.json` is reproduced by `bench_candidate_verify.py`. It is a deterministic **non-timing** accounting/conformance record for private candidate verification, explicit rollback, and a subsequent ordinary commit from the unchanged base. The bootstrap context query exposes **3 node entities in 424 response bytes**. Candidate verification of one generation-root `SetOperation` transaction uses **26 bootstrap transaction bytes**, touches/verifies **4** objects, reuses **4** reachable objects, returns local candidate handle `C0.0`, and leaves canonical root/generation unchanged. Rollback also leaves root/generation unchanged. The same ordinary transaction then commits successfully and changes the fixed result **5→6**. Candidate verification/verified-object accounting is maintained separately from ordinary commit accounting. These values are implementation/accounting evidence only; they are not tokenizer, model-efficiency, compile-time, or runtime-performance results.
 
-### M6 narrow specialization accounting smoke
+#### M6 narrow specialization accounting smoke
 
 `compiler/benchmarks/m6_specialize_smoke.json` is reproduced by `bench_specialize.py`. It is a deterministic **non-timing** accounting/conformance record for one exact-constant `SpecializeFunction` request. Three bootstrap queries expose **4 entities in 479 response bytes**. The generation-root transaction specializes parameter 0 of a two-parameter `bits<8>` wrapping-add function to constant 5 and encodes **15 bootstrap transaction bytes**. The published one-parameter clone returns **8** for input 3, while the original source and direct caller remain unchanged. Construction adds/verifies **5** objects and reuses **5** reachable objects. These values are implementation/accounting and semantic-execution evidence only; they are not tokenizer, model-efficiency, general META, compile-time-performance, or runtime-performance results.
 
-### M6 same-block pure-node move accounting smoke
+#### M6 same-block pure-node move accounting smoke
 
 `compiler/benchmarks/m6_move_node_smoke.json` is reproduced by `bench_move_node.py`. It is a deterministic **non-timing** accounting/conformance record for the first exact-source/exact-anchor same-block pure-node move. The bootstrap context query exposes **3 node entities in 424 response bytes**. The generation-root `MovePureNode` transaction moves the second constant immediately before the first, encodes to **28 bootstrap transaction bytes**, remaps the arithmetic operands by original producer identity, preserves the callee result at **5**, rebuilds/verifies **6** affected objects, reuses **4** reachable objects, and retains one direct caller relationship. These values are implementation/accounting evidence only; they are not tokenizer, model-efficiency, compile-time, or runtime-performance results.
 
-### M7 resource/effect proof-erasure check
+#### M7 resource/effect proof-erasure check
 
 `compiler/benchmarks/bench_m7_resource_effect.py` is a deterministic non-timing comparison between a bits-only baseline and the same observable computation surrounded by a verified generic resource/effect lifecycle. Each backend emits byte-identical artifacts for the pair:
 
@@ -460,19 +493,19 @@ This proves zero emitted-byte overhead for this fixed proof-only lifecycle fixtu
 
 The M7 clean deterministic wheel was built twice with `SOURCE_DATE_EPOCH=946684800` and matched byte-for-byte: `xax_compiler-0.1.0-py3-none-any.whl`, **66,118 bytes**, SHA-256 `578486a736f73d82db13dbcc82bbe21a9ba13ee68ae12a58bf5693c71534d9ba`. This is packaging/reproducibility evidence only. An earlier dirty/non-normalized ad hoc wheel comparison was discarded and is not evidence.
 
-### M8 atomic artifact/execution smoke
+#### M8 atomic artifact/execution smoke
 
 `compiler/benchmarks/m8_atomic_smoke.json` is reproduced by `bench_m8_atomic.py`. It is a deterministic **non-timing** artifact/execution record for one verified x86-64 stack-resident atomic sequence containing release store, wrapping acq-rel RMW, strong seq-cst/acquire compare-exchange, seq-cst fence, and seq-cst load. The raw load image is **108 bytes**, SHA-256 `3766932e195970e563376f48093c6ccf479aa838d08845b70571a8903266d938`; reference and isolated native execution both return **8** for inputs `(5,3,11)`. The selected target CID is `24e312c773b777ac4dd892b39a9477f1758ff8bf05d7708bfb8282120a9ded56`, and the record declares no runtime assists. This is direct-emission/conformance evidence only; it is not synchronization-cost, latency, throughput, cross-target, tokenizer, or model-efficiency evidence.
 
 The M8 `SOURCE_DATE_EPOCH=946684800` wheel reproducibility test passed. The final wheel is **75,365 bytes**, SHA-256 `7f812534ddd002efbaa29510071f5bcf0886e70da67debfcca5d7ceb40a82db4`. This is packaging/reproducibility evidence only.
 
-### M9 compile-time construction/cache smoke
+#### M9 compile-time construction/cache smoke
 
 `compiler/benchmarks/m9_comptime_smoke.json` is reproduced by `bench_m9_comptime.py`. It is a deterministic **non-timing** META construction/cache/artifact record. One ordinary XAX compile-time function inspects a `bits<32>` type, constant 5, and the x86-64 target package; reads declared input 7; computes 44; and constructs a verified constant-return function. Evaluation uses **8 semantic steps**, creates three canonical objects, and a repeated identical request is a cache hit. The generated function CID is `03dfe6520ab043dd40d391d8834a41ce4314481ce6d7cc8dd8bf15ea560b5adc`. Explicit materialization emits a **35-byte** x86-64 image with SHA-256 `6fba4d01d380cba2d2dc500f6ac96b6cdee1df35e810e587ee517be248bf754e`; reference and isolated native execution both return **44**. This record is not a compile-time-duration, runtime-performance, tokenizer, model-efficiency, cache-hit-rate, or general generated-code-quality result.
 
 The M9 `SOURCE_DATE_EPOCH=946684800` wheel built twice and matched byte-for-byte: **79,608 bytes**, SHA-256 `407922eb7017f5a0bb841fa7b69e915654afd0bf14c19d4e0b7e8f4143ac5a67`. This is packaging/reproducibility evidence only.
 
-### M10 deterministic package/build smoke
+#### M10 deterministic package/build smoke
 
 `compiler/benchmarks/m10_package_build_smoke.json` is reproduced by `bench_m10_package_build.py`. It creates one canonical package, hermetic profile, trust policy, typed build request, complete snapshot, verified cache entry, and direct artifact for each of x86-64 and WebAssembly. Repeating each build produces byte-identical `BuildResult` data, and target-specific requests produce distinct cache keys.
 
@@ -485,7 +518,7 @@ Both cache reads revalidated artifact digest and provenance closure. This is det
 
 The final M10 `SOURCE_DATE_EPOCH=946684800` wheel built twice and matched byte-for-byte: **89,076 bytes**, SHA-256 `05d55cc76e28d3e677465c37afe06af5820a41b112a3e2a8dbab5dfd653cb482`. This is packaging/reproducibility evidence only.
 
-### M11 B0/B1 bootstrap evidence
+#### M11 B0/B1 bootstrap evidence
 
 `compiler/bootstrap/m11_bootstrap_evidence.json` is reproduced by `compiler/benchmarks/bench_m11_bootstrap.py`. It is deterministic **non-timing** bootstrap/conformance evidence for the first XAX-hosted compiler component.
 
@@ -497,7 +530,7 @@ This establishes implementation-local B0/B1 evidence for the declared arithmetic
 
 The M11 `SOURCE_DATE_EPOCH=946684800` wheel built twice and matched byte-for-byte: **92,769 bytes**, SHA-256 `7be816707f5e4270d4cfd94be3591461410b76ecc5dfe3a1f57fa8630f450d97`. This is packaging/reproducibility evidence only.
 
-### M12 optimizer/validated-search evidence
+#### M12 optimizer/validated-search evidence
 
 `compiler/benchmarks/m12_optimizer_evidence.json` is reproduced by `compiler/benchmarks/bench_m12_optimizer.py`. It is deterministic **non-timing** optimizer/cost/validation evidence for the declared M12 slice. The canonical optimization-policy root is `924e070eceab1b9abba8c1cbb67fb2365fa7cc9f21362537f4b228bcdbd90dba`; its fixed evidence budget uses 4 local-pass iterations, 96 search steps, 64 candidate attempts, 262,144 bytes search memory, 256 polynomial terms, cold/hot inline limits 2/8, and hot-call threshold 10.
 
@@ -517,7 +550,7 @@ The evidence JSON was generated twice and compared byte-for-byte; SHA-256 is `04
 The M12 `SOURCE_DATE_EPOCH=946684800` wheel built twice and matched byte-for-byte: **102,449 bytes**, SHA-256 `e21d519dff45f9972f4a094a2998cef26d6971c7fbdbd10d77041298875591ab`. This is packaging/reproducibility evidence only.
 
 
-### M13 accelerator deployment/conformance evidence
+#### M13 accelerator deployment/conformance evidence
 
 `compiler/benchmarks/m13_accelerator_evidence.json` is reproduced by `bench_m13_accelerator.py`. It is deterministic **non-timing** target/deployment/conformance evidence for one prototype non-CPU SIMT packet target. The program root is `6e088c0ff84c0723a9c3b7f527bf2bd98b886f8e5846f0200f5b1ee2ecf7db5c`; target root is `202e9d0db81107e8380f27ef1f233327c34fe8a1f56431d38814ec4ee6feee04`.
 
@@ -530,7 +563,7 @@ This is not physical-GPU execution, runtime latency/throughput/energy, compiler-
 The M13 `SOURCE_DATE_EPOCH=946684800` wheel built twice and matched byte-for-byte: **109,836 bytes**, SHA-256 `b2180788ecfb0cc697f43613f6cd553f2b26ebd1f486739b8327319988db85e7`. This is packaging/reproducibility evidence only.
 
 
-## M14 recursive self-hosting/closure evidence — non-performance
+### M14 recursive self-hosting/closure evidence — non-performance
 
 `compiler/bootstrap/m14_selfhost_evidence.json` is deterministic **bootstrap/conformance evidence**, not a performance benchmark. It records executed B2–B6 only for `xax-semantic-image-v1`. *(Superseded 2026-10-06, ADR-177: B5/B6 withdrawn; the file now records the derived `bootstrap_status`.)*
 
@@ -541,18 +574,18 @@ The immutable seed runtime is **46,255 bytes**, SHA-256 `4e0c64d6f360359cc263c39
 The compiler image, seed runtime, and evidence JSON were generated twice after the final evidence-label correction and matched byte-for-byte. No self-build wall time, native code speed, throughput, latency, memory footprint, tokenizer/model efficiency, or diverse-double-compilation result is inferred from these numbers. Legacy x86-64, AArch64, WebAssembly, and accelerator lowerers are explicitly outside the B5/B6 closure target.
 
 The final M14 `SOURCE_DATE_EPOCH=946684800` wheel built twice and matched byte-for-byte: **117,715 bytes**, SHA-256 `fa4add6e966ca09fe5df6c02043e91d333f0726ec92f681a03bf7251e4a4a34e`. This is packaging/reproducibility evidence only.
-## Tiny AI-native C vs XAX experiment
+### Tiny AI-native C vs XAX experiment
 
 `compiler/benchmarks/ai_native/` now contains a five-task, manually run Codex Desktop comparison with exactly two arms: C and the real XAX workspace transaction interface. It records pass/fail, available model tokens, turns, optional elapsed time, and no inferential statistics. The sole runbook is `compiler/benchmarks/ai_native/README.md`.
 
 For OI-01 the same benchmark also compares six versioned `X1` fallback-transport candidates: typed (`P0`/`N0`) versus unified dense-integer handles, each with `line`, `pipe`, and `json` packet framing. `python -m benchmarks.ai_native transport` records offline `cl100k_base`/`o200k_base` token and byte counts in `transport-oi01.json`. Unified handles save 15 view tokens across the five tasks under both encodings, and unified/pipe has the smallest combined view+packet total at 237 tokens under either encoding. A 30-trial Claude Code run (`claude-opus-5-5` subagents, 5 tasks × 6 arms, n=1) completed 30/30. Five-task harness-token totals were 278,750 typed/line, 280,478 typed/pipe, 280,648 typed/json, 278,301 unified/line, 281,968 unified/pipe, and 280,587 unified/json; the roughly 1.3% spread is below run-to-run noise because each trial includes roughly 55.6k fixed harness-context tokens. Reliability separated the framings: failed `verify`/`test` checks were `line` 0, `pipe` 2, and `json` 14; nine of ten JSON trials had at least one failed check. Typed versus unified handles had 9 versus 7 failed checks, all attributable to framing. Raw packets and per-invocation traces are in `runs-claude/`; rows are in `results-claude.csv`. These results disfavor the tested flat-array JSON framing and make line framing the observed reliability leader on this corpus, but they do not select a canonical transport or close OI-01.
 
 
-## Android libxposed API-102 structural evidence — non-runtime
+### Android libxposed API-102 structural evidence — non-runtime
 
 The Android/libxposed structural evidence suite records deterministic generated DEX/APK shape and MUST NOT be interpreted as runtime framework validation. Current bounded evidence includes direct service wrappers, capability-gated remote preferences/files, deoptimization, retained manual unhook, and stable-ID guarded hot reload with host-owned target-ClassLoader saved-state transfer. `android_libxposed_hot_reload_evidence.json` currently records a **34,347-byte** deterministic APK and **2,920-byte** generated module DEX. Initial install contains API-102 `HookBuilder.setId("xax.primary")` and stores the package-ready ClassLoader. `onHotReloading` is **11 code units** with a missing-loader rejection branch plus one `setSavedInstanceState`; `onHotReloaded` is **51 code units**, restores that loader, then uses explicit saved-state, empty-transfer, and ID-mismatch guards before one `HookHandle.replaceHook`. The Hooker/interceptor DEX is byte-identical to the retained non-hot-reload baseline. All runtime fields in that evidence remain `UNEXECUTED`.
 
-## Compiler-latency fast paths — 2026-10-02 (timed, host-local)
+### Compiler-latency fast paths — 2026-10-02 (timed, host-local)
 
 Host: Windows 11 x86-64, CPython 3.12.10, bytecode cache enabled. "Before" = the pre-change tree with only the `AARCH64_GENERAL_OPERATIONS` import-order fix applied. Medians of 5–7 runs; the global graph-parse memo is cleared before every sample (cold). Reproduce the scaling rows with `python -m benchmarks.bench_compile_scaling 10 100 1000`.
 
@@ -572,11 +605,11 @@ Host: Windows 11 x86-64, CPython 3.12.10, bytecode cache enabled. "Before" = the
 
 Generated x86-64/AArch64 code is byte-identical before/after; M14 compiler root, generation digests, equivalence vectors, and fixed point are unchanged. Mechanisms: `StoreReader.get` decodes and CID-checks each record once; `_parse_graph` is memoized by graph CID with dependency-resolve replay (falling back to an uncached parse on any replay failure so diagnostics stay exact); `Cursor.uleb` checks minimality without re-encoding; BLAKE3 compression uses inlined local-word rounds (official vectors pass); objects created or decoded by the compiler carry a non-copyable CID-checked flag; and `StoreReader.from_objects` validates contents eagerly but emits canonical bytes and the container digest only when `.data` is read. Remaining measured bottleneck: pure-Python BLAKE3 is ~40% of cold verification.
 
-## 15. Universal-replacement benchmarks
+### 15. Universal-replacement benchmarks
 
 Replacement level R4 (`XAX_SPEC.md` §21.2) is earned only through this section. AI-token trials belong to the deferred AI-efficiency milestone (ADR-207) and earn no level.
 
-### 15.0 Multi-language runtime rule (normative, ADR-147, ADR-207)
+#### 15.0 Multi-language runtime rule (normative, ADR-147, ADR-207)
 
 For each CPU/native runtime benchmark used to judge performance:
 
@@ -598,11 +631,11 @@ Each implementation may choose its own data representation for the same observab
 
 **Current status.** `compiler/benchmarks/windows_pe_hosted_evidence.json` is EXECUTED evidence for the hosted Windows PE fixture (current fixture: 2,560-byte executable, 1,269 code bytes after the PE register path (2,181 before), eight kernel32 imports, heap-array round trip and function-pointer dispatch table; 20/20 runs; process wall time includes CreateProcess and pipe overhead). `compiler/benchmarks/wasi_command_evidence.json` is EXECUTED evidence for the WASI command module (635 bytes, stdout via `fd_write`, Node v26.7.0, 10/10 runs). It is not an R4 result: no C/Rust baseline toolchain exists on the measuring host and the code is from the spill-every-value frame lowering. `compiler/benchmarks/windows_c_reference/hosted.c` is the fixed semantic twin for the baseline run. `compiler/benchmarks/x86_register_path_evidence.json` is MEASURED intra-XAX evidence: the register path runs `sum_to(200,000,000)` 8.02x faster than the frame path (92.1 vs 738.7 ms median, 7 runs); it is not a cross-toolchain claim.
 
-### 15.0a JVM runtime rule (normative, ADR-157)
+#### 15.0a JVM runtime rule (normative, ADR-157)
 
 A JVM performance comparison applies §15.0 with the platform's own compilers as the baselines: a Java twin built by `javac` and a Kotlin twin built by `kotlinc`, each written the way a programmer of that language would write it, and run the same way as the XAX artifact (`java -jar`, the same HotSpot, flags, input, interleaving, warmup, and repetitions). R4 needs XAX's median ≤ 0.9999× the faster of the `javac` and `kotlinc` medians with a significant advantage, as in §15.0 (ADR-207). Each arm deploys as its toolchain builds it, so the Kotlin JAR carries the Kotlin runtime (`-include-runtime`). Program class bytes, JAR bytes, and peak RSS are recorded for every arm, and a code-size or memory gap is stated in the row's blockers. Evidence JSON has a `results` map with `javac*` and `kotlinc*` arms; `xax_replacement.py` rejects a competitive JVM verdict without both.
 
-### 15.1 U1.3 Linux `filestat` (MEASURED, 2026-10-02)
+#### 15.1 U1.3 Linux `filestat` (MEASURED, 2026-10-02)
 
 > Historical record. The current Linux x86-64 result is §15.14 (ADR-147/148), which supersedes the ratios and the R4 verdict here.
 
@@ -620,7 +653,7 @@ The workload opens `input.dat`, reads it in 64 KiB chunks into an anonymous `mma
 
 Seven independent 31-repetition runs on this shared host gave XAX/`gcc -O2` 0.95–1.14 and XAX/`clang -O2` 1.41–1.82; the committed JSON is the last written run. **R4 is not met**: `clang -O2` is fastest, and peak memory exceeds the static baseline because the explicitly requested loader maps `libz` and the libc it requires. Binary size is the smallest of all arms. Before the Linux register allocator (ADR-089), the frame path measured 5.9× `gcc -O2` with a 23,472-byte artifact. The remaining gap is attributed to per-block allocation: loop-invariant pointers reload from home slots each iteration, one edge-induced spill, and no unrolling (OI-38).
 
-### 15.2 OI-37 `chains`: arena + index versus pointer links (MEASURED, 2026-10-02)
+#### 15.2 OI-37 `chains`: arena + index versus pointer links (MEASURED, 2026-10-02)
 
 Source: `compiler/benchmarks/linux_chains.py`; C twins `linux_filestat_c/chains.c` (pointer links) and `chains_index.c` (diagnostic: XAX's index representation, optionally with XAX-equivalent bounds checks). Evidence: `compiler/benchmarks/oi37_chains_evidence.json`. Same host and method as §15.1 (3 warmup runs, 31 repetitions). Every arm prints `1048576 9437420`, and each matches an independent reference on smaller tables in the test suite.
 
@@ -636,7 +669,7 @@ Source: `compiler/benchmarks/linux_chains.py`; C twins `linux_filestat_c/chains.
 
 Across two runs, the attribution (median ratios within one run) was: index vs pointer 1.44–1.47×, checked vs unchecked index 1.34–1.41×, and XAX vs checked-index C 1.73–1.80×. In total XAX ran 3.49–3.58× `gcc -O2`. Decision: ADR-090. The diagnostic arms are not baselines and are excluded from "best baseline" ratios; their file sizes are unstripped.
 
-### 15.3 After ADR-091 (OI-38 step 1): `filestat` and `chains` re-measured (MEASURED, 2026-10-02)
+#### 15.3 After ADR-091 (OI-38 step 1): `filestat` and `chains` re-measured (MEASURED, 2026-10-02)
 
 Same host, method, and sources as §15.1–15.2; one 31-repetition run each. Outputs are unchanged and validated as before.
 
@@ -664,7 +697,7 @@ Same host, method, and sources as §15.1–15.2; one 31-repetition run each. Out
 
 The `chains` attribution in this run is index vs pointer 1.47×, checks 1.22×, and XAX vs checked-index C 1.06×. Code generation is no longer the dominant factor (it was 1.73–1.80×, §15.2). **R4 is still not met**: `clang -O2` is 1.47× faster on `filestat`, and pointer-linked C is 1.91× faster on `chains`.
 
-### 15.4 `chains` with `pointer_rebase` links (ADR-092; MEASURED, 2026-10-02)
+#### 15.4 `chains` with `pointer_rebase` links (ADR-092; MEASURED, 2026-10-02)
 
 Same host and method as §15.1–15.3, one 31-repetition run (this host's stdev is 13–25% of the median). Every arm prints `1048576 9437420`. Diagnostic arms are not baselines.
 
@@ -682,7 +715,7 @@ Same host and method as §15.1–15.3, one 31-repetition run (this host's stdev 
 
 Attribution in this run: index vs pointer links (C) 1.41×; checks on pointer links (C) 1.52×; checks on index links (C) 1.47×. XAX pointer vs checked-pointer C 1.07×; XAX index vs checked-index C 0.96×. `filestat` in the same session: XAX 0.96× `gcc -O2`, 1.37× `clang -O2`. **R4 is not met.** The remaining `chains` gap is the per-link check, which only check-free reloads (OI-37 typed storage) remove.
 
-### 15.5 `chains` with record links (ADR-097, OI-41; MEASURED, 2026-10-02)
+#### 15.5 `chains` with record links (ADR-097, OI-41; MEASURED, 2026-10-02)
 
 Same host and method as §15.1–15.4; one 31-repetition run. Every arm prints `1048576 9437420`. Diagnostic arms are not baselines.
 
@@ -701,7 +734,7 @@ Same host and method as §15.1–15.4; one 31-repetition run. Every arm prints `
 
 Record links run at 1.066× `gcc -O2` with real pointers. That meets the OI-41 criterion (≤ 1.1×), at the edge of this host's noise (A/B probes measured 1.04–1.12×). Verifier: 3.6 ms for links against 3.5 ms for index links. `filestat` in this session: 0.95× `gcc -O2`, 1.38× `clang -O2`.
 
-### 15.6 Windows PE hosted fixture: XAX vs MinGW-w64 C, under Wine (MEASURED-UNDER-WINE, 2026-10-02)
+#### 15.6 Windows PE hosted fixture: XAX vs MinGW-w64 C, under Wine (MEASURED-UNDER-WINE, 2026-10-02)
 
 | Arm | File bytes | Executable bytes | Median process wall (ms) |
 |---|---:|---:|---:|
@@ -710,7 +743,7 @@ Record links run at 1.066× `gcc -O2` with real pointers. That meets the OI-41 c
 
 21 runs each, interleaved, under wine-9.0 (Ubuntu 9.0~repack-4build3). Both print `XAX\n` and exit 1339 (59 mod 256). Wall time is Wine start-up. The C code is smaller because gcc folds work XAX performs at run time. Source: `bench_windows_pe_c_wine.py`.
 
-### 15.7 Android minimal Activity: XAX vs Java + NDK twin, size only (MEASURED, 2026-10-02)
+#### 15.7 Android minimal Activity: XAX vs Java + NDK twin, size only (MEASURED, 2026-10-02)
 
 | Arm | APK | DEX | Manifest | Native library | Native code per callback |
 |---|---:|---:|---:|---:|---:|
@@ -720,7 +753,7 @@ Record links run at 1.066× `gcc -O2` with real pointers. That meets the OI-41 c
 
 The twin (`benchmarks/android_ndk_twin/`) has the same classes, methods, strings, manifest, and native callbacks. It is built with `javac --release 11` against the API 35 `android.jar`, `d8 --release --min-api 28` (build-tools 36.1.0), NDK r28c `clang -O2 -fPIC -shared -Wl,-z,max-page-size=16384 -Wl,--gc-sections` plus `llvm-strip --strip-unneeded`, and `aapt2 link`. Like the XAX APK, every entry is stored uncompressed, the `.so` is 16 KiB-aligned (`zipalign -P 16`), and the signature is v2-only RSA-2048. `aapt2` reports the same package, SDK, and launchable activity for all three. The twin's library also needs `libc.so` and `libdl.so`; XAX's needs nothing. XAX's DEX is larger because it emits one DEX per class, so a listener-only edit leaves the Activity DEX byte-identical. Native code is equal; the 16-byte symbol size reported for one XAX callback includes 12 bytes of alignment `nop`s. Start-up time and memory need a device. Source: `bench_android_ndk_twin.py`, evidence `android_ndk_twin_evidence.json`.
 
-### 15.8 JVM: XAX class file vs `javac` on the same HotSpot (ADR-112; MEASURED, 2026-10-03)
+#### 15.8 JVM: XAX class file vs `javac` on the same HotSpot (ADR-112; MEASURED, 2026-10-03)
 
 > Historical record. The current JVM Collatz result is §15.17 (ADR-157).
 
@@ -733,7 +766,7 @@ Workload: total Collatz steps for every start value 1..1,000,000 (u64; nested lo
 
 Ratios XAX / `javac`: kernel time 1.04×, class bytes 1.509×, peak RSS 1.01×. The optimization history on this workload is 1.37× (first lowering), 1.056× (compare/branch fusion), 1.04× (scratch locals), and the class file went from 2,147 to 1,147 bytes. The remaining size gap is uncoalesced block parameters. The twin's loop compare is signed; XAX bits are unsigned, so XAX flips the sign bit before `lcmp`. Process wall time is dominated by JVM start-up and includes the warmup calls. Source: `bench_jvm_twin.py`; raw samples: `jvm_twin_evidence.json`.
 
-### 15.9 RISC-V RV64IM: XAX raw image vs `clang -O2`, emulated (ADR-113; MEASURED-EMULATED, 2026-10-03)
+#### 15.9 RISC-V RV64IM: XAX raw image vs `clang -O2`, emulated (ADR-113; MEASURED-EMULATED, 2026-10-03)
 
 Metric: RV64IM instructions executed in Unicorn (unicorn 2.1.0), counted per executed basic block, plus code bytes. This is not hardware time. Baseline: Ubuntu clang version 18.1.3 (1ubuntu1), `--target=riscv64-unknown-elf -march=rv64im -mabi=lp64 -O2 -ffreestanding -fno-builtin -mno-relax -c`, `.text` extracted with `llvm-objcopy`.
 
@@ -744,7 +777,7 @@ Metric: RV64IM instructions executed in Unicorn (unicorn 2.1.0), counted per exe
 
 Before register allocation (every value spilled), Collatz measured 15.9× instructions and 8.85× bytes. clang turns `sum_to` into a closed form (14 instructions); XAX runs the loop. XAX does not yet fuse compares into branches or coalesce edge copies. Source: `bench_riscv64_twin.py`; data: `riscv64_twin_evidence.json`.
 
-### 15.10 Linux AArch64 `filestat`: XAX vs `aarch64-linux-gnu-gcc -O2`, emulated (ADR-123; MEASURED-EMULATED, 2026-10-03)
+#### 15.10 Linux AArch64 `filestat`: XAX vs `aarch64-linux-gnu-gcc -O2`, emulated (ADR-123; MEASURED-EMULATED, 2026-10-03)
 
 > Historical record. The current result is §15.20 (ADR-168), and `linux_aarch64_filestat_evidence.json` now holds that run.
 
@@ -760,7 +793,7 @@ Re-run after the target package gained `pointer_address`/`pointer_rebase` (ADR-1
 
 Times are emulated and are not performance evidence (conformance §23.17); they rank two programs under one translator. The gap is the AArch64 frame path, which keeps every value in a stack slot; gcc's size includes 64 KiB segment padding. Source: `compiler/benchmarks/linux_aarch64_filestat.py`; data: `linux_aarch64_filestat_evidence.json`.
 
-### 15.11 SPIR-V Collatz: XAX vs glslang on Mesa llvmpipe (ADR-124; MEASURED-SOFTWARE-DEVICE, 2026-10-03)
+#### 15.11 SPIR-V Collatz: XAX vs glslang on Mesa llvmpipe (ADR-124; MEASURED-SOFTWARE-DEVICE, 2026-10-03)
 
 Device: llvmpipe (LLVM 20.1.2, 256 bits), Vulkan 1.4 through the `vulkan` Python bindings. Baseline: the equivalent GLSL kernel (`GLSL_COLLATZ` in `spirv_kernels.py`) compiled by glslang 15.1.0 (`-V --target-env vulkan1.1`), with the same bindings, push constant, and 64-wide workgroups. Input: 2^18 random values in [1, 10^6); 5 dispatches each; outputs identical. Time is submit-to-fence.
 
@@ -772,7 +805,7 @@ Device: llvmpipe (LLVM 20.1.2, 256 bits), Vulkan 1.4 through the `vulkan` Python
 
 A CPU implementation is not GPU performance evidence (conformance §23.17). The gap is the dispatch-loop lowering, which keeps llvmpipe from vectorizing the loop across invocations. Source: `compiler/benchmarks/spirv_kernels.py`; data: `spirv_compute_evidence.json`.
 
-### 15.12 `jsonmin` (R3 application): XAX vs C twins on Linux x86-64 (ADR-126; MEASURED, 2026-10-03)
+#### 15.12 `jsonmin` (R3 application): XAX vs C twins on Linux x86-64 (ADR-126; MEASURED, 2026-10-03)
 
 > Historical record. The current Linux x86-64 result is §15.14 (ADR-147/148), which supersedes the ratios and the R4 verdict here.
 
@@ -788,7 +821,7 @@ Workload: read stdin, validate RFC 8259 JSON (depth ≤ 512), write it minified.
 
 The first version measured 2.11× gcc -O2 (59.8 ms, 16,250 bytes). Three program changes (a 0 sentinel byte after the input instead of bounds compares, parser state passed as one `bits<64>` instead of through a context view, reads straight into the input view through a `pointer_rebase` window) and one compiler change (`ror` on the Linux register allocator) brought it to 1.56× (42.3 ms; 36.7M executed instructions on a 1 MiB input, against 20.8M for gcc -O2 under Valgrind). Small-set membership selection (ADR-131) then lowered each `c == ' ' || c == '\t' || …` branch to one bit test, bringing it to 1.20× gcc -O2 and 1.31× clang -O2 (29.5M instructions, 10,584 bytes). Not competitive in time, so the Linux row is R3, not R4. Peak RSS and binary size are the smallest of all arms. The remaining gap is not yet profiled. One known contributor is the escape-set test, whose span (82 values) is too wide for one 64-bit mask, so it still lowers to compares. Source: `compiler/benchmarks/jsonmin.py`; data: `jsonmin_evidence.json`.
 
-### 15.13 Standard libraries in `uniqcount` (ADR-130, OI-36; MEASURED, 2026-10-03)
+#### 15.13 Standard libraries in `uniqcount` (ADR-130, OI-36; MEASURED, 2026-10-03)
 
 `uniqcount` counts the distinct decimal numbers on stdin. It calls four exports of three package instances: `xax.text` at the 1,114,112-byte input extent (`find_digits`, `parse_u64`), `xax.text` at the 32-byte output extent (`format_u64`), and `xax.collections.hashset_u64` at capacity 65,536 (`insert`). Every run matches `reference_uniqcount` on x86-64 (native) and AArch64 (qemu-aarch64).
 
@@ -803,7 +836,7 @@ The first version measured 2.11× gcc -O2 (59.8 ms, 16,250 bytes). Three program
 
 Unused exports (`contains`, `skip_spaces`, and the other instance's functions) and the package objects are absent from the 2,306-byte artifact and from the store. Cost (medians of 5): building the packages takes 10.8 ms, verifying the store 1.6 ms, and compiling 60.3 ms on x86-64 and 37.2 ms on AArch64. Offline tokens (tiktoken o200k_base; no model run): the interface view of the four exports is 268 tokens, and the application's node rendering is 1,360 tokens. Writing the four bodies inline would take 3,256 tokens (190 nodes). Source: `compiler/benchmarks/bench_oi36_stdlib.py`; data: `oi36_stdlib_evidence.json`.
 
-### 15.14 Multi-language comparison after ADR-148 (MEASURED, 2026-10-03)
+#### 15.14 Multi-language comparison after ADR-148 (MEASURED, 2026-10-03)
 
 > Re-evaluated 2026-10-06 (ADR-177): the evidence JSONs keep only median/min/stdev per arm, one run each, so the ratios below cannot be recomputed and no longer support R4 (row now R3, `performance` PROTOTYPE); `chains` met the target only with the `xax-soa` representation. Re-measurement with raw samples is OI-45; the re-run is §15.30 (ADR-208).
 
@@ -817,7 +850,7 @@ Host: Intel(R) Xeon(R) Processor @ 2.10GHz (Emerald Rapids, model 207), 4 logica
 
 The first multi-language run, before ADR-148, measured XAX/fastest 1.566 (`filestat`), 1.183 (`chains`, record links), and 1.208 (`jsonmin`). In `chains`, the other XAX arms remain slower (record links 1.185, `pointer_rebase` 1.639, checked index 2.119): they encode different link representations of the same contract, and the struct-of-arrays arm mirrors the Rust twin's. Run-to-run stdev on this host is 4–15% of the median. Sources: `linux_filestat.py`, `linux_chains.py`, `jsonmin.py`; data: `u1_linux_filestat_evidence.json`, `oi37_chains_evidence.json`, `jsonmin_evidence.json`.
 
-### 15.15 Android counter app: XAX vs Java + NDK twin, size only (ADR-153/154; MEASURED, 2026-10-04)
+#### 15.15 Android counter app: XAX vs Java + NDK twin, size only (ADR-153/154; MEASURED, 2026-10-04)
 
 > Historical record. The current Android hardware and size result is §15.23 (ADR-172); `android_counter_twin_evidence.json` now holds that run.
 
@@ -833,7 +866,7 @@ The twin (`compiler/benchmarks/android_counter_twin/`) has the counter app's pac
 
 The native functions were 224 and 324 bytes before ADR-154 put heap access on the AArch64 register path. Start-up time and memory need arm64 hardware: `bench_android_counter_twin.py --device` measures cold-start `TotalTime` and total PSS, and an emulator run of it (recorded in the same evidence file with `hardware: false`) only shows that the harness works.
 
-### 15.16 `jsonmin` on the JVM: XAX vs a `javac` twin (ADR-156; MEASURED, 2026-10-04)
+#### 15.16 `jsonmin` on the JVM: XAX vs a `javac` twin (ADR-156; MEASURED, 2026-10-04)
 
 > Historical record. The current JVM result is §15.17 (ADR-157); `jvm_jsonmin_evidence.json` now holds that run (this one is in its git history).
 
@@ -846,7 +879,7 @@ Host: Intel Xeon @ 2.80 GHz, 4 logical CPUs, Linux x86-64 (shared container); Op
 
 XAX / twin wall time: 1.178. This compares the same platform's own compiler, not a CPU/native comparison under §15.0, so it carries no competitive verdict. The class-size gap comes from method-wide typed locals and helper calls for multi-byte accesses (ADR-156 limits).
 
-### 15.17 JVM R4: `jsonmin` vs `javac` and `kotlinc` twins, Collatz vs `javac` (ADR-157; MEASURED, 2026-10-04)
+#### 15.17 JVM R4: `jsonmin` vs `javac` and `kotlinc` twins, Collatz vs `javac` (ADR-157; MEASURED, 2026-10-04)
 
 > Historical record for timing and the R4 verdict's first run. The current code-size result is §15.18 (ADR-158), and `jvm_jsonmin_evidence.json` / `jvm_twin_evidence.json` now hold that run.
 
@@ -883,7 +916,7 @@ From ADR-156 (1.178×, 33,330-byte class) to this result the backend gained the 
 
 Ratios XAX / `javac`: kernel time 0.93×, class bytes 0.99×, peak RSS 1.00×. The §15.8 size gap (uncoalesced block parameters) is closed. This kernel has no Kotlin twin, so it is supporting evidence, not the §15.0a verdict.
 
-### 15.18 JVM code size: `jsonmin` class below kotlinc's (ADR-158; MEASURED, 2026-10-05)
+#### 15.18 JVM code size: `jsonmin` class below kotlinc's (ADR-158; MEASURED, 2026-10-05)
 
 Same host, toolchains, rule (§15.0a), and protocol as §15.17: 2 warmup and 15 timed interleaved rounds of fresh `java -jar` processes on `benchmark_document(8 MiB, seed=1)`, every output equal to `reference_jsonmin`. Evidence: `compiler/benchmarks/jvm_jsonmin_evidence.json`.
 
@@ -912,7 +945,7 @@ Same host, toolchains, rule (§15.0a), and protocol as §15.17: 2 warmup and 15 
 
 Ratios XAX / `javac`: kernel 0.91×, class bytes 0.95×, peak RSS 1.01×. The timings ran on a busier host than §15.17's (both arms slower).
 
-### 15.19 OI-35 on the JVM: direct emission vs native code plus a generated bridge (ADR-165; MEASURED, 2026-10-05)
+#### 15.19 OI-35 on the JVM: direct emission vs native code plus a generated bridge (ADR-165; MEASURED, 2026-10-05)
 
 Same host as §15.18 (4 logical CPUs, Intel Xeon @ 2.10 GHz; OpenJDK 21; JVM defaults). `benchmarks/bench_jvm_strategies.py` ran 2 warmup and 15 timed interleaved rounds with rotating arm order. Each run is a fresh `java` process on `benchmark_document(8 MiB, seed=1)` (*process*) and on `[]` (*start-up*). Every output equals `reference_jsonmin`. Evidence: `compiler/benchmarks/jvm_strategies_evidence.json`.
 
@@ -941,7 +974,7 @@ The native arm pays in:
 - managed interop: no Java objects or callbacks;
 - traps: a native trap aborts the JVM.
 
-### 15.20 Linux AArch64 `filestat` after ADR-168: XAX vs gcc, clang, and rustc, emulated (MEASURED-EMULATED, 2026-10-05)
+#### 15.20 Linux AArch64 `filestat` after ADR-168: XAX vs gcc, clang, and rustc, emulated (MEASURED-EMULATED, 2026-10-05)
 
 Same graph, input (4 MiB), and executor (qemu-aarch64 8.2.2 user mode on the x86-64 host) as §15.10. Every arm links the same `libz.so.1` (zlib 1.3) and is stripped. Every output equals `reference_filestat`. 31 timed interleaved rounds with rotating arm order, after 3 warmup rounds (`benchmarks/linux_aarch64_filestat.py`; evidence `linux_aarch64_filestat_evidence.json`, format v2).
 
@@ -970,7 +1003,7 @@ Same graph, input (4 MiB), and executor (qemu-aarch64 8.2.2 user mode on the x86
 
 **qemu's costs are not hardware's.** A `cmp`/`ccmp` chain for the whitespace test was slower under qemu (395 vs 365 ms at 32 MiB) despite fewer instructions; the flag-free bit test beat both (298 ms). These are emulated times, so they are not performance evidence (§23.17, OI-44).
 
-### 15.21 Android counter callbacks after ADR-169 (MEASURED, 2026-10-05)
+#### 15.21 Android counter callbacks after ADR-169 (MEASURED, 2026-10-05)
 
 > Historical size record. The current rebuilt twin and physical-device result is §15.23 (ADR-172).
 
@@ -985,13 +1018,13 @@ Same twin, toolchains, and measurement as §15.15 (symbol sizes from `llvm-reade
 
 Both callbacks keep their values in callee-saved registers saved by `stp`/`ldp` pairs, as clang's do. XAX's code also null-checks `malloc`'s result (a `cbz` to a shared `brk`), which the C twin does not.
 
-### 15.22 Windows Win64 callback and thread lifecycle (EXECUTED, 2026-10-05)
+#### 15.22 Windows Win64 callback and thread lifecycle (EXECUTED, 2026-10-05)
 
 `benchmarks/windows_pe_hosted_evidence.json` records two current PE artifacts executed on Windows 11 x86-64. The hosted fixture is 2,048 bytes (636 code bytes), imports eight declared kernel32 functions, writes `XAX\n`, and exits 1339 on 20/20 runs. Its 16.1 ms median is process start-up/loader/pipe time, not a code-quality claim.
 
 The thread fixture is 1,536 bytes (176 code bytes) and imports only `CreateThread`, `WaitForSingleObject`, `GetExitCodeThread`, `CloseHandle`, and `ExitProcess`. The Windows loader calls a pure XAX `win64-c` entry on the new thread; the callback returns 37, the parent retrieves it, closes the linearly tracked handle, and exits 39. This is execution evidence for R2 interoperability, not a performance comparison. No Windows-host C/Rust twin was available.
 
-### 15.23 Android counter on arm64 hardware: XAX vs Java + NDK (ADR-172; MEASURED, 2026-10-05)
+#### 15.23 Android counter on arm64 hardware: XAX vs Java + NDK (ADR-172; MEASURED, 2026-10-05)
 
 > Historical record. The current Android result is §15.29 (ADR-198).
 
@@ -1006,7 +1039,7 @@ The two APKs implement the same stateful counter contract and share package/clas
 
 *(Re-evaluated 2026-10-06, ADR-177: one Java + NDK baseline arm does not meet the §15.0 baseline set, and the pooled median hides a pass effect — XAX/twin medians are 0.84× in pass 1 and 1.20× in pass 2 — so the Android row is R3; OI-45.)* XAX meets the primary runtime target because `1.016 <= 1.05`. It also uses 0.995× the twin's median PSS, 0.703× its APK bytes, and 0.471× its native-library bytes. Its two directly emitted DEX files remain 1.188× the twin's single DEX, the deliberate edit-locality tradeoff recorded in ADR-153. This advances the Android arm64 workload row to R4; the scope is this application on this device, not a universal Android performance claim.
 
-### 15.24 JVM R5-candidate semantic-edit trial (ADR-174; MEASURED, 2026-10-06)
+#### 15.24 JVM R5-candidate semantic-edit trial (ADR-174; MEASURED, 2026-10-06)
 
 Evidence: `compiler/benchmarks/ai_native/jvm-r5-evidence.json` and `jvm-r5-results.csv` (SHA-256 `893d7f44b74b73afdf4e43bb697a7bd0ca7f5e3189cc2a7c32e90b475d875363`). The existing five paired structural edits ran in fresh Codex sessions with fixed `gpt-5.6-luna`, low reasoning, Codex CLI 0.160.0, and alternating order `C/XAX`, `XAX/C`, `C/XAX`, `XAX/C`, `C/XAX`. Every cell passed its external checker in one turn with no repair.
 
@@ -1019,7 +1052,7 @@ XAX used 0.813× the textual arm's total tokens, a reduction of 18.675%, and 0.7
 
 Scope is deliberately narrow: five small local edits, one model/setting, and n=1 per cell. Before matrix promotion, run at least one cell per missing §6.2 task class with equivalent textual/XAX oracles, then repeat only if the difference is within run-to-run noise. A preflight session was excluded before registration because its sandbox denied every discovery command; it produced no completed turn/token record and left the workspace unchanged.
 
-### 15.25 Direct local semantic workflow (ADR-175; MEASURED, 2026-10-06)
+#### 15.25 Direct local semantic workflow (ADR-175; MEASURED, 2026-10-06)
 
 Evidence: `compiler/benchmarks/ai_native/jvm-r5-optimized-evidence.json` and `jvm-r5-optimized-results.csv` (SHA-256 `574c1769f27968decd4fce71192ac4bff947927a5b69eead0fc3721fe60c5568`). The five §15.24 edits were rerun in fresh sessions with fixed Codex CLI 0.160.0, `gpt-5.6-luna`, low reasoning, and the same isolated client/tool profile for both arms. The C arm inspected and edited only `program.c`, then ran a task-local exact-target checker. `XAX-DIRECT` received the complete bounded semantic view and invoked one atomic `apply` operation that wrote, verified, committed, and target-checked its transaction.
 
@@ -1032,14 +1065,14 @@ XAX-DIRECT used 0.4990× the C arm's aggregate tokens: **50.098% fewer**. Its me
 
 This is still R5-candidate evidence, not JVM R5. It covers five small local edits, one model/setting, and one trial per cell; it is a workflow comparison rather than syntax density, and one cell need not individually clear 50%. The remaining §6.2 task classes, a Java/Kotlin textual arm, and repeated trials remain required before matrix promotion. Exploratory sessions used to tune the interface are excluded and remain present in the local Codex logs.
 
-### 15.26 JVM R5 full-corpus attempt (ADR-176; INCOMPLETE, 2026-10-06)
+#### 15.26 JVM R5 full-corpus attempt (ADR-176; INCOMPLETE, 2026-10-06)
 
 Evidence: `compiler/benchmarks/ai_native/jvm-r5-full-evidence.json` and `jvm-r5-full-results.csv` (SHA-256 `30df47ba1ae3e9a7271274ec3a45189e190fd5eeed15529f52b32839296b0383`). The expanded 15-task corpus prepared Java, Kotlin, and XAX arms under the fixed `gpt-5.6-luna`/low profile. Forty-two of 45 cells completed and passed; the three fresh creation/control-flow retries were rejected by the account usage limit before a model turn and carry no token record.
 
 Among completed cells, Java and Kotlin medians were 50,342.5 and 50,737.5 tokens; XAX was 38,679 (0.7683× the lowest textual median), above the 0.50 R5 gate. The JVM row therefore remains R4/PROTOTYPE. No promotion is claimed from this incomplete run.
 
 
-### 15.27 JVM local protocol profiling and bound-role follow-up (ADR-186, 2026-10-07)
+#### 15.27 JVM local protocol profiling and bound-role follow-up (ADR-186, 2026-10-07)
 
 The normal snapshot-bound adapter is shared by direct arms, with unchanged canonical semantics and target-root oracles. `local_protocol_evidence.json` is deterministic EXECUTED semantic evidence, with no runtime or token-performance claim. The new runner retains all model events and their digests, counts every completed turn and retry, rotates Java/Kotlin/XAX order, and requires three trials per cell for a numeric gate.
 
@@ -1049,7 +1082,7 @@ Bound-role profile: `ai_native/jvm-r5-bound-results.csv`, its `.evidence.json` a
 
 The runner's `transmitted_bytes` counts the supplied prompt plus retained JSON event transport; provider framing is unavailable. Failed-command and diagnostic counters are proxies retained beside raw traces, not a proof that every failure was a semantic verifier rejection. The inherited creation scaffold, repair candidate representation, and large-application context require equivalence review before any R5 claim. No numeric gate automatically promotes the matrix.
 
-### 15.28 JVM host-applied responses and exact compound edits (ADR-187/188, 2026-10-07)
+#### 15.28 JVM host-applied responses and exact compound edits (ADR-187/188, 2026-10-07)
 
 The new corpus uses final responses in every arm: normal context patches for
 Java/Kotlin and ordinary snapshot-bound requests for XAX. Successful requests
@@ -1104,7 +1137,7 @@ overload-selection case rejects. Its manifest also explicitly records the
 host-prefilled graph versus named-file inspection workflow; a same-prefill
 comparison has not been measured. Current artifacts use the response-v5 prefix.
 
-### 15.29 Android counter on arm64 hardware: XAX vs Java + NDK and pure Java (ADR-198; MEASURED, 2026-10-07)
+#### 15.29 Android counter on arm64 hardware: XAX vs Java + NDK and pure Java (ADR-198; MEASURED, 2026-10-07)
 
 *(Superseded by §15.34, ADR-253: this install-per-pass protocol let device drift fall on whichever arm a pass held.)* Supersedes §15.23 as the current Android result. Hardware: Pixel 8 Pro, Google Tensor G3, `arm64-v8a`; Android 17/API 37 (`CP3A.261005.005`), security patch 2026-10-05, kernel `6.1.162-android14-11-g9dd05ae3a1de`, on AC power, Battery Saver off. Host: Windows 11 x86-64. Toolchains: NDK r28c (`28.2.13676358`) `clang -O2`, build-tools 36.0.0, `android-36`, Temurin `javac 17.0.20.1`, `d8 --release --min-api 28`. Evidence: `compiler/benchmarks/android_counter_twin_evidence.json` (`results` holds raw `wall_seconds_samples` per arm).
 
@@ -1118,7 +1151,7 @@ Arms share the package, Activity/listener classes, state file, and observable be
 
 XAX meets the §15.0 primary target: 1.007 is at most 1.05 against the fastest valid arm, and `xax_replacement.recompute_runtime_verdict` reproduces the verdict from the raw samples. XAX against the fastest arm of each pass is 1.00, 1.053, 1.06 and 1.00, so no pass exceeds 1.10. Every arm slows across the run (pass 1 to 4 medians rise by about 100–150 ms), and the pooled margin is within that drift. Median PSS is equal within 0.11% across arms. XAX's APK is 0.703× the NDK twin's and 1.634× the pure Java twin's, which has no native library. XAX's DEX is 0.951× the Java twin's. The row returns to R4; the scope is this application on this device. No Kotlin arm was run.
 
-### 15.30 Linux x86-64 raw-sample re-run after predicate tables (ADR-208; MEASURED, 2026-10-08)
+#### 15.30 Linux x86-64 raw-sample re-run after predicate tables (ADR-208; MEASURED, 2026-10-08)
 
 Supersedes the ratios of §15.14. Host: Intel Xeon @ 2.10 GHz, 4 logical CPUs (shared cloud VM), Linux 6.18.44, gcc 13.3.0, clang 18.1.3, rustc stable; harness `compiler/benchmarks/linux_harness.py` (fork/exec/`wait4`, interleaved rounds with rotating arm order), 31 repetitions per arm, raw `wall_seconds_samples` recorded. Ratios are XAX's median over the fastest non-XAX median; p is the one-sided Mann–Whitney test of §15.0.
 
@@ -1130,11 +1163,11 @@ Supersedes the ratios of §15.14. Host: Intel Xeon @ 2.10 GHz, 4 logical CPUs (s
 
 `filestat` and `jsonmin` meet R4; `chains` does not (its margin is inside the noise of a memory-latency-bound pointer walk), so the Linux row stays R3. What changed: (1) a boolean computed from one value below 256 by three or more compare/arithmetic nodes is read from a byte table that the compiler evaluates exactly for every value (ADR-208): `filestat`'s whitespace test went from eight instructions to two, and `jsonmin`'s hex-digit and escape tests from 17 to three; (2) `jsonmin`'s string loop now has the C twin's shape (test the current byte, exit at the closing quote). Instruction counts under callgrind: `jsonmin` 188 M → 154 M (clang 145 M). Evidence: `compiler/benchmarks/u1_linux_filestat_evidence.json`, `jsonmin_evidence.json`, `oi37_chains_evidence.json`. One shared host and three workloads; not a general claim.
 
-### 15.31 JVM `jsonmin` re-run after the string-loop change (MEASURED, 2026-10-08)
+#### 15.31 JVM `jsonmin` re-run after the string-loop change (MEASURED, 2026-10-08)
 
 ADR-208 changed `jsonmin`'s string loop, so the JVM comparison of §15.17/§15.18 was re-run on the same kind of host (Xeon @ 2.10 GHz, 4 vCPUs), OpenJDK 21.0.12.1, javac `--release 17`, kotlinc 2.1.0 `-include-runtime`, 15 fresh-JVM runs per arm after 2 warmup rounds: XAX 126.3 ms, javac 142.8 ms, kotlinc 157.0 ms median. XAX is 0.884x javac (p = 2e-5), so the JVM row keeps R4. Program class 5,603 bytes (1.50x javac's, 0.99x kotlinc's); peak RSS 0.89x javac's. Evidence: `compiler/benchmarks/jvm_jsonmin_evidence.json`.
 
-### 15.32 Linux x86-64 re-run after next-iteration prefetch (ADR-211; MEASURED, 2026-10-08)
+#### 15.32 Linux x86-64 re-run after next-iteration prefetch (ADR-211; MEASURED, 2026-10-08)
 
 Same host and harness as §15.30, 31 interleaved runs per arm.
 
@@ -1146,7 +1179,7 @@ Same host and harness as §15.30, 31 interleaved runs per arm.
 
 `chains` now leads: the walk loop is the same as rustc's, and the next lookup's first node is prefetched while the current chain is walked. `jsonmin`'s binary is byte-identical to §15.30's, which measured 0.967682x; on this shared host a ~6% swing between runs of the same binaries is possible, so `jsonmin`'s lead is not established and the Linux row stays R3. Evidence: `u1_linux_filestat_evidence.json`, `jsonmin_evidence.json`, `oi37_chains_evidence.json`.
 
-### 15.33 Linux x86-64 and JVM re-run after ADR-212 (MEASURED, 2026-10-08)
+#### 15.33 Linux x86-64 and JVM re-run after ADR-212 (MEASURED, 2026-10-08)
 
 Same host and harnesses as §15.30–15.32 (31 interleaved runs per Linux arm; 15 fresh-JVM runs per JVM arm).
 
@@ -1159,7 +1192,7 @@ Same host and harnesses as §15.30–15.32 (31 interleaved runs per Linux arm; 1
 
 All Linux workloads lead, so the Linux x86-64 row derives R4. Caveat: `jsonmin`'s margin is small; its previous binary measured 0.967682x (§15.30) and 1.029472x (§15.32) on this host, so these numbers are one run, not a robust bound. Memory and size: XAX's peak RSS is below every competitor's on all three; `jsonmin`'s stripped binary is 1.21x clang's, `filestat`'s 0.29x, `chains`' far smaller than rustc's.
 
-### 15.34 Android counter cold start: side-by-side arms, fresh-install blocks, and a Kotlin arm (ADR-253; MEASURED, 2026-10-10)
+#### 15.34 Android counter cold start: side-by-side arms, fresh-install blocks, and a Kotlin arm (ADR-253; MEASURED, 2026-10-10)
 
 Supersedes §15.29. Hardware: Pixel 8 Pro, Google Tensor G3, Android 17/API 37 (`CP3A.261005.005`), security patch 2026-10-05. Host: Windows 11 x86-64. Toolchains: NDK `28.2.13676358` `clang -O2`, build-tools 36.0.0, `android-36`, `javac 25.0.3 --release 11` + `d8 --release --min-api 28`, Kotlin `2.3.10` + R8 8.10 (over the program and `kotlin-stdlib`). Evidence: `compiler/benchmarks/android_counter_twin_evidence.json` (raw `TotalTime` per arm in `results`).
 
@@ -1174,7 +1207,7 @@ Protocol: every arm is installed at once (the twins under renamed application pa
 
 A tie: no arm is significantly faster than another (one-sided Mann–Whitney; XAX against Java + NDK p = 0.24, Java against XAX p = 0.22). XAX is 1.0125x the fastest arm, above the 0.9999x R4 target, so the Android row stays R3. Start-up is framework-bound; each arm's own work is a JNI library load or a `FileChannel` open and an 8-byte read. Why blocks: in an exploratory probe, the XAX classes as two DEX files started 17 ms faster than the same classes merged into one DEX by d8 (p = 6e-5), so placement of one install can outweigh any code difference. Median PSS differs by under 0.1%.
 
-### 15.35 `jsonmin` on AArch64 hardware: Linux AArch64 static image on a Pixel 8 Pro (ADR-254; MEASURED, 2026-10-10)
+#### 15.35 `jsonmin` on AArch64 hardware: Linux AArch64 static image on a Pixel 8 Pro (ADR-254; MEASURED, 2026-10-10)
 
 The XAX arm is the `aarch64-linux-elf-exec-v1` image (raw syscalls, no libc or loader); it runs unchanged on the phone's Linux kernel (`6.1.162-android14-11`). Baselines: `jsonmin_c/jsonmin.c` by the NDK's `aarch64-linux-android28-clang -O2` (bionic, dynamically linked PIE) and `-O2 -static`, and `rust_twins/jsonmin.rs` by `rustc 1.99.0 -C opt-level=3 -C panic=abort -C codegen-units=1 --target aarch64-linux-android`. Harness: `compiler/benchmarks/android_jsonmin.py`. Every arm's output on the 8 MiB benchmark document equals the reference before timing. Three warmup rounds, then 101 rounds; each round runs every arm once, the order rotating; every run is pinned with `taskset`, timed by `runner.c` (fork/exec/`wait4`, CLOCK_MONOTONIC, `ru_maxrss`). Evidence: `compiler/benchmarks/android_jsonmin_evidence.json` (Cortex-X3 core, cited) and `android_jsonmin_cpu80_evidence.json` (Cortex-A715 core, cross-check).
 
@@ -1187,7 +1220,7 @@ The XAX arm is the `aarch64-linux-elf-exec-v1` image (raw syscalls, no libc or l
 
 XAX is 0.956284x the fastest non-XAX arm on the X3 core and 0.923764x on the A715 core, p < 1e-6 in both runs, so the Linux AArch64 row derives R4 for this workload. The Android row cites the same file but keeps R3 (§15.34). User-mode instructions per run (`simpleperf stat`, X3): XAX 128.2 M, clang static 138.6 M, rustc 161.7 M. Before ADR-254 every `jsonmin` function took the AArch64 frame path (246.0 M instructions); the steps and their counts are in ADR-254. Scope: one workload, one device and session; the C baselines link bionic, not glibc.
 
-### 15.36 `jsonmin` on a second AArch64 device: original Pixel (ADR-254; MEASURED, 2026-10-10)
+#### 15.36 `jsonmin` on a second AArch64 device: original Pixel (ADR-254; MEASURED, 2026-10-10)
 
 Same harness, arms, and XAX image (`049cf5ee…`) as §15.35, on an original Google Pixel (`sailfish`): Qualcomm Snapdragon 821 (Kryo), LineageOS (Android 15), kernel `4.4.302`, every run pinned to cpu 3 (2.15 GHz Kryo core, `XAX_JSONMIN_CPU_MASK=8`), 101 rounds after 3 warmup rounds. Evidence: `compiler/benchmarks/android_jsonmin_pixel1_evidence.json`. All AArch64 Linux runtime tests also pass on this device (`XAX_AARCH64_ADB=1`).
 
@@ -1200,7 +1233,7 @@ Same harness, arms, and XAX image (`049cf5ee…`) as §15.35, on an original Goo
 
 XAX is 0.898444x the fastest non-XAX arm, p < 1e-6: the lead holds on a second microarchitecture and kernel. A OnePlus One (`bacon`, Snapdragon 801) was also tried: it is 32-bit ARMv7 (`armeabi-v7a` only), so the AArch64 image gets `Exec format error`; XAX has no 32-bit ARM target.
 
-## JVM response-v6 complete token result (2026-10-07, ADR-190/191)
+### JVM response-v6 complete token result (2026-10-07, ADR-190/191)
 
 All 135 Java/Kotlin/XAX cells eventually passed across three fresh trials and
 142 retained attempts. Including failed-attempt/response costs, successful-cell
@@ -1218,7 +1251,7 @@ requires corpus review; named semantic targets versus named textual files,
 strict source targets, synthetic application helpers and abstract resources
 remain explicit limits. No JVM runtime-speed claim is made.
 
-## JVM response-v9 median token gate met (2026-10-07, ADR-194)
+### JVM response-v9 median token gate met (2026-10-07, ADR-194)
 
 *Superseded as R5 evidence by ADR-195 (2026-10-07): the corpus review found the comparison context-asymmetric; see the response-v10 section below.*
 
@@ -1238,7 +1271,7 @@ Normal tooling uses lossless uniform result-type defaults, immutable caller-sele
 
 Validation: 146 focused tests and 167 subtests passed; status/matrix checks pass after regeneration. JVM remains **R4/PROTOTYPE** pending corpus/context equivalence review: host-projected semantic context and named-file inspection differ, exact oracles are restrictive, the large fixture is synthetic and abstract resource effects do not execute on the JVM. Numeric success alone does not promote R5 or change runtime/backend performance claims.
 
-## JVM response-v10 same-prefill pilot (2026-10-07, ADR-195)
+### JVM response-v10 same-prefill pilot (2026-10-07, ADR-195)
 
 *Superseded by ADR-196 (2026-10-07): option (a) measured; see the response-v12 section below.*
 
@@ -1248,7 +1281,7 @@ Response-v10 is same-prefill: every arm gets inline context and one request with
 
 The full 135-cell v10 run has not been executed. Resolve OI-46's measurement design first. Validation: 29 JVM R5 tests pass on Windows with Temurin 17 and Kotlin 2.1.0. JVM stays R4.
 
-## JVM response-v12 minimal-client same-prefill run (2026-10-07, ADR-196)
+### JVM response-v12 minimal-client same-prefill run (2026-10-07, ADR-196)
 
 *Superseded by ADR-197 (2026-10-08): option (b) measured; see the multi-file section below.*
 
@@ -1260,7 +1293,7 @@ Response-v12 had 151 attempts and 123/135 successful cells after one refill pass
 
 R5 is unmet, with a target of 0.50 and acceptance at 0.55. On single-function edits the XAX view plus edit list costs about the same as the inline program plus a patch, and the model repairs XAX more often. 12 cells never passed: XAX jvm-07, jvm-09, jvm-14 and jvm-15, and Kotlin jvm-12 and jvm-14, where "u16" invites `UShort`. JVM stays R4. Validation: 47 JVM R5/local-protocol tests pass.
 
-## JVM multi-file R5 corpus v5 (2026-10-08, ADR-197)
+### JVM multi-file R5 corpus v5 (2026-10-08, ADR-197)
 
 `benchmarks.run_jvm_r5_multifile` compares XAX with four textual workflows on generated five-class projects. The textual workflows are Java and Kotlin, each with whole files or an IDE-style excerpt of the same call hierarchy. There are three families: a cross-file API change, a large-class operation change with its dependent assertion, and a transitive constant change. XAX gets the target and its transitive callers from the workspace `callers` query. Client, model (`gpt-6-luna`, low) and the calibrated 3,501-token floor are as in ADR-196.
 
@@ -1284,7 +1317,9 @@ Normal-protocol work from this corpus:
 
 R5 is unmet and JVM stays R4. The remaining gap is the per-request edit-form help, which the textual arms don't pay because the model knows Java and Kotlin, and lower model reliability on XAX.
 
-## Host setup for the full test and benchmark suite
+## Part III — Host setup
+
+### Host setup for the full test and benchmark suite
 
 Tests that need a host tool skip when it is absent; skipped is not passed. The complete host environment on Ubuntu 24.04 x86-64:
 

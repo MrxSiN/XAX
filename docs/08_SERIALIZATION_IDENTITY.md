@@ -1,5 +1,31 @@
 # XAX Serialization and Identity
 
+## Contents
+
+- [1. Purpose and scope](#1-purpose-and-scope)
+- [2. Normative definitions](#2-normative-definitions)
+- [3. Core invariants](#3-core-invariants)
+- [4. Canonical store model](#4-canonical-store-model)
+- [5. Canonical primitive encodings](#5-canonical-primitive-encodings)
+- [6. Semantic object envelope](#6-semantic-object-envelope)
+- [7. Core object kinds](#7-core-object-kinds)
+- [8. Deterministic fields and schemas](#8-deterministic-fields-and-schemas)
+- [9. Interning and reference tables](#9-interning-and-reference-tables)
+- [10. Content identity versus logical identity](#10-content-identity-versus-logical-identity)
+- [11. Merkle DAG structure](#11-merkle-dag-structure)
+- [12. Local mutation and version creation](#12-local-mutation-and-version-creation)
+- [13. Non-semantic metadata](#13-non-semantic-metadata)
+- [14. Streaming and random access](#14-streaming-and-random-access)
+- [15. Integrity trailer](#15-integrity-trailer)
+- [16. Version evolution](#16-version-evolution)
+- [17. Compatibility policy](#17-compatibility-policy)
+- [18. Corruption behavior](#18-corruption-behavior)
+- [19. Human-readable dumps](#19-human-readable-dumps)
+- [20. Interfaces with other subsystems](#20-interfaces-with-other-subsystems)
+- [21. Rejected alternatives](#21-rejected-alternatives)
+- [22. Open issues requiring implementation evidence](#22-open-issues-requiring-implementation-evidence)
+- [23. Falsification criteria](#23-falsification-criteria)
+
 ## 1. Purpose and scope
 
 This document defines the authoritative semantic-level rules for the canonical `.xax` artifact: a compact binary semantic store of immutable, content-addressed XAX objects arranged as a Merkle DAG.

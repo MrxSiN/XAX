@@ -1,5 +1,31 @@
 # 12. Compiler Core, Verifier, Incrementality, and Semantic Database
 
+## Contents
+
+- [12.1 Purpose and scope](#121-purpose-and-scope)
+- [12.2 Normative language and definitions](#122-normative-language-and-definitions)
+- [12.3 Architectural decomposition](#123-architectural-decomposition)
+- [12.4 Persistent semantic database](#124-persistent-semantic-database)
+- [12.5 Canonical ingestion and deserialization](#125-canonical-ingestion-and-deserialization)
+- [12.6 Verification model](#126-verification-model)
+- [12.7 Dependency graph and invalidation](#127-dependency-graph-and-invalidation)
+- [12.8 Local verification and incremental compilation](#128-local-verification-and-incremental-compilation)
+- [12.9 Query engine](#129-query-engine)
+- [12.10 Content-addressed caches and cache keys](#1210-content-addressed-caches-and-cache-keys)
+- [12.11 Deterministic diagnostics](#1211-deterministic-diagnostics)
+- [12.12 Parallel compiler services](#1212-parallel-compiler-services)
+- [12.13 Trusted core and validated transformations](#1213-trusted-core-and-validated-transformations)
+- [12.14 Compiler determinism modes](#1214-compiler-determinism-modes)
+- [12.15 Semantic transaction integration](#1215-semantic-transaction-integration)
+- [12.16 Interfaces to optimizer and target backend](#1216-interfaces-to-optimizer-and-target-backend)
+- [12.17 Crash and corruption recovery](#1217-crash-and-corruption-recovery)
+- [12.18 Implementation-language trajectory](#1218-implementation-language-trajectory)
+- [12.19 Core invariants](#1219-core-invariants)
+- [12.20 Rejected alternatives](#1220-rejected-alternatives)
+- [12.21 Interfaces and dependencies with other XAX subsystems](#1221-interfaces-and-dependencies-with-other-xax-subsystems)
+- [12.22 Open issues requiring implementation evidence](#1222-open-issues-requiring-implementation-evidence)
+- [12.23 Falsification criteria](#1223-falsification-criteria)
+
 ## 12.1 Purpose and scope
 
 This stage defines the XAX compiler core: the smallest persistent and deterministic machinery that accepts canonical XAX semantic objects, verifies them, stores them, answers semantic queries, invalidates dependent facts after local change, and exposes verified inputs to later optimization and target-lowering stages.

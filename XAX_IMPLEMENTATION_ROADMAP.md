@@ -6,7 +6,40 @@ This roadmap orders implementation work. A milestone is complete only when every
 Windows source self-build, the generic constructor and the proposed bounded workspace service remain open.
 No milestone or B/R level is changed by this distribution update.
 
-## 1. Sequencing rules
+## Contents
+
+- [Part I — Rules](#part-i--rules)
+  - [1. Sequencing rules](#1-sequencing-rules)
+  - [2. Bootstrap mapping](#2-bootstrap-mapping)
+  - [3. Milestone evidence rule](#3-milestone-evidence-rule)
+- [Part II — Prototype milestones (M1-M14)](#part-ii--prototype-milestones-m1-m14)
+  - [M1 — Minimal canonical semantic store and verifier](#m1--minimal-canonical-semantic-store-and-verifier)
+  - [M2 — Arithmetic, functions, calls, branches](#m2--arithmetic-functions-calls-branches)
+  - [M3 — Stack memory and proof obligations](#m3--stack-memory-and-proof-obligations)
+  - [M4 — First direct native backend](#m4--first-direct-native-backend)
+  - [M5 — Second architecturally different native backend](#m5--second-architecturally-different-native-backend)
+  - [M6 — Transactional AI workspace](#m6--transactional-ai-workspace)
+  - [M7 — Resources and richer effects](#m7--resources-and-richer-effects)
+  - [M8 — Atomics, interrupts, and real-time profiles](#m8--atomics-interrupts-and-real-time-profiles)
+  - [M9 — Compile-time XAX specialization/metaprogramming](#m9--compile-time-xax-specializationmetaprogramming)
+  - [M10 — Package, build, security, and reproducibility semantics](#m10--package-build-security-and-reproducibility-semantics)
+  - [M11 — XAX self-hosting subset](#m11--xax-self-hosting-subset)
+  - [M12 — Optimizer expansion and validated search](#m12--optimizer-expansion-and-validated-search)
+  - [M13 — GPU/accelerator path](#m13--gpuaccelerator-path)
+  - [M14 — Self-hosting completion and toolchain closure](#m14--self-hosting-completion-and-toolchain-closure)
+- [Part III — After M14: replacement and self-hosting](#part-iii--after-m14-replacement-and-self-hosting)
+  - [U1 — Universal-replacement proof set (after M14)](#u1--universal-replacement-proof-set-after-m14)
+  - [U2 — Performance leadership, autonomous maintenance, XAX-only application (after U1)](#u2--performance-leadership-autonomous-maintenance-xax-only-application-after-u1)
+  - [S — Compiler migration ladder (after M14; runs alongside U1)](#s--compiler-migration-ladder-after-m14-runs-alongside-u1)
+  - [EI — Evidence and canonical-state integrity (ADR-177; before S7b)](#ei--evidence-and-canonical-state-integrity-adr-177-before-s7b)
+- [Part IV — Dated follow-ups](#part-iv--dated-follow-ups)
+  - [JVM token optimization follow-up (2026-10-07, ADR-186)](#jvm-token-optimization-follow-up-2026-10-07-adr-186)
+  - [JVM host-response and compound-edit follow-up (2026-10-07, ADR-187/188)](#jvm-host-response-and-compound-edit-follow-up-2026-10-07-adr-187188)
+  - [Android platform capability contracts (2026-10-08, ADR-202 to ADR-204)](#android-platform-capability-contracts-2026-10-08-adr-202-to-adr-204)
+
+## Part I — Rules
+
+### 1. Sequencing rules
 
 1. Semantic correctness precedes optimization.
 2. Canonical storage/identity precedes distributed editing and self-hosting claims.
@@ -17,7 +50,44 @@ No milestone or B/R level is changed by this distribution update.
 7. Later milestones MUST NOT silently change the semantics of earlier accepted vectors; semantic changes require versioning.
 8. Post-M14 milestones (U-series) are defined by replacement-matrix evidence: a step is complete only when its matrix row changes under the validator.
 
-## M1 — Minimal canonical semantic store and verifier
+### 2. Bootstrap mapping
+
+| Bootstrap evidence | Earliest roadmap point | Meaning |
+|---|---|---|
+| B0 seed viability | M11 | seed produces runnable XAX-hosted subset |
+| B1 first XAX compiler | M11 | authoritative subset implementation is XAX semantic state |
+| B2 recursive compilation | M14 | XAX compiler compiles itself |
+| B3 semantic self-equivalence | M14 | generations agree under fixed policy |
+| B4 deterministic fixed point | M14 | byte identity or predeclared canonical projection stabilizes |
+| B5 toolchain closure | M14 | required live toolchain paths are XAX-hosted |
+| B6 bootstrap independence | M14 | maintained second implementation language no longer required |
+
+### 3. Milestone evidence rule
+
+For every completed milestone, repository evidence SHOULD include:
+
+```text
+MilestoneEvidence {
+  milestone_id
+  spec_revision
+  implementation_root
+  target_roots[]
+  package_snapshot_root
+  build_policy_root
+  conformance_suite_revision
+  conformance_evidence_roots[]
+  benchmark_suite_revision?
+  benchmark_result_roots[]?
+  known_failures[]
+  open_issue_impacts[]
+}
+```
+
+Milestone status cannot advance when required evidence is absent or invalidated by a semantic/target/toolchain change.
+
+## Part II — Prototype milestones (M1-M14)
+
+### M1 — Minimal canonical semantic store and verifier
 
 **Entry criteria**
 
@@ -45,7 +115,7 @@ No milestone or B/R level is changed by this distribution update.
 
 **Benchmarks now valid**: store size, encode/decode/hash throughput, lookup, malformed-object rejection, verifier throughput. No native runtime claims.
 
-## M2 — Arithmetic, functions, calls, branches
+### M2 — Arithmetic, functions, calls, branches
 
 **Entry criteria**: M1 complete.
 
@@ -68,7 +138,7 @@ No milestone or B/R level is changed by this distribution update.
 
 **Benchmarks now valid**: small-program correctness, representation creation/edit tasks, basic compile-time/verifier accounting.
 
-## M3 — Stack memory and proof obligations
+### M3 — Stack memory and proof obligations
 
 **Entry criteria**: M2 complete.
 
@@ -91,7 +161,7 @@ No milestone or B/R level is changed by this distribution update.
 
 **Benchmarks now valid**: stack footprint, memory kernels through reference path, no-allocation cases, memory-safety diagnostic tasks.
 
-## M4 — First direct native backend
+### M4 — First direct native backend
 
 **Entry criteria**: M3 complete and one target package sufficient for the subset exists.
 
@@ -115,7 +185,7 @@ No milestone or B/R level is changed by this distribution update.
 
 **Benchmarks now valid**: native execution time, code size, startup, compile time/memory, first fair C/Rust comparisons for supported cases.
 
-## M5 — Second architecturally different native backend
+### M5 — Second architecturally different native backend
 
 **Entry criteria**: M4 complete.
 
@@ -132,7 +202,7 @@ No milestone or B/R level is changed by this distribution update.
 
 **Benchmarks now valid**: cross-target portability, target-package adequacy, target-cost ranking comparisons on both targets.
 
-## M6 — Transactional AI workspace
+### M6 — Transactional AI workspace
 
 **Entry criteria**: M1–M5 provide stable semantic/query identities and verifier services.
 
@@ -158,7 +228,7 @@ No milestone or B/R level is changed by this distribution update.
 
 **Benchmarks now valid**: C-like vs SSA vs graph-packet AI tasks, local-edit tokens, repair turns, context-scaling, conflict/rebase workloads. Tokenizer-native arm remains unavailable until actual integration exists.
 
-## M7 — Resources and richer effects
+### M7 — Resources and richer effects
 
 **Entry criteria**: M6 complete; memory/control verifier stable.
 
@@ -181,7 +251,7 @@ No milestone or B/R level is changed by this distribution update.
 
 **Benchmarks now valid**: resource-lifetime tasks, effect-reordering tests, hidden-operation checks, AI repair of resource/effect violations.
 
-## M8 — Atomics, interrupts, and real-time profiles
+### M8 — Atomics, interrupts, and real-time profiles
 
 **Entry criteria**: M7 complete; target atomic capability interface implemented on at least one capable target.
 
@@ -206,7 +276,7 @@ No milestone or B/R level is changed by this distribution update.
 
 **Benchmarks now valid**: atomic kernels, synchronization cost, interrupt latency, deterministic-latency cases on capable targets.
 
-## M9 — Compile-time XAX specialization/metaprogramming
+### M9 — Compile-time XAX specialization/metaprogramming
 
 **Entry criteria**: M7 verifier and transaction model stable; target query interface available.
 
@@ -231,7 +301,7 @@ No milestone or B/R level is changed by this distribution update.
 
 **Benchmarks now valid**: specialization compile cost, generated-code impact, generic/specialization AI tasks, compile-time cache behavior.
 
-## M10 — Package, build, security, and reproducibility semantics
+### M10 — Package, build, security, and reproducibility semantics
 
 **Entry criteria**: M9 provides build-time XAX execution; semantic database/snapshots stable.
 
@@ -258,7 +328,7 @@ No milestone or B/R level is changed by this distribution update.
 
 **Benchmarks now valid**: reproducible build tests, resolver/build incrementality, package-context AI tasks, cache/provenance overhead.
 
-## M11 — XAX self-hosting subset
+### M11 — XAX self-hosting subset
 
 **Entry criteria**: M10 complete; seed strategy and bootstrap target fixed.
 
@@ -280,7 +350,7 @@ No milestone or B/R level is changed by this distribution update.
 
 **Benchmarks now valid**: bootstrap size/time, subset self-build reproducibility, hosted versus seed behavior.
 
-## M12 — Optimizer expansion and validated search
+### M12 — Optimizer expansion and validated search
 
 **Entry criteria**: M11 plus stable target/compiler services.
 
@@ -303,7 +373,7 @@ No milestone or B/R level is changed by this distribution update.
 
 **Benchmarks now valid**: optimization-quality corpus, compile-time/performance tradeoffs, target-cost ranking/magnitude validation, credible assembly kernel comparisons.
 
-## M13 — GPU/accelerator path
+### M13 — GPU/accelerator path
 
 **Entry criteria**: M8/M12 infrastructure can express target scopes, memory spaces, effects, and target operations.
 
@@ -326,7 +396,7 @@ No milestone or B/R level is changed by this distribution update.
 
 **Benchmarks now valid**: accelerator throughput/latency, host-device effects, target-model portability, GPU/accelerator code quality.
 
-## M14 — Self-hosting completion and toolchain closure
+### M14 — Self-hosting completion and toolchain closure
 
 **Entry criteria**: M11–M13 mature enough to migrate the remaining live toolchain.
 
@@ -353,7 +423,9 @@ No milestone or B/R level is changed by this distribution update.
 
 **Status (ADR-177)**: complete only for the `xax-semantic-image-v1` META wrapper at B2–B4. These exit criteria are not met for the compiler as a whole: the verifier, lowering, object writing, linking, and package/build services are live Python, so B5/B6 are not held.
 
-## U1 — Universal-replacement proof set (after M14)
+## Part III — After M14: replacement and self-hosting
+
+### U1 — Universal-replacement proof set (after M14)
 
 M1–M14 establish a compiler-architecture prototype. U1 is the first milestone measured in replacement terms (`XAX_SPEC.md` §21): every result is a row update in `XAX_REPLACEMENT_MATRIX.json`, and levels are derived, never asserted.
 
@@ -410,7 +482,7 @@ M1–M14 establish a compiler-architecture prototype. U1 is the first milestone 
 
 **Benchmarks now valid**: replacement-workload runtime/memory/size comparisons (§15 of `XAX_BENCHMARKS.md`). AI token trials are deferred to the future AI-efficiency milestone (ADR-207).
 
-## U2 — Performance leadership, autonomous maintenance, XAX-only application (after U1)
+### U2 — Performance leadership, autonomous maintenance, XAX-only application (after U1)
 
 Priority order (ADR-207): R4, then R5, then R6. The AI-token milestone is not scheduled here.
 
@@ -430,7 +502,7 @@ Priority order (ADR-207): R4, then R5, then R6. The AI-token milestone is not sc
 | U2.4 | Maintenance harness: scripted semantic-transaction cycle with verification, benchmark, rebuild, and commit recorded | R5 | EXECUTED for the JVM (ADR-209), Linux x86-64 (ADR-213), and Linux AArch64 on a Pixel 8 Pro (ADR-258): one cycle of `jsonmin` each; Android (ADR-255): a structural edit of the counter app, device-tested (the row needs R4 before it derives R5) |
 | U2.5 | XAX-only application with XAX test and build definitions | R6 | EXECUTED for `xb64` on Linux x86-64 (ADR-210); the row derives R6 (ADR-213). JVM: `xwc` (ADR-257), the row derives R6. Linux AArch64: `xcksum` on two phones (ADR-258), the row derives R6 |
 
-## S — Compiler migration ladder (after M14; runs alongside U1)
+### S — Compiler migration ladder (after M14; runs alongside U1)
 
 Steps S3–S7a are migrated for acceptance only: their XAX components decline invalid input to the bootstrap, which decides the rejection (`XAX_SPEC.md` §16.5 condition 5, ADR-180). Migration is reported with the SH0–SH8 labels of ADR-180; current: SH1. M14's semantic-image META wrapper reached B2–B4 for the small `xax-semantic-image-v1` target (its B5/B6 claim was withdrawn in ADR-177). The working compiler (verification, lowering, encoding, emission) is still Python. The S ladder moves it into XAX component by component under the rule in `XAX_SPEC.md` §16.5. Each step must be on the production path with byte-identical output, and the bootstrap code stays only as a checked fallback. A step's self-compilation result is a *component fixed point*, not a B milestone (ADR-177 renamed the earlier "B1–B4" labels below).
 
@@ -597,50 +669,17 @@ Steps S3–S7a are migrated for acceptance only: their XAX components decline in
 | S15e.7 | Accelerator deployments and SPIR-V modules (ADR-308) | S15e.1 | DONE (ADR-321): S15e.7a accelerator deployments, S15e.7b SPIR-V modules |
 | S15f | The raw images and the remaining lowerings: headroom (ADR-323), raw Wasm modules and Windows load images (ADR-324), raw AArch64 images and the AArch64 legacy register path (ADR-325) | S15e | DONE |
 
-## EI — Evidence and canonical-state integrity (ADR-177; before S7b)
+### EI — Evidence and canonical-state integrity (ADR-177; before S7b)
 
 Not an R level and not a B milestone: a gate that restores a reproducible, derived-evidence baseline after the independent audit. Exit: every committed store regenerates byte-identically on every host (repeated builds included); B levels come only from `xax_selfhost.bootstrap_status`; the seed is pinned and only `rotate-seed` writes it; component authority is recorded and `XAX_REQUIRE_NATIVE=1` forbids silent fallback; native image cache entries are authenticated; the wheel carries every module and store; matrix levels are recomputed from evidence by validator v2; hosted artifacts carry build provenance; host-unavailable tests skip with an `UNAVAILABLE` reason. Status: **EXECUTED on Windows 11 x86-64** (`audit_remediation_evidence.json`); the native-host items are UNVERIFIED until run on Linux x86-64 (OI-45). The OI-45 self-hosting re-runs EXECUTED on Linux x86-64 on 2026-10-07 (`XAX_STATE.md`).
 
-## 2. Bootstrap mapping
+## Part IV — Dated follow-ups
 
-| Bootstrap evidence | Earliest roadmap point | Meaning |
-|---|---|---|
-| B0 seed viability | M11 | seed produces runnable XAX-hosted subset |
-| B1 first XAX compiler | M11 | authoritative subset implementation is XAX semantic state |
-| B2 recursive compilation | M14 | XAX compiler compiles itself |
-| B3 semantic self-equivalence | M14 | generations agree under fixed policy |
-| B4 deterministic fixed point | M14 | byte identity or predeclared canonical projection stabilizes |
-| B5 toolchain closure | M14 | required live toolchain paths are XAX-hosted |
-| B6 bootstrap independence | M14 | maintained second implementation language no longer required |
-
-## 3. Milestone evidence rule
-
-For every completed milestone, repository evidence SHOULD include:
-
-```text
-MilestoneEvidence {
-  milestone_id
-  spec_revision
-  implementation_root
-  target_roots[]
-  package_snapshot_root
-  build_policy_root
-  conformance_suite_revision
-  conformance_evidence_roots[]
-  benchmark_suite_revision?
-  benchmark_result_roots[]?
-  known_failures[]
-  open_issue_impacts[]
-}
-```
-
-Milestone status cannot advance when required evidence is absent or invalidated by a semantic/target/toolchain change.
-
-## JVM token optimization follow-up (2026-10-07, ADR-186)
+### JVM token optimization follow-up (2026-10-07, ADR-186)
 
 The next dependency after ADR-176 is the normal snapshot-bound local mutation interface, now implemented in `compiler/src/xax_local_protocol.py`. Direct edit arms share it; task definitions, textual competitors, and exact semantic target checks are retained. The runner supports three fresh trials per cell, rotated arm order, exact event accounting, and resumable failures with retained costs. JVM stays R4 until the complete repeated comparison meets the 0.50 lowest-textual-median gate and task equivalence is established. No backend runtime-speed improvement is claimed by this change.
 
-## JVM host-response and compound-edit follow-up (2026-10-07, ADR-187/188)
+### JVM host-response and compound-edit follow-up (2026-10-07, ADR-187/188)
 
 The current response corpus removes the inherited creation scaffold, supplies
 real helpers in every large-application arm, and exercises a real stale
@@ -651,6 +690,6 @@ independent raw-usage audit and corpus review determine the remaining token
 gate and promotion work. The large application is synthetic, and the abstract
 resource task is verifier checked rather than executed on the JVM.
 
-## Android platform capability contracts (2026-10-08, ADR-202 to ADR-204)
+### Android platform capability contracts (2026-10-08, ADR-202 to ADR-204)
 
 Done (STRUCTURAL): exact JNI floats and typed-record argument packs, platform declarations for the managed-class APK, POSIX async/ownership contracts, NDK window/codec/AAudio contracts, and the SDK capability table enforced at build time (`docs/ANDROID_PLATFORM_CAPABILITIES.md`). Next: device execution of each new contract on the authorized device, then OI-47 (path-exact ownership for media buffers, NULL windows and JNI-held SDK objects).

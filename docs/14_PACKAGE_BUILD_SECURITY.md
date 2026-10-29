@@ -1,5 +1,28 @@
 # XAX Package, Build, Security, Reproducibility, and Supply-Chain Model
 
+## Contents
+
+- [1. Purpose and scope](#1-purpose-and-scope)
+- [2. Normative terminology](#2-normative-terminology)
+- [3. Canonical package model](#3-canonical-package-model)
+- [4. Dependency graph and deterministic resolution](#4-dependency-graph-and-deterministic-resolution)
+- [5. Versioning policy](#5-versioning-policy)
+- [6. Snapshot and lock model](#6-snapshot-and-lock-model)
+- [7. Build descriptions as XAX semantics](#7-build-descriptions-as-xax-semantics)
+- [8. Target, profile, feature, and configuration model](#8-target-profile-feature-and-configuration-model)
+- [9. Reproducible build input closure](#9-reproducible-build-input-closure)
+- [10. Hermetic and sandboxed build modes](#10-hermetic-and-sandboxed-build-modes)
+- [11. Capability and security boundaries](#11-capability-and-security-boundaries)
+- [12. Artifact integrity, signatures, provenance, and trust](#12-artifact-integrity-signatures-provenance-and-trust)
+- [13. Dependency integrity and cache verification](#13-dependency-integrity-and-cache-verification)
+- [14. Workspace composition and multi-target builds](#14-workspace-composition-and-multi-target-builds)
+- [15. Network policy](#15-network-policy)
+- [16. Invariants](#16-invariants)
+- [17. Rejected alternatives](#17-rejected-alternatives)
+- [18. Interfaces with other XAX subsystems](#18-interfaces-with-other-xax-subsystems)
+- [19. Open issues](#19-open-issues)
+- [20. Falsification criteria](#20-falsification-criteria)
+
 ## 1. Purpose and scope
 
 This document defines the canonical XAX model for package identity, dependency resolution, build description, reproducibility, trust, and supply-chain integrity.

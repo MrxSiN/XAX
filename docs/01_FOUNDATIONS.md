@@ -1,5 +1,21 @@
 # XAX Stage 01 — Foundations, Normative Vocabulary, and Invariants
 
+## Contents
+
+- [1. Purpose and scope](#1-purpose-and-scope)
+- [2. Normative language and statement classes](#2-normative-language-and-statement-classes)
+- [3. Foundational model](#3-foundational-model)
+- [4. Requirement priority](#4-requirement-priority)
+- [5. Normative definitions](#5-normative-definitions)
+- [6. Core architectural invariants](#6-core-architectural-invariants)
+- [7. Hard anti-goals](#7-hard-anti-goals)
+- [8. Feasibility boundaries](#8-feasibility-boundaries)
+- [9. Interfaces with later XAX subsystems](#9-interfaces-with-later-xax-subsystems)
+- [10. Compact glossary and notation](#10-compact-glossary-and-notation)
+- [11. Open issues](#11-open-issues)
+- [12. Falsification criteria](#12-falsification-criteria)
+- [13. Foundation summary](#13-foundation-summary)
+
 ## 1. Purpose and scope
 
 This document defines the normative foundation that every later XAX specification, implementation, target package, library, tool, and protocol MUST preserve unless a later architecture revision explicitly replaces a rule stated here.

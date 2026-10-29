@@ -1,5 +1,23 @@
 # XAX Stage 03 — Type, Value, Constant, and Layout System
 
+## Contents
+
+- [1. Purpose and scope](#1-purpose-and-scope)
+- [2. Normative definitions](#2-normative-definitions)
+- [3. Canonical type model](#3-canonical-type-model)
+- [4. Values and exact scalar semantics](#4-values-and-exact-scalar-semantics)
+- [5. Aggregate and vector types](#5-aggregate-and-vector-types)
+- [6. Pointer, function, resource, effect, and opaque types](#6-pointer-function-resource-effect-and-opaque-types)
+- [7. Constants, zero values, traps, poison, and undefined values](#7-constants-zero-values-traps-poison-and-undefined-values)
+- [8. Semantic type versus physical layout](#8-semantic-type-versus-physical-layout)
+- [9. Representation equivalence and reinterpretation](#9-representation-equivalence-and-reinterpretation)
+- [10. Refinements and zero-runtime-cost proof metadata](#10-refinements-and-zero-runtime-cost-proof-metadata)
+- [11. Verifier rules](#11-verifier-rules)
+- [12. Invalid or rejected alternatives](#12-invalid-or-rejected-alternatives)
+- [13. Interfaces with other XAX subsystems](#13-interfaces-with-other-xax-subsystems)
+- [14. Open issues requiring implementation evidence](#14-open-issues-requiring-implementation-evidence)
+- [15. Falsification criteria](#15-falsification-criteria)
+
 ## 1. Purpose and scope
 
 This document defines the canonical XAX model for types, SSA values, constants, and physical layout.
