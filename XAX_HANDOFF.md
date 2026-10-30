@@ -943,6 +943,14 @@ Step: [S1](#step-s1) · [S4](#step-s4) · [S5](#step-s5) · [S6](#step-s6) · [S
   - The external inputs follow the package identity in the input: digest, length, packed bytes. The driver appends what it kept at `INPUT_BYTES_AT`.
 - `bench_full_selfhost`'s scope has no `outside_scope`. `bootstrap_status` then takes the whole production compiler's levels from the Linux x86-64 compiler's derived ones. Keep its corpus covering every target and artifact `build` makes.
 
+#### S15e.6i.3 records, compressed branding, large inputs — 2026-10-30 (ADR-359)
+
+- The module record is decoded to code points (`an_jdecode`) and parsed with an explicit stack (`an_jparse`); value nodes are listed above `_jcp` in `xax_selfhost_android.py`. Python's rules over them are the `an_j*` helpers. A check belongs where the bootstrap fails: before `LIBXPOSED-JVM-INPUTS` only what fails before it (J1); the rest in J3/J4.
+- Compressed entries go through `an_entry_bytes`: `an_inflate`, `an_bunzip` (libbz2 1.0.8) and `an_unlzma` (liblzma 5.4.5). Every stop on short input ends in `an_zfinish`, which keeps `file_size` bytes and checks the CRC.
+- Large data lives in the image buffer once no AArch64 program can run again (`big_writer`, `an_bigalloc`): inputs from its start, records from its end.
+- A decline must leave the status word 0: the frontend clears it. Debug declines with `XAX_ANDROID_WHY=1` after `build_android_program()` in the same process (it fills `DECLINE_SITES`).
+- `test_xax_selfhost_android_records.agree` is the differential harness; seed its fuzz differently to search further.
+
 ### Other self-hosting records
 
 #### B1–B4 (RISC-V backend) — 2026-10-03 (ADR-145)
