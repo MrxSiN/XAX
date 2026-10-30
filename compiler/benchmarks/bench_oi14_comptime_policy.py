@@ -204,7 +204,6 @@ def _result_record(workload: Workload):
         "root_cid": workload.reader.root_cid.hex(),
         "capabilities": [cap.name.lower() for cap in workload.capabilities],
         "capability_packet_bytes": len(uleb(len(workload.capabilities)) + b"".join(uleb(int(cap)) for cap in sorted(workload.capabilities))),
-        "capability_tokens": None,
         "steps": result.steps,
         "evaluated_blocks": result.evaluated_blocks,
         "evaluated_nodes": result.evaluated_nodes,
@@ -320,9 +319,6 @@ def deterministic_evidence():
             "target_adapter_has_body_authority": False,
             "split_packet_bytes": split_cap_bytes,
             "coarse_packet_bytes_conceptual": coarse_bytes,
-            "tokenizer": None,
-            "token_counts": None,
-            "token_reason": "tiktoken/model tokenizer unavailable",
         },
         "implementation_delta": {
             "core_file": "compiler/src/xax_compiler.py",

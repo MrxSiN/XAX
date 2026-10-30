@@ -563,7 +563,7 @@ def mixed_order() -> EffectOrder:
     return EffectOrder.from_steps(tuple((event, pattern[index % len(pattern)]) for index, event in enumerate(ids)))
 
 
-def token_atoms(reader: StoreReader, entry) -> int:
+def semantic_atoms(reader: StoreReader, entry) -> int:
     objects = {obj.cid: obj for obj in reader.objects()}
     resolve = objects.__getitem__
     graph_obj, _, _ = _decode_function_interface(entry, resolve)
@@ -607,7 +607,7 @@ def graph_measurement(order: EffectOrder, fixture=linear_fixture) -> dict:
         "graph_body_bytes": len(graph.body),
         "graph_envelope_bytes": len(graph.envelope()),
         "store_bytes": len(data),
-        "token_atoms": token_atoms(reader, entry),
+        "semantic_atoms": semantic_atoms(reader, entry),
         "verify_time": _measure(lambda: verify_store(StoreReader(data)), REPETITIONS),
     }
 
@@ -620,19 +620,19 @@ def encoding_measurement(order: EffectOrder) -> dict:
     return {
         "explicit_frontier": {
             "bytes": len(explicit),
-            "token_atoms": explicit_atoms,
+            "semantic_atoms": explicit_atoms,
             "verify_time": _measure(lambda: verify_candidate(explicit, order), ENCODING_REPETITIONS),
         },
         "domain_reconstruction": {
             "bytes": len(reconstructed),
-            "token_atoms": reconstructed_atoms,
+            "semantic_atoms": reconstructed_atoms,
             "verify_time": _measure(lambda: verify_candidate(reconstructed, order), ENCODING_REPETITIONS),
             "reconstruction_time": _measure(lambda: decode_reconstructed(reconstructed), ENCODING_REPETITIONS),
         },
         "byte_delta": len(reconstructed) - len(explicit),
         "byte_percent": (len(reconstructed) - len(explicit)) * 100.0 / len(explicit),
-        "token_atom_delta": reconstructed_atoms - explicit_atoms,
-        "token_atom_percent": (reconstructed_atoms - explicit_atoms) * 100.0 / explicit_atoms,
+        "semantic_atom_delta": reconstructed_atoms - explicit_atoms,
+        "semantic_atom_percent": (reconstructed_atoms - explicit_atoms) * 100.0 / explicit_atoms,
         "partial_order_identical": _closure(decode_explicit_frontier(explicit)) == _closure(decode_reconstructed(reconstructed)) == _closure(order),
     }
 
@@ -640,11 +640,11 @@ def encoding_measurement(order: EffectOrder) -> dict:
 def _deterministic_encoding_fields(measurement: dict) -> dict:
     return {
         "explicit_frontier_bytes": measurement["explicit_frontier"]["bytes"],
-        "explicit_frontier_token_atoms": measurement["explicit_frontier"]["token_atoms"],
+        "explicit_frontier_semantic_atoms": measurement["explicit_frontier"]["semantic_atoms"],
         "domain_reconstruction_bytes": measurement["domain_reconstruction"]["bytes"],
-        "domain_reconstruction_token_atoms": measurement["domain_reconstruction"]["token_atoms"],
+        "domain_reconstruction_semantic_atoms": measurement["domain_reconstruction"]["semantic_atoms"],
         "byte_delta": measurement["byte_delta"],
-        "token_atom_delta": measurement["token_atom_delta"],
+        "semantic_atom_delta": measurement["semantic_atom_delta"],
         "partial_order_identical": measurement["partial_order_identical"],
     }
 
@@ -704,7 +704,7 @@ def collect_evidence() -> dict:
             "additional_unordered_pairs": refined_metrics["unordered_pairs"] - coarse_metrics["unordered_pairs"],
             "critical_path_reduction_events": coarse_metrics["critical_path_events"] - refined_metrics["critical_path_events"],
             "graph_body_byte_cost": row["refined"]["graph"]["graph_body_bytes"] - row["coarse"]["graph"]["graph_body_bytes"],
-            "graph_token_atom_cost": row["refined"]["graph"]["token_atoms"] - row["coarse"]["graph"]["token_atoms"],
+            "graph_semantic_atom_cost": row["refined"]["graph"]["semantic_atoms"] - row["coarse"]["graph"]["semantic_atoms"],
         }
 
     encoding_summary = {
@@ -716,7 +716,7 @@ def collect_evidence() -> dict:
         "schema": "xax.oi08-effect-edges.v1",
         "host": {"python": platform.python_version(), "platform": platform.platform()},
         "repetitions": {"store_verify": REPETITIONS, "encoding": ENCODING_REPETITIONS},
-        "token_metric": "ideal token-native semantic scalar/handle atoms; not a text tokenizer",
+        "atom_metric": "semantic scalar and handle atoms",
         "workloads": workloads,
         "partition_summary": partition_summary,
         "encoding_summary": encoding_summary,

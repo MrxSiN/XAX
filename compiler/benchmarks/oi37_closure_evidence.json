@@ -68,15 +68,7 @@
       ]
     ],
     "node_delta_operations": 11,
-    "node_delta_tokens": {
-      "cl100k_base": 86,
-      "o200k_base": 87
-    },
     "rewritten_bytes": 4458,
-    "rewritten_hex_tokens": {
-      "cl100k_base": 4190,
-      "o200k_base": 4198
-    },
     "rewritten_kinds": [
       [
         "FUNCTION",
@@ -99,8 +91,6 @@
   },
   "evidence_label": "MEASURED",
   "issue": "OI-37",
-  "model_run": null,
-  "tokenizer": "tiktoken 0.14.0",
   "verifier_cost": {
     "chains_verify_microseconds": {
       "index": 2554.1,

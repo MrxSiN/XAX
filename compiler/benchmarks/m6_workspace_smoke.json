@@ -19,6 +19,5 @@
   "touched_objects": 6,
   "reused_objects": 2,
   "oracle": "reference execution returned 20 for constants 4 and 5 after mul.wrap substitution",
-  "token_counts": "unavailable; no model/tokenizer experiment was run",
   "timing": "not measured"
 }

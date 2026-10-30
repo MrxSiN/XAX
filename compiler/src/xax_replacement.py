@@ -18,8 +18,7 @@ from raw samples under the baseline policy instead of trusting stored ratios or
 v3 (ADR-207): R4 is performance leadership -- the XAX median is at most
 R4_TARGET (0.9999x) of the fastest valid non-XAX median, and a one-sided
 Mann-Whitney test says the advantage is not noise.  R5 is autonomous
-maintenance (formerly R6) and R6 is a proven 100% XAX-developed application.
-``ai_tokens`` is historical/future-milestone evidence and gates no level.
+maintenance and R6 is a proven 100% XAX-developed application.
 """
 from __future__ import annotations
 
@@ -35,7 +34,7 @@ FIELDS = (
     "semantic_expressibility", "code_generation", "abi", "artifact_format", "platform_apis", "ffi",
     "concurrency", "atomics", "simd", "dynamic_linking", "debugging", "optimization",
     "real_execution", "practical_application", "performance", "memory", "code_size",
-    "ai_tokens", "autonomous_maintenance", "xax_only_application",
+    "autonomous_maintenance", "xax_only_application",
 )
 LEVELS = ("NONE", "R0", "R1", "R2", "R3", "R4", "R5", "R6")
 _RUN = {"PROVEN", "EXECUTED"}

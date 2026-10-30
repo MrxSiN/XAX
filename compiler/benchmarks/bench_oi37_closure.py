@@ -1,18 +1,18 @@
-"""OI-37 closure measurements (tooling-only evidence; no model is run).
+"""OI-37 closure measurements (tooling-only evidence).
 
 1. Edit cost of switching ``chains`` from arena-index links to
    ``pointer_rebase`` links (ADR-092):
-   * rewritten semantic objects (count, envelope bytes, hex-carrier tokens),
-     the same carrier metric as OI-03;
+   * rewritten semantic objects (count, envelope bytes), the same carrier
+     metric as OI-03;
    * the node-level delta of the one function graph: nodes removed and
      inserted, rendered compactly as ``[operation, operand refs, attributes]``
-     with types elided (reconstructible from the operation), and its tokens.
+     with types elided (reconstructible from the operation).
      This rendering is a measurement view, not XAX source.
 2. Verifier cost: ``verify_store`` wall time for both ``chains`` variants,
    and for straight-line graphs with K rebase+load pairs versus K checked
    loads (K = 1, 16, 256), as a per-operation slope.
 
-Token counts are offline ``tiktoken`` counts.  Timings are medians of repeated
+Timings are medians of repeated
 runs on this host and are host-dependent.
 Run: PYTHONPATH=src:. python -m benchmarks.bench_oi37_closure
 """
@@ -43,7 +43,6 @@ from xax_graph_builder import GraphBuilder, program_store
 from xax_linux import linux_api
 
 OUTPUT = Path(__file__).resolve().parent / "oi37_closure_evidence.json"
-ENCODINGS = ("cl100k_base", "o200k_base")
 REPEATS = 15
 SCALES = (1, 16, 256)
 
@@ -67,25 +66,21 @@ def _graph_nodes(program) -> list[tuple]:
     ]
 
 
-def edit_cost(tokenizers) -> dict:
+def edit_cost() -> dict:
     index, pointer = build_chains_program(links="index"), build_chains_program(links="pointer")
     old = {item.cid for item in index.reader.objects()}
     rewritten = [item for item in pointer.reader.objects() if item.cid not in old]
     # Operand refs shift with block numbering, so compare by operation and attributes:
-    # what a model must emit is the removed and inserted operations.
+    # the edit is the removed and inserted operations.
     before, after = Counter((op, attrs) for op, _refs, attrs in _graph_nodes(index)), Counter((op, attrs) for op, _refs, attrs in _graph_nodes(pointer))
     removed, inserted = before - after, after - before
     delta = [["-", op, list(attrs), count] for (op, attrs), count in sorted(removed.items())] + [["+", op, list(attrs), count] for (op, attrs), count in sorted(inserted.items())]
-    delta_text = json.dumps(delta, separators=(",", ":"))
-    hex_text = "".join(item.envelope().hex() for item in rewritten)
     return {
         "rewritten_objects": len(rewritten),
         "rewritten_kinds": sorted(Counter(Kind(item.kind).name for item in rewritten).items()),
         "rewritten_bytes": sum(len(item.envelope()) for item in rewritten),
-        "rewritten_hex_tokens": {name: len(encoder.encode(hex_text)) for name, encoder in tokenizers.items()},
         "node_delta": delta,
         "node_delta_operations": sum(row[3] for row in delta),
-        "node_delta_tokens": {name: len(encoder.encode(delta_text)) for name, encoder in tokenizers.items()},
         "graph_nodes": {"index": len(_graph_nodes(index)), "pointer": len(_graph_nodes(pointer))},
     }
 
@@ -134,16 +129,11 @@ def verifier_cost() -> dict:
 
 
 def run() -> dict:
-    import tiktoken
-
-    tokenizers = {name: tiktoken.get_encoding(name) for name in ENCODINGS}
     return {
         "issue": "OI-37",
         "evidence_label": "MEASURED",
-        "tokenizer": f"tiktoken {tiktoken.__version__}",
-        "model_run": None,
         "edit": "chains links: arena index (checked loads) -> pointer_rebase (ADR-092)",
-        "edit_cost": edit_cost(tokenizers),
+        "edit_cost": edit_cost(),
         "verifier_cost": verifier_cost(),
     }
 

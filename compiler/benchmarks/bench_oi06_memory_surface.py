@@ -1,9 +1,8 @@
 """OI-06 alias/provenance and checked/raw memory-surface evidence.
 
 The semantic fixtures and size/code measurements are deterministic. Timing samples
-are host observations and are never conformance thresholds. ``token_atoms`` counts
-ideal token-native semantic atoms (operation/value/type/attribute handles), not a
-third-party text tokenizer.
+are host observations and are never conformance thresholds. ``semantic_atoms`` counts
+semantic atoms (operation, value, type and attribute handles).
 """
 from __future__ import annotations
 
@@ -88,7 +87,7 @@ def raw_load_fixture(ordinary=False):
     f=function(g,(b32,u),(b32,u)); return _pack([b32,p,o,e,u],g,f)
 
 
-def token_atoms(reader, entry):
+def semantic_atoms(reader, entry):
     objects={o.cid:o for o in reader.objects()}; resolve=objects.__getitem__
     graph_cid,_,_=_decode_function_interface(entry,resolve); graph=_parse_graph(graph_cid,resolve)
     total=0
@@ -115,7 +114,7 @@ def measure(name, fixture):
     return {
       'name':name, 'root_cid':reader.root_cid.hex(), 'graph_cid':graph.cid.hex(),
       'graph_body_bytes':len(graph.body), 'graph_envelope_bytes':len(graph.envelope()),
-      'store_bytes':len(reader.canonical_bytes()), 'token_atoms':token_atoms(reader,entry),
+      'store_bytes':len(reader.canonical_bytes()), 'semantic_atoms':semantic_atoms(reader,entry),
       'verify_median_us':med, 'verify_samples_us':samples,
       'x86_64_code_bytes':len(native.code), 'wasm_module_bytes':len(wasm.module),
     }
@@ -131,31 +130,31 @@ def collect_evidence():
     wasm=compile_wasm_bound_target(checked_reader,checked_entry.cid,oi06_wasm32_target())
     wasm_results={'offset_0':run_wasm_isolated(wasm,(11,22,0))[0], 'offset_4':run_wasm_isolated(wasm,(11,22,4))[0]}
     # Comparator only: serializing one explicit ULEB alias-class id on each of the
-    # two allocation nodes would add exactly one byte/one token-native atom each.
+    # two allocation nodes would add exactly one byte and one semantic atom each.
     implicit=rows['two_alias_implicit']
     return {
       'schema':'xax.oi06-memory-surface.v1', 'host':{'python':platform.python_version(),'platform':platform.platform()},
       'repetitions':REPETITIONS,
-      'token_metric':'ideal token-native semantic atoms; not a text tokenizer',
+      'atom_metric':'semantic atoms (operation, value, type and attribute handles)',
       'rows':rows,
       'alias_encoding_comparator':{
-        'derived_allocation_identity_extra_graph_bytes':0,'derived_allocation_identity_extra_token_atoms':0,
-        'explicit_local_class_id_extra_graph_bytes':2,'explicit_local_class_id_extra_token_atoms':2,
+        'derived_allocation_identity_extra_graph_bytes':0,'derived_allocation_identity_extra_semantic_atoms':0,
+        'explicit_local_class_id_extra_graph_bytes':2,'explicit_local_class_id_extra_semantic_atoms':2,
         'precise_alias_classes':2,'basis_graph_bytes':implicit['graph_body_bytes'],
       },
       'checked_surface_comparator':{
-        'fused_checked_load_token_atoms':rows['checked_load']['token_atoms'],
-        'ordinary_static_load_token_atoms':rows['ordinary_load']['token_atoms'],
+        'fused_checked_load_semantic_atoms':rows['checked_load']['semantic_atoms'],
+        'ordinary_static_load_semantic_atoms':rows['ordinary_load']['semantic_atoms'],
         'x86_checked_minus_ordinary_code_bytes':rows['checked_load']['x86_64_code_bytes']-rows['ordinary_load']['x86_64_code_bytes'],
         'wasm_checked_minus_ordinary_module_bytes':rows['checked_load']['wasm_module_bytes']-rows['ordinary_load']['wasm_module_bytes'],
         'checked_store_minus_ordinary_graph_body_bytes':rows['checked_store']['graph_body_bytes']-rows['ordinary_store']['graph_body_bytes'],
-        'checked_store_minus_ordinary_token_atoms':rows['checked_store']['token_atoms']-rows['ordinary_store']['token_atoms'],
+        'checked_store_minus_ordinary_semantic_atoms':rows['checked_store']['semantic_atoms']-rows['ordinary_store']['semantic_atoms'],
         'x86_checked_store_minus_ordinary_code_bytes':rows['checked_store']['x86_64_code_bytes']-rows['ordinary_store']['x86_64_code_bytes'],
         'wasm_checked_store_minus_ordinary_module_bytes':rows['checked_store']['wasm_module_bytes']-rows['ordinary_store']['wasm_module_bytes'],
       },
       'raw_surface_comparator':{
         'raw_minus_ordinary_graph_body_bytes':rows['raw_initialized_load']['graph_body_bytes']-rows['ordinary_initialized_load']['graph_body_bytes'],
-        'raw_minus_ordinary_token_atoms':rows['raw_initialized_load']['token_atoms']-rows['ordinary_initialized_load']['token_atoms'],
+        'raw_minus_ordinary_semantic_atoms':rows['raw_initialized_load']['semantic_atoms']-rows['ordinary_initialized_load']['semantic_atoms'],
         'x86_raw_minus_ordinary_code_bytes':rows['raw_initialized_load']['x86_64_code_bytes']-rows['ordinary_initialized_load']['x86_64_code_bytes'],
         'wasm_raw_minus_ordinary_module_bytes':rows['raw_initialized_load']['wasm_module_bytes']-rows['ordinary_initialized_load']['wasm_module_bytes'],
       },

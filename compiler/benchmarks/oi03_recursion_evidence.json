@@ -1,7 +1,6 @@
 {
   "functions_per_workload": 8,
   "issue": "OI-03",
-  "model_run": null,
   "mutual_ring_sizes": [
     2,
     2,
@@ -11,10 +10,6 @@
     "mutual/group": {
       "carrier_body_bytes": 51,
       "carrier_bytes": 613,
-      "carrier_hex_tokens": {
-        "cl100k_base": 671,
-        "o200k_base": 671
-      },
       "carrier_objects": 3,
       "edit_first": {
         "changed_entity_identities": 2,
@@ -27,10 +22,6 @@
         "rewritten_objects": 5
       },
       "entities": 8,
-      "handle_tokens": {
-        "cl100k_base": 315,
-        "o200k_base": 315
-      },
       "legal": true,
       "store_bytes": 5050,
       "store_objects": 26
@@ -38,10 +29,6 @@
     "mutual/per_member": {
       "carrier_body_bytes": 48,
       "carrier_bytes": 1120,
-      "carrier_hex_tokens": {
-        "cl100k_base": 1244,
-        "o200k_base": 1243
-      },
       "carrier_objects": 8,
       "edit_first": {
         "changed_entity_identities": 1,
@@ -54,10 +41,6 @@
         "rewritten_objects": 5
       },
       "entities": 8,
-      "handle_tokens": {
-        "cl100k_base": 299,
-        "o200k_base": 298
-      },
       "legal": false,
       "store_bytes": 5902,
       "store_objects": 31
@@ -65,10 +48,6 @@
     "none/function": {
       "carrier_body_bytes": 48,
       "carrier_bytes": 856,
-      "carrier_hex_tokens": {
-        "cl100k_base": 954,
-        "o200k_base": 954
-      },
       "carrier_objects": 8,
       "edit_first": {
         "changed_entity_identities": 1,
@@ -81,10 +60,6 @@
         "rewritten_objects": 5
       },
       "entities": 8,
-      "handle_tokens": {
-        "cl100k_base": 304,
-        "o200k_base": 306
-      },
       "legal": true,
       "store_bytes": 4682,
       "store_objects": 29
@@ -92,10 +67,6 @@
     "none/singleton_group": {
       "carrier_body_bytes": 56,
       "carrier_bytes": 864,
-      "carrier_hex_tokens": {
-        "cl100k_base": 946,
-        "o200k_base": 947
-      },
       "carrier_objects": 8,
       "edit_first": {
         "changed_entity_identities": 1,
@@ -108,10 +79,6 @@
         "rewritten_objects": 5
       },
       "entities": 8,
-      "handle_tokens": {
-        "cl100k_base": 308,
-        "o200k_base": 311
-      },
       "legal": false,
       "store_bytes": 4690,
       "store_objects": 29
@@ -119,10 +86,6 @@
     "self/compact_singleton": {
       "carrier_body_bytes": 48,
       "carrier_bytes": 1120,
-      "carrier_hex_tokens": {
-        "cl100k_base": 1245,
-        "o200k_base": 1249
-      },
       "carrier_objects": 8,
       "edit_first": {
         "changed_entity_identities": 1,
@@ -135,10 +98,6 @@
         "rewritten_objects": 5
       },
       "entities": 8,
-      "handle_tokens": {
-        "cl100k_base": 302,
-        "o200k_base": 306
-      },
       "legal": false,
       "store_bytes": 5903,
       "store_objects": 31
@@ -146,10 +105,6 @@
     "self/group": {
       "carrier_body_bytes": 56,
       "carrier_bytes": 1128,
-      "carrier_hex_tokens": {
-        "cl100k_base": 1228,
-        "o200k_base": 1228
-      },
       "carrier_objects": 8,
       "edit_first": {
         "changed_entity_identities": 1,
@@ -162,14 +117,9 @@
         "rewritten_objects": 5
       },
       "entities": 8,
-      "handle_tokens": {
-        "cl100k_base": 302,
-        "o200k_base": 302
-      },
       "legal": true,
       "store_bytes": 5911,
       "store_objects": 31
     }
-  },
-  "tokenizer": "tiktoken 0.14.0"
+  }
 }

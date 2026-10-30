@@ -3,8 +3,7 @@
     "classification_query_bytes": 41,
     "coarse_capability_bytes": 7,
     "parameterized_capability_bytes": 9,
-    "parameterized_capability_mutation_bytes": 5,
-    "tokenizer_model_tokens": null
+    "parameterized_capability_mutation_bytes": 5
   },
   "backend_conformance": {
     "aapcs64_backend_stack_bytes": 0,

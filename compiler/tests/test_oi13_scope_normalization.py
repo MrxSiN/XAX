@@ -134,20 +134,11 @@ class OI13ScopeNormalizationTests(unittest.TestCase):
         with self.assertRaisesRegex(ScopeMappingError, "not supported"):
             lower_sync_vector(self.simt, vector)
 
-    def test_evidence_is_deterministic_and_charges_unavailable_tokens_as_unknown(self):
+    def test_evidence_is_deterministic(self):
         first = run()
         second = run()
         self.assertEqual(first, second)
         self.assertEqual(first["candidate_portable_lattice"], ["workgroup", "device"])
-        cost = first["measurement"]["token_cost"]
-        try:
-            import tiktoken  # noqa: F401
-        except ImportError:
-            self.assertIsNone(cost["portable_tokens"])
-            self.assertIsNone(cost["target_specific_tokens"])
-        else:
-            self.assertIsInstance(cost["portable_tokens"], int)
-            self.assertIsInstance(cost["target_specific_tokens"], int)
         self.assertEqual(first["measurement"]["production_core_semantic_lines_added"], 0)
         self.assertEqual(json.dumps(first, sort_keys=True), json.dumps(second, sort_keys=True))
 

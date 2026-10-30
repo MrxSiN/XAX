@@ -362,7 +362,7 @@
   "decision": {
     "base_contract_representation": "referenced",
     "embedded_role": "possible future serialization compression for low-reuse contracts, not semantic authority",
-    "reason": "referenced is the only candidate that reduces ideal token atoms and verification cost in both call-heavy profiles while retaining implementation-independent content identity; its sparse-profile byte penalty is recorded rather than hidden",
+    "reason": "referenced is the only candidate that reduces semantic atoms and verification cost in both call-heavy profiles while retaining implementation-independent content identity; its sparse-profile byte penalty is recorded rather than hidden",
     "sealed_dispatch_role": "optional exact-target optimization fact, not the sole bounded contract"
   },
   "host": {
@@ -370,7 +370,7 @@
     "python": "3.13.5"
   },
   "schema": "xax-oi09-call-contract-evidence-v1",
-  "token_metric": "ideal semantic atoms; one atom per scalar/local reference, independent of a particular text tokenizer",
+  "atom_metric": "semantic atoms; one atom per scalar or local reference",
   "workloads": {
     "reuse_heavy_960_calls": {
       "embedded": {
@@ -381,7 +381,7 @@
           "singleton_call_fraction": 0.0,
           "singleton_callable_fraction": 0.0
         },
-        "ideal_token_atoms": 1801,
+        "semantic_atoms": 1801,
         "metadata_object_count": 0,
         "object_count": 120,
         "package_interface_stability": {
@@ -411,7 +411,7 @@
           "singleton_call_fraction": 0.0,
           "singleton_callable_fraction": 0.0
         },
-        "ideal_token_atoms": 1231,
+        "semantic_atoms": 1231,
         "metadata_object_count": 0,
         "object_count": 125,
         "package_interface_stability": {
@@ -441,7 +441,7 @@
           "singleton_call_fraction": 0.3333333333333333,
           "singleton_callable_fraction": 0.3333333333333333
         },
-        "ideal_token_atoms": 1341,
+        "semantic_atoms": 1341,
         "metadata_object_count": 15,
         "object_count": 135,
         "package_interface_stability": {
@@ -473,7 +473,7 @@
           "singleton_call_fraction": 0.0,
           "singleton_callable_fraction": 0.0
         },
-        "ideal_token_atoms": 1066,
+        "semantic_atoms": 1066,
         "metadata_object_count": 0,
         "object_count": 15,
         "package_interface_stability": {
@@ -503,7 +503,7 @@
           "singleton_call_fraction": 0.0,
           "singleton_callable_fraction": 0.0
         },
-        "ideal_token_atoms": 1021,
+        "semantic_atoms": 1021,
         "metadata_object_count": 0,
         "object_count": 20,
         "package_interface_stability": {
@@ -533,7 +533,7 @@
           "singleton_call_fraction": 0.3333333333333333,
           "singleton_callable_fraction": 0.3333333333333333
         },
-        "ideal_token_atoms": 1131,
+        "semantic_atoms": 1131,
         "metadata_object_count": 15,
         "object_count": 30,
         "package_interface_stability": {

@@ -349,7 +349,6 @@
       "equal_normalized_contracts": true,
       "per_instruction": {
         "model_description_bytes": 153,
-        "model_tokens": null,
         "objects": 4,
         "package_bytes": 111,
         "package_cid": "95898edc8790343c1e3e96b0e388fcdc6d502e590daa1346ba50be2a3e6bc3bf"
@@ -357,7 +356,6 @@
       "shared_primitive": {
         "encoding_variants": 4,
         "model_description_bytes": 121,
-        "model_tokens": null,
         "objects": 6,
         "package_bytes": 96,
         "package_cid": "8d0f61ac10d771445d75fe854102022cad24c0013c2e3a7fcc044aa78839f2f8",
@@ -372,7 +370,6 @@
       "equal_normalized_contracts": true,
       "per_instruction": {
         "model_description_bytes": 147,
-        "model_tokens": null,
         "objects": 4,
         "package_bytes": 105,
         "package_cid": "438b1043bcc78951c0fdde98a0be6e817860b93e0ca58536f8216a745e81ec79"
@@ -380,7 +377,6 @@
       "shared_primitive": {
         "encoding_variants": 4,
         "model_description_bytes": 115,
-        "model_tokens": null,
         "objects": 6,
         "package_bytes": 90,
         "package_cid": "4324107e444e593328377bd78d2914ec478b30191591d64e83ff516410be9892",
@@ -395,7 +391,6 @@
       "equal_normalized_contracts": true,
       "per_instruction": {
         "model_description_bytes": 150,
-        "model_tokens": null,
         "objects": 4,
         "package_bytes": 108,
         "package_cid": "a11d6db55216be0e7e5619e6ba8390dd3deab1f0ac419a7c2c1016d9d1efa239"
@@ -403,7 +398,6 @@
       "shared_primitive": {
         "encoding_variants": 4,
         "model_description_bytes": 118,
-        "model_tokens": null,
         "objects": 6,
         "package_bytes": 93,
         "package_cid": "476f438b5ccc4850411a539fee9a2857098dad571759a655bbe876ec2b4f3d8a",
@@ -415,10 +409,5 @@
     "artifact": "oi16_target_granularity_timing.json",
     "sample_count_per_target_form": 20,
     "semantic_fuel_or_guarantee": false
-  },
-  "token_measurement": {
-    "available": false,
-    "bytes_are_not_tokens": true,
-    "reason": "no tokenizer/model integration installed in execution environment"
   }
 }

@@ -61,9 +61,5 @@
     },
     "semantic_undeclared_network_rejected_before_launch": true
   },
-  "schema": "oi24-evidence-v1",
-  "tokens": {
-    "available": false,
-    "reason": "no installed model tokenizer; bytes are not substituted"
-  }
+  "schema": "oi24-evidence-v1"
 }
