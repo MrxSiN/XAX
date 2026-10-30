@@ -250,7 +250,10 @@ def corpus(directory: Path):
         import xax_selfhost_general_wasm as WASM
         import xax_selfhost_x86_64_general as GEN
 
+        import xax_selfhost_jvm as JVM
+
         accel, spirv, dll, page = ACC.accelerator_artifact, SPV.spirv_module, xax_pe.compile_pe_dll, WASM.browser_page
+        jar = JVM.jvm_jar
         module, raw, bare, pe = WASM.wasm_module, GEN.x86_64_raw_image, A64.aarch64_raw_image, xax_pe.compile_pe_executable
         with mock.patch.object(ACC, "accelerator_artifact", lambda r, f, t, frontend="auto": accel(r, f, t, frontend="python")), \
              mock.patch.object(SPV, "spirv_module", lambda r, f, t, frontend="auto": spirv(r, f, t, frontend="python")), \
@@ -259,7 +262,10 @@ def corpus(directory: Path):
              mock.patch.object(WASM, "wasm_module", lambda r, f, t, frontend="auto": module(r, f, t, frontend="python")), \
              mock.patch.object(GEN, "x86_64_raw_image", lambda r, f, t, frontend="auto": raw(r, f, t, frontend="python")), \
              mock.patch.object(A64, "aarch64_raw_image", lambda r, f, t, frontend="auto": bare(r, f, t, frontend="python")), \
-             mock.patch.object(xax_pe, "compile_pe_executable", lambda r, c, t, frontend="auto": pe(r, c, t, frontend="python")):
+             mock.patch.object(xax_pe, "compile_pe_executable", lambda r, c, t, frontend="auto": pe(r, c, t, frontend="python")), \
+             mock.patch.object(JVM, "jvm_jar", lambda r, f, t, process_entry=False, frontend="auto": jar(r, f, t, process_entry=process_entry,
+                                                                                                         frontend="python")), \
+             mock.patch.dict(os.environ, BOOTSTRAP_PATHS):
             expected = build_expected(reader)
         reference = (["image", sha(expected[1]), sha(expected[2])] if expected[0] == "image" else ["rejected", expected[1].code, expected[1].rule])
         cases.append((name, kind, "build", {"store": reader.data}, ["artifact", "provenance"], reference))
@@ -436,9 +442,97 @@ def corpus(directory: Path):
     signed_app = signature(app, ED.ALGORITHM, key, ED.sign(secret, app.cid))
     resolve_trusted("resolve-trusted: Ed25519-signed", fixture.request_store(), "positive", trust_file(ed_policy, (signed_app,)))
     resolve_trusted("resolve-trusted: unsigned", fixture.request_store(), "negative", trust_file(ed_policy))
+    # S15g (ADR-358): JVM JARs (S15e.5), unsigned and signed APKs (S15e.6h, S15e.6i.1) and libxposed JVM modules
+    # (S15e.6i.2), each against the bootstrap's own path.
+    from unittest import mock
+
+    from test_xax_jvm import _hello_program
+    from xax_artifact import XAX_GENERAL_DRIVER_COMPILER_IDENTITY_V1
+
+    hello_entry, hello_objects = _hello_program(7)
+    for jar_name, kinds, jar_kind in (("executable", (ArtifactKind.JVM_EXECUTABLE_JAR,), "positive"), ("library", (ArtifactKind.JVM_LIBRARY_JAR,), "positive"),
+                                      ("two JARs", (ArtifactKind.JVM_LIBRARY_JAR, ArtifactKind.JVM_EXECUTABLE_JAR), "negative")):
+        build(f"build: a JVM JAR ({jar_name})", _program(hello_objects, {b"image": hello_entry}, X.jvm_classfile_target(), artifacts=kinds), jar_kind)
+    from benchmarks.bench_android_managed_bridge import ui_activity_fixture
+    from test_xax_build import android_signing_capability
+    from xax_apk_signing import encode_private_signing_capability
+    from xax_build import BuildCapability as Capability, BuildCapabilityKind as CapabilityKind, BuildEffect, CapabilityGrant as Grant
+    from xax_build import build as build_with_effects, build_profile, build_request, decode_package, decode_request, resolve_packages, snapshot_store
+    from xax_manifest import AndroidManifestSpec, android_manifest_semantics
+
+    signer = android_signing_capability()
+    transport = encode_private_signing_capability(signer)
+    sign = Capability(CapabilityKind.SIGN, bytes.fromhex(signer.identity_sha256))
+
+    def apk_snapshot(signed: bool, activity: str = "xax.generated.XaxActivity"):
+        ui = ui_activity_fixture()
+        manifest = android_manifest_semantics(AndroidManifestSpec("xax.generated", activity, min_sdk=28, target_sdk=35, version_code=1, launcher=True))
+        functions, exports = [ui["activity_callback"], ui["listener_callback"]], [ui["activity_export"], ui["listener_export"]]
+        apk_module = X.object_with_refs(X.Kind.MODULE, (*functions, *exports, ui["ui_semantics"], manifest))
+        apk_app = package(b"android-app", (apk_module,), build_entries=((b"apk", ui["activity_callback"]),), capabilities=(sign,) if signed else ())
+        profile = build_profile(grants=(Grant(b"android-app", sign),) if signed else ())
+        target, apk_policy = X.android_arm64_shared_target(), trust_policy()
+        kind = ArtifactKind.ANDROID_SIGNED_APK if signed else ArtifactKind.ANDROID_UNSIGNED_APK
+        request = build_request(apk_app, b"apk", target, profile, requested_artifacts=(kind,))
+        apk_objects = tuple({item.cid: item for item in (*ui["reader"].objects(), *functions, *exports, ui["ui_semantics"], manifest, apk_module, apk_app,
+                                                         target, profile, apk_policy, request)}.values())
+        closure = {blake3(transport).digest(): transport} if signed else None
+        return snapshot_store(resolve_packages(request, apk_objects, apk_policy, b"android-resolver-v1", external_inputs=closure), apk_objects), request
+
+    def signed_case(name, reader, request, kind, files, closure):
+        """``build-signed``: the transport, then the external input files; the reference is ``build`` with the SIGN effect."""
+        view = decode_package(reader.get(decode_request(request, reader.get).package_root), reader.get)
+        signers = [item for item in view.capabilities if item.kind == CapabilityKind.SIGN]
+        try:
+            with mock.patch.dict(os.environ, BOOTSTRAP_PATHS):
+                result = build_with_effects(reader, request.cid, compiler_identity=XAX_GENERAL_DRIVER_COMPILER_IDENTITY_V1, external_inputs=closure,
+                                            effects=(BuildEffect(view.logical_identity, signers[0], transport),))
+            reference = ["image", sha(result.artifact), sha(result.provenance.envelope())]
+        except X.XaxError as error:
+            reference = ["rejected", error.diagnostic.code, error.diagnostic.rule]
+        cases.append((name, kind, "build-signed", {"store": reader.data}, ["artifact", "provenance"], reference, [transport, *files]))
+
+    build("build: an unsigned APK", apk_snapshot(False)[0], "positive")
+    build("build: an APK whose manifest names another activity", apk_snapshot(False, "xax.generated.Other")[0], "negative")
+    signed_reader, signed_request = apk_snapshot(True)
+    signed_case("build-signed: a signed APK", signed_reader, signed_request, "positive", [transport], {blake3(transport).digest(): transport})
+    with mock.patch.dict(os.environ, BOOTSTRAP_PATHS):  # the transport given only as the declared input: no SIGN effect
+        build_inputs("build: a signed APK without the SIGN effect", signed_reader, "negative", (transport,))
+    from test_xax_selfhost_android_jvm import _archive, _manifest, _module
+    from xax_build import decode_snapshot
+
+    dex, library = b"dex\n035\x00" + bytes(range(64)), bytes(range(256)) * 9
+    branding = _archive({"res/values/strings.xml": b"<strings/>", "AndroidManifest.xml": _manifest(), "resources.arsc": b"arsc"})
+    module_inputs = {blake3(item).digest(): item for item in (dex, library, branding)}
+
+    def module_snapshot(signed: bool):
+        android = {"natives": [["Lorg/example/Policy;", "check", "(I)I"]], "fields": [["Lorg/example/State;", "count", "I"]],
+                   "dex": [blake3(dex).hexdigest()], "libraries": {"lib/arm64-v8a/libpolicy.so": blake3(library).hexdigest()},
+                   "branding": blake3(branding).hexdigest(), **({"signer": signer.identity_sha256} if signed else {})}
+        constructed = _module(android)
+        root = decode_snapshot(constructed.get(constructed.root_cid), constructed.get)
+        request = constructed.get(root.request_root)
+        closure = {**module_inputs, **({blake3(transport).digest(): transport} if signed else {})}
+        module_objects = tuple(constructed.objects())
+        resolution = resolve_packages(request, module_objects, constructed.get(root.trust_policy_root), root.resolver_identity, external_inputs=closure)
+        return snapshot_store(resolution, module_objects), request, closure
+
+    module_reader, _request, module_closure = module_snapshot(False)
+    with mock.patch.dict(os.environ, BOOTSTRAP_PATHS):
+        build_inputs("build: a libxposed JVM module", module_reader, "positive", tuple(module_closure.values()))
+    signed_module, signed_module_request, signed_closure = module_snapshot(True)
+    signed_case("build-signed: a signed libxposed JVM module", signed_module, signed_module_request, "positive",
+                list(module_inputs.values()) + [transport], signed_closure)
+    signed_case("build-signed: a libxposed JVM module missing an input", signed_module, signed_module_request, "negative",
+                [dex, branding, transport], {digest: data for digest, data in signed_closure.items() if data != library})
+
     cases.append(("verify: a store past the driver's capacity", "negative", "verify", {"store": bytes(65 << 20)}, ["out"], None))
     cases.append(("unknown command", "negative", "compile", {"store": status.data}, ["out"], None))
     return cases
+
+
+# S15g (ADR-358): the bootstrap's own Android and signing paths (``build`` asks the XAX programs first).
+BOOTSTRAP_PATHS = {"XAX_ANDROID_PYTHON": "1", "XAX_APK_SIGNER_PYTHON": "1"}
 
 
 def _diagnostic_key(diagnostic) -> list:
@@ -617,8 +711,13 @@ def measure() -> dict:
             "compiler": "the general driver (xax_compiler_driver_general.xax): verify, inspect, resolve, resolve-trusted, build, lower, edit",
             "targets": ["x86_64-linux-elf-exec-v1", "x86_64-linux-elf-dynexec-v1", "x86_64-linux-views-v1/v2", "x86_64-linux-views-exec-v1",
                         "RISC-V raw images (architecture 6, format 1; S15e.1)",
-                        "aarch64-linux-elf-exec-v1, aarch64-linux-elf-dynexec-v1 (S15e.2)", "x86_64-windows-pe-v1 executables (S15e.3)"],
-            "outside_scope": "every other target and artifact (Windows DLLs, JVM, WebAssembly, Android, SPIR-V, accelerator): Python (S15e.3-S15e.7)",
+                        "aarch64-linux-elf-exec-v1, aarch64-linux-elf-dynexec-v1 (S15e.2)", "x86_64-windows-pe-v1 executables (S15e.3)",
+                        "Windows PE32+ DLLs (S15e.3b)", "browser pages (S15e.4)", "JVM library and executable JARs (S15e.5)",
+                        "unsigned and signed Android APKs (S15e.6h, S15e.6i.1)", "libxposed JVM modules (S15e.6i.2)",
+                        "accelerator deployments and SPIR-V modules (S15e.7)",
+                        "raw Wasm modules, Windows load images and bare-metal AArch64 images (S15f)"],
+            # S15g (ADR-358): every target and artifact ``build`` makes is the production compiler's.
+            "outside_scope": None,
         },
         "spec_revision": "XAX_SPEC.md §16",
         "compiler": {"store": GENERAL_STORE_PATH.name, "store_sha256": sha(driver.data), "semantic_root": driver.root_cid.hex(),

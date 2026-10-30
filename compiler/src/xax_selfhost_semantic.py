@@ -42,7 +42,9 @@ globals().update(_REGIONS)
 MARSHAL_AT, MARSHAL_LIMIT = 12 << 20, 8 << 20  # the typing program's input words (IN_WORDS)
 NODES_TMP, SECTION_TMP, FACTS_TMP = 20 << 20, 23 << 20, 24 << 20
 NODES_LIMIT, SECTION_LIMIT, FACTS_LIMIT = 3 << 20, 1 << 20, 5 << 20
-CFG_AT, CFG_LIMIT = 29 << 20, 2 << 20  # the CFG program's input words (its IN_WORDS)
+# The CFG program's input words (its IN_WORDS).  S15e.6i.2a (ADR-358): 8M words where no command's workspace reaches (above
+# ``edit``'s batch, below its input; was 2M words at 29M).
+CFG_AT, CFG_LIMIT = 160 << 20, 8 << 20
 assert _END <= MARSHAL_AT
 
 # Control words: status, the graph object, lengths and counts.
