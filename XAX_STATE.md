@@ -959,6 +959,13 @@ The XAX JVM program now builds callbacks: JDK streams and comparators that call 
 - The driver's function takes 2,078,110 of the pinned seed's 2,097,152 CFG input words; its graph is 2.02 MB of the graph decoder's 2 MiB.
 - The stores were regenerated and the ledger rebased. The seed was rotated to `c25276ad…` (seed = C1 = C2).
 
+#### S15e.6i.3 the libxposed JVM path's last declines — 2026-10-30 (ADR-359)
+
+- Module records are read as `json.loads` reads them (every encoding, value kind and Python rule; floats correctly rounded); branding entries may be stored, deflated, bzip2 or LZMA; layer inputs and records share the 256 MB image buffer (was about 20 MB).
+- Fixed: a decline after a layer left status 1, so a stale image was read as the artifact; float manifest attributes in `manifest_with_xax`.
+- Seed rotated to `5b85b618…` (32,455,051 bytes); the Python-free selfbuild is a fixed point. Evidence re-run; B levels unchanged.
+- Remaining declines on this path: rejections quoting non-ASCII text, nesting past 9000 levels, and two kinds of crafted compressed data (see ADR-359).
+
 #### S15e.6i.2 and S15g libxposed JVM modules; the whole compiler's B levels — 2026-10-30 (ADR-358)
 
 - The seed's capacities were raised first, in a driver the previous seed could still verify (S15e.6i.2a): graph bodies to 4 MiB, the CFG program's input to 8M words. The seed was rotated to `08883af1…`.
