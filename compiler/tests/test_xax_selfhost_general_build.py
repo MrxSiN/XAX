@@ -637,6 +637,45 @@ class GeneralBuildTests(unittest.TestCase):
         missing = {digest: data for digest, data in closure.items() if data != library}
         self.assertEqual(self.run_signed(reader.data, transport, tuple(missing.values())), expected(reader, request, missing, True))
 
+    def test_libxposed_jvm_records(self):
+        """S15e.6i.3 (ADR-359): the driver builds libxposed JVM modules whose records hold UTF-8 text, values of other kinds
+        and floats, with deflated, bzip2 and LZMA branding archives and a library past 20 MB, each equal to ``build``'s."""
+        import json
+        import random
+        import zipfile
+
+        from blake3 import blake3
+
+        from test_xax_selfhost_android_jvm import _manifest
+        from test_xax_selfhost_android_records import BASE, _reader, _zip
+        from xax_build import decode_snapshot
+
+        manifest = _manifest()
+        library = random.Random(359).randbytes(21 << 20)
+        cases = []
+        for method in (zipfile.ZIP_DEFLATED, zipfile.ZIP_BZIP2, zipfile.ZIP_LZMA):
+            branding = _zip({"AndroidManifest.xml": manifest, "res/values/strings.xml": b"<resources/>" * 40}, method=method)
+            record = {**BASE, "package": "org.exämple.mödule", "module_class": "org.exämple.Mödüle", "version_code": 5.0 if method == 8 else True,
+                      "version_name": {"x": [None, 1.5]}, "natives": [["Lorg/é/Pölicy;", "chéck", "(I)I"]], "scopes": "s",
+                      "fields": [["Lorg/é/Stäte;", "n", "I"]], "branding": blake3(branding).hexdigest()}
+            if method == zipfile.ZIP_DEFLATED:
+                record["version_code"] = 3
+                record["libraries"] = [["lib/arm64-v8a/libpölicy.so", blake3(library).hexdigest()]]
+            cases.append((json.dumps(record, ensure_ascii=False).encode(), [branding] + ([library] if method == zipfile.ZIP_DEFLATED else [])))
+        for payload, files in cases:
+            with self.subTest(size=len(payload)):
+                made = _reader(payload, v2=True)
+                root = decode_snapshot(made.get(made.root_cid), made.get)
+                request = made.get(root.request_root)
+                closure = {blake3(item).digest(): item for item in files}
+                objects = tuple(made.objects())
+                resolution = resolve_packages(request, objects, made.get(root.trust_policy_root), root.resolver_identity, external_inputs=closure)
+                reader = snapshot_store(resolution, objects)
+                outcome = self.run_build_inputs(reader.data, tuple(closure.values()))
+                self.assertEqual(outcome[0], "image")
+                result = build(reader, request.cid, compiler_identity=XAX_GENERAL_DRIVER_COMPILER_IDENTITY_V1, external_inputs=closure)
+                self.assertEqual(outcome[1], result.artifact)
+
     def run_build_inputs(self, data: bytes, inputs):
         snapshot, artifact, provenance = (os.path.join(self.directory, name) for name in ("snapshot.xax", "artifact.bin", "provenance.bin"))
         Path(snapshot).write_bytes(data)
