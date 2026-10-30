@@ -6,7 +6,40 @@ This roadmap orders implementation work. A milestone is complete only when every
 Windows source self-build, the generic constructor and the proposed bounded workspace service remain open.
 No milestone or B/R level is changed by this distribution update.
 
-## 1. Sequencing rules
+## Contents
+
+- [Part I — Rules](#part-i--rules)
+  - [1. Sequencing rules](#1-sequencing-rules)
+  - [2. Bootstrap mapping](#2-bootstrap-mapping)
+  - [3. Milestone evidence rule](#3-milestone-evidence-rule)
+- [Part II — Prototype milestones (M1-M14)](#part-ii--prototype-milestones-m1-m14)
+  - [M1 — Minimal canonical semantic store and verifier](#m1--minimal-canonical-semantic-store-and-verifier)
+  - [M2 — Arithmetic, functions, calls, branches](#m2--arithmetic-functions-calls-branches)
+  - [M3 — Stack memory and proof obligations](#m3--stack-memory-and-proof-obligations)
+  - [M4 — First direct native backend](#m4--first-direct-native-backend)
+  - [M5 — Second architecturally different native backend](#m5--second-architecturally-different-native-backend)
+  - [M6 — Transactional AI workspace](#m6--transactional-ai-workspace)
+  - [M7 — Resources and richer effects](#m7--resources-and-richer-effects)
+  - [M8 — Atomics, interrupts, and real-time profiles](#m8--atomics-interrupts-and-real-time-profiles)
+  - [M9 — Compile-time XAX specialization/metaprogramming](#m9--compile-time-xax-specializationmetaprogramming)
+  - [M10 — Package, build, security, and reproducibility semantics](#m10--package-build-security-and-reproducibility-semantics)
+  - [M11 — XAX self-hosting subset](#m11--xax-self-hosting-subset)
+  - [M12 — Optimizer expansion and validated search](#m12--optimizer-expansion-and-validated-search)
+  - [M13 — GPU/accelerator path](#m13--gpuaccelerator-path)
+  - [M14 — Self-hosting completion and toolchain closure](#m14--self-hosting-completion-and-toolchain-closure)
+- [Part III — After M14: replacement and self-hosting](#part-iii--after-m14-replacement-and-self-hosting)
+  - [U1 — Universal-replacement proof set (after M14)](#u1--universal-replacement-proof-set-after-m14)
+  - [U2 — Performance leadership, autonomous maintenance, XAX-only application (after U1)](#u2--performance-leadership-autonomous-maintenance-xax-only-application-after-u1)
+  - [S — Compiler migration ladder (after M14; runs alongside U1)](#s--compiler-migration-ladder-after-m14-runs-alongside-u1)
+  - [EI — Evidence and canonical-state integrity (ADR-177; before S7b)](#ei--evidence-and-canonical-state-integrity-adr-177-before-s7b)
+- [Part IV — Dated follow-ups](#part-iv--dated-follow-ups)
+  - [JVM token optimization follow-up (2026-10-07, ADR-186)](#jvm-token-optimization-follow-up-2026-10-07-adr-186)
+  - [JVM host-response and compound-edit follow-up (2026-10-07, ADR-187/188)](#jvm-host-response-and-compound-edit-follow-up-2026-10-07-adr-187188)
+  - [Android platform capability contracts (2026-10-08, ADR-202 to ADR-204)](#android-platform-capability-contracts-2026-10-08-adr-202-to-adr-204)
+
+## Part I — Rules
+
+### 1. Sequencing rules
 
 1. Semantic correctness precedes optimization.
 2. Canonical storage/identity precedes distributed editing and self-hosting claims.
@@ -17,7 +50,44 @@ No milestone or B/R level is changed by this distribution update.
 7. Later milestones MUST NOT silently change the semantics of earlier accepted vectors; semantic changes require versioning.
 8. Post-M14 milestones (U-series) are defined by replacement-matrix evidence: a step is complete only when its matrix row changes under the validator.
 
-## M1 — Minimal canonical semantic store and verifier
+### 2. Bootstrap mapping
+
+| Bootstrap evidence | Earliest roadmap point | Meaning |
+|---|---|---|
+| B0 seed viability | M11 | seed produces runnable XAX-hosted subset |
+| B1 first XAX compiler | M11 | authoritative subset implementation is XAX semantic state |
+| B2 recursive compilation | M14 | XAX compiler compiles itself |
+| B3 semantic self-equivalence | M14 | generations agree under fixed policy |
+| B4 deterministic fixed point | M14 | byte identity or predeclared canonical projection stabilizes |
+| B5 toolchain closure | M14 | required live toolchain paths are XAX-hosted |
+| B6 bootstrap independence | M14 | maintained second implementation language no longer required |
+
+### 3. Milestone evidence rule
+
+For every completed milestone, repository evidence SHOULD include:
+
+```text
+MilestoneEvidence {
+  milestone_id
+  spec_revision
+  implementation_root
+  target_roots[]
+  package_snapshot_root
+  build_policy_root
+  conformance_suite_revision
+  conformance_evidence_roots[]
+  benchmark_suite_revision?
+  benchmark_result_roots[]?
+  known_failures[]
+  open_issue_impacts[]
+}
+```
+
+Milestone status cannot advance when required evidence is absent or invalidated by a semantic/target/toolchain change.
+
+## Part II — Prototype milestones (M1-M14)
+
+### M1 — Minimal canonical semantic store and verifier
 
 **Entry criteria**
 
@@ -45,7 +115,7 @@ No milestone or B/R level is changed by this distribution update.
 
 **Benchmarks now valid**: store size, encode/decode/hash throughput, lookup, malformed-object rejection, verifier throughput. No native runtime claims.
 
-## M2 — Arithmetic, functions, calls, branches
+### M2 — Arithmetic, functions, calls, branches
 
 **Entry criteria**: M1 complete.
 
@@ -68,7 +138,7 @@ No milestone or B/R level is changed by this distribution update.
 
 **Benchmarks now valid**: small-program correctness, representation creation/edit tasks, basic compile-time/verifier accounting.
 
-## M3 — Stack memory and proof obligations
+### M3 — Stack memory and proof obligations
 
 **Entry criteria**: M2 complete.
 
@@ -91,7 +161,7 @@ No milestone or B/R level is changed by this distribution update.
 
 **Benchmarks now valid**: stack footprint, memory kernels through reference path, no-allocation cases, memory-safety diagnostic tasks.
 
-## M4 — First direct native backend
+### M4 — First direct native backend
 
 **Entry criteria**: M3 complete and one target package sufficient for the subset exists.
 
@@ -115,7 +185,7 @@ No milestone or B/R level is changed by this distribution update.
 
 **Benchmarks now valid**: native execution time, code size, startup, compile time/memory, first fair C/Rust comparisons for supported cases.
 
-## M5 — Second architecturally different native backend
+### M5 — Second architecturally different native backend
 
 **Entry criteria**: M4 complete.
 
@@ -132,7 +202,7 @@ No milestone or B/R level is changed by this distribution update.
 
 **Benchmarks now valid**: cross-target portability, target-package adequacy, target-cost ranking comparisons on both targets.
 
-## M6 — Transactional AI workspace
+### M6 — Transactional AI workspace
 
 **Entry criteria**: M1–M5 provide stable semantic/query identities and verifier services.
 
@@ -158,7 +228,7 @@ No milestone or B/R level is changed by this distribution update.
 
 **Benchmarks now valid**: C-like vs SSA vs graph-packet AI tasks, local-edit tokens, repair turns, context-scaling, conflict/rebase workloads. Tokenizer-native arm remains unavailable until actual integration exists.
 
-## M7 — Resources and richer effects
+### M7 — Resources and richer effects
 
 **Entry criteria**: M6 complete; memory/control verifier stable.
 
@@ -181,7 +251,7 @@ No milestone or B/R level is changed by this distribution update.
 
 **Benchmarks now valid**: resource-lifetime tasks, effect-reordering tests, hidden-operation checks, AI repair of resource/effect violations.
 
-## M8 — Atomics, interrupts, and real-time profiles
+### M8 — Atomics, interrupts, and real-time profiles
 
 **Entry criteria**: M7 complete; target atomic capability interface implemented on at least one capable target.
 
@@ -206,7 +276,7 @@ No milestone or B/R level is changed by this distribution update.
 
 **Benchmarks now valid**: atomic kernels, synchronization cost, interrupt latency, deterministic-latency cases on capable targets.
 
-## M9 — Compile-time XAX specialization/metaprogramming
+### M9 — Compile-time XAX specialization/metaprogramming
 
 **Entry criteria**: M7 verifier and transaction model stable; target query interface available.
 
@@ -231,7 +301,7 @@ No milestone or B/R level is changed by this distribution update.
 
 **Benchmarks now valid**: specialization compile cost, generated-code impact, generic/specialization AI tasks, compile-time cache behavior.
 
-## M10 — Package, build, security, and reproducibility semantics
+### M10 — Package, build, security, and reproducibility semantics
 
 **Entry criteria**: M9 provides build-time XAX execution; semantic database/snapshots stable.
 
@@ -258,7 +328,7 @@ No milestone or B/R level is changed by this distribution update.
 
 **Benchmarks now valid**: reproducible build tests, resolver/build incrementality, package-context AI tasks, cache/provenance overhead.
 
-## M11 — XAX self-hosting subset
+### M11 — XAX self-hosting subset
 
 **Entry criteria**: M10 complete; seed strategy and bootstrap target fixed.
 
@@ -280,7 +350,7 @@ No milestone or B/R level is changed by this distribution update.
 
 **Benchmarks now valid**: bootstrap size/time, subset self-build reproducibility, hosted versus seed behavior.
 
-## M12 — Optimizer expansion and validated search
+### M12 — Optimizer expansion and validated search
 
 **Entry criteria**: M11 plus stable target/compiler services.
 
@@ -303,7 +373,7 @@ No milestone or B/R level is changed by this distribution update.
 
 **Benchmarks now valid**: optimization-quality corpus, compile-time/performance tradeoffs, target-cost ranking/magnitude validation, credible assembly kernel comparisons.
 
-## M13 — GPU/accelerator path
+### M13 — GPU/accelerator path
 
 **Entry criteria**: M8/M12 infrastructure can express target scopes, memory spaces, effects, and target operations.
 
@@ -326,7 +396,7 @@ No milestone or B/R level is changed by this distribution update.
 
 **Benchmarks now valid**: accelerator throughput/latency, host-device effects, target-model portability, GPU/accelerator code quality.
 
-## M14 — Self-hosting completion and toolchain closure
+### M14 — Self-hosting completion and toolchain closure
 
 **Entry criteria**: M11–M13 mature enough to migrate the remaining live toolchain.
 
@@ -353,7 +423,9 @@ No milestone or B/R level is changed by this distribution update.
 
 **Status (ADR-177)**: complete only for the `xax-semantic-image-v1` META wrapper at B2–B4. These exit criteria are not met for the compiler as a whole: the verifier, lowering, object writing, linking, and package/build services are live Python, so B5/B6 are not held.
 
-## U1 — Universal-replacement proof set (after M14)
+## Part III — After M14: replacement and self-hosting
+
+### U1 — Universal-replacement proof set (after M14)
 
 M1–M14 establish a compiler-architecture prototype. U1 is the first milestone measured in replacement terms (`XAX_SPEC.md` §21): every result is a row update in `XAX_REPLACEMENT_MATRIX.json`, and levels are derived, never asserted.
 
@@ -410,7 +482,7 @@ M1–M14 establish a compiler-architecture prototype. U1 is the first milestone 
 
 **Benchmarks now valid**: replacement-workload runtime/memory/size comparisons (§15 of `XAX_BENCHMARKS.md`). AI token trials are deferred to the future AI-efficiency milestone (ADR-207).
 
-## U2 — Performance leadership, autonomous maintenance, XAX-only application (after U1)
+### U2 — Performance leadership, autonomous maintenance, XAX-only application (after U1)
 
 Priority order (ADR-207): R4, then R5, then R6. The AI-token milestone is not scheduled here.
 
@@ -430,11 +502,11 @@ Priority order (ADR-207): R4, then R5, then R6. The AI-token milestone is not sc
 | U2.4 | Maintenance harness: scripted semantic-transaction cycle with verification, benchmark, rebuild, and commit recorded | R5 | EXECUTED for the JVM (ADR-209), Linux x86-64 (ADR-213), and Linux AArch64 on a Pixel 8 Pro (ADR-258): one cycle of `jsonmin` each; Android (ADR-255): a structural edit of the counter app, device-tested (the row needs R4 before it derives R5) |
 | U2.5 | XAX-only application with XAX test and build definitions | R6 | EXECUTED for `xb64` on Linux x86-64 (ADR-210); the row derives R6 (ADR-213). JVM: `xwc` (ADR-257), the row derives R6. Linux AArch64: `xcksum` on two phones (ADR-258), the row derives R6 |
 
-## S — Compiler migration ladder (after M14; runs alongside U1)
+### S — Compiler migration ladder (after M14; runs alongside U1)
 
 Steps S3–S7a are migrated for acceptance only: their XAX components decline invalid input to the bootstrap, which decides the rejection (`XAX_SPEC.md` §16.5 condition 5, ADR-180). Migration is reported with the SH0–SH8 labels of ADR-180; current: SH1. M14's semantic-image META wrapper reached B2–B4 for the small `xax-semantic-image-v1` target (its B5/B6 claim was withdrawn in ADR-177). The working compiler (verification, lowering, encoding, emission) is still Python. The S ladder moves it into XAX component by component under the rule in `XAX_SPEC.md` §16.5. Each step must be on the production path with byte-identical output, and the bootstrap code stays only as a checked fallback. A step's self-compilation result is a *component fixed point*, not a B milestone (ADR-177 renamed the earlier "B1–B4" labels below).
 
-<!-- xax-status:bootstrap -->Bootstrap status (generated from `compiler/bootstrap/m14_selfhost_evidence.json`, derived by `xax_selfhost.bootstrap_status`): whole production compiler: none of B0-B6 is established (Android packages are not the production compiler's: their layers are XAX programs that build asks first (S15e.6a-S15e.6g, ADR-340 to ADR-350), but carrier decoding, bridge lowering and the driver path remain Python (S15e.6h, ADR-351); Linux x86-64 and AArch64 executables, Windows PE32+ executables and DLLs, RISC-V, Wasm, Windows load-image and bare-metal AArch64 raw images, accelerator deployments, SPIR-V modules, browser pages and JVM JARs are the production compiler's; the Linux x86-64 production compiler is reported separately (ADR-180, ADR-285, ADR-308, ADR-315, ADR-317, ADR-320, ADR-321, ADR-322, ADR-324, ADR-325, ADR-326, ADR-334, ADR-339, ADR-351)); Linux x86-64 production compiler (`benchmarks/full_selfhost_evidence.json`): B0, B1, B2, B3, B4, B5, B6 hold, none do not; its seed requires Python: no; M14 semantic-image META wrapper: B2, B3, B4 hold, B5, B6 do not (host-executed META_CANONICAL_STORE, META_MATERIALIZE_PROGRAM, META_VERIFY_SEMANTICS). S-step component fixed points are not B milestones (`XAX_SPEC.md` §16.5). Bootstrap seed: python-zipapp, 46,255 bytes, requires Python: yes.<!-- /xax-status:bootstrap -->
+<!-- xax-status:bootstrap -->Bootstrap status (generated from `compiler/bootstrap/m14_selfhost_evidence.json`, derived by `xax_selfhost.bootstrap_status`): whole production compiler: none of B0-B6 is established (libxposed JVM modules are not the production compiler's: the driver keeps no external input's bytes and chains no libxposed JVM program (S15e.6i.2); signed and unsigned APKs on Android targets are the production compiler's through the XAX Android program and APK signer (S15e.6h, S15e.6i.1, ADR-354 to ADR-357), as are Linux x86-64 and AArch64 executables, Windows PE32+ executables and DLLs, RISC-V, Wasm, Windows load-image and bare-metal AArch64 raw images, accelerator deployments, SPIR-V modules, browser pages and JVM JARs; the Linux x86-64 production compiler is reported separately (ADR-180, ADR-285, ADR-308, ADR-315, ADR-317, ADR-320, ADR-321, ADR-322, ADR-324, ADR-325, ADR-326, ADR-334, ADR-339, ADR-351, ADR-356, ADR-357)); Linux x86-64 production compiler (`benchmarks/full_selfhost_evidence.json`): B0, B1, B2, B3, B4, B5, B6 hold, none do not; its seed requires Python: no; M14 semantic-image META wrapper: B2, B3, B4 hold, B5, B6 do not (host-executed META_CANONICAL_STORE, META_MATERIALIZE_PROGRAM, META_VERIFY_SEMANTICS). S-step component fixed points are not B milestones (`XAX_SPEC.md` §16.5). Bootstrap seed: python-zipapp, 46,255 bytes, requires Python: yes.<!-- /xax-status:bootstrap -->
 
 | Step | Component | Needs | Status |
 |---|---|---|---|
@@ -536,7 +608,7 @@ Steps S3–S7a are migrated for acceptance only: their XAX components decline in
 | S14 | Full-compiler generations C1 → C2 → C3 on Linux x86-64 with positive/negative equivalence and identity records (full-compiler B2–B4) | S10–S13 | EXECUTED (ADR-284, ADR-285) for the Linux x86-64 production compiler: C1 = C2 = C3 through `resolve`/`build`; derived B0, B2, B3, B4 hold, B1, B5, B6 do not |
 | S14a | The production compiler (the general driver) compiled by its own general x86-64 backend: C0 (views-built) → C1 → C2 → C3 through `lower`, a byte fixed point equal to the bootstrap's compile | S13 | EXECUTED (ADR-284): an allocator bug, quadratic arena use, unchecked emission buffers, and capacities fixed; C1 = C2 = C3 = the bootstrap's compile |
 | S14b | Generations through the ordinary build path (`resolve`, `build`, provenance), the positive/negative equivalence corpus across generations, identity records (`full_selfhost_evidence.json`), and the derived full-compiler B2–B4 | S14a | EXECUTED (ADR-285): generations through `resolve`/`build` equal to the bootstrap's compile; 72-case corpus without disagreement; `full_selfhost_evidence.json` |
-| S15 | Compiler evolution by semantic transactions (B6/SH7), other targets through target packages, a Python-free seed (SH8) | S14 | In progress (ADR-286, ADR-298): S15a EXECUTED; S15b (B1, ADR-318), S15c, S15d DONE; S15e.1-S15e.4, S15e.3b, S15e.3c, S15e.7 DONE, S15f DONE (ADR-324, ADR-325), S15e.5-S15e.6 open, drafted as S15e.5g-S15e.5j, S15e.6a-S15e.6h and S15g (ADR-336) |
+| S15 | Compiler evolution by semantic transactions (B6/SH7), other targets through target packages, a Python-free seed (SH8) | S14 | In progress (ADR-286, ADR-298): S15a EXECUTED; S15b (B1, ADR-318), S15c, S15d DONE; S15e.1-S15e.4, S15e.3b, S15e.3c, S15e.7 DONE, S15f DONE (ADR-324, ADR-325), S15e.5 DONE (ADR-339), S15e.6a-S15e.6h EXECUTED (ADR-340 to ADR-356; unsigned APKs); S15e.6i.1 EXECUTED (ADR-357, signed APKs); open: S15e.6i.2 (libxposed JVM modules) and S15g (ADR-336) |
 | S15a | A Python-free seed (SH8): the pinned XAX-built compiler and the compiler's request store rebuild the compiler with no Python reachable | S14 | EXECUTED (ADR-286): `bootstrap/seed/selfbuild.sh` under `PATH` of five tools; derived seed requires Python: no |
 | S15b | Exact rejections (B1): the driver's verification diagnostics, ADR-280's declined code generation rules | S14 | DONE: S15b.0-S15b.4, S15b.3e (ADR-318); B1 holds for the Linux x86-64 production compiler |
 | S15b.0 | A 512 MiB input view for the verifier's object table of the growing driver store; the seed rotated to carry it (ADR-287) | S15a | DONE |
@@ -563,7 +635,7 @@ Steps S3–S7a are migrated for acceptance only: their XAX components decline in
 | S15d.4 | The engine's vocabulary for ordinary changes: node insertion and deletion, uses, edge arguments, result types and signatures (the workspace's), then new functions, so a builder is no longer needed for ordinary compiler changes (B6) | S15d.3 | DONE (ADR-312, ADR-314) |
 | S15d.4a | `REPLACE_REFERENCE` with objects the record supplies: any reference (a graph, a function, a constant or type) replaced by new objects, the cascade to the root (ADR-312) | S15d.3 | DONE |
 | S15d.4b | The workspace's fine-grained graph mutations (node insertion and deletion, uses, edge arguments, result types) in the engine, and a structural compiler change made only through the ledger (B6) | S15d.4a | DONE (ADR-314): ledger entry 0002 deletes six dead constants; C1 replays the ledger |
-| S15e | The other targets through target packages | S14 | In progress (S15e.0-S15e.4, S15e.3b, S15e.3c, S15e.7 DONE; S15e.5-S15e.6 open; the raw images are S15f) |
+| S15e | The other targets through target packages | S14 | In progress (S15e.0-S15e.5, S15e.3b, S15e.3c, S15e.7 DONE; S15e.6 open: S15e.6i.2; the raw images are S15f) |
 | S15e.0 | Arena headroom for target backends in the driver: the general program's code buffer sized to the compiler's largest function; the seed rotated (ADR-307) | S15d | DONE |
 | S15c.5a | The general program's ELF buffer taken after the views (arena room for the driver's largest function); the seed rotated (ADR-310) | S15e.1 | DONE |
 | S15e.1 | RISC-V raw images (architecture 6, format 1) built by the driver with the XAX RISC-V backend program (ADR-308) | S15e.0 | DONE |
@@ -574,12 +646,12 @@ Steps S3–S7a are migrated for acceptance only: their XAX components decline in
 | S15e.3c | The driver's store files and snapshots hold 64 MiB; the seed rotated (ADR-319) | S15e.3 | DONE |
 | S15e.3b | Windows PE32+ DLLs (exports, forwards, DllMain) and the hosted legacy register path in XAX (ADR-317) | S15e.3 | DONE: DLLs (ADR-320), the hosted legacy register path (ADR-326) |
 | S15e.4 | The browser Wasm page: an XAX Wasm backend and page container (ADR-308) | S15e.1 | DONE (ADR-322): the general program writes the module and page; the views region raised to 41M words and the seed rotated in two stages |
-| S15e.5 | JVM jars: an XAX JVM class and jar writer (ADR-308) | S15e.1 | In progress: S15e.5a (integer subset of `jvm-classfile-v1`, `build` asks XAX first) EXECUTED (ADR-327); S15e.5b (floats and conversions) EXECUTED (ADR-328); S15e.5c (references and platform calls) EXECUTED (ADR-329); S15e.5d (object kinds) EXECUTED (ADR-330); S15e.5e (callbacks, the class-file profiles) EXECUTED (ADR-331); S15e.5f (aggregates and sums) EXECUTED (ADR-332); the driver path EXECUTED (ADR-334); S15e.5g-S15e.5j EXECUTED (ADR-337 to ADR-339): DONE |
+| S15e.5 | JVM jars: an XAX JVM class and jar writer (ADR-308) | S15e.1 | DONE with S15e.5j (ADR-339): S15e.5a (integer subset of `jvm-classfile-v1`, `build` asks XAX first) EXECUTED (ADR-327); S15e.5b (floats and conversions) EXECUTED (ADR-328); S15e.5c (references and platform calls) EXECUTED (ADR-329); S15e.5d (object kinds) EXECUTED (ADR-330); S15e.5e (callbacks, the class-file profiles) EXECUTED (ADR-331); S15e.5f (aggregates and sums) EXECUTED (ADR-332); the driver path EXECUTED (ADR-334); S15e.5g-S15e.5j EXECUTED (ADR-337 to ADR-339): DONE |
 | S15e.5g | The memory profile in the XAX JVM program: heap views, pointer casts, offsets and rebases, little-endian loads and stores (checked and unchecked, with the bootstrap's byte-run, narrowing and static-bound decisions), the `xax/jvm/Memory` members (`alloc`, `free`, `read`, `write`), `<clinit>`, the `M`/`H` fields and the initial memory size | S15e.5f | EXECUTED (ADR-337) in the JVM program; the driver store is regenerated with S15e.5j |
 | S15e.5h | The general profile: stack storage and the shadow stack (`S`, `STACK_BYTES`), `stack.end`, links, raw loads, atomics on one thread, and indirect calls whose pointers pass through memory | S15e.5g | EXECUTED (ADR-338) in the JVM program, with recursion-group calls; the driver store is regenerated with S15e.5j |
 | S15e.5i | Recursion groups and the threaded launcher (`ENTRY_STACK_BYTES`, `<init>`/`run`/`main`, `JVM-ENTRY-RUNNABLE`) | S15e.5h | EXECUTED (ADR-338) in the JVM program; the driver store is regenerated with S15e.5j |
 | S15e.5j | No JAR left to Python: a decline audit over every JVM compile of the suite is empty, the driver builds each, and the whole-compiler blocker drops JVM JARs | S15e.5i | EXECUTED (ADR-339): the driver builds every JAR of the suite; seed rotated |
-| S15e.6 | Android packages, unsigned and signed (ADR-308) | S15e.2 | In progress: S15e.6a-S15e.6g EXECUTED (ADR-340 to ADR-350), each layer an XAX program `build` asks first; S15e.6h (the driver path) DRAFT, re-scoped (ADR-351) |
+| S15e.6 | Android packages, unsigned and signed (ADR-308) | S15e.2 | In progress: S15e.6a-S15e.6g EXECUTED (ADR-340 to ADR-350); S15e.6h EXECUTED for unsigned APKs (ADR-354 to ADR-356), the driver building them with the XAX Android program; S15e.6i.1 (signed APKs) EXECUTED (ADR-357); S15e.6i.2 (libxposed JVM modules) DRAFT |
 | S15e.6a | The APK container (`xax_apk.build_apk`: stored entries, the alignment of `.so` and other entries, the deterministic central directory) as an XAX program, sharing the JAR writer's ZIP records | S15e.5j | EXECUTED (ADR-340): `build_apk` asks the XAX program first; the driver path is S15e.6h |
 | S15e.6b | APK Signature Scheme v2 in XAX: SHA-256, the chunked content digest, the signer and signing block, RSA PKCS#1 v1.5 with SHA-256 (modular exponentiation over the capability's key), and the signing-capability rejections | S15e.6a | EXECUTED (ADR-341) |
 | S15e.6c | Binary resources from their semantic carriers: the binary manifest (string pool, resource map, components, permissions, features, platform declarations) and `resources.arsc` | S15e.6a | EXECUTED (ADR-342) |
@@ -587,59 +659,29 @@ Steps S3–S7a are migrated for acceptance only: their XAX components decline in
 | S15e.6e | Android AArch64 shared objects: multi-export bundles through the XAX AArch64 program and the Android ELF container (`emit_android_elf`: dynamic symbols, packed relocations) | S15e.2 | EXECUTED (ADR-346) |
 | S15e.6f | The carrier decisions of `_build_android_unsigned_apk` and `_build_android_managed_apk` (profiles, exact rejections, the platform-usage check), so unsigned APKs are XAX's | S15e.6a-S15e.6e | EXECUTED: S15e.6f.1 the unsigned profiles' 60 rule sites (ADR-347), S15e.6f.2 the managed-class profile with the JNI signatures and the platform-usage check (ADR-348) |
 | S15e.6g | JVM class files to DEX (`xax_dex_jvm`) for libxposed JVM modules (ADR-262) | S15e.6f, S15e.5j | EXECUTED: S15e.6g.1 the DEX writer (ADR-349); S15e.6g.2 the class-file translation: parsing, stack maps, the instruction lowering (ADR-350) |
-| S15e.6h | The driver's Android request path and provenance (unsigned and signed); the seed rotated | S15e.6b, S15e.6f, S15e.6g | DRAFT (ADR-336), re-scoped (ADR-351) into S15e.6h.1-S15e.6h.4 |
+| S15e.6h | The driver's Android request path and provenance (unsigned and signed); the seed rotated | S15e.6b, S15e.6f, S15e.6g | EXECUTED for unsigned APKs (ADR-354 to ADR-356); signed APKs and libxposed JVM modules are S15e.6i |
 | S15e.6h.1 | Android shared object bundles built by the XAX AArch64 program (re-scoped, ADR-354): Android targets, several roots, the legacy register path's JNI operations, code addresses | S15e.6e | EXECUTED (ADR-354) |
 | S15e.6h.2 | The Android program: carrier decoding, the U/M rules with their diagnostics, the bridge specifications (`lower_android_*`, `lower_libxposed_*`), and the layer programs chained into the APK | S15e.6h.1 | EXECUTED (ADR-355): every unsigned profile, the managed-class profile and the surface Activity, with their rejections |
-| S15e.6h.3 | The driver's Android request path: artifact checks, the merged Android programs, AArch64 exports, provenance; `test_android_apks` | S15e.6h.2, S15e.6g | DRAFT (ADR-351) |
-| S15e.6h.4 | Driver and request stores regenerated, the seed rotated, Android dropped from the whole-compiler blocker | S15e.6h.3 | DRAFT (ADR-351) |
+| S15e.6h.3 | The driver's Android request path: artifact checks, the merged Android programs, AArch64 exports, provenance; `test_android_apks` | S15e.6h.2, S15e.6g | EXECUTED (ADR-356) |
+| S15e.6h.4 | Driver and request stores regenerated, the seed rotated, Android dropped from the whole-compiler blocker | S15e.6h.3 | EXECUTED (ADR-356): the blocker names signed APKs and libxposed JVM modules only |
+| S15e.6i | Signed APKs and libxposed JVM modules in the driver: a signing-effect input checked as `validate_build_effects` does and the XAX signer chained; external inputs' bytes kept for the libxposed JVM module's DEX files and libraries, its JVM program, class translation and DEX writer chained | S15e.6h | DRAFT (ADR-356) |
+| S15e.6i.1 | Signed APKs: `build-signed` (one SIGN effect, the transport file), the effect checked as `validate_build_effects` does, the XAX signer's transport mode (`decode_private_signing_capability`, the signer's identity) chained after the Android program, `build`'s signing rejections | S15e.6h | EXECUTED (ADR-357) |
+| S15e.6i.2 | libxposed JVM modules (architecture 5): the external inputs' bytes kept by the driver; a libxposed JVM program decoding the module carrier and chaining the JVM program, class translation, the DEX writer and bridges, the manifest (or the stored branding archive with its versionCode), the metadata and the APK; work moved out of the driver's function, which is near the graph decoder's capacity | S15e.6i.1 | DRAFT (ADR-357) |
 | S15g | The whole multi-target production compiler's evidence: every self-hosting record re-run on the final stores, the whole compiler's B levels derived by `bootstrap_status` | S15e.5j, S15e.6h | DRAFT (ADR-336) |
 | S15e.7 | Accelerator deployments and SPIR-V modules (ADR-308) | S15e.1 | DONE (ADR-321): S15e.7a accelerator deployments, S15e.7b SPIR-V modules |
 | S15f | The raw images and the remaining lowerings: headroom (ADR-323), raw Wasm modules and Windows load images (ADR-324), raw AArch64 images and the AArch64 legacy register path (ADR-325) | S15e | DONE |
 
-## EI — Evidence and canonical-state integrity (ADR-177; before S7b)
+### EI — Evidence and canonical-state integrity (ADR-177; before S7b)
 
 Not an R level and not a B milestone: a gate that restores a reproducible, derived-evidence baseline after the independent audit. Exit: every committed store regenerates byte-identically on every host (repeated builds included); B levels come only from `xax_selfhost.bootstrap_status`; the seed is pinned and only `rotate-seed` writes it; component authority is recorded and `XAX_REQUIRE_NATIVE=1` forbids silent fallback; native image cache entries are authenticated; the wheel carries every module and store; matrix levels are recomputed from evidence by validator v2; hosted artifacts carry build provenance; host-unavailable tests skip with an `UNAVAILABLE` reason. Status: **EXECUTED on Windows 11 x86-64** (`audit_remediation_evidence.json`); the native-host items are UNVERIFIED until run on Linux x86-64 (OI-45). The OI-45 self-hosting re-runs EXECUTED on Linux x86-64 on 2026-10-07 (`XAX_STATE.md`).
 
-## 2. Bootstrap mapping
+## Part IV — Dated follow-ups
 
-| Bootstrap evidence | Earliest roadmap point | Meaning |
-|---|---|---|
-| B0 seed viability | M11 | seed produces runnable XAX-hosted subset |
-| B1 first XAX compiler | M11 | authoritative subset implementation is XAX semantic state |
-| B2 recursive compilation | M14 | XAX compiler compiles itself |
-| B3 semantic self-equivalence | M14 | generations agree under fixed policy |
-| B4 deterministic fixed point | M14 | byte identity or predeclared canonical projection stabilizes |
-| B5 toolchain closure | M14 | required live toolchain paths are XAX-hosted |
-| B6 bootstrap independence | M14 | maintained second implementation language no longer required |
-
-## 3. Milestone evidence rule
-
-For every completed milestone, repository evidence SHOULD include:
-
-```text
-MilestoneEvidence {
-  milestone_id
-  spec_revision
-  implementation_root
-  target_roots[]
-  package_snapshot_root
-  build_policy_root
-  conformance_suite_revision
-  conformance_evidence_roots[]
-  benchmark_suite_revision?
-  benchmark_result_roots[]?
-  known_failures[]
-  open_issue_impacts[]
-}
-```
-
-Milestone status cannot advance when required evidence is absent or invalidated by a semantic/target/toolchain change.
-
-## JVM token optimization follow-up (2026-10-07, ADR-186)
+### JVM token optimization follow-up (2026-10-07, ADR-186)
 
 The next dependency after ADR-176 is the normal snapshot-bound local mutation interface, now implemented in `compiler/src/xax_local_protocol.py`. Direct edit arms share it; task definitions, textual competitors, and exact semantic target checks are retained. The runner supports three fresh trials per cell, rotated arm order, exact event accounting, and resumable failures with retained costs. JVM stays R4 until the complete repeated comparison meets the 0.50 lowest-textual-median gate and task equivalence is established. No backend runtime-speed improvement is claimed by this change.
 
-## JVM host-response and compound-edit follow-up (2026-10-07, ADR-187/188)
+### JVM host-response and compound-edit follow-up (2026-10-07, ADR-187/188)
 
 The current response corpus removes the inherited creation scaffold, supplies
 real helpers in every large-application arm, and exercises a real stale
@@ -650,6 +692,6 @@ independent raw-usage audit and corpus review determine the remaining token
 gate and promotion work. The large application is synthetic, and the abstract
 resource task is verifier checked rather than executed on the JVM.
 
-## Android platform capability contracts (2026-10-08, ADR-202 to ADR-204)
+### Android platform capability contracts (2026-10-08, ADR-202 to ADR-204)
 
 Done (STRUCTURAL): exact JNI floats and typed-record argument packs, platform declarations for the managed-class APK, POSIX async/ownership contracts, NDK window/codec/AAudio contracts, and the SDK capability table enforced at build time (`docs/ANDROID_PLATFORM_CAPABILITIES.md`). Next: device execution of each new contract on the authorized device, then OI-47 (path-exact ownership for media buffers, NULL windows and JNI-held SDK objects).

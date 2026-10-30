@@ -1,5 +1,24 @@
 # XAX Conformance Model and Normative Reference Examples
 
+## Contents
+
+- [1. Purpose and scope](#1-purpose-and-scope)
+- [2. Normative definitions](#2-normative-definitions)
+- [3. Conformance levels](#3-conformance-levels)
+- [4. Conformance profiles](#4-conformance-profiles)
+- [5. Canonical serialization conformance](#5-canonical-serialization-conformance)
+- [6. Semantic verifier conformance](#6-semantic-verifier-conformance)
+- [7. Type, memory, effect, resource, and concurrency invariants](#7-type-memory-effect-resource-and-concurrency-invariants)
+- [8. Deterministic-result requirements](#8-deterministic-result-requirements)
+- [9. Diagnostic conformance](#9-diagnostic-conformance)
+- [10. Cross-implementation semantic equivalence](#10-cross-implementation-semantic-equivalence)
+- [11. Normative reference examples](#11-normative-reference-examples)
+- [12. Invalid or rejected alternatives](#12-invalid-or-rejected-alternatives)
+- [13. Interfaces and dependencies](#13-interfaces-and-dependencies)
+- [14. Edge cases and undefined or target-defined behavior](#14-edge-cases-and-undefined-or-target-defined-behavior)
+- [15. Open issues](#15-open-issues)
+- [16. Falsification criteria](#16-falsification-criteria)
+
 ## 1. Purpose and scope
 
 This document defines how an implementation demonstrates conformance to XAX. Conformance is determined from canonical semantic artifacts, verifier behavior, declared target/platform contracts, deterministic processing rules, and observable semantics. Human-readable diagnostic or pseudostructural notation is never XAX source and is not a conformance surface.

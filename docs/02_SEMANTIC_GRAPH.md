@@ -1,5 +1,25 @@
 # XAX Canonical Semantic Graph and Core Operation Model
 
+## Contents
+
+- [1. Purpose and scope](#1-purpose-and-scope)
+- [2. Normative definitions](#2-normative-definitions)
+- [3. Canonical containment model](#3-canonical-containment-model)
+- [4. Block-parameter SSA](#4-block-parameter-ssa)
+- [5. Edge classes](#5-edge-classes)
+- [6. Operation and node schema](#6-operation-and-node-schema)
+- [7. Control semantics](#7-control-semantics)
+- [8. Constants and pure operations](#8-constants-and-pure-operations)
+- [9. Structural validity](#9-structural-validity)
+- [10. Operation identity and semantic versioning](#10-operation-identity-and-semantic-versioning)
+- [11. Minimal initial semantic kernel](#11-minimal-initial-semantic-kernel)
+- [12. Canonical semantics vs diagnostic notation](#12-canonical-semantics-vs-diagnostic-notation)
+- [13. Core invariants](#13-core-invariants)
+- [14. Rejected alternatives](#14-rejected-alternatives)
+- [15. Subsystem interfaces](#15-subsystem-interfaces)
+- [16. Open issues](#16-open-issues)
+- [17. Falsification criteria](#17-falsification-criteria)
+
 ## 1. Purpose and scope
 
 This document specifies the canonical semantic program model of XAX.

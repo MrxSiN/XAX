@@ -1,5 +1,26 @@
 # XAX Optimizer, Lowering, Code Generation, and Cost Model
 
+## Contents
+
+- [1. Purpose and scope](#1-purpose-and-scope)
+- [2. Normative definitions](#2-normative-definitions)
+- [3. Canonical performance pipeline](#3-canonical-performance-pipeline)
+- [4. Target-independent optimization](#4-target-independent-optimization)
+- [5. Equality saturation](#5-equality-saturation)
+- [6. Profile-guided optimization](#6-profile-guided-optimization)
+- [7. Correctness of transformations](#7-correctness-of-transformations)
+- [8. Target lowering, legalization, and instruction selection](#8-target-lowering-legalization-and-instruction-selection)
+- [9. Scheduling and register allocation](#9-scheduling-and-register-allocation)
+- [10. Machine optimization and bounded superoptimization](#10-machine-optimization-and-bounded-superoptimization)
+- [11. Layout, encoding, relocation, and emission](#11-layout-encoding-relocation-and-emission)
+- [12. Optimization policy and compile-time budget](#12-optimization-policy-and-compile-time-budget)
+- [13. Cost objectives and machine-cost API](#13-cost-objectives-and-machine-cost-api)
+- [14. Invariants](#14-invariants)
+- [15. Rejected alternatives](#15-rejected-alternatives)
+- [16. Interfaces with other XAX subsystems](#16-interfaces-with-other-xax-subsystems)
+- [17. Open issues requiring implementation evidence](#17-open-issues-requiring-implementation-evidence)
+- [18. Falsification criteria](#18-falsification-criteria)
+
 ## 1. Purpose and scope
 
 This document defines the canonical XAX performance pipeline from a verified semantic graph to a target artifact.

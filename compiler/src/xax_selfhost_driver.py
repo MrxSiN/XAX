@@ -35,8 +35,11 @@ path above.  ``build <snapshot store> <artifact> <provenance>`` is ``xax_build.b
 after verification it reads the snapshot, its request, and the package's build entry, makes ``build``'s rejections
 (the root, external inputs, required signatures, requested artifacts) with its exact diagnostics, lowers the entry for
 the request's Linux x86-64 ELF target, and writes the artifact and the canonical provenance object's envelope, the
-digest and the CID derived with the S2 hash.  ``build``'s other paths (Android packages, Windows DLLs, other targets)
-decline.
+digest and the CID derived with the S2 hash.  ``build``'s other paths (other targets)
+decline.  S15e.6h.3 (ADR-356): an APK on an Android shared-object target is the Android program's, called
+twice (the roots, then the APK).  S15e.6i.1 (ADR-357): ``build-signed <snapshot> <artifact> <provenance> <transport>
+[inputs]`` is ``build`` with one SIGN effect (the package's only SIGN capability, the transport file's bytes); a signed
+APK is signed by the XAX APK signer program, which makes ``build``'s signing rejections.
 """
 
 from __future__ import annotations
@@ -79,7 +82,12 @@ IMAGE, REJECTED, DECLINED, FAILED = 0, 1, 2, 3
 # The general driver's commands, argv[1] (S13a, ADR-281; S13b, ADR-282), with the file arguments each takes.
 LOWER, BUILD, VERIFY, INSPECT, RESOLVE, EDIT, TRUSTED = 0, 1, 2, 3, 4, 5, 6  # (S13c, ADR-283: ``resolve``; S15d.1, ADR-304: ``edit``;
 # S15c.5, ADR-309: ``resolve-trusted``)
-COMMANDS = {"lower": 3, "build": 3, "verify": 2, "inspect": 2, "resolve": 2, "edit": 3, "resolve-trusted": 3}
+COMMANDS = {"lower": 3, "build": 3, "verify": 2, "inspect": 2, "resolve": 2, "edit": 3, "resolve-trusted": 3, "build-signed": 3}
+# S15e.6i.1 (ADR-357): ``build-signed <snapshot> <artifact> <provenance> <signing transport> [inputs]`` is ``build`` with
+# one SIGN effect (``xax_selfhost_request.SIGN_AT``): the first file after the provenance is its transport, not an
+# external input.  After the command is read the mode is ``BUILD`` and the workspace word ``SG_EFFECT`` is 1 (a word, not
+# a name: each name of the driver's function is a block argument everywhere after it).
+SIGNED = 7
 DONE = 5  # internal status: ``verify``, ``inspect``, ``resolve``, or ``edit`` finished; the process exits with IMAGE
 INSPECT_AT = 1 << 20  # ``inspect``'s record, in the backend output view's words (nothing is lowered)
 # S15b.3c (ADR-295): a graph with an invalid use, in the workspace: the mode (1: trimmed), the first invalid use in the
@@ -322,11 +330,14 @@ def build_driver_program(general: bool = False) -> tuple[StoreReader, SemanticOb
                 known, chosen, files = w.or_(known, matched), w.add(chosen, w.mul(matched, value)), w.add(files, w.mul(matched, paths))
             w.set(mode, chosen)
             w.set(files_count, files)
-            # S15c.2 (ADR-300): ``build`` and ``resolve`` take up to ``INPUTS_LIMIT`` external input files after their own.
-            takes_inputs = w.either(w.eq(w[mode], BUILD), w.eq(w[mode], RESOLVE), w.eq(w[mode], TRUSTED))
-            extra = w.sub(w[arguments], w.add(files, 2))
-            w.if_(w.either(w.eq(known, 0), w.lt(w[arguments], w.add(files, 2)),
+            # S15c.2 (ADR-300): ``build`` and ``resolve`` take up to ``INPUTS_LIMIT`` external input files after their own;
+            # S15e.6i.1: ``build-signed`` its transport, then as many.
+            signed_mode = w.eq(w[mode], SIGNED)
+            takes_inputs = w.either(w.eq(w[mode], BUILD), w.eq(w[mode], RESOLVE), w.eq(w[mode], TRUSTED), signed_mode)
+            extra = w.sub(w.sub(w[arguments], w.add(files, 2)), w.flag(signed_mode))
+            w.if_(w.either(w.eq(known, 0), w.lt(w[arguments], w.add(w.add(files, 2), w.flag(signed_mode))),
                            w.both(w.ne(extra, 0), w.either(w.not_(takes_inputs), w.lt(RQ.INPUTS_LIMIT, extra)))), lambda: stop(FAILED))
+            w.if_(w.eq(w[mode], SIGNED), lambda: (w.store("work", 8 * RQ.SG_EFFECT, 1, 8), w.set(mode, BUILD)))
 
         w.if_(w.lt(w[arguments], 4), lambda: stop(FAILED), lambda: when(command))
 
@@ -441,6 +452,12 @@ def build_driver_program(general: bool = False) -> tuple[StoreReader, SemanticOb
         import xax_selfhost_jvm as JVM
 
         jvm_reader, jvm_program = JVM.load_jvm_program()  # S15e.5 (ADR-334)
+        import xax_selfhost_android as AN
+
+        android_reader, android_program = AN.load_android_program()  # S15e.6h.3 (ADR-356)
+        import xax_selfhost_apk_signing as SGN
+
+        signer_reader, signer_program = SGN.load_signer_program()  # S15e.6i.1 (ADR-357)
         writer_reader, writer = WR.load_writer_program()  # S13c
     hash_at, hash_objects = H.hash_function(bytes_rw, heap_view_type(S.DATA_EXTENT), based=True)
     decoder_triples = (S.DATA_POINTER, S.DATA_VIEW, MEM, S.OUT_POINTER, S.OUT_VIEW, MEM)
@@ -553,6 +570,22 @@ def build_driver_program(general: bool = False) -> tuple[StoreReader, SemanticOb
                         for k in range(4):
                             w.store("work", work_at(staged + 4 * word + k), w.and_(w.udiv(w[value], 1 << (8 * k)), 255), 8)
                     before, duplicate, j = w.let("before", 0), w.let("duplicate", 0), w.let("j", 0)
+                    # S15e.6i.1 (ADR-357): ``build-signed``'s first file is the transport: its bytes and digest are kept
+                    # (``TRANSPORT_AT``, ``SG_DIGEST``) and it is no external input.
+                    transport = w.let("transport", w.flag(w.both(w.eq(w[i], 0), w.ne(w.load("work", 8 * RQ.SG_EFFECT, 8), 0))))
+
+                    def keep():
+                        w.if_(w.lt(RQ.TRANSPORT_LIMIT, w[length]), lambda: capacity("signing-transport", "DRIVER-FILE-CAPACITY", RQ.TRANSPORT_LIMIT))
+                        w.set(duplicate, 1)
+                        w.store("work", 8 * RQ.SG_TN, w[length], 8)
+                        w.while_(lambda: w.both(w.lt(w[j], w[length]), w.lt(w[j], RQ.TRANSPORT_LIMIT)), lambda: (
+                            w.store("work", work_at(w.add(RQ.TRANSPORT_AT, w[j])), w.load("data", w[j]), 8), w.set(j, w.add(w[j], 1))))
+                        w.set(j, 0)
+                        w.while_(lambda: w.lt(w[j], CID_SIZE), lambda: (
+                            w.store("work", work_at(w.add(RQ.SG_DIGEST, w[j])), w.load("work", work_at(w.add(staged, w[j])), 8), 8), w.set(j, w.add(w[j], 1))))
+                        w.set(j, w[inputs_count])
+
+                    w.if_(w.ne(w[transport], 0), keep)
 
                     def compare():
                         less, equal, k = w.let("less", 0), w.let("equal", 1), w.let("k", 0)
@@ -1814,8 +1847,32 @@ def build_driver_program(general: bool = False) -> tuple[StoreReader, SemanticOb
         w.while_(lambda: w.both(w.lt(w[q2], w[j_words]), running()), lambda: (put(w.load("traps", w.mul(w[q2], 8), 8)), w.set(q2, w.add(w[q2], 1))))
         # S15e.5 (ADR-334): the JVM program reads one more word, 1 for an executable JAR (a process entry).
         w.if_(w.eq(work_word(SM.CTRL + RQ.B_PATH), RQ.PATH_JVM), lambda: put(work_word(SM.CTRL + RQ.B_JVMEXE)))
+        # S15e.6h.3 (ADR-356): the Android program reads the roots (none yet: its first call names them) and its words.
+        w.if_(w.eq(work_word(SM.CTRL + RQ.B_PATH), RQ.PATH_ANDROID), lambda: (w.set(android_at, w[words]), android_words(0, ())))
+
+    def android_words(mode_value, roots):
+        """The roots (``roots()`` puts them; none on the first call), then the Android words: the mode, the build
+        entry's CID, the module count and the modules' CIDs."""
+        if roots:
+            roots()
+        else:
+            put(0)
+        put(mode_value)
+        put_cid("data", record_word(w[entry], 2))
+        put(work_word(SM.CTRL + RQ.B_NMOD))
+        q = w.let("mod_q", 0)
+        w.while_(lambda: w.lt(w[q], work_word(SM.CTRL + RQ.B_NMOD)), lambda: (
+            put_cid("data", record_word(work_word(w.add(SM.CTRL + RQ.B_MODS, w[q])), 2)), w.set(q, w.add(w[q], 1))))
+        # The package's logical identity: one ULEB byte (a longer identity declines), then its bytes.
+        body = w.let("lid_body", record_word(work_word(SM.CTRL + RQ.B_PACKAGE), 7))
+        size = w.let("lid_size", w.load("data", w[body]))
+        w.if_(w.le(128, w[size]), lambda: stop(DECLINED))
+        put(w[size])
+        q2 = w.let("lid_q", 0)
+        w.while_(lambda: w.lt(w[q2], w[size]), lambda: (put(w.load("data", w.add(w.add(w[body], 1), w[q2]))), w.set(q2, w.add(w[q2], 1))))
 
     if general:
+        android_at = w.let("android_at", 0)
         when(lambda: w.if_(w.ne(w[linux], 0), general_sections))
 
     # -- the backend -------------------------------------------------------------------------------------------
@@ -1833,9 +1890,42 @@ def build_driver_program(general: bool = False) -> tuple[StoreReader, SemanticOb
             aarch64_path = lambda: w.either(w.eq(work_word(SM.CTRL + RQ.B_PATH), RQ.PATH_LINUX_AARCH64),  # noqa: E731
                                             w.eq(work_word(SM.CTRL + RQ.B_PATH), RQ.PATH_A64_RAW))
             jvm_path = lambda: w.eq(work_word(SM.CTRL + RQ.B_PATH), RQ.PATH_JVM)  # noqa: E731
+            android_path = lambda: w.eq(work_word(SM.CTRL + RQ.B_PATH), RQ.PATH_ANDROID)  # noqa: E731
+
+            def android():
+                """S15e.6h.3 (ADR-356): the Android program twice: it names the roots (the exports' functions), then,
+                given them after the table (whose entry becomes the first root), writes the APK where the general
+                program writes an ELF file."""
+                call(android_program)
+
+                def named():
+                    count = w.let("root_count", w.ld(1))
+                    w.set(words, w[android_at])
+
+                    def roots():
+                        put(w[count])
+                        q = w.let("root_q", 0)
+                        w.while_(lambda: w.lt(w[q], w.mul(w[count], 4)), lambda: (put(w.ld(w.add(2, w[q]))), w.set(q, w.add(w[q], 1))))
+
+                    android_words(1, roots)
+                    w.if_(w.ne(w[count], 0), lambda: [w.store("table", 8 * (1 + word), w.ld(2 + word), 8) for word in range(4)])
+                    call(android_program)
+                    w.if_(w.both(w.eq(w.ld(0), 1), w.ne(work_word(RQ.SG_SIGNED), 0)), sign)
+
+                def sign():
+                    """S15e.6i.1 (ADR-357): the APK signer over its input (``build_request`` laid it out in the workspace;
+                    the APK is the image record's): its rejections and declines are the lowering's."""
+                    n = w.let("sg_n", work_word(RQ.SIGNER_N))
+                    q = w.let("sg_q", 0)
+                    w.while_(lambda: w.lt(w[q], w[n]), lambda: (
+                        w.store("table", w.mul(w[q], 8), work_word(w.add(RQ.SIGNER_AT, w[q])), 8), w.set(q, w.add(w[q], 1))))
+                    call(signer_program)
+
+                w.if_(w.eq(w.ld(0), 1), named)
+
             # S15e.5 (ADR-334): the JVM program writes its JAR where the general program writes an ELF file.
             elf_program = lambda: w.if_(aarch64_path(), lambda: call(aarch64_program), lambda: w.if_(  # noqa: E731
-                jvm_path(), lambda: call(jvm_program), lambda: call(general_program)))
+                jvm_path(), lambda: call(jvm_program), lambda: w.if_(android_path(), android, lambda: call(general_program))))
             w.if_(w.ne(w[linux], 0), elf_program, lambda: w.if_(w.ne(w[riscv], 0), lambda: call(riscv_backend), lambda: call(backend)))
         else:
             call(backend)
@@ -2056,7 +2146,7 @@ def build_driver_program(general: bool = False) -> tuple[StoreReader, SemanticOb
     proc.ret(proc["fs"], process, *released)
     function = proc.function((FS, PROCESS, *(MEM,) * len(buffers)))
     readers = (decoder_reader, graph_reader, backend_reader, typing_reader, verifier_reader, cfg_reader,
-               *((general_reader, writer_reader, riscv_reader, aarch64_reader, jvm_reader) if general else ()))
+               *((general_reader, writer_reader, riscv_reader, aarch64_reader, jvm_reader, android_reader, signer_reader) if general else ()))
     component_objects = [item for reader in readers for item in reader.objects()
                          if item.kind not in (Kind.MODULE, Kind.PROGRAM_ROOT, Kind.TARGET)]
     objects_ = (*proc.graph.objects.values(), *hash_objects, *semantic_objects, *type_objects, *request_objects, *resolve_objects, *edit_objects,
@@ -2203,6 +2293,12 @@ class NativeGeneralDriver(NativeDriver):
         """The exit status; on ``IMAGE`` the artifact and the provenance object's envelope are written, on ``REJECTED``
         the diagnostic record is in the artifact's file.  ``inputs``: the external input files (S15c.2)."""
         return self._process("build", snapshot_path, artifact_path, provenance_path, *inputs)
+
+    def build_signed(self, snapshot_path: str | Path, artifact_path: str | Path, provenance_path: str | Path, transport_path: str | Path,
+                     *inputs: str | Path) -> int:
+        """S15e.6i.1 (ADR-357): ``build`` with one SIGN effect, the package's only SIGN capability, whose value is the
+        transport file's bytes (``xax_apk_signing.encode_private_signing_capability``)."""
+        return self._process("build-signed", snapshot_path, artifact_path, provenance_path, transport_path, *inputs)
 
     def verify(self, store_path: str | Path, output_path: str | Path) -> int:
         """S13b: ``IMAGE`` (an empty output) when the store verifies; ``REJECTED`` with the diagnostic record."""

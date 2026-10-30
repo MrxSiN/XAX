@@ -20,7 +20,7 @@ from xax_compiler import IntCompare, Operation, RESOURCE_EFFECT_OPERATIONS, Term
 from xax_graph_builder import program_store
 from xax_selfhost_facts import E, HEADER, NONE, _function
 from xax_selfhost_views_backend import (
-    _FN, A_AREAS, A_BASE, A_OUT, A_POINTER, META_AT, S_AGG, S_BASE, S_BLOCK_AT, S_BLOCK_LABELS,
+    _FN, A_AREAS, A_BASE, A_OUT, A_POINTER, S_AGG, S_BASE, S_BLOCK_AT, S_BLOCK_LABELS,
     S_COUNT, S_FALSE_LABELS, S_FN, S_FRAME, S_JUMPS, S_OFFSETS, S_POW, S_RANGES, S_REG, S_SAVED, S_SLOT, S_TRAP, S_TRAP_USED, S_WIDTH, WORDS_AT,
     NativeProgram, _aggregate, _borrowed, _call, _compile_function, _diagnostic, _find, _copy_edge, _erased, _field, _frontend, _interface,
     SYSCALL_HEADER, _node_info, _ok, _payload_uleb, _program, _result_fields, _syscall, _target, _term_end, _translate, _value,
@@ -58,7 +58,9 @@ JMP, JZ, JA, JAE, CALL = (0xE9, 1), (0x840F, 2), (0x870F, 2), (0x830F, 2), (0xE8
 # S15e.5 (ADR-334): the stream (the driver with the JVM program takes 21.3M words) moves below the code, 32M words,
 # and the arena ends at it; the jumps (2,097,152) and ranges (4,194,304; the driver has 2,134,204) take the shared
 # code region below the globals.
-X86_WORDS_LIMIT = META_AT - WORDS_AT
+# S15e.6h.4 (ADR-356): the code may take 128 MiB (the driver with the Android program takes 79.7 MiB past function 685
+# of 799); the arena ends 6.5M words lower.
+X86_WORDS_LIMIT = 16 << 20
 X86_STREAM_LIMIT = 32 << 20
 X86_JUMPS_LIMIT, X86_RANGES_LIMIT = 1 << 22, 1 << 23
 X86_JUMPS_AT = WORDS_AT

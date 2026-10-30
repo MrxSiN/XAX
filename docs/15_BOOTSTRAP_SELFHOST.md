@@ -1,5 +1,28 @@
 # XAX Stage 15 — Bootstrapping, Self-Hosting, Autonomous Development, and Repository Continuity
 
+## Contents
+
+- [1. Purpose and scope](#1-purpose-and-scope)
+- [2. Normative language](#2-normative-language)
+- [3. Bootstrap trust boundary](#3-bootstrap-trust-boundary)
+- [4. Minimal bootstrap artifact](#4-minimal-bootstrap-artifact)
+- [5. Seed compiler strategy](#5-seed-compiler-strategy)
+- [6. Self-hosting milestones](#6-self-hosting-milestones)
+- [7. Compiler and backend migration into XAX](#7-compiler-and-backend-migration-into-xax)
+- [8. Targets, assembler functionality, and linking](#8-targets-assembler-functionality-and-linking)
+- [9. Bootstrap trust verification](#9-bootstrap-trust-verification)
+- [10. Autonomous AI development workflow](#10-autonomous-ai-development-workflow)
+- [11. Multi-agent repository merge model](#11-multi-agent-repository-merge-model)
+- [12. Canonical repository state](#12-canonical-repository-state)
+- [13. Concise handoff format](#13-concise-handoff-format)
+- [14. Coupled update rules](#14-coupled-update-rules)
+- [15. Elimination of the second implementation language](#15-elimination-of-the-second-implementation-language)
+- [16. Invariants](#16-invariants)
+- [17. Rejected alternatives](#17-rejected-alternatives)
+- [18. Interfaces and dependencies](#18-interfaces-and-dependencies)
+- [19. Open issues requiring implementation evidence](#19-open-issues-requiring-implementation-evidence)
+- [20. Falsification criteria](#20-falsification-criteria)
+
 ## 1. Purpose and scope
 
 This stage defines how XAX becomes a self-sustaining implementation ecosystem without acquiring a permanently maintained second implementation language, build DSL, package DSL, linker DSL, assembler DSL, or repository-control language.

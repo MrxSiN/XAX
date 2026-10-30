@@ -1,5 +1,24 @@
 # XAX Stage 04 — Memory, Pointer, Ownership, and Resource Semantics
 
+## Contents
+
+- [1. Purpose and scope](#1-purpose-and-scope)
+- [2. Normative definitions](#2-normative-definitions)
+- [3. Canonical memory model](#3-canonical-memory-model)
+- [4. Pointer semantics](#4-pointer-semantics)
+- [5. Load, store, copy, and move](#5-load-store-copy-and-move)
+- [6. Lifetime and initialization](#6-lifetime-and-initialization)
+- [7. Aliasing model](#7-aliasing-model)
+- [8. Placement, volatile access, MMIO, and DMA](#8-placement-volatile-access-mmio-and-dma)
+- [9. Raw and unsafe access](#9-raw-and-unsafe-access)
+- [10. Resource model](#10-resource-model)
+- [11. Static proof and zero-runtime-cost rules](#11-static-proof-and-zero-runtime-cost-rules)
+- [12. Core invariants](#12-core-invariants)
+- [13. Rejected alternatives](#13-rejected-alternatives)
+- [14. Interfaces with other XAX subsystems](#14-interfaces-with-other-xax-subsystems)
+- [15. Open issues requiring implementation evidence](#15-open-issues-requiring-implementation-evidence)
+- [16. Falsification criteria](#16-falsification-criteria)
+
 ## 1. Purpose and scope
 
 This document defines the canonical XAX memory and resource model. It specifies storage objects, pointer semantics, lifetime and ownership representation, aliasing, ordinary and device memory operations, raw access, and linear or affine resources.
