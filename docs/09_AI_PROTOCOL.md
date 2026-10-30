@@ -17,6 +17,7 @@
 - [13. Open issues](#13-open-issues)
 - [14. Falsification criteria](#14-falsification-criteria)
 - [15. Snapshot-bound local mutation adapter (ADR-186)](#15-snapshot-bound-local-mutation-adapter-adr-186)
+- [16. The native workspace (ADR-360)](#16-the-native-workspace-adr-360)
 - [Platform carrier replacement v1 (2026-10-07)](#platform-carrier-replacement-v1-2026-10-07)
 
 ## 1. Purpose and scope
@@ -784,6 +785,70 @@ Applicable help SHOULD state result-index notation for multi-result nodes
 and omit redundant optional spelling rules. A rejected pending request is
 not applied to the projected snapshot.
 
+
+## 16. The native workspace (ADR-360)
+
+The production compiler (`xaxc`, an XAX program) is the workspace; no Python runs. Store files are the state and a
+store's root CID is its freshness token. `edit` takes four kinds of input in its second argument:
+
+```text
+xaxc edit <store> <selector>     <view text>   an empty file lists the functions; F<n> shows one
+xaxc edit <store> <batch>        <candidate>   R <root CID>, F<n>, then edits: the store they make
+xaxc edit <store> <record>       <text>        any command's rejection record, as text
+xaxc edit <store> <edit record>  <candidate>   an XAXEDIT1 record (``xax_selfhost_edit.edit_record``)
+xaxc verify <candidate> <record>               publish a candidate only when this exits 0
+```
+
+The input is recognized by its first bytes: `XAXEDIT1` is an edit record, a first word that is a diagnostic string
+tag is a rejection record, text whose first word is `R` is a batch, and any other text is a selector. Exit status 0 is
+success, 1 a rejection (the output is then a diagnostic record), 2 a decline and 3 a usage or I/O failure. The
+workspace adds no command of its own: the driver's function is at the general backend's values-per-function limit.
+
+**View.** The first line is `R <root CID>`. An empty selector lists `F<n> <CID>` for every function in store order
+(`group-member` marks a recursion group's member, which has no graph of its own). Selector `F<n>` shows one function:
+
+```text
+R 50e526e2...
+F3 9f0c...
+(T0,T1)->(T0)
+B0(P0:T0,P1:T1)
+N0 constant 7 -> T0
+N1 add.wrap P0 N0 -> T0
+N2 call.direct entity=F5 N1 -> T0
+ret N2
+T0 bits64
+T1 form3 ea03b9...
+```
+
+`N<i>` are the function's nodes in block order, `P<i>` its block parameters in block order, and `T<i>` its types in
+order of first appearance (signature, then block parameters and node results). `N<i>.R<k>` is a node's result `k`.
+A node line gives the operation, a constant's value or the entity (`F<n>`, or a CID), the operands, `-> ` the result
+types, and `[..]` the attributes; terminators are `br`, `cbr`, `ret` and `trap`. The view is tooling output, not
+source; the handles are only valid with the root CID they came with.
+
+**Batches.** A batch names the root and the function, then edits, separated by `;` or white space:
+
+```text
+R <root CID>
+F<n>
+const N V                set-constant: a constant node's value
+op N add.wrap|sub.wrap|mul.wrap
+operand N K VALUE        replace-operand
+delete N
+insert-constant N ID V   a constant before node N, typed as N's single result; @ID names it in this batch
+edge N E A VALUE         set-edge: argument A of edge E of N's block
+type N T | type N K T    set-type: a node result's type
+```
+
+A value is `P<i>`, `N<i>`, `N<i>.R<k>` or `@<id>` (`.R<k>`). Every old operation, value, operand, edge argument
+and type a mutation's preconditions need is read from the store, as `LocalMutationSession` does; the translated
+transaction is an edit record, applied by the same engine, so a stale root rejects
+(`WORKSPACE-EXPECTED-ROOT`) and the mutation preconditions are the workspace's. The output is a candidate; the client
+runs `verify` on it and publishes it only on success. `move`, `prune-dead`, `set-signature` and function-wide
+retyping are Python-workspace forms only.
+
+**Rejections.** A rejection record given to `edit` is rendered as `code`, `entity`, `rule`, `expected` and `actual` lines (then
+`dependencies` and `repair` when present), each value as `xax_selfhost_diagnostics.decode_record` reads it.
 
 ## Platform carrier replacement v1 (2026-10-07)
 
