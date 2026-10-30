@@ -202,25 +202,6 @@ def _deployment_fixture(target: SemanticObject) -> tuple[StoreReader, SemanticOb
     return reader, entry
 
 
-def _tokenizer_counts(portable_payload: bytes, target_payload: bytes) -> dict:
-    try:
-        import tiktoken  # type: ignore
-    except Exception:
-        return {
-            "tokenizer": None,
-            "portable_tokens": None,
-            "target_specific_tokens": None,
-            "reason": "tiktoken unavailable; bytes are not substituted for tokens",
-        }
-    encoding = tiktoken.get_encoding("o200k_base")
-    return {
-        "tokenizer": "o200k_base",
-        "portable_tokens": len(encoding.encode(portable_payload.decode("ascii"))),
-        "target_specific_tokens": len(encoding.encode(target_payload.decode("ascii"))),
-        "reason": None,
-    }
-
-
 def _vector_result(target: SemanticObject, vector: SyncVector) -> dict:
     semantic_valid = True
     try:
@@ -297,7 +278,6 @@ def run() -> dict:
 
     portable_payload = b"S|barrier|seq_cst|device|global"
     target_payload = b"S|barrier|seq_cst|2|2"
-    tokens = _tokenizer_counts(portable_payload, target_payload)
 
     mapping_lines = sum(
         len(inspect.getsource(item).splitlines())
@@ -323,7 +303,6 @@ def run() -> dict:
             "second_target_package_lines": second_target_lines,
             "portable_expression_bytes": len(portable_payload),
             "target_specific_expression_bytes": len(target_payload),
-            "token_cost": tokens,
         },
         "claims": {
             "portable_subset": "workgroup < device maps exactly and round-trips on both measured target packages",

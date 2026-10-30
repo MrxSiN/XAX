@@ -10,56 +10,56 @@
     "device_pair": {
       "byte_delta": -12,
       "domain_reconstruction_bytes": 36,
-      "domain_reconstruction_token_atoms": 32,
+      "domain_reconstruction_semantic_atoms": 32,
       "explicit_frontier_bytes": 48,
-      "explicit_frontier_token_atoms": 44,
+      "explicit_frontier_semantic_atoms": 44,
       "partial_order_identical": true,
-      "token_atom_delta": -12
+      "semantic_atom_delta": -12
     },
     "filesystem_branch_merge": {
       "byte_delta": -2,
       "domain_reconstruction_bytes": 20,
-      "domain_reconstruction_token_atoms": 16,
+      "domain_reconstruction_semantic_atoms": 16,
       "explicit_frontier_bytes": 22,
-      "explicit_frontier_token_atoms": 18,
+      "explicit_frontier_semantic_atoms": 18,
       "partial_order_identical": true,
-      "token_atom_delta": -2
+      "semantic_atom_delta": -2
     },
     "filesystem_pair": {
       "byte_delta": -12,
       "domain_reconstruction_bytes": 36,
-      "domain_reconstruction_token_atoms": 32,
+      "domain_reconstruction_semantic_atoms": 32,
       "explicit_frontier_bytes": 48,
-      "explicit_frontier_token_atoms": 44,
+      "explicit_frontier_semantic_atoms": 44,
       "partial_order_identical": true,
-      "token_atom_delta": -12
+      "semantic_atom_delta": -12
     },
     "memory_pair": {
       "byte_delta": -12,
       "domain_reconstruction_bytes": 36,
-      "domain_reconstruction_token_atoms": 32,
+      "domain_reconstruction_semantic_atoms": 32,
       "explicit_frontier_bytes": 48,
-      "explicit_frontier_token_atoms": 44,
+      "explicit_frontier_semantic_atoms": 44,
       "partial_order_identical": true,
-      "token_atom_delta": -12
+      "semantic_atom_delta": -12
     },
     "mixed_four_domain": {
       "byte_delta": -68,
       "domain_reconstruction_bytes": 162,
-      "domain_reconstruction_token_atoms": 158,
+      "domain_reconstruction_semantic_atoms": 158,
       "explicit_frontier_bytes": 230,
-      "explicit_frontier_token_atoms": 226,
+      "explicit_frontier_semantic_atoms": 226,
       "partial_order_identical": true,
-      "token_atom_delta": -68
+      "semantic_atom_delta": -68
     },
     "network_pair": {
       "byte_delta": -12,
       "domain_reconstruction_bytes": 36,
-      "domain_reconstruction_token_atoms": 32,
+      "domain_reconstruction_semantic_atoms": 32,
       "explicit_frontier_bytes": 48,
-      "explicit_frontier_token_atoms": 44,
+      "explicit_frontier_semantic_atoms": 44,
       "partial_order_identical": true,
-      "token_atom_delta": -12
+      "semantic_atom_delta": -12
     }
   },
   "host": {
@@ -71,31 +71,31 @@
       "additional_unordered_pairs": 16,
       "critical_path_reduction_events": 4,
       "graph_body_byte_cost": 4,
-      "graph_token_atom_cost": 2
+      "graph_semantic_atom_cost": 2
     },
     "filesystem_pair": {
       "additional_unordered_pairs": 16,
       "critical_path_reduction_events": 4,
       "graph_body_byte_cost": 4,
-      "graph_token_atom_cost": 2
+      "graph_semantic_atom_cost": 2
     },
     "memory_pair": {
       "additional_unordered_pairs": 16,
       "critical_path_reduction_events": 4,
       "graph_body_byte_cost": 4,
-      "graph_token_atom_cost": 2
+      "graph_semantic_atom_cost": 2
     },
     "mixed_four_domain": {
       "additional_unordered_pairs": 162,
       "critical_path_reduction_events": 7,
       "graph_body_byte_cost": 16,
-      "graph_token_atom_cost": 8
+      "graph_semantic_atom_cost": 8
     },
     "network_pair": {
       "additional_unordered_pairs": 16,
       "critical_path_reduction_events": 4,
       "graph_body_byte_cost": 4,
-      "graph_token_atom_cost": 2
+      "graph_semantic_atom_cost": 2
     }
   },
   "repetitions": {
@@ -103,7 +103,7 @@
     "store_verify": 31
   },
   "schema": "xax.oi08-effect-edges.v1",
-  "token_metric": "ideal token-native semantic scalar/handle atoms; not a text tokenizer",
+  "atom_metric": "semantic scalar and handle atoms",
   "workloads": {
     "device_pair": {
       "coarse": {
@@ -220,7 +220,7 @@
                 55366
               ]
             },
-            "token_atoms": 29,
+            "semantic_atoms": 29,
             "verify_time": {
               "max_ns": 468069,
               "median_ns": 78769,
@@ -332,7 +332,7 @@
           },
           "explicit_frontier": {
             "bytes": 47,
-            "token_atoms": 43,
+            "semantic_atoms": 43,
             "verify_time": {
               "max_ns": 2971534,
               "median_ns": 98211,
@@ -443,8 +443,8 @@
             }
           },
           "partial_order_identical": true,
-          "token_atom_delta": -14,
-          "token_atom_percent": -32.55813953488372
+          "semantic_atom_delta": -14,
+          "semantic_atom_percent": -32.55813953488372
         },
         "graph": {
           "graph_body_bytes": 74,
@@ -452,7 +452,7 @@
           "graph_envelope_bytes": 144,
           "root_cid": "658f3a2d0bfa5b11039598611c82746bf10a29c9c73a35f52ea8f8fbfeecf2dc",
           "store_bytes": 685,
-          "token_atoms": 28,
+          "semantic_atoms": 28,
           "verify_time": {
             "max_ns": 4380745,
             "median_ns": 2802843,
@@ -616,7 +616,7 @@
                 58138
               ]
             },
-            "token_atoms": 32,
+            "semantic_atoms": 32,
             "verify_time": {
               "max_ns": 289435,
               "median_ns": 76134,
@@ -728,7 +728,7 @@
           },
           "explicit_frontier": {
             "bytes": 48,
-            "token_atoms": 44,
+            "semantic_atoms": 44,
             "verify_time": {
               "max_ns": 1817554,
               "median_ns": 93197,
@@ -839,8 +839,8 @@
             }
           },
           "partial_order_identical": true,
-          "token_atom_delta": -12,
-          "token_atom_percent": -27.272727272727273
+          "semantic_atom_delta": -12,
+          "semantic_atom_percent": -27.272727272727273
         },
         "graph": {
           "graph_body_bytes": 78,
@@ -848,7 +848,7 @@
           "graph_envelope_bytes": 180,
           "root_cid": "d814083fae1e8f727986f45964849419eb142b64d437f9ed5987a5ae45713a1a",
           "store_bytes": 834,
-          "token_atoms": 30,
+          "semantic_atoms": 30,
           "verify_time": {
             "max_ns": 11632860,
             "median_ns": 3590403,
@@ -1014,7 +1014,7 @@
                 34136
               ]
             },
-            "token_atoms": 16,
+            "semantic_atoms": 16,
             "verify_time": {
               "max_ns": 322225,
               "median_ns": 41745,
@@ -1126,7 +1126,7 @@
           },
           "explicit_frontier": {
             "bytes": 22,
-            "token_atoms": 18,
+            "semantic_atoms": 18,
             "verify_time": {
               "max_ns": 114328,
               "median_ns": 44483,
@@ -1237,8 +1237,8 @@
             }
           },
           "partial_order_identical": true,
-          "token_atom_delta": -2,
-          "token_atom_percent": -11.11111111111111
+          "semantic_atom_delta": -2,
+          "semantic_atom_percent": -11.11111111111111
         },
         "graph": {
           "graph_body_bytes": 70,
@@ -1246,7 +1246,7 @@
           "graph_envelope_bytes": 172,
           "root_cid": "d4ec20c4074c13330620e220214e4dc53f4c8a1656bce11e868df768d8a09bff",
           "store_bytes": 824,
-          "token_atoms": 32,
+          "semantic_atoms": 32,
           "verify_time": {
             "max_ns": 3934484,
             "median_ns": 3445545,
@@ -1412,7 +1412,7 @@
                 55934
               ]
             },
-            "token_atoms": 29,
+            "semantic_atoms": 29,
             "verify_time": {
               "max_ns": 414349,
               "median_ns": 78987,
@@ -1524,7 +1524,7 @@
           },
           "explicit_frontier": {
             "bytes": 47,
-            "token_atoms": 43,
+            "semantic_atoms": 43,
             "verify_time": {
               "max_ns": 507661,
               "median_ns": 97967,
@@ -1635,8 +1635,8 @@
             }
           },
           "partial_order_identical": true,
-          "token_atom_delta": -14,
-          "token_atom_percent": -32.55813953488372
+          "semantic_atom_delta": -14,
+          "semantic_atom_percent": -32.55813953488372
         },
         "graph": {
           "graph_body_bytes": 74,
@@ -1644,7 +1644,7 @@
           "graph_envelope_bytes": 144,
           "root_cid": "a2b5dd2bc6759ec4bb6318a0e16b9747c526537589b366a3b9c0c7d0363ad6c2",
           "store_bytes": 686,
-          "token_atoms": 28,
+          "semantic_atoms": 28,
           "verify_time": {
             "max_ns": 4137418,
             "median_ns": 2888401,
@@ -1808,7 +1808,7 @@
                 59697
               ]
             },
-            "token_atoms": 32,
+            "semantic_atoms": 32,
             "verify_time": {
               "max_ns": 204871,
               "median_ns": 76052,
@@ -1920,7 +1920,7 @@
           },
           "explicit_frontier": {
             "bytes": 48,
-            "token_atoms": 44,
+            "semantic_atoms": 44,
             "verify_time": {
               "max_ns": 339393,
               "median_ns": 91262,
@@ -2031,8 +2031,8 @@
             }
           },
           "partial_order_identical": true,
-          "token_atom_delta": -12,
-          "token_atom_percent": -27.272727272727273
+          "semantic_atom_delta": -12,
+          "semantic_atom_percent": -27.272727272727273
         },
         "graph": {
           "graph_body_bytes": 78,
@@ -2040,7 +2040,7 @@
           "graph_envelope_bytes": 180,
           "root_cid": "a1ada30d0a48913b012f8d157c4c4e8b218bed263e7f5efc03fca2059646ba12",
           "store_bytes": 834,
-          "token_atoms": 30,
+          "semantic_atoms": 30,
           "verify_time": {
             "max_ns": 7309402,
             "median_ns": 3690317,
@@ -2206,7 +2206,7 @@
                 130058
               ]
             },
-            "token_atoms": 29,
+            "semantic_atoms": 29,
             "verify_time": {
               "max_ns": 418835,
               "median_ns": 79007,
@@ -2318,7 +2318,7 @@
           },
           "explicit_frontier": {
             "bytes": 47,
-            "token_atoms": 43,
+            "semantic_atoms": 43,
             "verify_time": {
               "max_ns": 451399,
               "median_ns": 97399,
@@ -2429,8 +2429,8 @@
             }
           },
           "partial_order_identical": true,
-          "token_atom_delta": -14,
-          "token_atom_percent": -32.55813953488372
+          "semantic_atom_delta": -14,
+          "semantic_atom_percent": -32.55813953488372
         },
         "graph": {
           "graph_body_bytes": 74,
@@ -2438,7 +2438,7 @@
           "graph_envelope_bytes": 144,
           "root_cid": "b156bbba2aeeca328419eca53ac82ab14967c4245b046ad6c41d9a410abd16cc",
           "store_bytes": 686,
-          "token_atoms": 28,
+          "semantic_atoms": 28,
           "verify_time": {
             "max_ns": 3701390,
             "median_ns": 2865963,
@@ -2602,7 +2602,7 @@
                 80997
               ]
             },
-            "token_atoms": 32,
+            "semantic_atoms": 32,
             "verify_time": {
               "max_ns": 145458,
               "median_ns": 75725,
@@ -2714,7 +2714,7 @@
           },
           "explicit_frontier": {
             "bytes": 48,
-            "token_atoms": 44,
+            "semantic_atoms": 44,
             "verify_time": {
               "max_ns": 395910,
               "median_ns": 91636,
@@ -2825,8 +2825,8 @@
             }
           },
           "partial_order_identical": true,
-          "token_atom_delta": -12,
-          "token_atom_percent": -27.272727272727273
+          "semantic_atom_delta": -12,
+          "semantic_atom_percent": -27.272727272727273
         },
         "graph": {
           "graph_body_bytes": 78,
@@ -2834,7 +2834,7 @@
           "graph_envelope_bytes": 180,
           "root_cid": "b50784eef8eed52c6644670b52b061fe366af070aada02788f47d3e9cd5e48cf",
           "store_bytes": 834,
-          "token_atoms": 30,
+          "semantic_atoms": 30,
           "verify_time": {
             "max_ns": 7455350,
             "median_ns": 3565253,
@@ -3000,7 +3000,7 @@
                 231805
               ]
             },
-            "token_atoms": 146,
+            "semantic_atoms": 146,
             "verify_time": {
               "max_ns": 2152347,
               "median_ns": 435842,
@@ -3112,7 +3112,7 @@
           },
           "explicit_frontier": {
             "bytes": 226,
-            "token_atoms": 222,
+            "semantic_atoms": 222,
             "verify_time": {
               "max_ns": 1189865,
               "median_ns": 506821,
@@ -3223,8 +3223,8 @@
             }
           },
           "partial_order_identical": true,
-          "token_atom_delta": -76,
-          "token_atom_percent": -34.234234234234236
+          "semantic_atom_delta": -76,
+          "semantic_atom_percent": -34.234234234234236
         },
         "graph": {
           "graph_body_bytes": 370,
@@ -3232,7 +3232,7 @@
           "graph_envelope_bytes": 537,
           "root_cid": "a3b782710b78f0e316dc9095734b00f2122e1f6552e0fccd9eb9c93953472f8c",
           "store_bytes": 1404,
-          "token_atoms": 142,
+          "semantic_atoms": 142,
           "verify_time": {
             "max_ns": 12479836,
             "median_ns": 7989703,
@@ -3396,7 +3396,7 @@
                 244834
               ]
             },
-            "token_atoms": 158,
+            "semantic_atoms": 158,
             "verify_time": {
               "max_ns": 545075,
               "median_ns": 349166,
@@ -3508,7 +3508,7 @@
           },
           "explicit_frontier": {
             "bytes": 230,
-            "token_atoms": 226,
+            "semantic_atoms": 226,
             "verify_time": {
               "max_ns": 1678859,
               "median_ns": 451887,
@@ -3619,8 +3619,8 @@
             }
           },
           "partial_order_identical": true,
-          "token_atom_delta": -68,
-          "token_atom_percent": -30.088495575221238
+          "semantic_atom_delta": -68,
+          "semantic_atom_percent": -30.088495575221238
         },
         "graph": {
           "graph_body_bytes": 386,
@@ -3628,7 +3628,7 @@
           "graph_envelope_bytes": 681,
           "root_cid": "1eabff97a2851402792fc6ada58bfad6fa3f406730d2920976b9d24cd371b108",
           "store_bytes": 1988,
-          "token_atoms": 150,
+          "semantic_atoms": 150,
           "verify_time": {
             "max_ns": 15801135,
             "median_ns": 10502420,
@@ -3794,7 +3794,7 @@
                 70707
               ]
             },
-            "token_atoms": 29,
+            "semantic_atoms": 29,
             "verify_time": {
               "max_ns": 273663,
               "median_ns": 79371,
@@ -3906,7 +3906,7 @@
           },
           "explicit_frontier": {
             "bytes": 47,
-            "token_atoms": 43,
+            "semantic_atoms": 43,
             "verify_time": {
               "max_ns": 456406,
               "median_ns": 98005,
@@ -4017,8 +4017,8 @@
             }
           },
           "partial_order_identical": true,
-          "token_atom_delta": -14,
-          "token_atom_percent": -32.55813953488372
+          "semantic_atom_delta": -14,
+          "semantic_atom_percent": -32.55813953488372
         },
         "graph": {
           "graph_body_bytes": 74,
@@ -4026,7 +4026,7 @@
           "graph_envelope_bytes": 144,
           "root_cid": "429d21002f2cfbcced281c9f9db1f44403d48e4d24b27e877dff679f857639f0",
           "store_bytes": 685,
-          "token_atoms": 28,
+          "semantic_atoms": 28,
           "verify_time": {
             "max_ns": 40799013,
             "median_ns": 3181659,
@@ -4190,7 +4190,7 @@
                 58154
               ]
             },
-            "token_atoms": 32,
+            "semantic_atoms": 32,
             "verify_time": {
               "max_ns": 348170,
               "median_ns": 75540,
@@ -4302,7 +4302,7 @@
           },
           "explicit_frontier": {
             "bytes": 48,
-            "token_atoms": 44,
+            "semantic_atoms": 44,
             "verify_time": {
               "max_ns": 273584,
               "median_ns": 91084,
@@ -4413,8 +4413,8 @@
             }
           },
           "partial_order_identical": true,
-          "token_atom_delta": -12,
-          "token_atom_percent": -27.272727272727273
+          "semantic_atom_delta": -12,
+          "semantic_atom_percent": -27.272727272727273
         },
         "graph": {
           "graph_body_bytes": 78,
@@ -4422,7 +4422,7 @@
           "graph_envelope_bytes": 180,
           "root_cid": "cfcbd7e249114ae7da6fe81d4e89028e4e6567a4336c5be77fb5cdf8460f694b",
           "store_bytes": 833,
-          "token_atoms": 30,
+          "semantic_atoms": 30,
           "verify_time": {
             "max_ns": 5095553,
             "median_ns": 3507170,

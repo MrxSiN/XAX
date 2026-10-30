@@ -438,7 +438,7 @@ The optimizer MUST NOT:
 | Treating all external actions as `io` | Prevents useful independence and makes effect summaries too coarse. |
 | Optimizer-inferred purity without a semantic contract | Makes correctness depend on implementation guesses rather than program meaning. |
 | Unrestricted `unreachable` as undefined behavior | Would turn missing proof into unconstrained semantics. XAX requires proof or an explicit unsafe waiver. |
-| Mandatory storage of every effect edge | Wastes persistent bytes and AI tokens when edges are uniquely reconstructible. |
+| Mandatory storage of every effect edge | Wastes persistent bytes when edges are uniquely reconstructible. |
 | Erasing unsafe markers because they emit no instructions | Loses audit and proof-waiver semantics. |
 
 ---
@@ -466,7 +466,7 @@ OI-08 is closed by the committed effect-edge benchmark. Memory/filesystem/networ
 
 ### 15.2 Effect-summary encoding for indirect calls — resolved by OI-09
 
-Indirect calls require a bounded contract. The semantic placement is a separately content-addressed referenced `call_contract` object. In the committed OI-09 call-heavy benchmark, this placement has lower ideal token cost and lower verifier cost than embedding on both measured reuse profiles, while preserving one implementation-independent contract identity for package interfaces. A sparse-callable profile shows a byte-size crossover where direct embedding is smaller; that is retained as potential serialization-compression evidence, not as a reason to duplicate semantic authority.
+Indirect calls require a bounded contract. The semantic placement is a separately content-addressed referenced `call_contract` object. In the committed OI-09 call-heavy benchmark, this placement has lower size and lower verifier cost than embedding on both measured reuse profiles, while preserving one implementation-independent contract identity for package interfaces. A sparse-callable profile shows a byte-size crossover where direct embedding is smaller; that is retained as potential serialization-compression evidence, not as a reason to duplicate semantic authority.
 
 A sealed dispatch set MAY additionally enumerate exact targets and thereby enable devirtualization. It remains an optimization/refinement fact: changing an implementation CID without changing its contract changes affected sealed-set identities but not the referenced CallContract identity. An indirect call never derives permission for unspecified effects from the absence of a dispatch set.
 
@@ -484,7 +484,7 @@ These issues concern representation efficiency or portability. They do not reope
 
 Implementation evidence must force revision if any of the following occurs:
 
-1. **Effect metadata costs more than it enables.** If graph size, AI tokens, verification time, or compile time rise materially without compensating optimization, partitioning or encoding must change.
+1. **Effect metadata costs more than it enables.** If graph size, verification time, or compile time rise materially without compensating optimization, partitioning or encoding must change.
 2. **Real platforms require pervasive undeclared cross-domain ordering.** This would show the domain model is too weak or fragmented.
 3. **Canonical reconstruction is unstable.** If compliant implementations reconstruct different effect dependencies or summaries from one artifact, compression is under-specified.
 4. **Summary inference is impractical.** If recursive or indirect-call fixed points dominate compilation or become excessively conservative, summary storage/callable contracts must change.
@@ -493,6 +493,6 @@ Implementation evidence must force revision if any of the following occurs:
 7. **Effect partitioning permits miscompilation.** Any unsound independence proof invalidates the relevant verifier rule or partition mechanism.
 8. **A required execution order cannot be represented by data, control, resource, effect, or target constraints.** The ordering model is then incomplete.
 9. **Verified `unreachable` is unusably restrictive.** If proof plus explicit unsafe waiver cannot support necessary low-level code, that boundary must change.
-10. **AI mutation efficiency regresses.** If explicit effect/control representation causes more tokens, invalid transactions, or repair turns than a less redundant semantic protocol, the protocol encoding must be redesigned without weakening semantic explicitness.
+10. **AI mutation efficiency regresses.** If explicit effect/control representation causes more invalid transactions or repair turns than a less redundant semantic protocol, the protocol encoding must be redesigned without weakening semantic explicitness.
 
 The stage succeeds only if prototypes show that explicit effects and control remain exact, compact, locally editable, verifier-friendly, and exploitable by optimization.

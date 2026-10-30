@@ -20,13 +20,6 @@ Measures:
      error in the hand-built declaration.
    - The C importer's hand-built reproductions (``test_xax_c_import.py``) are
      counted the same way.
-3. **AI tokens** (offline ``tiktoken``; no model runs). For each declaration
-   in (2), compare:
-   - the request a model writes to import it: the member key plus the
-     curated facts;
-   - the hand-built declaration in the same compact JSON view (ABI, library,
-     name, typed inputs and outputs).
-
 Run: ``PYTHONPATH=src:.:.. python -m benchmarks.bench_oi32_import [--write]`` from ``compiler/``.
 """
 
@@ -65,7 +58,6 @@ from xax_jvm_import import JvmClassPath, class_requests, import_jvm_members
 
 HERE = Path(__file__).resolve().parent
 EVIDENCE = HERE / "oi32_import_evidence.json"
-ENCODINGS = ("cl100k_base", "o200k_base")
 MEMBER_ABIS = {
     JVM_NEW_ABI, JVM_INVOKESTATIC_ABI, JVM_INVOKEVIRTUAL_ABI, JVM_INVOKEINTERFACE_ABI, JVM_INVOKESTATIC_INTERFACE_ABI,
     JVM_GETSTATIC_ABI, JVM_GETFIELD_ABI, JVM_PUTFIELD_ABI, JVM_PUTSTATIC_ABI,
@@ -127,15 +119,6 @@ def _type_text(cid: bytes, objects: dict[bytes, SemanticObject]) -> str:
     return f"type:{item.body.hex()}"
 
 
-def _render(declaration: SemanticObject, objects: dict[bytes, SemanticObject]) -> str:
-    decoded = decode_foreign_function(declaration)
-    view = {
-        "abi": decoded.abi.decode(), "library": decoded.library.decode(), "name": decoded.name.decode(),
-        "in": [_type_text(cid, objects) for cid in decoded.inputs], "out": [_type_text(cid, objects) for cid in decoded.outputs],
-    }
-    return json.dumps(view, separators=(",", ":"))
-
-
 def _request(declaration: SemanticObject, objects: dict[bytes, SemanticObject]) -> tuple[str, dict]:
     """The importer request and the curated facts a hand-built declaration states."""
     decoded = decode_foreign_function(declaration)
@@ -189,11 +172,6 @@ def _c_rows() -> list[tuple[str, SemanticObject, SemanticObject, str, dict]]:
 
 
 def run() -> dict:
-    import tiktoken
-
-    tokenizers = {name: tiktoken.get_encoding(name) for name in ENCODINGS}
-    count = lambda text: {name: len(encoder.encode(text)) for name, encoder in tokenizers.items()}  # noqa: E731
-
     start = time.perf_counter()
     base = JvmClassPath.of(_jmods() / "java.base.jmod")
     load_seconds = time.perf_counter() - start
@@ -218,31 +196,10 @@ def run() -> dict:
     c_rows, c_types = _c_rows()
     c_errors = sum(item.cid != hand.cid for _label, item, hand, _request, _facts in c_rows)
 
-    tokens_rows = []
-    hand_built = {value[0]: value for value in _hand_built().values()}
-    for row in jvm["rows"]:
-        _where, declaration, types = hand_built[row["where"]]
-        key, facts = _request(declaration, types)
-        if "effect" in facts:
-            facts["effect"] = _type_text(facts["effect"].cid, {facts["effect"].cid: facts["effect"]})
-        tokens_rows.append(("jvm", json.dumps({"import": key, **facts}, separators=(",", ":")), _render(declaration, types)))
-    for label, _item, hand, request, facts in c_rows:
-        tokens_rows.append(("c", json.dumps({"import": request, **facts}, separators=(",", ":")), _render(hand, c_types)))
-    totals = {}
-    for ecosystem in ("jvm", "c"):
-        chosen = [row for row in tokens_rows if row[0] == ecosystem]
-        request_tokens = count("\n".join(row[1] for row in chosen))
-        hand_tokens = count("\n".join(row[2] for row in chosen))
-        totals[ecosystem] = {
-            "declarations": len(chosen), "import_request_tokens": request_tokens, "hand_built_tokens": hand_tokens,
-            "request_over_hand_built": {name: round(request_tokens[name] / hand_tokens[name], 3) for name in ENCODINGS},
-            "example": {"request": chosen[0][1], "hand_built": chosen[0][2]},
-        }
     return {
         "format": "xax-oi32-import-evidence-v1",
         "decision": "ADR-166",
-        "evidence_label": "MEASURED (coverage, latency, size, error rate, offline tokens); EXECUTED programs in test_xax_jvm_import.py and test_xax_c_import.py",
-        "tokenizer": f"tiktoken {tiktoken.__version__}",
+        "evidence_label": "MEASURED (coverage, latency, size, error rate); EXECUTED programs in test_xax_jvm_import.py and test_xax_c_import.py",
         "java": base.metadata("java/lang/Object").major_version,
         "jvm_coverage": coverage,
         "error_rate": {
@@ -250,7 +207,6 @@ def run() -> dict:
             "c": {"declarations": len(c_rows), "errors": c_errors, "error_rate": round(c_errors / len(c_rows), 4)},
             "jvm_rows": jvm["rows"],
         },
-        "ai_tokens": totals,
     }
 
 
@@ -259,7 +215,7 @@ if __name__ == "__main__":
     text = json.dumps(evidence, indent=2, sort_keys=True) + "\n"
     if "--write" in sys.argv:
         EVIDENCE.write_text(text)
-    print(json.dumps({key: evidence[key] for key in ("jvm_coverage", "ai_tokens")}, indent=1))
+    print(json.dumps({key: evidence[key] for key in ("jvm_coverage",)}, indent=1))
     print(json.dumps({key: value for key, value in evidence["error_rate"].items() if key != "jvm_rows"}, indent=1))
     for row in evidence["error_rate"]["jvm_rows"]:
         if row["status"] != "byte-identical":

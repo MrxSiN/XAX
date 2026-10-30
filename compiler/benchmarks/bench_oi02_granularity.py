@@ -900,7 +900,6 @@ def run(collect_timing: bool = True) -> tuple[dict, dict]:
             "stable_interface_block": "measurement-only: stable callee declaration -> canonical immutable CallContract summary, module binding -> separately objectized block-skeleton body; reassembly must match canonical graph/function CIDs and stale summary/body pairs reject",
         },
         "ai_context": "query/rewrite bytes are binary envelope bytes an agent or cache must receive",
-        "model_visible_context_tokens": {"status": "unavailable: no tokenizer/model trial is available in this environment; byte counts are not substituted for model tokens"},
         "cases": evidence,
     }
     return result, timing

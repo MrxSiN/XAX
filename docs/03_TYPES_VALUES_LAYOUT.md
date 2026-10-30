@@ -482,7 +482,7 @@ Diagnostics SHOULD identify machine-readable rule IDs, involved entities, proof 
 | Target layout embedded in ordinary tuple/vector types | Makes one semantic program target-specific and obstructs universal lowering. |
 | C-like “struct layout by default” | Elevates one ABI tradition into core semantics and introduces padding assumptions unrelated to meaning. |
 | Representation compatibility implies type equality | Breaks nominal resources, opaque capabilities, ABI distinctions, and safety proofs. |
-| General refinement types in v0.1 | Increase type-identity and AI-token complexity before evidence shows they are required. Proof metadata provides most optimization value at lower semantic cost. |
+| General refinement types in v0.1 | Increase type-identity and mutation complexity before evidence shows they are required. Proof metadata provides most optimization value at lower semantic cost. |
 | Implicit pointer/integer or pointer/pointer reinterpretation | Can fabricate provenance, permissions, or address-space meaning. |
 | Hidden runtime type descriptors | Violates the no-hidden-runtime rule; runtime reflection must be explicitly requested. |
 
@@ -503,9 +503,9 @@ Diagnostics SHOULD identify machine-readable rule IDs, involved entities, proof 
 
 Only the following issues remain intentionally open for v0.1 implementation evidence:
 
-1. **Canonical float format catalog.** The semantic requirements for `F` are fixed, but the initial set of pre-interned common formats versus fully structural format descriptors should be selected by serializer/token and compiler-complexity measurements.
+1. **Canonical float format catalog.** The semantic requirements for `F` are fixed, but the initial set of pre-interned common formats versus fully structural format descriptors should be selected by serializer and compiler-complexity measurements.
 2. **Proof-fact persistence policy.** The semantics of proof metadata are fixed, but which facts should be serialized, cached, or recomputed should be decided from incremental verification cost and artifact-size measurements.
-3. **Compact type vocabulary.** Canonical identity is fixed, but which high-frequency types receive dedicated transport/token IDs should be chosen empirically from AI token and mutation benchmarks.
+3. **Compact type vocabulary.** Canonical identity is fixed, but which high-frequency types receive dedicated transport IDs should be chosen empirically from storage and mutation benchmarks.
 
 These issues affect encoding and implementation efficiency, not program meaning.
 
@@ -518,7 +518,7 @@ This design must be revised if later compiler implementation or benchmarking dem
 1. Separating semantic type from target layout causes pervasive semantic ambiguity that cannot be resolved by explicit target/context queries.
 2. The explicit-layout mechanism cannot represent required ABI, device, wire, packed-bit, or shared-memory contracts without introducing a second permanent layout language.
 3. Arbitrary-width `bits<N>` causes unacceptable verifier or optimizer complexity even when uncommon widths are legalized late and common widths are fast-pathed.
-4. Operation-level signedness creates materially more AI-generation errors or semantic mutations than type-level signedness after controlling for tokenizer and protocol design.
+4. Operation-level signedness creates materially more AI-generation errors or semantic mutations than type-level signedness after controlling for protocol design.
 5. Exact float-format semantics make ordinary floating optimization impractical without a smaller equivalent semantic contract.
 6. Excluding poison/`undef` from canonical semantics prevents competitive optimization even when compiler-internal transient analysis states are permitted.
 7. Proof-only refinements fail to provide enough information for verification or optimization and a distinct refinement-type identity demonstrably reduces total complexity.

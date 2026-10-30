@@ -108,11 +108,11 @@ class OI08EffectEdgeTests(unittest.TestCase):
         committed = json.loads((Path(__file__).parents[1] / "benchmarks" / "oi08_effect_edges_evidence.json").read_text())
         actual = collect_evidence()
         self.assertEqual(actual["schema"], committed["schema"])
-        self.assertEqual(actual["token_metric"], committed["token_metric"])
+        self.assertEqual(actual["atom_metric"], committed["atom_metric"])
         self.assertEqual(actual["partition_summary"], committed["partition_summary"])
         self.assertEqual(actual["encoding_summary"], committed["encoding_summary"])
         self.assertEqual(actual["claims"], committed["claims"])
-        deterministic_graph = ("root_cid", "graph_cid", "graph_body_bytes", "graph_envelope_bytes", "store_bytes", "token_atoms")
+        deterministic_graph = ("root_cid", "graph_cid", "graph_body_bytes", "graph_envelope_bytes", "store_bytes", "semantic_atoms")
         for workload, row in committed["workloads"].items():
             for variant in row:
                 self.assertEqual(actual["workloads"][workload][variant]["partial_order"], row[variant]["partial_order"])

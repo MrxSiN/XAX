@@ -159,12 +159,12 @@ class OI06MemorySurfaceTests(unittest.TestCase):
         committed = json.loads((Path(__file__).parents[1] / "benchmarks" / "oi06_memory_surface_evidence.json").read_text())
         actual = collect_evidence()
         self.assertEqual(actual["schema"], committed["schema"])
-        self.assertEqual(actual["token_metric"], committed["token_metric"])
+        self.assertEqual(actual["atom_metric"], committed["atom_metric"])
         self.assertEqual(actual["alias_encoding_comparator"], committed["alias_encoding_comparator"])
         self.assertEqual(actual["checked_surface_comparator"], committed["checked_surface_comparator"])
         self.assertEqual(actual["raw_surface_comparator"], committed["raw_surface_comparator"])
         self.assertEqual(actual["target_models"], committed["target_models"])
-        deterministic = ("root_cid", "graph_cid", "graph_body_bytes", "graph_envelope_bytes", "store_bytes", "token_atoms", "x86_64_code_bytes", "wasm_module_bytes")
+        deterministic = ("root_cid", "graph_cid", "graph_body_bytes", "graph_envelope_bytes", "store_bytes", "semantic_atoms", "x86_64_code_bytes", "wasm_module_bytes")
         for name in committed["rows"]:
             self.assertEqual({k: actual["rows"][name][k] for k in deterministic}, {k: committed["rows"][name][k] for k in deterministic})
 

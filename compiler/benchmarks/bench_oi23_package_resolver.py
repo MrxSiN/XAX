@@ -903,14 +903,6 @@ def build_evidence(raw: Mapping[str, object]) -> dict[str, object]:
         "timing": _summarize_timing(raw),
         "host_observation": raw["host"],
         "ai_mutation_tasks": tasks,
-        "ai_model_measurement": {
-            "available": False,
-            "reason": "no OpenAI/Codex/Anthropic client, credentials, or tokenizer installed in measurement environment",
-            "input_tokens": None,
-            "output_tokens": None,
-            "invalid_edits": None,
-            "repair_turns": None,
-        },
     }
 
 

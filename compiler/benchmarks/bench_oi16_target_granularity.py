@@ -324,7 +324,7 @@ def package_identity(payload: bytes) -> str:
 
 
 def model_description(package: DecodedPackage) -> bytes:
-    """Compact deterministic AI-facing description; bytes are not token counts."""
+    """Compact deterministic description of the package."""
     if package.form == "per_instruction":
         rows = []
         by_variant = {(item.semantic_operation, item.width): item for item in package.variants}
@@ -548,7 +548,6 @@ def _package_metrics(target_name: str) -> dict[str, object]:
             "package_bytes": len(per_payload),
             "objects": len(per.contracts),
             "model_description_bytes": len(per_text),
-            "model_tokens": None,
         },
         "shared_primitive": {
             "package_cid": package_identity(shared_payload),
@@ -557,7 +556,6 @@ def _package_metrics(target_name: str) -> dict[str, object]:
             "semantic_primitives": len(shared.contracts),
             "encoding_variants": len(shared.variants),
             "model_description_bytes": len(shared_text),
-            "model_tokens": None,
         },
         "equal_normalized_contracts": True,
         "add_new_width_bytes": {
@@ -667,11 +665,6 @@ def deterministic_evidence() -> dict[str, object]:
             "shared_decoder_lines": _source_lines(decode_shared_primitives),
             "opaque_validator_lines": _source_lines(validate_opaque_contract),
             "production_verifier_decoder_changed_functions": 0,
-        },
-        "token_measurement": {
-            "available": False,
-            "reason": "no tokenizer/model integration installed in execution environment",
-            "bytes_are_not_tokens": True,
         },
         "timing": {
             "artifact": TIMING.name,

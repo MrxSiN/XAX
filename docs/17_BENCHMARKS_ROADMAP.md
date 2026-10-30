@@ -6,7 +6,7 @@
 - [2. Normative definitions](#2-normative-definitions)
 - [3. Canonical benchmark case model](#3-canonical-benchmark-case-model)
 - [4. Runtime and compiler benchmark family](#4-runtime-and-compiler-benchmark-family)
-- [5. AI-efficiency benchmark family](#5-ai-efficiency-benchmark-family)
+- [5. Semantic-edit benchmark family](#5-semantic-edit-benchmark-family)
 - [6. Global benchmark invariants](#6-global-benchmark-invariants)
 - [7. Invalid or rejected alternatives](#7-invalid-or-rejected-alternatives)
 - [8. Interfaces and subsystem dependencies](#8-interfaces-and-subsystem-dependencies)
@@ -28,7 +28,7 @@ Neither family is subordinate to the other. XAX fails its founding objective if 
 
 This stage defines measurement contracts, benchmark case schemas, anti-cherry-picking rules, baseline requirements, result-validity rules, and milestone gates. It does not define benchmark results and does not presume that XAX will outperform any baseline.
 
-The benchmark suite MUST evolve only by versioned additions or corrections. Historical results MUST remain attributable to the exact benchmark-suite version, compiler revision, target package, build policy, model, tokenizer, and measurement environment that produced them.
+The benchmark suite MUST evolve only by versioned additions or corrections. Historical results MUST remain attributable to the exact benchmark-suite version, compiler revision, target package, build policy, model, and measurement environment that produced them.
 
 ---
 
@@ -43,8 +43,8 @@ A versioned collection of benchmark cases selected before comparative execution.
 **Runtime benchmark**  
 A benchmark whose primary outputs concern generated code, execution behavior, executable properties, or compiler resource cost.
 
-**AI-efficiency benchmark**  
-A benchmark whose primary outputs concern model tokens, semantic context, transaction size, generation validity, repair effort, or project-size scaling.
+**Semantic-edit benchmark**  
+A benchmark whose primary outputs concern semantic context, transaction size, generation validity, repair effort, or project-size scaling.
 
 **Baseline**  
 An independently specified comparison implementation or representation. Baselines MAY include optimized C, optimized Rust, conventional SSA text, hand-written assembly, or another declared representation.
@@ -56,7 +56,7 @@ A canonical set of compiler objectives and allowed compilation effort. Results p
 A requested program mutation that commits transactionally, passes the required verifier obligations, and satisfies the benchmark case's behavioral oracle.
 
 **Repair iteration**  
-A model-visible generation attempt after the initial mutation attempt that exists because the prior attempt failed verification, failed the behavioral oracle, or could not commit.
+A generation attempt after the initial mutation attempt that exists because the prior attempt failed verification, failed the behavioral oracle, or could not commit.
 
 **Local context**  
 All semantic entities, diagnostics, protocol material, and other benchmark-accounted information supplied to the model for a task, excluding fixed system infrastructure explicitly declared outside the experiment.
@@ -65,7 +65,7 @@ All semantic entities, diagnostics, protocol material, and other benchmark-accou
 The count of distinct program-semantic objects exposed to or emitted by the AI interaction, counted according to the benchmark protocol rather than byte encoding.
 
 **Transaction size**  
-The encoded size of the mutation request submitted to the XAX workspace, reported in bytes and model tokens where applicable.
+The encoded size of the mutation request submitted to the XAX workspace, reported in bytes.
 
 **Target-cost estimate**  
 A cost predicted from target-package cost data for a candidate or generated program before empirical runtime measurement.
@@ -83,7 +83,7 @@ Every benchmark case MUST have a machine-readable logical record equivalent to t
 |---|---|
 | `case_id` | Stable logical identity |
 | `case_version` | Monotonic version of the case definition |
-| `family` | `runtime` or `ai-efficiency` |
+| `family` | `runtime` or `semantic-edit` |
 | `semantic_contract` | Observable behavior that all compared forms MUST preserve |
 | `inputs` | Fixed, generated-by-seed, or externally versioned inputs |
 | `target_set` | Targets on which the case is valid |
@@ -191,7 +191,7 @@ Exploratory experiments MAY be reported, but MUST be labeled exploratory and kep
 
 ---
 
-## 5. AI-efficiency benchmark family
+## 5. Semantic-edit benchmark family
 
 ### 5.1 Required representations
 
@@ -199,10 +199,7 @@ The first decisive AI benchmark family MUST compare the same semantic tasks usin
 
 1. C-like text;
 2. conventional SSA text;
-3. compact graph packets;
-4. tokenizer-native XAX transactions.
-
-The tokenizer-native arm is valid only when the benchmark model/tokenizer actually supports the declared dedicated vocabulary or equivalent integration. Until then it MUST be marked unavailable, not approximated with invented results.
+3. compact XAX graph transactions.
 
 ### 5.2 Required task classes
 
@@ -225,20 +222,14 @@ For every attempted task, record:
 
 | Metric | Definition |
 |---|---|
-| Input tokens | Total model input tokens attributable to the task |
-| Output tokens | Total generated model tokens attributable to the task |
-| Total tokens | Input plus output across initial and repair turns |
-| Successful-change tokens | Total tokens divided by successful semantic changes |
-| Local-context size | Bytes, tokens, and semantic entity count supplied |
+| Local-context size | Bytes and semantic entity count supplied |
 | Invalid generation rate | Fraction of initial outputs that cannot produce a valid candidate transaction/form |
 | Repair iterations | Additional model attempts required before success or terminal failure |
 | Semantic entities transmitted | Distinct semantic objects exchanged |
-| Transaction size | Bytes and tokens of committed or attempted mutation payloads |
+| Transaction size | Bytes of committed or attempted mutation payloads |
 | Commit conflict rate | Fraction rejected because the expected base state is stale or conflicted |
 | Context growth | Change in required task context as unrelated project size increases |
 | Task success rate | Fraction satisfying verifier and behavioral oracle within the declared attempt limit |
-
-Token accounting MUST use the exact tokenizer used by the evaluated model.
 
 ### 5.4 Context-scaling experiment
 
@@ -256,7 +247,7 @@ Representation-specific instructions MAY describe syntax or protocol mechanics, 
 
 If one representation requires regeneration of a larger unit because it lacks local mutation, that cost is part of the result and MUST NOT be normalized away.
 
-Model, sampling policy, context limit, tokenizer, and tool-access policy MUST be identical across arms unless the experiment explicitly studies one of those variables.
+Model, sampling policy, context limit, and tool-access policy MUST be identical across arms unless the experiment explicitly studies one of those variables.
 
 ---
 
@@ -271,25 +262,23 @@ The following are normative:
 5. Every published aggregate retains access to per-case outcomes.
 6. Failed and unsupported cases remain visible.
 7. Measured profile data is not canonical program semantics.
-8. AI-efficiency results account for repair turns, not only the final successful output.
+8. Semantic-edit results account for repair turns, not only the final successful output.
 9. Runtime results account for compilation effort when optimization effort differs.
-10. No benchmark result may be generalized beyond its measured targets, workloads, objectives, models, or tokenizers.
-11. A representation that emits fewer bytes but causes more model tokens or more repair attempts is not presumed superior.
+10. No benchmark result may be generalized beyond its measured targets, workloads, objectives, or models.
+11. A representation that emits fewer bytes but causes more repair attempts is not presumed superior.
 12. A compiler transformation is credited only when the resulting program passes the case oracle and verifier requirements.
 
 ---
 
 ## 7. Invalid or rejected alternatives
 
-**Source-character count as the primary AI metric** is rejected because XAX optimizes model effort, not human-visible brevity.
+**Source-character count as the primary edit metric** is rejected because XAX optimizes exact semantic change, not human-visible brevity.
 
 **Single-number “performance” scores** are rejected as the normative result because latency, throughput, size, memory, startup, compilation cost, and deterministic behavior represent different objectives.
 
 **Best-case-only publication** is rejected because it permits target and workload cherry-picking.
 
 **Comparing against unoptimized baseline builds** is rejected unless the specific benchmark is explicitly about unoptimized development builds.
-
-**Treating tokenizer-native XAX as ordinary compact text** is rejected. Dedicated vocabulary claims require actual tokenizer/model integration and measurement.
 
 **Using the entire repository as model context** is rejected as the default benchmark procedure because it defeats the local semantic workspace architecture being tested.
 
@@ -308,7 +297,7 @@ Stage 17 depends on stable contracts from the surrounding XAX architecture:
 - the semantic graph and operation model define what constitutes equivalent program meaning;
 - the type, memory, ownership, effect, atomic, and control-flow systems define verification obligations;
 - canonical serialization and Merkle identity define benchmark artifact identity and reproducibility;
-- the AI workspace protocol defines local queries, mutations, diagnostics, transactions, and token accounting boundaries;
+- the AI workspace protocol defines local queries, mutations, diagnostics, transactions, and accounting boundaries;
 - target packages define legal machine operations, ABI constraints, lowering behavior, and cost models;
 - compiler and optimizer stages expose compile-time attribution and candidate selection;
 - package/build semantics identify dependency and build-policy state;
@@ -329,7 +318,7 @@ A milestone is complete only when all exit criteria are met. “Benchmark become
 | 3 | Stack memory | Explicit stack storage, address calculation, load/store, alignment, bounds/provenance obligations, and stack layout verify correctly | Stack footprint, load/store kernels, no-allocation tests, memory-safety diagnostic tasks |
 | 4 | First direct native backend | One target package lowers the milestone-3 subset to directly emitted native object/executable bytes without a required permanent external backend | Native execution time, code size, startup, compile time, first C/Rust comparisons on supported subset |
 | 5 | Second architecturally different backend | The same semantic subset compiles through a second materially different target package without changing fundamental XAX semantics | Cross-target portability, target-description adequacy, target-cost comparison on both targets |
-| 6 | Transactional AI workspace | Query, local handles, mutation, verification, stale-base rejection, structured diagnostics, and commit operate transactionally | C-like vs SSA vs graph-packet AI benchmarks; local-edit token cost; repair turns; context-growth tests |
+| 6 | Transactional AI workspace | Query, local handles, mutation, verification, stale-base rejection, structured diagnostics, and commit operate transactionally | C-like vs SSA vs graph-packet edit benchmarks; local-edit size; repair turns; context-growth tests |
 | 7 | Resources and effects | Linear resource states, explicit release/transfer, effect domains, and associated verifier obligations are implemented | Resource-lifetime tasks, effect-reordering tests, hidden-operation checks, AI repair of resource/effect violations |
 | 8 | Atomics and real-time profiles | Atomic ordering, fences, target capability checks, interrupt-relevant semantics, and bounded real-time profile restrictions exist | Atomic kernels, synchronization cost, interrupt latency, deterministic-latency cases on capable hardware |
 | 9 | Compile-time specialization | Deterministic bounded compile-time XAX execution can construct/specialize semantic values and erase unused abstraction | Specialization compile cost, generated-code impact, generic/specialization AI tasks |
@@ -345,11 +334,7 @@ Progression is monotonic in semantic obligation, not necessarily in implementati
 
 ## 10. Open issues requiring implementation evidence
 
-### 10.1 Tokenizer-native vocabulary
-
-The exact dedicated token inventory cannot be fixed normatively before measurement with candidate models and tokenizers. The architecture fixes the objective—minimum model tokens per successful semantic mutation—but the vocabulary itself remains benchmark-selected.
-
-### 10.2 Target-cost magnitude calibration
+### 10.1 Target-cost magnitude calibration
 
 Target packages can define structural cost models before hardware measurement, but the stable mapping from predicted cost units to measured cycles, latency, energy, or other physical units requires empirical calibration per target and environment. Ordering accuracy can still be tested before absolute calibration is trusted.
 
@@ -361,7 +346,7 @@ No other benchmark rule in this stage is intentionally left open.
 
 This design MUST be reconsidered if reproducible future measurements establish any of the following:
 
-1. **AI transaction failure:** compact graph transactions and, when actually available, tokenizer-native transactions do not materially reduce total tokens per successful semantic change versus source or SSA regeneration after repair costs are included.
+1. **AI transaction failure:** compact graph transactions do not materially reduce repair iterations or transmitted context per successful semantic change versus source or SSA regeneration.
 2. **Context-scaling failure:** local XAX editing requires context that grows approximately with total unrelated project size rather than the dependency neighborhood.
 3. **Portability failure:** adding a second architecturally different native target requires changes to fundamental XAX program semantics instead of target/platform packages.
 4. **Cost-model failure:** target cost estimates fail to rank materially different candidate implementations well enough to guide optimization, even after target-specific calibration.
@@ -378,5 +363,5 @@ The governing rule is empirical: XAX's semantic-first design is justified only i
 
 ## 12. Universal replacement benchmarks (2026-10-02)
 
-Replacement-level performance claims (R4) follow `XAX_BENCHMARKS.md` §15. The first recorded comparison is U1 Linux `filestat` against `gcc -O2` and `gcc -O2 -static` (MEASURED; XAX 0.95–1.14× `gcc -O2`, 1.41–1.82× `clang -O2`, smallest artifact; with the explicit loader its peak RSS exceeds the static baseline). The current result is `XAX_BENCHMARKS.md` §15.14: under the multi-language rule (§15.0) all three Linux workloads are within 1.05× of the fastest of gcc, clang, and rustc. Since ADR-207, R4 needs XAX's median at most 0.9999× the fastest non-XAX median with a significant advantage; the 1.05× results above are historical. AI-efficiency claims belong to a deferred milestone outside R0–R6 and require real model trials; offline tokenizer counts never establish them.
+Replacement-level performance claims (R4) follow `XAX_BENCHMARKS.md` §15. The first recorded comparison is U1 Linux `filestat` against `gcc -O2` and `gcc -O2 -static` (MEASURED; XAX 0.95–1.14× `gcc -O2`, 1.41–1.82× `clang -O2`, smallest artifact; with the explicit loader its peak RSS exceeds the static baseline). The current result is `XAX_BENCHMARKS.md` §15.14: under the multi-language rule (§15.0) all three Linux workloads are within 1.05× of the fastest of gcc, clang, and rustc. Since ADR-207, R4 needs XAX's median at most 0.9999× the fastest non-XAX median with a significant advantage; the 1.05× results above are historical.
 

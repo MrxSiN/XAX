@@ -25,12 +25,6 @@ Binary16/bfloat16 and the two exotic controls remain measurement-only exact
 structural descriptors because production semantics do not yet support them.
 The representative corpus uses supported floats in verified load/store and ABI
 functions and uses every four-format candidate in real function signatures.
-
-AI mutation tasks are deterministic benchmark protocol, never XAX source.  They
-compare full structural diagnostic spellings with compact transport aliases and
-check both arms against the same exact semantic target CID.  Model/tokenizer
-usage is recorded only when an external raw-trial artifact supplies it; this
-benchmark never substitutes byte counts for model tokens.
 """
 
 from __future__ import annotations
@@ -81,7 +75,6 @@ from xax_compiler import (
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
 OUTPUT = HERE / "oi04_type_vocabulary_evidence.json"
-TRIALS = HERE / "oi04_type_mutation_trials.json"
 CATALOG_DIGEST_BYTES = CID_SIZE
 
 # ------------------------------------------------------------ float descriptors
@@ -539,11 +532,8 @@ def _reachable_objects(root_cid: bytes, objects: dict[bytes, SemanticObject]) ->
 
 def workloads() -> dict[str, bytes]:
     from benchmarks import bench_oi03_recursion as oi03
-    from benchmarks.ai_native import _build, tasks
 
     result = {Path(path).name.split(".")[0]: _committed(path) for path in COMMITTED}
-    for task in tasks():
-        result[f"ai_{task.task_id}"] = _build(task.initial, task.result)[0].data
     for name, arm in (("none", "function"), ("mutual", "group")):
         w = oi03.workload(name, arm)
         result[f"oi03_{name}"] = write_store(w["root"].cid, w["objects"])
@@ -559,125 +549,6 @@ def workloads() -> dict[str, bytes]:
         result[f"reverse_{name}"] = data
     numeric, _ = representative_numeric_corpus()
     result.update(numeric)
-    return result
-
-
-# ------------------------------------------------------------ AI mutation tasks
-
-def mutation_types() -> dict[str, SemanticObject]:
-    f32, f64 = FLOATS["binary32"], FLOATS["binary64"]
-    return {
-        "u32": BITS[32],
-        "u64": BITS[64],
-        "f16": FLOATS["binary16"],
-        "bf16": FLOATS["bfloat16"],
-        "f32": f32,
-        "f64": f64,
-        "v4f32": vector_type(f32, 4),
-        "v8f32": vector_type(f32, 8),
-        "p1rw4f32": pointer_type(f32, Permission.READ_WRITE, 4, space=1),
-        "p1r4f32": pointer_type(f32, Permission.READ, 4, space=1),
-        "p2rw4f32": pointer_type(f32, Permission.READ_WRITE, 4, space=2),
-    }
-
-
-MUTATION_TASKS = (
-    ("bit-width", "u32", "u64", "change the bit width from 32 to 64"),
-    ("float-format", "f32", "f64", "change the float format from binary32 to binary64"),
-    ("float16-format", "f16", "bf16", "change the 16-bit float format from binary16 to bfloat16"),
-    ("vector-lanes", "v4f32", "v8f32", "change the vector lane count from 4 to 8"),
-    ("pointer-permission", "p1rw4f32", "p1r4f32", "narrow pointer permission from read_write to read"),
-    ("pointer-space", "p1rw4f32", "p2rw4f32", "change pointer address space from 1 to 2"),
-    ("create-vector", None, "v4f32", "create a 4-lane binary32 vector type"),
-    ("invalid-repair", "invalid-pointer", "p1rw4f32", "repair the invalid pointer alignment 3 to alignment 4"),
-)
-
-
-def _structural_spellings() -> dict[str, str]:
-    f32 = float_text("binary32")
-    return {
-        "u32": "bits<32>",
-        "u64": "bits<64>",
-        "f16": float_text("binary16"),
-        "bf16": float_text("bfloat16"),
-        "f32": f32,
-        "f64": float_text("binary64"),
-        "v4f32": f"vec<4,{f32}>",
-        "v8f32": f"vec<8,{f32}>",
-        "p1rw4f32": f"ptr<space=1,permission=read_write,alignment=4,{f32}>",
-        "p1r4f32": f"ptr<space=1,permission=read,alignment=4,{f32}>",
-        "p2rw4f32": f"ptr<space=2,permission=read_write,alignment=4,{f32}>",
-        "invalid-pointer": f"ptr<space=1,permission=read_write,alignment=3,{f32}>",
-    }
-
-
-def _alias_spellings() -> dict[str, str]:
-    return {
-        "u32": "u32", "u64": "u64", "f16": "f16", "bf16": "bf16", "f32": "f32", "f64": "f64",
-        "v4f32": "v4f32", "v8f32": "v8f32", "p1rw4f32": "p1rw4f32", "p1r4f32": "p1r4f32", "p2rw4f32": "p2rw4f32",
-        "invalid-pointer": "p1rw3f32",
-    }
-
-
-def mutation_task_rows() -> list[dict]:
-    types = mutation_types()
-    spellings = {"structural": _structural_spellings(), "alias": _alias_spellings()}
-    rows = []
-    for task_id, current, target, request in MUTATION_TASKS:
-        target_obj = types[target]
-        arms = {}
-        for arm in ("structural", "alias"):
-            current_text = "none" if current is None else spellings[arm][current]
-            target_text = spellings[arm][target]
-            view = f"OI04-MUTATION-V1\ncurrent={current_text}\nrequest={request}\nreply=TYPE <type>\n"
-            response = f"TYPE {target_text}\n"
-            arms[arm] = {"view": view, "view_bytes": len(view.encode()), "target_response": response, "response_bytes": len(response.encode())}
-        rows.append({"task_id": task_id, "target_cid": target_obj.cid.hex(), "arms": arms})
-    return rows
-
-
-def check_mutation_response(task_id: str, arm: str, response: str) -> bytes:
-    if arm not in ("structural", "alias"):
-        raise ValueError("unknown OI-04 mutation arm")
-    row = next((item for item in mutation_task_rows() if item["task_id"] == task_id), None)
-    if row is None:
-        raise ValueError("unknown OI-04 mutation task")
-    expected = row["arms"][arm]["target_response"]
-    if response != expected:
-        raise ValueError("invalid OI-04 type mutation packet")
-    return bytes.fromhex(row["target_cid"])
-
-
-def raw_trial_artifact() -> dict:
-    if not TRIALS.exists():
-        return {"status": "not_run", "model": None, "tokenizer": None, "trials": []}
-    data = json.loads(TRIALS.read_text())
-    if data.get("issue") != "OI-04" or not isinstance(data.get("trials"), list):
-        raise ValueError("malformed OI-04 trial artifact")
-    for row in data["trials"]:
-        if row.get("task_id") not in {task[0] for task in MUTATION_TASKS} or row.get("arm") not in ("structural", "alias"):
-            raise ValueError("unknown OI-04 model trial cell")
-        for field in ("input_tokens", "output_tokens", "total_tokens", "turns", "repairs"):
-            value = row.get(field)
-            if value is not None and (not isinstance(value, int) or value < 0):
-                raise ValueError(f"invalid OI-04 trial {field}")
-    return data
-
-
-def summarize_trials(raw: dict) -> dict:
-    rows = raw.get("trials", [])
-    result = {}
-    for arm in ("structural", "alias"):
-        selected = [row for row in rows if row["arm"] == arm]
-        successes = [row for row in selected if row.get("pass") is True]
-        result[arm] = {
-            "trials": len(selected),
-            "passes": len(successes),
-            "invalid_or_failed": len(selected) - len(successes),
-            "repair_turns": sum(row.get("repairs") or 0 for row in selected),
-            "successful_total_tokens": sum(row.get("total_tokens") or 0 for row in successes) if successes else None,
-            "tokens_per_success": (sum(row.get("total_tokens") or 0 for row in successes) / len(successes)) if successes else None,
-        }
     return result
 
 
@@ -780,14 +651,9 @@ def run() -> dict:
         composition[name]["store_bytes"] = len(data)
         composition[name]["root_cid"] = StoreReader(data).root_cid.hex()
 
-    raw_trials = raw_trial_artifact()
-    mutation_rows = mutation_task_rows()
     return {
         "issue": "OI-04",
-        "canonical_identity": "structural type CID only; catalog/dictionary/AI aliases expand to exact structural objects",
-        "model_token_status": raw_trials.get("status", "unknown"),
-        "raw_model_trials": raw_trials,
-        "model_trial_summary": summarize_trials(raw_trials),
+        "canonical_identity": "structural type CID only; catalog/dictionary aliases expand to exact structural objects",
         "catalogs": {
             name: {
                 "entries": [{"index": i, "name": _catalog_label(obj), "body": obj.body.hex(), "cid": obj.cid.hex()} for i, obj in enumerate(catalog)],
@@ -808,8 +674,6 @@ def run() -> dict:
         },
         "bits_envelope_bytes": {str(w): len(obj.envelope()) for w, obj in BITS.items()},
         "type_texts": type_texts(),
-        "tokenizer_measurements": {"status": "unavailable", "raw": []},
-        "mutation_tasks": mutation_rows,
         "representative_corpus": composition,
         "workloads": results,
         "representative_aggregate": _aggregate(results, ["numeric_service_verified", "numeric_abi_extended"]),
@@ -825,7 +689,6 @@ def main() -> None:
         print(f"{name:24} B={row['structural_bytes']:6} types={row['type_objects']:3} refs={row['type_references']:4} {deltas} cid_dictionary={dictionary['delta']:+6}")
     print("representative aggregate", result["representative_aggregate"])
     print("codec lines", result["codec_source_lines"])
-    print("model trials", result["model_trial_summary"])
 
 
 if __name__ == "__main__":

@@ -423,7 +423,7 @@ The semantic workspace should expose compact local handles for target entities a
 
 Only the following issues remain intentionally open:
 
-1. **Granularity of semantic instruction models.** Some targets may be best modeled per instruction, while others may benefit from shared semantic primitives plus encoding variants. The choice should be measured against verifier complexity, target-package size, optimization quality, and AI token cost.
+1. **Granularity of semantic instruction models.** Some targets may be best modeled per instruction, while others may benefit from shared semantic primitives plus encoding variants. The choice should be measured against verifier complexity, target-package size, and optimization quality.
 2. **Cost-model representation.** Static tables, symbolic models, profile-conditioned functions, or combinations may differ materially in accuracy and compilation cost. The semantic/non-semantic boundary is fixed; the most effective representation is not.
 3. **Legalization search discipline.** Rule ranking, bounded search, equality saturation, staged rewriting, or hybrid approaches may be appropriate. The required properties are semantic preservation, explicit failure, and detectable nontermination/cycles.
 4. **Opaque-contract minimums by hardware class.** The general minimum contract is defined above, but practical compiler validation may show that some device classes require additional mandatory fields to avoid excessive global barriers.

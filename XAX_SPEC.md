@@ -39,7 +39,7 @@ When requirements conflict, implementations and future revisions MUST resolve th
 
 1. semantic correctness and exact meaning;
 2. deterministic machine interpretation of meaning;
-3. AI tokens per successful semantic change, including generation reliability and repair cost;
+3. AI generation reliability and repair cost per successful semantic change;
 4. runtime performance/latency, then memory footprint, then binary footprint;
 5. compilation (generated-code) quality;
 6. universal hardware/platform portability and target extensibility;
@@ -54,7 +54,7 @@ Human readability, writability, naming style, formatting, and textual source pre
 
 Document precedence: this specification is normative; `docs/NN_*.md` stage documents are detailed normative text subordinate to it on conflict; `XAX_CONFORMANCE.md` and `XAX_BENCHMARKS.md` define test and measurement obligations; `XAX_DECISIONS.md` records adopted rationale; `XAX_AI_Native_Programming_Language_Architecture.md` states founding principles and architecture intent and never overrides this specification; `XAX_STATE.md`, `XAX_HANDOFF.md`, and `XAX_REPLACEMENT_MATRIX.json` record evidence, never requirements.
 
-A later implementation choice MUST NOT silently weaken a higher-ranked requirement. Performance, token-efficiency, portability, and self-hosting claims are objectives until supported by the evidence required in `XAX_BENCHMARKS.md` or `XAX_CONFORMANCE.md`.
+A later implementation choice MUST NOT silently weaken a higher-ranked requirement. Performance, portability, and self-hosting claims are objectives until supported by the evidence required in `XAX_BENCHMARKS.md` or `XAX_CONFORMANCE.md`.
 
 ## 2. Foundational invariants
 
@@ -673,16 +673,8 @@ Readers MUST fail deterministically on invalid header/trailer magic, unsupported
 
 ## 10. AI workspace, queries, transactions, and diagnostics
 
-The normal AI-facing language/protocol and query/mutation workflow MUST be
-designed to minimize total model tokens per successful semantic change. This is
-a long-term design objective, not a current replacement level (ADR-207): the
-historical ambition of no more than 0.50× the lowest valid textual median
-(0.55× owner-approved acceptance, ADR-195) belongs to a separately scheduled
-future AI-efficiency milestone and gates none of R0–R6. When that milestone
-runs, all retries, repairs, cached input, diagnostics, and retransmitted context
-count, and benchmark-only encodings or hidden preloaded task knowledge do not
-satisfy it (`XAX_BENCHMARKS.md` §6 and §15). Existing query/mutation behavior
-and AI generation reliability MUST keep working meanwhile.
+The normal AI-facing query/mutation workflow MUST carry the smallest exact
+semantic change and keep AI generation reliability working.
 
 Clients MAY apply a model's final construction or mutation request directly
 through normal compiler tooling and return diagnostics only on rejection.
@@ -697,9 +689,9 @@ A workspace binds a canonical base root, optional target/platform/configuration 
 
 The default retrieval principle is: return the smallest semantic neighborhood that completely answers the query under the declared mode.
 
-Queries SHOULD support bounded expansion by relation kind, direction, depth, entity count, region, effect domain, dominance, ownership, target dependency, diagnostic dependency, and token budget. Truncated results MUST identify truncation and continuation.
+Queries SHOULD support bounded expansion by relation kind, direction, depth, entity count, region, effect domain, dominance, ownership, target dependency, diagnostic dependency, and response budget. Truncated results MUST identify truncation and continuation.
 
-A compiler-service implementation MAY additionally enforce an exact serialized **response-byte budget** as a transport/tooling control. A byte budget is not a model-token budget and MUST NOT be reported as one. For paginated queries, if the caller-requested page exceeds the byte budget, the service MAY return the largest deterministic positive-progress prefix whose exact serialized response fits and MUST return continuation for the next unreturned entity. If no positive-progress page can fit, or if a non-paginated response cannot fit, the query MUST fail deterministically without publishing local handles or accounting response bytes for data that was not returned. Omitting the byte budget MUST preserve the unbudgeted query result.
+A compiler-service implementation MAY additionally enforce an exact serialized **response-byte budget** as a transport/tooling control. For paginated queries, if the caller-requested page exceeds the byte budget, the service MAY return the largest deterministic positive-progress prefix whose exact serialized response fits and MUST return continuation for the next unreturned entity. If no positive-progress page can fit, or if a non-paginated response cannot fit, the query MUST fail deterministically without publishing local handles or accounting response bytes for data that was not returned. Omitting the byte budget MUST preserve the unbudgeted query result.
 
 ### 10.2 Core query families
 
@@ -790,11 +782,11 @@ Diagnostic {
 
 The core fields through `repair_neighborhood` are required. Under fixed inputs, the core repair neighborhood MUST be deterministic. Natural-language explanation is optional presentation.
 
-### 10.6 Token protocol
+### 10.6 Compact transport
 
-The optimization target is minimum **model tokens per successful semantic mutation**, including repair turns. Dedicated tokenizer vocabulary is permitted but not assumed. A fallback transport MUST be versioned, deterministic, unambiguous, whitespace-independent, and explicitly non-source.
+A compact transport MUST be versioned, deterministic, unambiguous, whitespace-independent, and explicitly non-source.
 
-Workspace accounting SHOULD track model input/output tokens, semantic entities, query/mutation counts, rejected transactions, repair rounds, committed changes, protocol bytes, artifact bytes, verifier work, and target-cost query work.
+Workspace accounting SHOULD track semantic entities, query/mutation counts, rejected transactions, repair rounds, committed changes, protocol bytes, artifact bytes, verifier work, and target-cost query work.
 
 ## 11. Universal target model
 
@@ -1096,9 +1088,9 @@ Conformance is established by positive and negative vectors. Silently accepting 
 
 ## 18. Benchmark and evidence reference
 
-Performance, AI efficiency, cost-model quality, context scaling, self-hosting maturity, and similar empirical claims MUST use the definitions and fairness rules in `XAX_BENCHMARKS.md`.
+Performance, cost-model quality, context scaling, self-hosting maturity, and similar empirical claims MUST use the definitions and fairness rules in `XAX_BENCHMARKS.md`.
 
-The first decisive AI comparison is C-like text versus conventional SSA text versus compact graph packets versus an actual tokenizer-native XAX transaction interface when such model/tokenizer integration exists. Unavailable arms are reported as unavailable, never simulated.
+The first decisive semantic-edit comparison is C-like text versus conventional SSA text versus compact XAX graph transactions. Unavailable arms are reported as unavailable, never simulated.
 
 ## 19. Open implementation choices
 
@@ -1147,8 +1139,6 @@ Levels are cumulative; a level is held only when every lower level is held.
 
 A negative R4 measurement is valid evidence and MUST be reported; the level is held only when the measured result leads (ADR-207). The ratio is XAX's median divided by the median of the fastest valid **non-XAX** arm — XAX is never in the denominator — compared unrounded against 0.9999, and a one-sided Mann–Whitney test on the raw `wall_seconds_samples` of XAX and that arm must give p < 0.05. For CPU/native runtime the arms are an optimized C/C++ baseline and at least one implementation outside C/C++ (`XAX_BENCHMARKS.md` §15.0); on the JVM they are `javac` and `kotlinc` builds (§15.0a). The former 1.05×/1.10× competitiveness bands (ADR-147, ADR-157) confer no level. One workload never establishes universal leadership: a row's R4 is scoped to the workloads its evidence names.
 
-The former R5 (AI token efficiency, 0.50× the lowest textual baseline) is a separately scheduled future AI-efficiency milestone outside R0–R6 (ADR-207). Its trials (ADR-176 to ADR-201) remain historical evidence in the matrix's `ai_tokens` field, which gates no level; they are never current R5 evidence.
-
 ### 21.3 Evidence labels
 
 Every implemented claim in state, matrix, handoff, or benchmark documents carries exactly one label:
@@ -1177,7 +1167,7 @@ tiny XAX kernel -> compile-time construction -> zero-cost semantic libraries
 -> platform packages -> ABI packages -> target packages -> artifact
 ```
 
-The kernel remains approximately: values, exact arithmetic, aggregates, control, calls, memory, resources, effects, atomics, target operations, and compile-time/meta operations. A kernel addition MUST be recorded as an ADR demonstrating that the semantics cannot be expressed exactly, with equal-or-better generated cost, verification precision, and AI tokens per change, using existing primitives plus libraries/packages. Language-specific concepts (class, object, trait, interface, async, future, string, dictionary, exception, GC object) are not kernel concepts unless that demonstration exists.
+The kernel remains approximately: values, exact arithmetic, aggregates, control, calls, memory, resources, effects, atomics, target operations, and compile-time/meta operations. A kernel addition MUST be recorded as an ADR demonstrating that the semantics cannot be expressed exactly, with equal-or-better generated cost and verification precision, using existing primitives plus libraries/packages. Language-specific concepts (class, object, trait, interface, async, future, string, dictionary, exception, GC object) are not kernel concepts unless that demonstration exists.
 
 ### 21.6 Lowering of conventional programming models
 

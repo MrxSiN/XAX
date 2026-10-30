@@ -196,24 +196,6 @@ class TypeVocabularyEvidenceTests(unittest.TestCase):
         with self.assertRaisesRegex(XaxError, "XAX.OI04.INDEX_TABLE"):
             bench.read_alias_store(bytes(corrupt_index), bench.CATALOGS["bits5"])
 
-    def test_mutation_tasks_have_same_semantic_target_and_strict_packets(self):
-        rows = bench.mutation_task_rows()
-        self.assertEqual(len(rows), 8)
-        for row in rows:
-            expected = bytes.fromhex(row["target_cid"])
-            for arm in ("structural", "alias"):
-                self.assertEqual(bench.check_mutation_response(row["task_id"], arm, row["arms"][arm]["target_response"]), expected)
-                with self.assertRaisesRegex(ValueError, "invalid OI-04 type mutation packet"):
-                    bench.check_mutation_response(row["task_id"], arm, row["arms"][arm]["target_response"].rstrip())
-        self.assertTrue(any(row["task_id"] == "invalid-repair" for row in rows))
-
-    def test_model_measurement_is_explicitly_unavailable_not_substituted(self):
-        result = bench.run()
-        self.assertEqual(result["model_token_status"], "not_run")
-        self.assertEqual(result["tokenizer_measurements"], {"status": "unavailable", "raw": []})
-        self.assertEqual(result["raw_model_trials"]["trials"], [])
-        self.assertIsNone(result["model_trial_summary"]["alias"]["tokens_per_success"])
-
 
 if __name__ == "__main__":
     unittest.main()

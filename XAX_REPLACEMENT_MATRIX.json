@@ -1,6 +1,6 @@
 {
   "schema": "xax-replacement-matrix-v1",
-  "rules": "See XAX_SPEC.md section 21. Levels are derived from evidence by compiler/src/xax_replacement.py (validator v3, ADR-207); missing fields are UNIMPLEMENTED; every non-UNIMPLEMENTED label cites repository evidence; documents, sources, scripts, and images alone never support EXECUTED/MEASURED/PROVEN; MEASURED performance needs raw samples; an R4 runtime verdict (the row's `competitive` entry) is recomputed from raw samples: the XAX median must be at most 0.9999x the fastest non-XAX median and significantly faster. R5 is autonomous maintenance and R6 a proven 100% XAX-developed application; ai_tokens is historical/future-milestone evidence and gates no level.",
+  "rules": "See XAX_SPEC.md section 21. Levels are derived from evidence by compiler/src/xax_replacement.py (validator v3, ADR-207); missing fields are UNIMPLEMENTED; every non-UNIMPLEMENTED label cites repository evidence; documents, sources, scripts, and images alone never support EXECUTED/MEASURED/PROVEN; MEASURED performance needs raw samples; an R4 runtime verdict (the row's `competitive` entry) is recomputed from raw samples: the XAX median must be at most 0.9999x the fastest non-XAX median and significantly faster. R5 is autonomous maintenance and R6 a proven 100% XAX-developed application.",
   "platforms": [
     {
       "id": "windows-x86_64-pe",
@@ -58,10 +58,6 @@
         "real_execution": [
           "EXECUTED",
           "compiler/benchmarks/windows_pe_hosted_evidence.json"
-        ],
-        "ai_tokens": [
-          "PROTOTYPE",
-          "compiler/benchmarks/ai_native/OI31_RESULT_NOTE.md"
         ],
         "autonomous_maintenance": [
           "PROTOTYPE",
@@ -142,10 +138,6 @@
           "compiler/benchmarks/android_counter_evidence.json",
           "compiler/benchmarks/android_vector_runtime_evidence.json",
           "compiler/benchmarks/android_managed_evidence.json"
-        ],
-        "ai_tokens": [
-          "PROTOTYPE",
-          "compiler/benchmarks/ai_native/OI31_RESULT_NOTE.md"
         ],
         "autonomous_maintenance": [
           "EXECUTED",
@@ -441,10 +433,6 @@
           "compiler/benchmarks/u1_linux_filestat_evidence.json",
           "compiler/benchmarks/jsonmin_evidence.json"
         ],
-        "ai_tokens": [
-          "PROTOTYPE",
-          "compiler/benchmarks/ai_native/OI31_RESULT_NOTE.md"
-        ],
         "xax_only_application": [
           "EXECUTED",
           "compiler/benchmarks/r6_xb64_evidence.json",
@@ -543,7 +531,6 @@
           "compiler/benchmarks/android_jsonmin_evidence.json",
           "compiler/benchmarks/android_jsonmin_pixel1_evidence.json"
         ],
-        "ai_tokens": "UNIMPLEMENTED",
         "memory": [
           "MEASURED",
           "compiler/benchmarks/android_jsonmin_evidence.json",
@@ -722,30 +709,6 @@
           "EXECUTED",
           "compiler/tests/test_xax_jvm_general.py"
         ],
-        "ai_tokens": [
-          "PROTOTYPE",
-          "compiler/benchmarks/ai_native/jvm-r5-optimized-evidence.json",
-          "compiler/benchmarks/ai_native/jvm-r5-optimized-results.csv",
-          "compiler/benchmarks/ai_native/jvm-r5-full-evidence.json",
-          "compiler/benchmarks/ai_native/jvm-r5-local-results.evidence.json",
-          "compiler/tests/test_xax_local_protocol.py",
-          "compiler/benchmarks/ai_native/jvm-r5-bound-results.evidence.json",
-          "compiler/benchmarks/ai_native/jvm-r5-bound-manifest.json",
-          "compiler/benchmarks/local_protocol_evidence.json",
-          "compiler/tests/test_jvm_r5_response.py",
-          "compiler/benchmarks/ai_native/jvm-r5-response-v5-results.evidence.json",
-          "compiler/benchmarks/ai_native/jvm-r5-response-v6-results.evidence.json",
-          "compiler/benchmarks/ai_native/jvm-r5-response-v6-audit.json",
-          "compiler/benchmarks/ai_native/jvm-r5-response-v7-results.evidence.json",
-          "compiler/benchmarks/ai_native/jvm-r5-response-v7-audit.json",
-          "compiler/benchmarks/ai_native/jvm-r5-response-v7-stop.json",
-          "compiler/benchmarks/ai_native/jvm-r5-response-v8-results.evidence.json",
-          "compiler/benchmarks/ai_native/jvm-r5-response-v8-audit.json",
-          "compiler/benchmarks/ai_native/jvm-r5-response-v8-stop.json",
-          "compiler/benchmarks/ai_native/jvm-r5-response-v9-results.evidence.json",
-          "compiler/benchmarks/ai_native/jvm-r5-response-v9-audit.json",
-          "compiler/benchmarks/ai_native/jvm-r5-response-v9-context-review.json"
-        ],
         "autonomous_maintenance": [
           "EXECUTED",
           "compiler/benchmarks/r5_jvm_jsonmin_maintenance_evidence.json",
@@ -761,7 +724,7 @@
         "R4 scope: one application (jsonmin) on one shared x86-64 host, OpenJDK 21 defaults, whole-process time of a fresh JVM; baselines javac and kotlinc (XAX_BENCHMARKS.md section 15.0a, ADR-157/158); one workload does not establish universal leadership",
         "code size: jsonmin's program class is 1.49x javac's and 0.99x kotlinc's (5,575 vs 3,730 and 5,649 bytes, ADR-158); its JAR is 2.2x javac's one-class JAR, 0.001x the kotlinc JAR with the Kotlin runtime; the rest of the javac gap is the program's shape (inlined parser, packed results, a checked view per access), not the lowering",
         "linear memory (ADR-156) is one byte[] with int offsets: freed blocks are never reused, at most 2^31 - 1 bytes; the general profile (ADR-159) has a fixed 1 MiB shadow stack; atomics are sequential because one XAX thread runs (ADR-160), so a profile with JVM-to-XAX callbacks from other threads needs real JVM atomics",
-        "R5 scope (ADR-209): one maintenance cycle of one application (jsonmin's depth limit, a one-constant edit inside a recursion group) by the session's AI agent; the harness replays the agent's edit against the pinned root, so the record is reproducible but the agent's choice is not re-made. No multi-edit, structural, or interface change has been maintained this way yet. The former AI-token trials (ADR-176 to ADR-201; best fair result 0.995x, multi-file 1.68x) are historical evidence for the deferred AI-efficiency milestone",
+        "R5 scope (ADR-209): one maintenance cycle of one application (jsonmin's depth limit, a one-constant edit inside a recursion group) by the session's AI agent; the harness replays the agent's edit against the pinned root, so the record is reproducible but the agent's choice is not re-made. No multi-edit, structural, or interface change has been maintained this way yet.",
         "R6 scope (ADR-257): one small application (xwc: five functions, one maintenance release) constructed and maintained by the session's agent and replayed by the harness; not yet repeated by an independent agent or on a larger application"
       ],
       "competitive": [

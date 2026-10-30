@@ -1,7 +1,3 @@
-import csv
-import json
-import tempfile
-from pathlib import Path
 
 import pytest
 
@@ -95,51 +91,9 @@ def test_payload_base_detects_workspace_staleness():
     assert not oi28.payload_is_fresh(case, packet)
 
 
-def test_evidence_is_deterministic_without_host_timing_and_marks_model_fields_unavailable():
+def test_evidence_is_deterministic_without_host_timing():
     first, _ = oi28.build_evidence(measure_timing=False)
     second, _ = oi28.build_evidence(measure_timing=False)
     assert first == second
     assert first["corpus_size"] == 9
-    assert first["model_run"] is None
-    assert all(row["model_total_tokens"] is None for row in first["rows"])
     assert first["totals"]["near_payload_bytes"] > first["totals"]["minimal_payload_bytes"]
-
-
-def test_trial_preparation_exposes_payload_but_not_known_repair_or_target_root():
-    with tempfile.TemporaryDirectory() as directory:
-        count = oi28.prepare_trials(Path(directory))
-        assert count == 18
-        task = json.loads((Path(directory) / "type" / "near" / "TASK.json").read_text())
-        text = json.dumps(task)
-        assert "known_repair" not in text
-        assert "target_root" not in text
-        assert task["diagnostic"]["rule"] == "GRAPH-OP-TYPE"
-        assert task["response_contract"]["fresh_session"] is True
-
-
-def test_trial_recorder_is_flat_and_rejects_duplicate_cell(monkeypatch):
-    with tempfile.TemporaryDirectory() as directory:
-        path = Path(directory) / "trials.csv"
-        monkeypatch.setattr(oi28, "TRIALS_PATH", path)
-        class Args:
-            task_id = "relation"
-            arm = "minimal"
-            outcome = "PASS"
-            trial = 1
-            model = "model-x"
-            reasoning = "fixed"
-            input_tokens = 10
-            output_tokens = 3
-            total_tokens = None
-            turns = 1
-            invalid_followups = 0
-            queried_entities = 1
-            final_root = {case.task_id: case.target_root for case in oi28.cases()}["relation"]
-            notes = ""
-        oi28.record_trial(Args())
-        with path.open(newline="") as stream:
-            rows = list(csv.DictReader(stream))
-        assert rows[0]["total_tokens"] == "13"
-        assert rows[0]["payload_bytes"]
-        with pytest.raises(ValueError, match="already recorded"):
-            oi28.record_trial(Args())

@@ -1,7 +1,5 @@
 """The replacement matrix may never claim a level its evidence does not support."""
 import copy
-import csv
-import hashlib
 import json
 import tempfile
 import unittest
@@ -198,15 +196,13 @@ class ReplacementMatrixTests(unittest.TestCase):
         row = {"fields": {"semantic_expressibility": ["STRUCTURAL", "x"], "autonomous_maintenance": ["EXECUTED", "x"]}}
         self.assertEqual(derived_level(row), "R0")  # R5 evidence cannot skip R1-R4
 
-    def test_r5_is_maintenance_r6_is_xax_only_application_and_tokens_gate_nothing(self):
-        """ADR-207: AI-token evidence is historical; R5 needs executed maintenance, R6 an executed XAX-only application."""
+    def test_r5_is_maintenance_r6_is_xax_only_application(self):
+        """R5 needs executed maintenance, R6 an executed XAX-only application."""
         row = copy.deepcopy(next(r for r in MATRIX["platforms"] if r["id"] == "jvm"))
         self.assertEqual(derived_level(row), "R6")  # ADR-209 (R5), ADR-257 (R6)
         del row["fields"]["xax_only_application"]
         self.assertEqual(derived_level(row), "R5")
         del row["fields"]["autonomous_maintenance"]
-        self.assertEqual(derived_level(row), "R4")
-        row["fields"]["ai_tokens"] = ["MEASURED", "compiler/benchmarks/ai_native/jvm-r5-optimized-evidence.json"]
         self.assertEqual(derived_level(row), "R4")
         row["fields"]["autonomous_maintenance"] = ["EXECUTED", "compiler/benchmarks/m6_workspace_smoke.json"]
         self.assertEqual(derived_level(row), "R5")
@@ -216,27 +212,6 @@ class ReplacementMatrixTests(unittest.TestCase):
         self.assertEqual(derived_level(row), "R5")  # a document alone never shows execution
         row["fields"]["xax_only_application"] = ["EXECUTED", "compiler/benchmarks/m6_workspace_smoke.json"]
         self.assertEqual(derived_level(row), "R6")
-
-    def test_jvm_r5_candidate_evidence_is_consistent(self):
-        row = next(r for r in MATRIX["platforms"] if r["id"] == "jvm")
-        evidence_path = ROOT / "compiler/benchmarks/ai_native/jvm-r5-optimized-evidence.json"
-        results_path = ROOT / "compiler/benchmarks/ai_native/jvm-r5-optimized-results.csv"
-        evidence = json.loads(evidence_path.read_text(encoding="utf-8"))
-        with results_path.open(newline="", encoding="utf-8") as file:
-            rows = list(csv.DictReader(file))
-        self.assertEqual(derived_level(row), "R6")  # ADR-209, ADR-257; historical AI-token evidence (ADR-207) gates no level
-        self.assertEqual(row["fields"]["ai_tokens"][0], "PROTOTYPE")
-        self.assertEqual(len(rows), 10)
-        self.assertEqual({r["model"] for r in rows}, {"gpt-5.6-luna"})
-        self.assertEqual({r["reasoning"] for r in rows}, {"low"})
-        self.assertTrue(all(r["pass"] == "TRUE" and r["turns"] == "1" for r in rows))
-        totals = {arm: sum(int(r["total_tokens"]) for r in rows if r["arm"] == arm) for arm in ("C", "XAX-DIRECT")}
-        self.assertEqual(totals, {"C": 197252, "XAX-DIRECT": 98432})
-        self.assertEqual(evidence["results"]["c"]["total_tokens"], totals["C"])
-        self.assertEqual(evidence["results"]["xax"]["total_tokens"], totals["XAX-DIRECT"])
-        self.assertTrue(evidence["results"]["meets_50_percent_reduction_gate"])
-        self.assertLessEqual(evidence["results"]["xax_over_c_total_tokens"], 0.5)
-        self.assertEqual(hashlib.sha256(results_path.read_bytes()).hexdigest(), evidence["source"]["sha256"])
 
 
 if __name__ == "__main__":

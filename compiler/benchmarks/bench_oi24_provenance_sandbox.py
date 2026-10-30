@@ -272,7 +272,6 @@ def build_evidence(measure: bool = True) -> tuple[dict, dict]:
         "action_dag": {"bytes":len(enc_a), "records":3, "query_bytes":len(action_query), "reused_after_changed_declared_input":reuse, "invalidated_after_changed_declared_input":invalid, "cache_reuse_records":len(reuse), "invalidated_records":len(invalid), "combined_with_closure_bytes":len(enc_a)+prov_bytes+len(a["resolution"].snapshot.envelope())},
         "portable_semantic_enforcement": {"semantic_undeclared_network_rejected_before_launch":semantic_network_rejected, "pure_no_host_api_targets":pure_targets},
         "hosted_linux_enforcement": sandbox | {"unsupported_requested_isolation":"XAX.SANDBOX.UNAVAILABLE", "adapter":"linux-user+mount+network-ns/chroot-v1", "host_identity":host_identity},
-        "tokens": {"available":False, "reason":"no installed model tokenizer; bytes are not substituted"},
         "nonsemantic": {"action_records_delete_without_semantic_change":True, "semantic_root_before":a["reader"].root_cid.hex(), "semantic_root_after_delete":a["reader"].root_cid.hex()},
     }
     timing_record = {k:ns(v) for k,v in timing.items()} if measure else {}

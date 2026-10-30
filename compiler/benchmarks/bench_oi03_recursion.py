@@ -14,8 +14,6 @@ Three workloads over the same eight function bodies ``x * k + c``:
   as separate objects if CID cycles were allowed; never verified).
 
 Legal arms are whole-store verified and executed against a reference value.
-Token counts are offline tiktoken counts of the hex carrier envelopes and of
-persistent entity handles (``cid`` or ``cid#member``); no model is run.
 Everything recorded is deterministic.
 """
 
@@ -52,7 +50,6 @@ OUTPUT = Path(__file__).resolve().parent / "oi03_recursion_evidence.json"
 B1, B64 = bits_type(1), bits_type(64)
 MASK = (1 << 64) - 1
 COUNT = 8
-ENCODINGS = ("cl100k_base", "o200k_base")
 
 
 def constants(i: int) -> tuple[int, int]:
@@ -193,14 +190,12 @@ def check_legal(w: dict, name: str) -> None:
 ARMS = {"none": ("function", "singleton_group"), "self": ("group", "compact_singleton"), "mutual": ("group", "per_member")}
 
 
-def measure(name: str, arm: str, tokenizers: dict) -> dict:
+def measure(name: str, arm: str) -> dict:
     w = workload(name, arm)
     if w["legal"]:
         check_legal(w, name)
     store = write_store(w["root"].cid, w["objects"])
     envelopes = [c.envelope() for c in w["carriers"]]
-    carrier_hex = "\n".join(e.hex() for e in envelopes)
-    handles = "\n".join(handle_text(c, m) for c, m, _ in w["handles"])
     return {
         "legal": w["legal"],
         "entities": len(w["handles"]),
@@ -209,8 +204,6 @@ def measure(name: str, arm: str, tokenizers: dict) -> dict:
         "carrier_body_bytes": sum(len(c.body) for c in w["carriers"]),
         "store_objects": len(w["objects"]),
         "store_bytes": len(store),
-        "carrier_hex_tokens": {n: len(t.encode(carrier_hex)) for n, t in tokenizers.items()},
-        "handle_tokens": {n: len(t.encode(handles)) for n, t in tokenizers.items()},
     }
 
 
@@ -236,20 +229,15 @@ def edit_churn(name: str, arm: str, target: int) -> dict:
 
 
 def run() -> dict:
-    import tiktoken
-
-    tokenizers = {n: tiktoken.get_encoding(n) for n in ENCODINGS}
     results = {}
     for name, arms in ARMS.items():
         for arm in arms:
-            row = measure(name, arm, tokenizers)
+            row = measure(name, arm)
             row["edit_first"] = edit_churn(name, arm, 0)
             row["edit_last"] = edit_churn(name, arm, COUNT - 1)
             results[f"{name}/{arm}"] = row
     return {
         "issue": "OI-03",
-        "tokenizer": f"tiktoken {tiktoken.__version__}",
-        "model_run": None,
         "functions_per_workload": COUNT,
         "mutual_ring_sizes": ring_sizes("mutual"),
         "results": results,
@@ -262,7 +250,6 @@ def main() -> None:
     for key, row in result["results"].items():
         print(f"{key:26} legal={row['legal']!s:5} carriers={row['carrier_objects']:2} "
               f"carrier_B={row['carrier_bytes']:5} store_B={row['store_bytes']:5} "
-              f"hex_tok={row['carrier_hex_tokens']['o200k_base']:5} handle_tok={row['handle_tokens']['o200k_base']:4} "
               f"edit_last={row['edit_last']}")
 
 

@@ -19,7 +19,7 @@
 - [12. Compile-time execution](#12-compile-time-execution)
 - [13. No conventional source code](#13-no-conventional-source-code)
 - [14. AI-native representation](#14-ai-native-representation)
-- [15. Token-native AI protocol](#15-token-native-ai-protocol)
+- [15. Compact AI protocol](#15-compact-ai-protocol)
 - [16. Content addressing](#16-content-addressing)
 - [17. Transactions](#17-transactions)
 - [18. Machine diagnostics](#18-machine-diagnostics)
@@ -36,7 +36,7 @@
 - [29. "No human involvement"](#29-no-human-involvement)
 - [30. Trusted core](#30-trusted-core)
 - [31. Performance rule](#31-performance-rule)
-- [32. Token-efficiency rule](#32-token-efficiency-rule)
+- [32. Semantic-edit rule](#32-semantic-edit-rule)
 - [33. First prototype](#33-first-prototype)
 - [34. First decisive experiment](#34-first-decisive-experiment)
 - [35. Universal replacement](#35-universal-replacement)
@@ -82,16 +82,15 @@ In descending order:
 | Priority | Requirement |
 |---|---|
 | 1 | Semantic correctness (deterministic meaning is part of correctness) |
-| 2 | Minimum AI tokens per successful semantic change |
-| 3 | AI generation reliability |
-| 4 | Runtime performance |
-| 5 | Memory footprint |
-| 6 | Binary footprint |
-| 7 | Compilation quality |
-| 8 | Hardware/platform portability |
-| 9 | Deterministic behavior of builds and tooling |
-| 10 | Compiler/toolchain simplicity |
-| 11 | Human usability |
+| 2 | AI generation reliability |
+| 3 | Runtime performance |
+| 4 | Memory footprint |
+| 5 | Binary footprint |
+| 6 | Compilation quality |
+| 7 | Hardware/platform portability |
+| 8 | Deterministic behavior of builds and tooling |
+| 9 | Compiler/toolchain simplicity |
+| 10 | Human usability |
 
 Incremental/local modification serves priority 2. Reconciliation with `XAX_SPEC.md` §1 is ADR-078.
 
@@ -309,7 +308,7 @@ Internally, effect dependencies form graph edges.
 
 The persistent serialization is permitted to compress edges that can be reconstructed unambiguously.
 
-Thus XAX obtains explicit semantics without paying repeated token cost for redundant information.
+Thus XAX obtains explicit semantics without repeating redundant information.
 
 Independent effect domains allow optimization.
 
@@ -452,36 +451,19 @@ Only the changed semantic fact is transmitted.
 
 ---
 
-## 15. Token-native AI protocol
+## 15. Compact AI protocol
 
-For maximum efficiency, the eventual model and XAX protocol should be co-designed.
-
-Common operations receive dedicated model vocabulary tokens.
-
-Frequent concepts such as:
-
-    ADD
-    LOAD
-    CALL
-    RET
-    B32
-    B64
-
-should ideally each consume one model token.
-
-Small local references should also use compact vocabulary representations.
+The AI protocol carries semantic mutations, not text.
 
 The objective is therefore not merely "short text".
 
 The objective is:
 
-    minimum model tokens / semantic mutation
+    the smallest exact semantic mutation
 
-With model/tokenizer integration, a simple semantic edit could require only a few tokens.
+A simple semantic edit names its target through a local handle and supplies only the values that change.
 
-With an existing unmodified tokenizer, a compact fallback transport is used and empirically selected by benchmark.
-
-No serialization alphabet is declared optimal without measuring actual tokenizer behavior.
+A compact transport carries queries and mutations; it is versioned, deterministic and non-source.
 
 ---
 
@@ -831,17 +813,9 @@ There are no hidden scheduler interactions.
 
 ---
 
-## 32. Token-efficiency rule
+## 32. Semantic-edit rule
 
-This is a normal language/protocol design constraint: representative successful
-semantic changes target at most 0.50× the lowest valid textual median among at
-least two relevant languages, with the same model, task, success criteria, and
-equivalent tool/repository context. Count retries, repairs, diagnostics,
-cached input, and retransmission. Prefer strictly below 0.50; up to 0.55 is
-accepted within the owner's tolerance (ADR-195). Benchmark-only
-shortcuts cannot establish this property. The snapshot-bound adapter
-(`docs/09_AI_PROTOCOL.md` §15, ADR-186) is ordinary workspace tooling; measured
-evidence and unresolved task-equivalence limits remain in the matrix.
+The snapshot-bound adapter (`docs/09_AI_PROTOCOL.md` §15, ADR-186) is ordinary workspace tooling.
 
 Ordinary clients can apply a final model request through the snapshot-bound
 session and involve the model again only for a diagnostic repair (ADR-187).
@@ -853,11 +827,9 @@ The metric is not source characters.
 
 The primary metric is:
 
-    total AI tokens required
-    /
-    successful semantic change
+    successful semantic changes
 
-Secondary metrics include context tokens, generated tokens, repair iterations, invalid transactions and semantic entities transmitted.
+Secondary metrics include repair iterations, invalid transactions and semantic entities transmitted.
 
 A representation that uses fewer bytes but causes more model mistakes loses.
 
@@ -894,28 +866,25 @@ Only after this succeeds should ownership, SIMD, atomics, GPUs and high-level li
 
 ## 34. First decisive experiment
 
-*Status: open — historical C-vs-XAX rows are negative for XAX on tokens and not qualifying (OI-31); the tokenizer-native arm remains unavailable (OI-01).*
+*Status: open.*
 
-The first benchmark should compare four representations of the same small programs:
+The first benchmark should compare three representations of the same small programs:
 
     C-like text
     conventional SSA text
-    compact graph packets
-    tokenizer-native XAX transactions
+    compact XAX graph transactions
 
 Measure creation, one-literal edits, control-flow edits, type-error repair and optimization tasks.
 
 Record:
 
-    input tokens
-    output tokens
     invalid generation rate
     repair turns
     graph bytes
     compilation time
     generated machine code
 
-If tokenizer-native semantic transactions do not substantially outperform source regeneration, this architecture must be reconsidered.
+If semantic transactions do not substantially outperform source regeneration, this architecture must be reconsidered.
 
 ---
 
@@ -966,8 +935,6 @@ Replacement is claimed per platform and workload, at cumulative evidence-gated l
 | R4 | performance leadership (primary development focus): median time ≤ 0.9999× the fastest valid non-XAX implementation on the same hardware, with an advantage the raw samples show is not noise; memory and binary size measured and reported |
 | R5 | autonomous maintenance: query, modify, verify, benchmark, rebuild, commit through semantic transactions without whole-source regeneration |
 | R6 | proven 100% XAX-developed application: a complete deployable application designed, implemented, tested, built, deployed, and maintained with XAX as the sole authoritative language, with reproducible provenance and one verified XAX-only release cycle |
-
-AI token efficiency (≤ 0.50× the lowest textual workflow) is a separately scheduled future milestone outside R0–R6 (ADR-207); earlier token trials are historical evidence only.
 
 Every implementation claim carries one label: PROVEN, EXECUTED, MEASURED, STRUCTURAL, PROTOTYPE, or UNIMPLEMENTED. No platform or language is "replaced" until the required evidence exists.
 
@@ -1100,9 +1067,9 @@ Production use requires observability through derived, non-authoritative views: 
 
 ## 47. Replacement evidence matrix and benchmarks
 
-`XAX_REPLACEMENT_MATRIX.json` tracks each platform: semantic expressibility, code generation, ABI, artifact format, platform APIs, FFI, concurrency, atomics, SIMD, dynamic linking, debugging, optimization maturity, runtime requirement, real execution, performance/memory/code-size/AI-token evidence, blockers, and replacement level. Levels are derived from cited evidence by a validator; unchecked boxes never become claims.
+`XAX_REPLACEMENT_MATRIX.json` tracks each platform: semantic expressibility, code generation, ABI, artifact format, platform APIs, FFI, concurrency, atomics, SIMD, dynamic linking, debugging, optimization maturity, runtime requirement, real execution, performance/memory/code-size evidence, blockers, and replacement level. Levels are derived from cited evidence by a validator; unchecked boxes never become claims.
 
-Replacement benchmarks compare XAX against the platform's established toolchains (optimized C/C++, Rust, platform-native compilers, WebAssembly toolchains, GPU toolchains, hand-written assembly where credible), recording hardware, OS, toolchain versions, settings, workload, warmup, repetitions, variance, binary size, peak memory, and time. Benchmark definitions are never tuned to favor XAX. A CPU/native runtime comparison that judges performance includes an optimized C/C++ baseline and at least one implementation outside C/C++; R4 needs XAX's median at most 0.9999× the fastest valid non-XAX median, with a significant advantage (`XAX_BENCHMARKS.md` §15.0, ADR-207). AI token benchmarks belong to the future AI-efficiency milestone and measure total successful-task tokens and repair counts on real models; repository size should have as little relationship as possible to task context size.
+Replacement benchmarks compare XAX against the platform's established toolchains (optimized C/C++, Rust, platform-native compilers, WebAssembly toolchains, GPU toolchains, hand-written assembly where credible), recording hardware, OS, toolchain versions, settings, workload, warmup, repetitions, variance, binary size, peak memory, and time. Benchmark definitions are never tuned to favor XAX. A CPU/native runtime comparison that judges performance includes an optimized C/C++ baseline and at least one implementation outside C/C++; R4 needs XAX's median at most 0.9999× the fastest valid non-XAX median, with a significant advantage (`XAX_BENCHMARKS.md` §15.0, ADR-207). Repository size should have as little relationship as possible to task context size.
 
 The goal is not "faster than assembly"; it is:
 
