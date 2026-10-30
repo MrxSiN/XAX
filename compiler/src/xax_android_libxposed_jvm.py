@@ -245,7 +245,35 @@ def branding_entries(archive: bytes, version_code: int) -> dict[str, bytes]:
 
 def build_libxposed_jvm_apk(reader, package_view, target_object: SemanticObject, entry_cid: bytes,
                             external_inputs) -> bytes:
-    """Lower one module of this profile to an unsigned APK."""
+    """Lower one module of this profile to an unsigned APK.  S15e.6i.2b (ADR-358): the XAX Android program builds it
+    first; ``XAX_GENERAL_FRONTEND_DIFF=1`` compares the two."""
+    import os
+
+    from xax_compiler import XaxError
+    from xax_selfhost_android import android_with_xax
+
+    def reference():
+        try:
+            return _build_libxposed_jvm_apk(reader, package_view, target_object, entry_cid, external_inputs)
+        except XaxError as error:
+            return error.diagnostic
+
+    diff = os.environ.get("XAX_GENERAL_FRONTEND_DIFF") == "1"
+    try:
+        built = android_with_xax(reader, package_view, target_object, entry_cid, external_inputs=dict(external_inputs))
+    except XaxError as error:  # the program decided the rejection
+        if diff and reference() != error.diagnostic:
+            raise AssertionError("S15e.6i.2b libxposed JVM rejections disagree") from error
+        raise
+    if built is not None:
+        if diff and reference() != built:
+            raise AssertionError("S15e.6i.2b libxposed JVM APKs disagree")
+        return built
+    return _build_libxposed_jvm_apk(reader, package_view, target_object, entry_cid, external_inputs)
+
+
+def _build_libxposed_jvm_apk(reader, package_view, target_object: SemanticObject, entry_cid: bytes, external_inputs) -> bytes:
+    """The bootstrap's lowering of one module of this profile."""
     import zipfile
     from io import BytesIO
 

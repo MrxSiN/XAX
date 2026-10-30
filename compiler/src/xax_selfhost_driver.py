@@ -587,6 +587,26 @@ def build_driver_program(general: bool = False) -> tuple[StoreReader, SemanticOb
 
                     w.if_(w.ne(w[transport], 0), keep)
 
+                    def kept():
+                        """S15e.6i.2b (ADR-358): an external input's digest, length and packed bytes, for the Android
+                        program."""
+                        end = w.let("kb_end", w.load("work", 8 * RQ.INPUT_BYTES_END, 8))
+                        w.set(end, w.sel(w.eq(w[end], 0), RQ.INPUT_BYTES_AT, w[end]))
+                        words = w.let("kb_words", w.udiv(w.add(w[length], 7), 8))
+                        w.if_(w.lt(RQ.INPUT_BYTES_AT + RQ.INPUT_BYTES_LIMIT, w.add(w.add(w[end], 33), w[words])),
+                              lambda: capacity("external-input", "DRIVER-FILE-CAPACITY", RQ.INPUT_BYTES_LIMIT * 8))
+                        q = w.let("kb_q", 0)
+                        w.while_(lambda: w.lt(w[q], 32), lambda: (
+                            w.store("work", work_at(w.add(w[end], w[q])), w.load("work", work_at(w.add(staged, w[q])), 8), 8), w.set(q, w.add(w[q], 1))))
+                        w.store("work", work_at(w.add(w[end], 32)), w[length], 8)
+                        w.set(q, 0)
+                        w.while_(lambda: w.both(w.lt(w[q], w[words]), running()), lambda: (
+                            w.store("work", work_at(w.add(w.add(w[end], 33), w[q])), w.load("data", w.mul(w[q], 8), 8), 8), w.set(q, w.add(w[q], 1))))
+                        w.store("work", 8 * RQ.INPUT_BYTES_END, w.add(w.add(w[end], 33), w[words]), 8)
+                        w.store("work", 8 * RQ.INPUT_BYTES_N, w.add(w.load("work", 8 * RQ.INPUT_BYTES_N, 8), 1), 8)
+
+                    w.if_(w.eq(w[transport], 0), kept)
+
                     def compare():
                         less, equal, k = w.let("less", 0), w.let("equal", 1), w.let("k", 0)
 
@@ -1870,6 +1890,10 @@ def build_driver_program(general: bool = False) -> tuple[StoreReader, SemanticOb
         put(w[size])
         q2 = w.let("lid_q", 0)
         w.while_(lambda: w.lt(w[q2], w[size]), lambda: (put(w.load("data", w.add(w.add(w[body], 1), w[q2]))), w.set(q2, w.add(w[q2], 1))))
+        # S15e.6i.2b (ADR-358): the external inputs (their count, then the records the driver kept).
+        put(work_word(RQ.INPUT_BYTES_N))
+        q3 = w.let("ib_q", RQ.INPUT_BYTES_AT)
+        w.while_(lambda: w.lt(w[q3], work_word(RQ.INPUT_BYTES_END)), lambda: (put(work_word(w[q3])), w.set(q3, w.add(w[q3], 1))))
 
     if general:
         android_at = w.let("android_at", 0)

@@ -2,14 +2,14 @@
   "bootstrap_status": {
     "derivation_source": "xax_selfhost.bootstrap_status",
     "full_production_compiler": {
-      "B0": false,
-      "B1": false,
-      "B2": false,
-      "B3": false,
-      "B4": false,
-      "B5": false,
-      "B6": false,
-      "blocker": "libxposed JVM modules are not the production compiler's: the driver keeps no external input's bytes and chains no libxposed JVM program (S15e.6i.2); signed and unsigned APKs on Android targets are the production compiler's through the XAX Android program and APK signer (S15e.6h, S15e.6i.1, ADR-354 to ADR-357), as are Linux x86-64 and AArch64 executables, Windows PE32+ executables and DLLs, RISC-V, Wasm, Windows load-image and bare-metal AArch64 raw images, accelerator deployments, SPIR-V modules, browser pages and JVM JARs; the Linux x86-64 production compiler is reported separately (ADR-180, ADR-285, ADR-308, ADR-315, ADR-317, ADR-320, ADR-321, ADR-322, ADR-324, ADR-325, ADR-326, ADR-334, ADR-339, ADR-351, ADR-356, ADR-357)"
+      "B0": true,
+      "B1": true,
+      "B2": true,
+      "B3": true,
+      "B4": true,
+      "B5": true,
+      "B6": true,
+      "blocker": "derived from the Linux x86-64 production compiler, whose executed record covers every target and artifact `build` makes (S15g, ADR-358)"
     },
     "linux_x86_64_production_compiler": {
       "B0": true,
@@ -20,7 +20,7 @@
       "B5": true,
       "B6": true,
       "blockers": {},
-      "outside_scope": "every other target and artifact (Windows DLLs, JVM, WebAssembly, Android, SPIR-V, accelerator): Python (S15e.3-S15e.7)",
+      "outside_scope": null,
       "scope": "the general driver (xax_compiler_driver_general.xax): verify, inspect, resolve, resolve-trusted, build, lower, edit",
       "seed_requires_python": false
     },

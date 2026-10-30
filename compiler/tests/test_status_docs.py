@@ -50,7 +50,11 @@ class StatusDocsTests(unittest.TestCase):
             page.write_text("<!-- xax-status:bootstrap -->B6 everywhere<!-- /xax-status:bootstrap -->", encoding="utf-8")
             self.assertEqual(sync(write=True, repo=root), [page])
             text = page.read_text(encoding="utf-8")
-            self.assertIn("whole production compiler: none of B0-B6 is established", text)
+            full = evidence["bootstrap_status"]["full_production_compiler"]
+            established = [f"B{n}" for n in range(7) if full[f"B{n}"]]
+            self.assertIn("whole production compiler: " + (f"{', '.join(established)} established" if established else "none of B0-B6 is established"),
+                          text)  # S15g (ADR-358): the derived levels, whatever they are
+            self.assertNotIn("B6 everywhere", text)
             self.assertIn("B2, B3, B4 hold, B5, B6 do not", text)
             self.assertIn("requires Python: yes", text)
         self.assertTrue(any("xax-status:bootstrap" in path.read_text(encoding="utf-8") for path in documents()))
