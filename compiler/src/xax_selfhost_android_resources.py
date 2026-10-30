@@ -870,7 +870,9 @@ def manifest_with_xax(spec, *, receivers=(), services=(), application=None, decl
     """The binary manifest the XAX program writes for checked specifications, or None where it cannot run or declines
     (unless ``required``)."""
     try:
-        words = [0, *_text(spec.package_name), *_text(spec.activity_class), spec.version_code, spec.min_sdk, spec.target_sdk,
+        # S15e.6i.3 (ADR-359): the attributes are ``int()`` of the values, as ``_start_element`` writes them (a libxposed
+        # JVM record may give floats or booleans).
+        words = [0, *_text(spec.package_name), *_text(spec.activity_class), int(spec.version_code), int(spec.min_sdk), int(spec.target_sdk),
                  int(bool(spec.launcher)), int(bool(spec.debuggable))]
         words += [0] if application is None else [1, *_text(application.class_name)]
         words.append(len(receivers))
