@@ -1565,6 +1565,10 @@ def build_driver_program(general: bool = False) -> tuple[StoreReader, SemanticOb
             def ew(field):
                 return work_word(EDT.EC + field)
 
+            # S16a (ADR-360): the native workspace.  ``edit``'s input may instead be a batch of edits in a view's handles
+            # (translated into an edit record), a view selector or a diagnostic record (``ws_command``); the driver's
+            # function is within 1% of the general backend's values per function, so the workspace adds no command.
+            request_helper("ws_command", editors)
             request_helper("edit_begin", editors)
             w.if_(w.eq(ew(EDT.E_STATUS), EDT.REJECT), from_work)
             going = w.let("e_going", 1)
@@ -1612,7 +1616,16 @@ def build_driver_program(general: bool = False) -> tuple[StoreReader, SemanticOb
 
                 when(handed)
 
-            when(write)
+            def text():
+                """S16a: a view's or an explanation's text (packed by ``ws_command`` from ``BATCH``) is the output in place
+                of a store: ``resolved_store`` writes it."""
+                n = w.let("t_n", work_word(EDT.WSC + EDT.W_OUT))
+                q = w.let("t_q", 0)
+                w.while_(lambda: w.lt(w.mul(w[q], 8), w[n]), lambda: (
+                    w.store("written", w.mul(w[q], 8), work_word(w.add(EDT.BATCH, w[q])), 8), w.set(q, w.add(w[q], 1))))
+                w.set(resolved, w[n])
+
+            when(lambda: w.if_(w.eq(work_word(EDT.WSC + EDT.W_TEXT), 0), write, text))
 
         when(lambda: w.if_(w.eq(w[mode], EDIT), edit))
         when(lambda: w.if_(w.le(VERIFY, w[mode]), lambda: stop(DONE)))  # S13b, S13c: these commands end here
@@ -2341,6 +2354,20 @@ class NativeGeneralDriver(NativeDriver):
         """S15c.5 (ADR-309): ``resolve`` under the trust file's policy and signatures
         (``xax_selfhost_resolve.trust_file``)."""
         return self._process("resolve-trusted", request_path, snapshot_path, trust_path, *inputs)
+
+    def view(self, store_path: str | Path, selector_path: str | Path, output_path: str | Path) -> int:
+        """S16a (ADR-360): ``edit`` with a view selector: on ``IMAGE`` the store's functions (an empty selector) or function
+        ``F<n>`` with workspace-local handles, as text."""
+        return self._process("edit", store_path, selector_path, output_path)
+
+    def apply(self, store_path: str | Path, batch_path: str | Path, output_path: str | Path) -> int:
+        """S16a (ADR-360): ``edit`` with a batch (``R <root>``, ``F<n>``, edits): on ``IMAGE`` the store its edits make;
+        ``REJECTED`` with the diagnostic record."""
+        return self._process("edit", store_path, batch_path, output_path)
+
+    def explain(self, store_path: str | Path, record_path: str | Path, output_path: str | Path) -> int:
+        """S16a (ADR-360): ``edit`` with a diagnostic record: on ``IMAGE`` its text (any verified store serves)."""
+        return self._process("edit", store_path, record_path, output_path)
 
 
 def decode_inspection(data: bytes) -> dict:
