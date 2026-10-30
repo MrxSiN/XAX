@@ -601,7 +601,7 @@ Constraint forms that create pathological resolution behavior may need to be res
 
 It remains to be measured whether provenance should normally record only a snapshot/toolchain closure or a finer action-level build DAG.
 
-The design must balance verifiability, cache utility, metadata size, and AI token cost.
+The design must balance verifiability, cache utility, and metadata size.
 
 ### 19.4 Sandbox enforcement portability
 
@@ -613,7 +613,7 @@ The semantic capability model is fixed. The implementation mechanism for enforci
 
 This design should be reconsidered if later implementation evidence establishes any of the following:
 
-1. Canonical semantic package/build data requires materially more AI tokens or repair turns than a simpler external representation for equivalent reliable mutations.
+1. Canonical semantic package/build data requires materially more repair turns than a simpler external representation for equivalent reliable mutations.
 2. Content-addressed package graphs cause unacceptable storage, lookup, or incremental-update cost that cannot be mitigated by interning, structural sharing, and local references.
 3. Deterministic semantic dependency resolution proves impractical for realistic dependency graphs without reintroducing hidden mutable state.
 4. Snapshot construction fails to capture output-affecting inputs reliably enough to support reproducible builds.

@@ -2,16 +2,16 @@
   "alias_encoding_comparator": {
     "basis_graph_bytes": 122,
     "derived_allocation_identity_extra_graph_bytes": 0,
-    "derived_allocation_identity_extra_token_atoms": 0,
+    "derived_allocation_identity_extra_semantic_atoms": 0,
     "explicit_local_class_id_extra_graph_bytes": 2,
-    "explicit_local_class_id_extra_token_atoms": 2,
+    "explicit_local_class_id_extra_semantic_atoms": 2,
     "precise_alias_classes": 2
   },
   "checked_surface_comparator": {
     "checked_store_minus_ordinary_graph_body_bytes": 3,
-    "checked_store_minus_ordinary_token_atoms": 1,
-    "fused_checked_load_token_atoms": 41,
-    "ordinary_static_load_token_atoms": 40,
+    "checked_store_minus_ordinary_semantic_atoms": 1,
+    "fused_checked_load_semantic_atoms": 41,
+    "ordinary_static_load_semantic_atoms": 40,
     "wasm_checked_minus_ordinary_module_bytes": 12,
     "wasm_checked_store_minus_ordinary_module_bytes": 12,
     "x86_checked_minus_ordinary_code_bytes": 24,
@@ -23,7 +23,7 @@
   },
   "raw_surface_comparator": {
     "raw_minus_ordinary_graph_body_bytes": 6,
-    "raw_minus_ordinary_token_atoms": 3,
+    "raw_minus_ordinary_semantic_atoms": 3,
     "wasm_raw_minus_ordinary_module_bytes": 0,
     "x86_raw_minus_ordinary_code_bytes": 0
   },
@@ -36,7 +36,7 @@
       "name": "checked_load",
       "root_cid": "efad9bc84c2823ac2323b71fa1ab9b4069906fe1e1010d2223d5cfd655ceb8e5",
       "store_bytes": 1067,
-      "token_atoms": 41,
+      "semantic_atoms": 41,
       "verify_median_us": 3118.278,
       "verify_samples_us": [
         3329.688,
@@ -81,7 +81,7 @@
       "name": "checked_store",
       "root_cid": "8d07571a7bf9136f1dfdf43aa1f649d25a9e7b225b8289ed5beaf638d925a4ef",
       "store_bytes": 1018,
-      "token_atoms": 22,
+      "semantic_atoms": 22,
       "verify_median_us": 2867.9,
       "verify_samples_us": [
         3059.805,
@@ -126,7 +126,7 @@
       "name": "ordinary_initialized_load",
       "root_cid": "e93610932b22c0e2254af4f99437ade1dadd8fc1cef2888c17b8314ec5bdf678",
       "store_bytes": 1176,
-      "token_atoms": 29,
+      "semantic_atoms": 29,
       "verify_median_us": 3268.727,
       "verify_samples_us": [
         9240.611,
@@ -171,7 +171,7 @@
       "name": "ordinary_load",
       "root_cid": "3823560a68cf414a06f1348b380e79053a5b5b7769a5d7fd4cb1d327c2995abc",
       "store_bytes": 1063,
-      "token_atoms": 40,
+      "semantic_atoms": 40,
       "verify_median_us": 3185.277,
       "verify_samples_us": [
         4382.672,
@@ -216,7 +216,7 @@
       "name": "ordinary_store",
       "root_cid": "c254e1f774f7e7aca05a94906717cd893c2edfb389d35b44844bfc39a35b432b",
       "store_bytes": 1015,
-      "token_atoms": 21,
+      "semantic_atoms": 21,
       "verify_median_us": 2652.328,
       "verify_samples_us": [
         2504.044,
@@ -261,7 +261,7 @@
       "name": "raw_initialized_load",
       "root_cid": "1d6f2caab8a117079a07a788facab31d027c1d14f88e04be3caecacb97400312",
       "store_bytes": 1183,
-      "token_atoms": 32,
+      "semantic_atoms": 32,
       "verify_median_us": 3324.214,
       "verify_samples_us": [
         3570.297,
@@ -306,7 +306,7 @@
       "name": "two_alias_implicit",
       "root_cid": "da294495ee82a30db684b0a890b7b37d87ca4821f383f7228e0e0acbaa96141e",
       "store_bytes": 1087,
-      "token_atoms": 51,
+      "semantic_atoms": 51,
       "verify_median_us": 3488.221,
       "verify_samples_us": [
         4204.677,
@@ -354,5 +354,5 @@
     },
     "x86_64": "frame-relative native stack with explicit software bounds branch for checked dynamic offset"
   },
-  "token_metric": "ideal token-native semantic atoms; not a text tokenizer"
+  "atom_metric": "semantic atoms (operation, value, type and attribute handles)"
 }

@@ -19,7 +19,7 @@
   ],
   "entities_exposed": 3,
   "kind": "m6-response-byte-budget-accounting-v1",
-  "notes": "Exact deterministic bootstrap JSON bytes only; not model-token counts or timing evidence.",
+  "notes": "Exact deterministic bootstrap JSON bytes only; not timing evidence.",
   "query_count": 3,
   "timing": false,
   "unbounded_response_bytes": 424

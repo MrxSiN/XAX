@@ -1,44 +1,4 @@
 {
-  "ai_tokens": {
-    "c": {
-      "declarations": 5,
-      "example": {
-        "hand_built": "{\"abi\":\"sysv-x86_64-c\",\"library\":\"libz.so.1\",\"name\":\"crc32\",\"in\":[\"b64\",\"ptr<b8>\",\"b32\",\"effect:memory\"],\"out\":[\"b64\",\"effect:memory\"]}",
-        "request": "{\"import\":\"crc32\"}"
-      },
-      "hand_built_tokens": {
-        "cl100k_base": 198,
-        "o200k_base": 205
-      },
-      "import_request_tokens": {
-        "cl100k_base": 47,
-        "o200k_base": 47
-      },
-      "request_over_hand_built": {
-        "cl100k_base": 0.237,
-        "o200k_base": 0.229
-      }
-    },
-    "jvm": {
-      "declarations": 30,
-      "example": {
-        "hand_built": "{\"abi\":\"jvm-invokeinterface\",\"library\":\"java/util/stream/IntStream\",\"name\":\"filter(Ljava/util/function/IntPredicate;)Ljava/util/stream/IntStream;\",\"in\":[\"ptr<jvm-ref:Ljava/util/stream/IntStream;>\",\"ptr<code-entry:jvm-interface:java/util/function/IntPredicate.test(I)Z>\"],\"out\":[\"ptr<jvm-ref:Ljava/util/stream/IntStream;>\"]}",
-        "request": "{\"import\":\"java/util/stream/IntStream.filter(Ljava/util/function/IntPredicate;)Ljava/util/stream/IntStream;\",\"pure\":true,\"callbacks\":true}"
-      },
-      "hand_built_tokens": {
-        "cl100k_base": 1431,
-        "o200k_base": 1497
-      },
-      "import_request_tokens": {
-        "cl100k_base": 584,
-        "o200k_base": 594
-      },
-      "request_over_hand_built": {
-        "cl100k_base": 0.408,
-        "o200k_base": 0.397
-      }
-    }
-  },
   "decision": "ADR-166",
   "error_rate": {
     "c": {
@@ -288,7 +248,7 @@
       }
     ]
   },
-  "evidence_label": "MEASURED (coverage, latency, size, error rate, offline tokens); EXECUTED programs in test_xax_jvm_import.py and test_xax_c_import.py",
+  "evidence_label": "MEASURED (coverage, latency, size, error rate); EXECUTED programs in test_xax_jvm_import.py and test_xax_c_import.py",
   "format": "xax-oi32-import-evidence-v1",
   "java": 65,
   "jvm_coverage": {
@@ -309,6 +269,5 @@
     "refused": 833,
     "report_sha256": "9e634101df6f285acc8b54e1c46c10a8bce913ba78326ae13a006b01f425f3d3",
     "requests": 15806
-  },
-  "tokenizer": "tiktoken 0.14.0"
+  }
 }

@@ -704,7 +704,6 @@ def _ai_payload():
     return {
         "classification_query_bytes": len(query), "parameterized_capability_mutation_bytes": len(mutation),
         "coarse_capability_bytes": len(coarse), "parameterized_capability_bytes": len(narrow),
-        "tokenizer_model_tokens": None,
     }
 
 def collect_deterministic_evidence() -> dict:

@@ -9,7 +9,7 @@
     "runtime": "semantic/target-package conformance only; no physical accelerator executed",
     "target_specific_escape": "system is explicit on coherent-grid and nonportable; it is rejected on the SIMT package"
   },
-  "evidence_sha256_without_digest_field": "8c09cd154fb033cdb9193e76384f89d0768bf3a96b26a428831ccf4870acf6bb",
+  "evidence_sha256_without_digest_field": "b3d88128ba51f682db8c5abbb5ee854f79653279853eb9588620e551d48b3b06",
   "issue": "OI-13",
   "mapping": {
     "coherent_roundtrip": [
@@ -28,13 +28,7 @@
     "portable_expression_bytes": 31,
     "production_core_semantic_lines_added": 0,
     "second_target_package_lines": 59,
-    "target_specific_expression_bytes": 21,
-    "token_cost": {
-      "portable_tokens": null,
-      "reason": "tiktoken unavailable; bytes are not substituted for tokens",
-      "target_specific_tokens": null,
-      "tokenizer": null
-    }
+    "target_specific_expression_bytes": 21
   },
   "ordering_relation": [
     [

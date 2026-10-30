@@ -83,14 +83,13 @@ XAX is not defined as a human-written textual language. Human-oriented notation 
 
 An AI-native XAX workflow SHOULD minimize:
 
-- total model tokens per successful semantic change;
 - context required to understand a local task;
 - invalid mutations;
 - repair iterations;
 - redundant retransmission of unchanged semantics;
 - ambiguity in generated program meaning.
 
-AI-native does **not** require a particular model, tokenizer, transport, or autonomous agent. Machine clients are first-class; human textual authoring is not required.
+AI-native does **not** require a particular model, transport, or autonomous agent. Machine clients are first-class; human textual authoring is not required.
 
 ### 3.3 One language
 
@@ -167,15 +166,14 @@ When two design goals conflict, the following priority order governs unless an e
 | Priority | Requirement |
 |---:|---|
 | 1 | Exact semantics |
-| 2 | Minimum AI token expenditure |
-| 3 | Minimum probability of AI generation error |
-| 4 | Native machine performance |
-| 5 | Minimal memory/code footprint |
-| 6 | Universal hardware targeting |
-| 7 | Determinism |
-| 8 | Incremental/local modification |
-| 9 | Compiler simplicity |
-| 10 | Human usability |
+| 2 | Minimum probability of AI generation error |
+| 3 | Native machine performance |
+| 4 | Minimal memory/code footprint |
+| 5 | Universal hardware targeting |
+| 6 | Determinism |
+| 7 | Incremental/local modification |
+| 8 | Compiler simplicity |
+| 9 | Human usability |
 
 The ordering is normative. A lower-priority property MUST NOT be improved by violating a higher-priority requirement. Human readability, human writability, human-friendly naming, and formatting have zero normative weight; they MAY be useful tooling properties but are not language-design constraints.
 
@@ -199,7 +197,7 @@ A representation MAY be textual or binary. Two forms claiming the same canonical
 
 A **tooling protocol** is a machine-facing interface for querying, constructing, mutating, verifying, testing, benchmarking, comparing, or committing XAX state.
 
-Protocol handles, opcodes, transaction packets, or tokenizer-native tokens MAY differ from persistent serialization if semantic identity and verification are preserved.
+Protocol handles, opcodes, or transaction packets MAY differ from persistent serialization if semantic identity and verification are preserved.
 
 ### 5.4 Target package
 
@@ -276,7 +274,7 @@ The following invariants constrain all later stages.
 25. Optimization MUST preserve observable semantics.
 26. Performance claims MUST be falsifiable by future testing.
 27. Universal superiority over all hand-written assembly MUST NOT be claimed.
-28. Token efficiency MUST be evaluated using successful semantic work, not merely serialized byte or character count.
+28. AI protocol efficiency MUST be evaluated using successful semantic work, not merely serialized byte or character count.
 29. Measured profile data MUST remain distinct from program semantics unless explicitly imported as a semantic assumption or policy.
 
 ---
@@ -287,7 +285,7 @@ XAX intentionally rejects the following as architectural goals:
 
 | Rejected alternative | Reason |
 |---|---|
-| A conventional human-first source language as the canonical program | Reintroduces parsing, textual regeneration, formatting churn, naming dependence, and token cost unrelated to semantics. |
+| A conventional human-first source language as the canonical program | Reintroduces parsing, textual regeneration, formatting churn, and naming dependence unrelated to semantics. |
 | A mandatory parser-generated AST as source authority | The canonical representation is already semantic; a source-language AST would be an unnecessary authoritative layer. |
 | Human readability as a language constraint | It conflicts with machine compactness and exactness and has lower priority than every core design objective. |
 | Mandatory GC, allocator, scheduler, async runtime, exceptions, or libc | Prevents minimal bare-metal deployment and creates hidden or unavoidable runtime costs. |
@@ -296,8 +294,7 @@ XAX intentionally rejects the following as architectural goals:
 | A permanently separate macro/template/preprocessor language | Compile-time semantics must be expressible using XAX itself. |
 | Fixed built-in backends for a closed set of architectures | Violates the universal-target objective and makes future hardware a language change. |
 | A second target-description, package, build, or configuration DSL | Violates the one-language principle. |
-| Whole-project regeneration for routine AI edits | Wastes tokens and increases generation-error probability. |
-| Claims that compact text is automatically token-optimal | Tokenizer behavior and repair rates must be measured empirically. |
+| Whole-project regeneration for routine AI edits | Retransmits unchanged semantics and increases generation-error probability. |
 | Claims of unconditional superiority to assembly | Not logically defensible and not falsifiable without a defined workload and cost function. |
 | Optimization that depends on preserving human source shape | Human source preservation has no normative weight. |
 
@@ -316,7 +313,6 @@ The architecture does not guarantee:
 - that every optimization problem is decidable;
 - that globally optimal machine code can always be found;
 - that every target semantic can be modeled mathematically in full detail;
-- that tokenizer-native protocols will outperform all alternatives without benchmarking;
 - that content-addressed storage alone eliminates merge conflicts;
 - that AI agents never generate invalid programs;
 - that verification can prove all desirable properties statically;
@@ -357,7 +353,7 @@ Compile-time computation MUST use XAX semantics rather than a second macro/templ
 
 ### 9.7 Persistence and AI protocol
 
-Persistence and AI protocols MAY use different encodings but MUST preserve canonical semantics. Token efficiency is empirical; local handles MUST NOT weaken identity or transaction safety.
+Persistence and AI protocols MAY use different encodings but MUST preserve canonical semantics. Local handles MUST NOT weaken identity or transaction safety.
 
 ### 9.8 Compiler and optimizer
 
@@ -387,7 +383,6 @@ Packages, dependency identity, and build configuration MUST remain semantic XAX 
 | **specialization** | Compile-time reduction of general semantics using known values, types, targets, or policies. |
 | **transaction** | A mutation set checked against an expected program state and committed atomically only if valid. |
 | **hidden cost** | Runtime behavior not explicitly represented by authoritative semantics. |
-| **AI token expenditure** | Model-context and generated-token cost attributable to accomplishing a semantic task, including repair. |
 | **conforming** | Satisfying the applicable MUST/MUST NOT requirements of the specification. |
 
 Notation conventions:
@@ -403,13 +398,7 @@ Notation conventions:
 
 Only questions requiring implementation evidence remain open at this stage.
 
-### 11.1 Token-native protocol threshold
-
-The architecture prefers tokenizer-native semantic transactions if they materially reduce total AI tokens per successful semantic change. The exact protocol, token vocabulary, and break-even threshold cannot be fixed without model/tokenizer benchmarks.
-
-**Required evidence:** controlled comparison against at least conventional source text, SSA-like text, and compact graph transactions across creation, local edits, control-flow edits, error repair, and optimization tasks.
-
-### 11.2 Canonical representation granularity
+### 11.1 Canonical representation granularity
 
 The foundation requires canonical semantic authority and local mutation, but the ideal granularity of persistent content-addressed objects is not fixed here.
 
@@ -427,14 +416,13 @@ The Stage 01 architecture should be revised if later evidence demonstrates any o
 2. **Hidden mandatory runtime:** ordinary valid programs cannot avoid an allocator, GC, scheduler, exception runtime, reference counting, libc, OS service, or equivalent facility even when their semantics do not request it.
 3. **Target leakage:** supporting substantially different hardware repeatedly requires changes to fundamental language semantics rather than target/platform packages.
 4. **Non-local mutation failure:** small semantic edits inherently require retransmitting or rebuilding unrelated program state at a scale comparable to whole-source regeneration.
-5. **AI inefficiency:** after protocol optimization, semantic transactions fail to materially improve total tokens per successful mutation or generation reliability compared with simpler source-based approaches.
+5. **AI inefficiency:** after protocol optimization, semantic transactions fail to materially improve generation reliability or repair effort compared with simpler source-based approaches.
 6. **Verification incompatibility:** the canonical representation cannot support machine verification of the explicit obligations required for memory, resources, effects, or control semantics.
-7. **Optimization obstruction:** canonical semantic choices prevent optimizations available to conventional compiler IRs without providing compensating correctness or AI-efficiency advantages.
+7. **Optimization obstruction:** canonical semantic choices prevent optimizations available to conventional compiler IRs without providing compensating correctness or AI-editing advantages.
 8. **Bare-metal failure:** minimal programs cannot be lowered directly to native code for suitable hardware without importing unrelated runtime facilities.
 9. **Language fragmentation:** practical use requires permanently maintaining independent macro, target-description, build, package, or configuration languages because XAX cannot express those domains adequately.
 10. **Performance-objective failure:** on representative targets, cost-directed compilation consistently cannot approach established optimized compiler or expert assembly baselines because the semantic model withholds essential information or imposes unavoidable overhead.
-11. **Token metric mismatch:** minimizing model tokens per successful semantic change proves to be a poor predictor of total autonomous-development cost, reliability, or throughput; if so, the priority metric MUST be revised to the empirically superior measure.
-12. **Canonicalization cost failure:** maintaining canonical semantic identity imposes storage, verification, or mutation costs large enough to outweigh its locality, deduplication, and correctness benefits.
+11. **Canonicalization cost failure:** maintaining canonical semantic identity imposes storage, verification, or mutation costs large enough to outweigh its locality, deduplication, and correctness benefits.
 
 A single implementation failure does not falsify the architecture unless it follows from a required Stage 01 invariant or definition rather than an avoidable implementation choice.
 
@@ -447,7 +435,7 @@ Every later XAX stage MUST preserve the following compact rule set:
 - **Meaning is source.**
 - Canonical programs are machine-oriented typed semantic structures.
 - Exact semantics outrank every other design objective.
-- AI efficiency is measured by successful semantic work, not textual brevity alone.
+- AI editing is measured by successful semantic work, not textual brevity alone.
 - Human readability, writability, naming, and formatting are non-normative.
 - Runtime behavior is explicit or erased; hidden runtime work is prohibited.
 - No GC, allocator, scheduler, exception runtime, reference counting, libc, or OS is mandatory.

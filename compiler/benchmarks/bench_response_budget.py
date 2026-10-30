@@ -71,7 +71,7 @@ def main() -> None:
         "entities_exposed": workspace.accounting.entities_exposed,
         "query_count": workspace.accounting.queries,
         "accounted_query_bytes": workspace.accounting.query_bytes,
-        "notes": "Exact deterministic bootstrap JSON bytes only; not model-token counts or timing evidence.",
+        "notes": "Exact deterministic bootstrap JSON bytes only; not timing evidence.",
     }
     path = Path(__file__).with_name("m6_response_budget_smoke.json")
     path.write_text(json.dumps(record, indent=2, sort_keys=True) + "\n")

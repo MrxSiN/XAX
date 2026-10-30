@@ -138,12 +138,9 @@
       "ordinary-generic-construction": 5,
       "target-adapter-interface-generation": 5
     },
-    "target_adapter_has_body_authority": false,
-    "token_counts": null,
-    "token_reason": "tiktoken/model tokenizer unavailable",
-    "tokenizer": null
+    "target_adapter_has_body_authority": false
   },
-  "deterministic_projection_sha256": "4a767279b191f80f1e8948e3abdc1a3ef0e4ec9471d782a4ad9d7cb96a56bc99",
+  "deterministic_projection_sha256": "158bc6f0a3d264675b85abcc68fe4297ea4e84c1d73416e27de43c69238d73f6",
   "host_observations": {
     "artifact": "oi14_comptime_host_samples.json",
     "excluded_from_budget_and_reproducibility_hash": true,
@@ -199,7 +196,6 @@
         "construct_semantics"
       ],
       "capability_packet_bytes": 4,
-      "capability_tokens": null,
       "constructed_objects": 3,
       "created_cids": [
         "55392582b5e9b5b92e562a707041d5d8efce6a9016114ded09dd5b0ae6cbdfcc",
@@ -228,7 +224,6 @@
         "construct_semantics"
       ],
       "capability_packet_bytes": 5,
-      "capability_tokens": null,
       "constructed_objects": 3,
       "created_cids": [
         "5b80f02466035cbbe3e78e5f38c3b98085aae34c7a36d0f41d8e5a355461cab7",
@@ -258,7 +253,6 @@
         "construct_semantics"
       ],
       "capability_packet_bytes": 5,
-      "capability_tokens": null,
       "constructed_objects": 3,
       "created_cids": [
         "03dfe6520ab043dd40d391d8834a41ce4314481ce6d7cc8dd8bf15ea560b5adc",

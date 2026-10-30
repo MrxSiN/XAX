@@ -1,12 +1,4 @@
 {
-  "ai_model_measurement": {
-    "available": false,
-    "input_tokens": null,
-    "invalid_edits": null,
-    "output_tokens": null,
-    "reason": "no OpenAI/Codex/Anthropic client, credentials, or tokenizer installed in measurement environment",
-    "repair_turns": null
-  },
   "ai_mutation_tasks": [
     {
       "mutation_bytes": 50,

@@ -7,12 +7,9 @@ never participate in canonical XAX identity.
 from __future__ import annotations
 
 import argparse
-import csv
 import hashlib
 import json
-import os
 import platform
-import shutil
 import statistics
 import time
 from dataclasses import asdict, dataclass
@@ -58,16 +55,11 @@ HERE = Path(__file__).resolve().parent
 EVIDENCE_PATH = HERE / "oi28_diagnostic_payload_evidence.json"
 TIMING_PATH = HERE / "oi28_diagnostic_payload_timing.json"
 TASKS_PATH = HERE / "oi28_repair_tasks.json"
-TRIALS_PATH = HERE / "oi28_model_trials.csv"
 SCHEMA = "xax-oi28-diagnostic-payload-v1"
 PAYLOAD_VERSION = "D1"
 POLICIES = ("minimal", "near")
 NEAR_ENTITY_CAP = 8
 NEAR_BYTE_CAP = 1024
-TRIAL_FIELDS = (
-    "task_id", "arm", "trial", "model", "reasoning", "pass", "input_tokens", "output_tokens",
-    "total_tokens", "turns", "invalid_followups", "queried_entities", "payload_bytes", "final_root", "notes",
-)
 
 
 @dataclass(frozen=True)
@@ -532,30 +524,6 @@ def payload_is_fresh(case: RepairCase, packet: dict[str, object]) -> bool:
     return packet.get("base") == f"R0.{case.workspace.generation}"
 
 
-def prepare_trials(output: Path) -> int:
-    output.mkdir(parents=True, exist_ok=True)
-    count = 0
-    for case in cases():
-        for policy in POLICIES:
-            directory = output / case.task_id / policy
-            directory.mkdir(parents=True, exist_ok=True)
-            task = {
-                "schema": "xax-oi28-model-task-v1",
-                "task_id": case.task_id,
-                "arm": policy,
-                "instruction": case.prompt,
-                "diagnostic": payload(case, policy),
-                "response_contract": {
-                    "kind": "semantic-repair",
-                    "require_exact_target": True,
-                    "fresh_session": True,
-                    "unrelated_context": False,
-                },
-            }
-            (directory / "TASK.json").write_text(json.dumps(task, sort_keys=True, indent=2) + "\n", encoding="utf-8")
-            count += 1
-    return count
-
 def _timed_payload(case: RepairCase, policy: str, samples: int = 31) -> tuple[dict[str, object], dict[str, object]]:
     values = []
     result = None
@@ -570,13 +538,6 @@ def _timed_payload(case: RepairCase, policy: str, samples: int = 31) -> tuple[di
         "median_ns": int(statistics.median(values)),
         "p10_ns": ordered[max(0, int(len(ordered) * 0.10) - 1)],
         "p90_ns": ordered[min(len(ordered) - 1, int(len(ordered) * 0.90))],
-    }
-
-
-def _availability() -> dict[str, object]:
-    return {
-        "executables": {name: shutil.which(name) for name in ("codex", "openai", "claude")},
-        "credentials": {name: bool(os.environ.get(name)) for name in ("OPENAI_API_KEY", "CODEX_API_KEY", "ANTHROPIC_API_KEY")},
     }
 
 
@@ -600,13 +561,6 @@ def _task_record(case: RepairCase, payloads: dict[str, dict[str, object]]) -> di
         "known_repair": list(case.known_repair),
         "target_root": case.target_root,
     }
-
-
-def _read_trials() -> list[dict[str, str]]:
-    if not TRIALS_PATH.exists() or TRIALS_PATH.stat().st_size == 0:
-        return []
-    with TRIALS_PATH.open(newline="", encoding="utf-8") as stream:
-        return list(csv.DictReader(stream))
 
 
 def build_evidence(*, measure_timing: bool = True) -> tuple[dict[str, object], dict[str, object]]:
@@ -634,12 +588,6 @@ def build_evidence(*, measure_timing: bool = True) -> tuple[dict[str, object], d
                 "near_entities": len(near),
                 "truncated": bool(packet.get("truncated", False)),
                 "target_root": case.target_root,
-                "model_input_tokens": None,
-                "model_output_tokens": None,
-                "model_total_tokens": None,
-                "repair_turns": None,
-                "invalid_followups": None,
-                "model_pass": None,
             })
             if timing is not None:
                 timing_rows.append({"task_id": case.task_id, "policy": policy, **timing})
@@ -662,9 +610,7 @@ def build_evidence(*, measure_timing: bool = True) -> tuple[dict[str, object], d
             "near_overhead_bytes": near_total - minimal_total,
         },
         "tasks": task_records,
-        "model_run": None if not _read_trials() else {"rows": _read_trials()},
-        "model_access": _availability(),
-        "decision": "open_pending_model_repair_trials",
+        "decision": "measured",
     }
     timing = {
         "schema": "xax-oi28-diagnostic-payload-timing-v1",
@@ -684,59 +630,7 @@ def write_artifacts() -> tuple[dict[str, object], dict[str, object]]:
     EVIDENCE_PATH.write_text(json.dumps(evidence, sort_keys=True, indent=2) + "\n", encoding="utf-8")
     TIMING_PATH.write_text(json.dumps(timing, sort_keys=True, indent=2) + "\n", encoding="utf-8")
     TASKS_PATH.write_text(json.dumps({"schema": "xax-oi28-repair-tasks-v1", "tasks": evidence["tasks"]}, sort_keys=True, indent=2) + "\n", encoding="utf-8")
-    if not TRIALS_PATH.exists():
-        with TRIALS_PATH.open("w", newline="", encoding="utf-8") as stream:
-            csv.DictWriter(stream, fieldnames=TRIAL_FIELDS).writeheader()
     return evidence, timing
-
-
-def record_trial(args: argparse.Namespace) -> None:
-    if args.arm not in POLICIES:
-        raise ValueError("arm must be minimal or near")
-    if args.trial < 1 or args.turns < 1 or args.invalid_followups < 0 or args.queried_entities < 0:
-        raise ValueError("trial/turn counts must be positive and counters nonnegative")
-    for value in (args.input_tokens, args.output_tokens, args.total_tokens):
-        if value is not None and value < 0:
-            raise ValueError("token counts must be nonnegative")
-    known = {case.task_id: case for case in cases()}
-    if args.task_id not in known:
-        raise ValueError("unknown task")
-    rows = []
-    if TRIALS_PATH.exists():
-        with TRIALS_PATH.open(newline="", encoding="utf-8") as stream:
-            rows = list(csv.DictReader(stream))
-    if any(row["task_id"] == args.task_id and row["arm"] == args.arm and int(row["trial"]) == args.trial for row in rows):
-        raise ValueError("trial already recorded")
-    case = known[args.task_id]
-    if args.outcome == "PASS" and args.final_root != case.target_root:
-        raise ValueError("passing trial final root must equal exact target root")
-    packet = payload(case, args.arm)
-    total = args.total_tokens
-    if total is None and args.input_tokens is not None and args.output_tokens is not None:
-        total = args.input_tokens + args.output_tokens
-    row = {
-        "task_id": args.task_id,
-        "arm": args.arm,
-        "trial": args.trial,
-        "model": args.model,
-        "reasoning": args.reasoning,
-        "pass": str(args.outcome == "PASS").upper(),
-        "input_tokens": "" if args.input_tokens is None else args.input_tokens,
-        "output_tokens": "" if args.output_tokens is None else args.output_tokens,
-        "total_tokens": "" if total is None else total,
-        "turns": args.turns,
-        "invalid_followups": args.invalid_followups,
-        "queried_entities": args.queried_entities,
-        "payload_bytes": len(_json_bytes(packet)),
-        "final_root": args.final_root,
-        "notes": args.notes,
-    }
-    exists = TRIALS_PATH.exists() and TRIALS_PATH.stat().st_size > 0
-    with TRIALS_PATH.open("a", newline="", encoding="utf-8") as stream:
-        writer = csv.DictWriter(stream, fieldnames=TRIAL_FIELDS)
-        if not exists:
-            writer.writeheader()
-        writer.writerow(row)
 
 
 def _sha(path: Path) -> str:
@@ -750,23 +644,6 @@ def main(argv: list[str] | None = None) -> int:
     show = sub.add_parser("show")
     show.add_argument("task_id")
     show.add_argument("arm", choices=POLICIES)
-    prepare = sub.add_parser("prepare")
-    prepare.add_argument("output", type=Path)
-    record = sub.add_parser("record")
-    record.add_argument("task_id")
-    record.add_argument("arm", choices=POLICIES)
-    record.add_argument("outcome", choices=("PASS", "FAIL"))
-    record.add_argument("--trial", type=int, default=1)
-    record.add_argument("--model", default="")
-    record.add_argument("--reasoning", default="")
-    record.add_argument("--input-tokens", type=int)
-    record.add_argument("--output-tokens", type=int)
-    record.add_argument("--total-tokens", type=int)
-    record.add_argument("--turns", type=int, default=1)
-    record.add_argument("--invalid-followups", type=int, default=0)
-    record.add_argument("--queried-entities", type=int, default=0)
-    record.add_argument("--final-root", default="")
-    record.add_argument("--notes", default="")
     args = parser.parse_args(argv)
     if args.command == "show":
         known = {case.task_id: case for case in cases()}
@@ -775,18 +652,11 @@ def main(argv: list[str] | None = None) -> int:
         case = known[args.task_id]
         print(json.dumps({"task_id": case.task_id, "prompt": case.prompt, "diagnostic": payload(case, args.arm)}, sort_keys=True))
         return 0
-    if args.command == "prepare":
-        print(prepare_trials(args.output))
-        return 0
-    if args.command == "record":
-        record_trial(args)
-        return 0
     evidence, _ = write_artifacts()
     print(json.dumps({
         "schema": evidence["schema"],
         "corpus_size": evidence["corpus_size"],
         "totals": evidence["totals"],
-        "model_run": evidence["model_run"],
         "evidence_sha256": _sha(EVIDENCE_PATH),
         "timing_sha256": _sha(TIMING_PATH),
     }, sort_keys=True))

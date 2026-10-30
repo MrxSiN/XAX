@@ -10,13 +10,13 @@ supersedes an earlier figure, and a superseded entry is kept rather than rewritt
 - [Prototype milestones (M1-M14)](#prototype-milestones-m1-m14)
 - [Milestones M0-M14 (historical status)](#milestones-m0-m14-historical-status) (9 entries)
 - [Self-hosting steps (S0-S15)](#self-hosting-steps-s0-s15) (120 entries)
-- [JVM](#jvm) (21 entries)
+- [JVM](#jvm) (13 entries)
 - [Android](#android) (17 entries)
 - [Windows](#windows) (8 entries)
 - [Replacement levels and performance](#replacement-levels-and-performance) (18 entries)
 - [Other targets](#other-targets) (6 entries)
 - [Compiler engineering](#compiler-engineering) (11 entries)
-- [AI protocol and token efficiency](#ai-protocol-and-token-efficiency) (9 entries)
+- [Upgrade U1 targets](#upgrade-u1-targets) (4 entries)
 - [Open issues](#open-issues) (9 entries)
 - [Documentation and process](#documentation-and-process) (5 entries)
 
@@ -71,7 +71,6 @@ M14 — full self-hosting transition: **complete for the declared `xax-semantic-
 
 **Correction (ADR-177, 2026-10-06):** the B5/B6 part of the M14 statement above is withdrawn. Its verifier-facing and encoding services are single `META_VERIFY_SEMANTICS`/`META_CANONICAL_STORE` nodes executed by the Python reference executor, so they are not XAX-hosted, and the repository's own readiness derivation always reported B6 false. B levels are now derived by `xax_selfhost.bootstrap_status` and generated below; the M14 result is a scoped META-wrapper fixed point (B2–B4), not whole-compiler self-hosting.
 
-Post-roadmap AI-native experiment: ADR-194's response-v9 (median ratio 0.4984232981, 135/135 cells) was rejected as R5 evidence by ADR-195's corpus review. Each textual edit cell needed an extra file-read request, and XAX received an out-of-band edit target. The same-prefill response-v10 pilot (`compiler/benchmarks/ai_native/jvm-r5-response-v10-pilot-results.csv`) measures XAX at about 1.0× the textual arms. R5 is 0.50 (target) or 0.55 (owner-accepted). ADR-196's minimal-client run (response-v12, `gpt-6-luna`, calibrated client floor removed) measures 0.995×, with 123/135 cells and a clean audit. ADR-197's multi-file corpus measures 1.68× against IDE-style excerpts (0.35× against whole files). R5 remains unmet, and JVM stays R4/PROTOTYPE.
 
 
 Repository: repository root. Compiler: `compiler/`.
@@ -164,7 +163,7 @@ Dated sections below are historical records: a figure in them (a ratio, a level,
 - Bounded `invalidate` queries accept exposed function or object handles and traverse the existing reverse-reference index transitively. Deterministic dependent object handles paginate under an entity limit, join read sets, reject stale handles, and expose no persistent CIDs.
 - Bounded retained-generation `diff` queries compare any retained verified reader with the current root. Removed and added object kinds are returned in deterministic CID order through opaque `D*` handles with continuation; unavailable bases reject, and persistent CIDs are not exposed.
 - Bounded `repair_neighborhood` queries paginate the deterministic local handles already attached to rejected-transaction diagnostics. Stale-root and read conflicts include the root/read handle plus mutation targets; attribute conflicts identify the target. No additional persistent CID is exposed.
-- Every implemented workspace query records exact response bytes using a compact sorted-key JSON bootstrap projection. The API accepts an optional exact serialized response-byte budget: paginated queries shrink to the largest positive-progress prefix that fits and return continuation; non-paginated or too-small pages fail deterministically with `XAX.WORKSPACE.RESPONSE_BUDGET`. Only returned handles are published and only returned response bytes are charged. This framing is removable tooling, not authoritative XAX source or a model-token-budget claim; without a byte budget the two-page three-node vector remains 472 bytes.
+- Every implemented workspace query records exact response bytes using a compact sorted-key JSON bootstrap projection. The API accepts an optional exact serialized response-byte budget: paginated queries shrink to the largest positive-progress prefix that fits and return continuation; non-paginated or too-small pages fail deterministically with `XAX.WORKSPACE.RESPONSE_BUDGET`. Only returned handles are published and only returned response bytes are charged. This framing is removable tooling, not authoritative XAX source; without a byte budget the two-page three-node vector remains 472 bytes.
 - The `root` query atomically returns `R0`, the explicit canonical root identity, and workspace generation. Target, platform, and configuration contexts are individually classified unavailable until bound; the fixed response is 249 bootstrap bytes before and after a commit.
 - A workspace may bind one separately verified native target package. Target-qualified `layout` queries return derived byte size/alignment for standard `bits<8|16|32|64>` and pointer forms, classify absent targets/unsupported forms unavailable, reject stale type handles, and identify the target CID. x86-64 and wasm32 pointer layouts differ as 8 and 4 bytes.
 - Target-qualified `cost` queries report operation identity and package-declared support authoritatively. Numeric instruction cost, latency, and code bytes remain explicitly unavailable because current target packages encode no cost model; missing targets and stale node handles are handled deterministically.
@@ -202,11 +201,8 @@ Dated sections below are historical records: a figure in them (a ratio, a level,
 
 ```text
 cd compiler
-PYTHONPATH=src:. python -m py_compile src/*.py tests/*.py benchmarks/*.py benchmarks/ai_native/*.py bootstrap/*.py
+PYTHONPATH=src:. python -m py_compile src/*.py tests/*.py benchmarks/*.py bootstrap/*.py
 PYTHONPATH=src python -m unittest tests.test_xax_selfhost -v
-PYTHONPATH=src:. python -m unittest tests.test_ai_native_benchmark -v
-PYTHONPATH=src:. python -m benchmarks.ai_native prepare task-01 C
-PYTHONPATH=src:. python -m benchmarks.ai_native prepare task-01 XAX
 PYTHONPATH=src python bootstrap/generate_m14.py
 PYTHONPATH=src python -m unittest discover -s tests -v
 SOURCE_DATE_EPOCH=946684800 python -m pip wheel . --no-deps --no-build-isolation --wheel-dir dist
@@ -228,8 +224,8 @@ Since ADR-114 the raw Win64 images also execute on Linux x86-64 hosts (a harness
 - Tiny AI-native benchmark validation on 2026-09-30: focused tests pass **7/7** and the full compiler suite passes **246/246**.
 - OI-02 granularity harness on 2026-10-01 (Windows x86-64, Python 3.12.10): focused tests passed **4/4** and the full compiler suite **257/257** in 36.8 seconds; after `call_indirect`, focused **6/6** and full suite **276/276** in 45.1 seconds. The completed fourth `block` candidate now passes the focused OI-02 suite **7/7** in the current repository; no new full-suite pass is claimed for this later edit.
 - OI-03 recursion-carrier harness and verifier enforcement on 2026-10-01 (Windows x86-64): focused tests passed **10/10**; the historical concurrent full-suite run saw one OI-02 evidence mismatch while `call_indirect` was being added. That OI-02 evidence mismatch is no longer present; the current OI-02 focused reproduction test passes.
-- OI-04 type-vocabulary harness on 2026-10-01 (Windows x86-64, Python 3.12.10): pre-dictionary focused tests passed **7/7** and the full compiler suite passed **271/271** in 39.2 seconds. For the later store-wide CID-dictionary edit, all **9/9** focused tests that do not require `tiktoken` pass natively on the current host; the complete OI-04 suite is **10/10** when the unchanged committed tiktoken counts are replayed through a local test shim. A new broad-suite run was attempted but exceeded this host's execution window, so no new full-suite pass is claimed.
-- OI-07 DMA-vocabulary harness on 2026-10-01: focused tests pass **7/7**. The non-coherent split-memory and coherent shared-memory target packages both verify, compile deterministically, and execute **4/4** fixed DMA vectors; omitting non-coherent cache clean or either target's synchronization rejects by resource/target type state. Portable core/workspace/build/optimizer/bootstrap/selfhost plus OI-05/OI-06/OI-07 regression passed **265 tests with 1 existing skip** after excluding exactly the same 8 host-bound execution cases. In addition, all six non-evidence OI-02 tests, all nine non-tokenizer OI-03 tests, and all nine non-tokenizer OI-04 tests passed. The OI-02 committed-evidence replay exceeded this host's execution window; the OI-03/OI-04 committed-evidence replays are blocked here by absent `tiktoken`. No semantics or tests were weakened to hide those environment/tooling limits.
+- OI-04 type-vocabulary harness on 2026-10-01 (Windows x86-64, Python 3.12.10): pre-dictionary focused tests passed **7/7** and the full compiler suite passed **271/271** in 39.2 seconds. For the later store-wide CID-dictionary edit, the OI-04 suite passes natively on the current host. A new broad-suite run was attempted but exceeded this host's execution window, so no new full-suite pass is claimed.
+- OI-07 DMA-vocabulary harness on 2026-10-01: focused tests pass **7/7**. The non-coherent split-memory and coherent shared-memory target packages both verify, compile deterministically, and execute **4/4** fixed DMA vectors; omitting non-coherent cache clean or either target's synchronization rejects by resource/target type state. Portable core/workspace/build/optimizer/bootstrap/selfhost plus OI-05/OI-06/OI-07 regression passed **265 tests with 1 existing skip** after excluding exactly the same 8 host-bound execution cases. In addition, all six non-evidence OI-02 tests passed. The OI-02 committed-evidence replay exceeded this host's execution window. No semantics or tests were weakened to hide those environment/tooling limits.
 - OI-08 effect partition/edge-encoding harness on 2026-10-01: focused tests pass **8/8**. Syntax compilation passed for all compiler source, benchmark, and test modules. The broad core/workspace/build/optimizer/bootstrap/selfhost/accelerator plus OI-05/OI-06/OI-07/OI-08 run produced **260 passes** and exactly the same **8 host-bound execution failures** (6 Windows x86-64, 2 AArch64/QEMU); rerunning with only those eight collected node IDs deselected produced **260/260 passed**. The portable non-evidence OI-02/OI-03/OI-04 subset added **24/24 passed**, and the AI-native test module added **13 passed / 1 existing skip**. No semantic test was weakened or skipped to make OI-08 pass.
 
 ### Known gaps
@@ -262,9 +258,8 @@ Since ADR-114 the raw Win64 images also execute on Linux x86-64 hosts (a harness
 
 - **OI-05 proof-cache persistence (2026-10-01):** `compiler/benchmarks/oi05_proof_cache_evidence.json` records seven raw samples per arm over a deterministic 96-function workload. Median verifier-only cold/warm is 92.65/42.46 ms; restart-inclusive load+verify 135.98/124.27 ms; compiler-only cold/warm 127.55/79.36 ms; restart-inclusive load+compile 171.70/162.73 ms; build-only cold/warm 218.56/171.81 ms; restart-inclusive load+build 319.64/253.19 ms. A local edit verifies 5 objects, reuses 286, invalidates/writes 5 cache entries, and reduces the following compile from 127.61 to 81.68 ms while adding about 2.5% commit-time maintenance in this run. Program/build cache sizes are 33,639/34,123 B (79.8%/79.5% of their stores). Artifact/provenance identity is unchanged. These are host timing observations, not normative thresholds.
 
-- **AI-native C vs XAX experiment (not yet run):** five paired structural edits, manual Codex Desktop operation, native XAX transaction verification, flat CSV results, and raw descriptive totals only. The historical M6 one-edit tokenizer result below remains a separate microbenchmark.
 
-- 2026-09-29 narrow specialization smoke (`compiler/benchmarks/m6_specialize_smoke.json`): 479 bootstrap query bytes, 4 exposed entities, 15 transaction bytes, 5 touched/verified objects, 5 reused objects, stable specialized CID `28e05c5b4a7dceca1ab59e4e7522d072ab1fc1c20dc2decb7a2e372f1bac0942`, and result 8 while source/caller behavior remained unchanged. This is deterministic non-timing accounting and semantic-execution evidence only; no tokenizer/model/META/performance claim.
+- 2026-09-29 narrow specialization smoke (`compiler/benchmarks/m6_specialize_smoke.json`): 479 bootstrap query bytes, 4 exposed entities, 15 transaction bytes, 5 touched/verified objects, 5 reused objects, stable specialized CID `28e05c5b4a7dceca1ab59e4e7522d072ab1fc1c20dc2decb7a2e372f1bac0942`, and result 8 while source/caller behavior remained unchanged. This is deterministic non-timing accounting and semantic-execution evidence only; no META or performance claim.
 The separate deterministic M6 accounting smoke measurement exposed 4 entities in 534 bootstrap response bytes, validated a 4-handle read set, encoded a 101-byte three-mutation transaction, created 6 objects, and reused 2 objects; raw data is `compiler/benchmarks/m6_workspace_smoke.json`. No timing or runtime-performance conclusion is claimed.
 
 The first relation-mutation accounting smoke (`compiler/benchmarks/m6_relation_transaction_smoke.json`, reproduced by `bench_relation_transaction.py`) records one generation-root `ReplaceUse` transaction at **24 bootstrap bytes**. In its one-caller fixture it changes the direct callee result for `(2,3)` from 5 to 6, rebuilds/verifies 6 affected objects, and reuses 1 reachable object. This is non-timing accounting/conformance evidence, not a token or performance result.
@@ -272,20 +267,20 @@ The first relation-mutation accounting smoke (`compiler/benchmarks/m6_relation_t
 The first deletion accounting smoke (`compiler/benchmarks/m6_delete_node_smoke.json`, reproduced by `bench_delete_node.py`) records one generation-root `DeleteNode` transaction at **17 bootstrap bytes**. In its one-caller fixture it removes an unused constant node (2 nodes → 1), preserves the direct callee result for `(2,3)` at 5, rebuilds/verifies 6 affected objects, reuses 2 reachable objects, and retains one direct caller relationship. This is non-timing accounting/conformance evidence, not a token or performance result.
 
 
-The first insertion accounting smoke (`compiler/benchmarks/m6_insert_node_smoke.json`, reproduced by `bench_insert_node.py`) records **576 bootstrap query bytes** for the node/type context and a **43-byte** generation-root two-mutation transaction that inserts a constant before a stable anchor and replaces a later operand with transaction-local result `I4.R0`. The fixed fixture changes from 3 to 4 nodes and result 5→12, rebuilds/verifies 5 affected objects, and reuses 4 reachable objects. This is non-timing accounting/conformance evidence, not a tokenizer, model-efficiency, compile-time, or runtime-performance result.
+The first insertion accounting smoke (`compiler/benchmarks/m6_insert_node_smoke.json`, reproduced by `bench_insert_node.py`) records **576 bootstrap query bytes** for the node/type context and a **43-byte** generation-root two-mutation transaction that inserts a constant before a stable anchor and replaces a later operand with transaction-local result `I4.R0`. The fixed fixture changes from 3 to 4 nodes and result 5→12, rebuilds/verifies 5 affected objects, and reuses 4 reachable objects. This is non-timing accounting/conformance evidence, not a compile-time or runtime-performance result.
 
-The first control-edge argument accounting smoke (`compiler/benchmarks/m6_edge_argument_smoke.json`, reproduced by `bench_edge_argument.py`) records **301 bootstrap query bytes** for two node handles and a **39-byte** generation-root disconnect+connect transaction. In its one-caller fixture it changes edge argument 0 from source parameter 0 to source parameter 1 and changes the callee result for `(2,3,300)` from 2 to 3, rebuilds/verifies 6 affected objects, reuses 4 reachable objects, and retains one direct caller relationship. This is non-timing accounting/conformance evidence, not a tokenizer, model-efficiency, compile-time, or runtime-performance result.
+The first control-edge argument accounting smoke (`compiler/benchmarks/m6_edge_argument_smoke.json`, reproduced by `bench_edge_argument.py`) records **301 bootstrap query bytes** for two node handles and a **39-byte** generation-root disconnect+connect transaction. In its one-caller fixture it changes edge argument 0 from source parameter 0 to source parameter 1 and changes the callee result for `(2,3,300)` from 2 to 3, rebuilds/verifies 6 affected objects, reuses 4 reachable objects, and retains one direct caller relationship. This is non-timing accounting/conformance evidence, not a compile-time or runtime-performance result.
 
-The candidate-only verification accounting smoke (`compiler/benchmarks/m6_candidate_verify_smoke.json`, reproduced by `bench_candidate_verify.py`) records **424 bootstrap query bytes** for three node handles and a **26-byte** generation-root candidate transaction. Candidate verify touches/verifies 4 objects, reuses 4 reachable objects, returns `C0.0`, and leaves canonical root/generation unchanged; explicit rollback also leaves canonical root/generation unchanged. The same ordinary transaction then commits successfully and changes result 5→6. Candidate verification accounting is separate from ordinary commit accounting. This is non-timing accounting/conformance evidence, not a tokenizer, model-efficiency, compile-time, or runtime-performance result.
+The candidate-only verification accounting smoke (`compiler/benchmarks/m6_candidate_verify_smoke.json`, reproduced by `bench_candidate_verify.py`) records **424 bootstrap query bytes** for three node handles and a **26-byte** generation-root candidate transaction. Candidate verify touches/verifies 4 objects, reuses 4 reachable objects, returns `C0.0`, and leaves canonical root/generation unchanged; explicit rollback also leaves canonical root/generation unchanged. The same ordinary transaction then commits successfully and changes result 5→6. Candidate verification accounting is separate from ordinary commit accounting. This is non-timing accounting/conformance evidence, not a compile-time or runtime-performance result.
 
-The same-block pure-node move accounting smoke (`compiler/benchmarks/m6_move_node_smoke.json`, reproduced by `bench_move_node.py`) records **424 bootstrap query bytes** for three node handles and a **28-byte** generation-root `MovePureNode` transaction. It moves constant 3 immediately before constant 2, remaps the arithmetic operands by original producer identity, preserves the callee result at 5, rebuilds/verifies 6 affected objects, reuses 4 reachable objects, and retains one direct caller relationship. This is non-timing accounting/conformance evidence, not a tokenizer, model-efficiency, compile-time, or runtime-performance result.
+The same-block pure-node move accounting smoke (`compiler/benchmarks/m6_move_node_smoke.json`, reproduced by `bench_move_node.py`) records **424 bootstrap query bytes** for three node handles and a **28-byte** generation-root `MovePureNode` transaction. It moves constant 3 immediately before constant 2, remaps the arithmetic operands by original producer identity, preserves the callee result at 5, rebuilds/verifies 6 affected objects, reuses 4 reachable objects, and retains one direct caller relationship. This is non-timing accounting/conformance evidence, not a compile-time or runtime-performance result.
 
 The proof-dependency accounting smoke (`compiler/benchmarks/m6_proof_dependency_smoke.json`, reproduced by `bench_proof_dependency.py`) records a **299-byte** bootstrap `proof` response exposing local dependency `P0.0` without a persistent semantic CID. A one-mutation transaction guarded by that proof dependency is **22 bootstrap bytes**, changes the fixture result from 5 to 6, rebuilds/verifies 4 affected objects, reuses 4 reachable objects, and then rejects reuse of the invalidated proof as `XAX.WORKSPACE.PROOF_CONFLICT` / `WORKSPACE-PROOF-DEPENDENCY`. This is non-timing accounting/conformance evidence, not a formal-proof, token, or performance result.
 
 
 The response-budget accounting smoke uses the same three-node query to show the bound/cost tradeoff explicitly: the unbounded one-page response is 424 bootstrap JSON bytes; with an exact 178-byte budget the deterministic positive-progress pages are 171/171/178 bytes (one entity each, continuations 1/2/none), totaling 520 returned bytes. Raw data/reproducer: `compiler/benchmarks/m6_response_budget_smoke.json` and `compiler/benchmarks/bench_response_budget.py`. This is transport accounting only and is not a token or timing result.
 
-The deterministic x86 artifact-mapping accounting smoke emitted the unchanged 43-byte stack image and issued 7 artifact/mapping queries exposing 9 local entities in **2,499** bootstrap response bytes after explicit dependency attribution was added. The artifact response is 564 bytes; function mapping 282; unavailable stack-allocation mapping 223; store mapping 285; and the two one-entity reverse-mapping pages 290/297 bytes. Raw data and reproducer are `compiler/benchmarks/m6_artifact_mapping_smoke.json` and `compiler/benchmarks/bench_artifact_mapping.py`. This increase versus the earlier 1,713-byte record is preserved as attribution overhead, not hidden. A second cross-target accounting smoke runs the identical seven-query shape for all three emitted formats: x86-64 2,499 response bytes, AArch64 2,502, and WebAssembly 2,495, each exposing 9 entities and preserving the target-specific exact ranges listed above. Raw data/reproducer: `compiler/benchmarks/m6_artifact_mapping_cross_target.json` and `compiler/benchmarks/bench_artifact_mapping_cross_target.py`. This comparison is accounting/conformance evidence only; it is not a runtime or AI-efficiency benchmark.
+The deterministic x86 artifact-mapping accounting smoke emitted the unchanged 43-byte stack image and issued 7 artifact/mapping queries exposing 9 local entities in **2,499** bootstrap response bytes after explicit dependency attribution was added. The artifact response is 564 bytes; function mapping 282; unavailable stack-allocation mapping 223; store mapping 285; and the two one-entity reverse-mapping pages 290/297 bytes. Raw data and reproducer are `compiler/benchmarks/m6_artifact_mapping_smoke.json` and `compiler/benchmarks/bench_artifact_mapping.py`. This increase versus the earlier 1,713-byte record is preserved as attribution overhead, not hidden. A second cross-target accounting smoke runs the identical seven-query shape for all three emitted formats: x86-64 2,499 response bytes, AArch64 2,502, and WebAssembly 2,495, each exposing 9 entities and preserving the target-specific exact ranges listed above. Raw data/reproducer: `compiler/benchmarks/m6_artifact_mapping_cross_target.json` and `compiler/benchmarks/bench_artifact_mapping_cross_target.py`. This comparison is accounting/conformance evidence only; it is not a runtime benchmark.
 
 The 2026-09-30 M7 proof-erasure check compares a bits-only baseline with an otherwise equivalent resource/effect lifecycle for each backend. Emitted bytes are identical: x86-64 **25/25** (`6d9e24dc5ddc2dbe5c55f3e8e932e162a6f1ed3033fd4eaedfaf730100ba2fc0`), AArch64 **28/28** (`fb5970c1e6ab2c3be407a4a0a7ef6003051549e163cc76811138a552d3ca68db`), and WebAssembly **59/59** (`40997b5662863f0ba9253c23bf4e915b1e32c0a2878f0e4635d00063532bfc88`). This is deterministic erasure evidence, not a performance result.
 
@@ -301,7 +296,7 @@ The 2026-09-30 M10 deterministic package/build smoke (`compiler/benchmarks/m10_p
 
 The final M10 reproducible wheel built twice with `SOURCE_DATE_EPOCH=946684800` and matched byte-for-byte: **89,076 bytes**, SHA-256 `05d55cc76e28d3e677465c37afe06af5820a41b112a3e2a8dbab5dfd653cb482`.
 
-The 2026-09-30 M11 deterministic bootstrap evidence (`compiler/bootstrap/m11_bootstrap_evidence.json`, reproduced by `compiler/benchmarks/bench_m11_bootstrap.py`) records an **820-byte** authoritative XAX program store, **1,566-byte** fixed hermetic WebAssembly snapshot, **144-byte** seed-built artifact with BLAKE3-256 `3f9f35e6fe8c8ec00e0490fa3e9f9b613255f6ab930c8d8ab2b9d18a221be09a`, repeated build identity, exact provenance/tool roots, and **6/6** matching seed-versus-hosted conformance vectors. This is B0/B1 artifact/conformance evidence only, not recursive self-hosting, fixed-point, bootstrap-minimality, timing, runtime-performance, or AI-efficiency evidence.
+The 2026-09-30 M11 deterministic bootstrap evidence (`compiler/bootstrap/m11_bootstrap_evidence.json`, reproduced by `compiler/benchmarks/bench_m11_bootstrap.py`) records an **820-byte** authoritative XAX program store, **1,566-byte** fixed hermetic WebAssembly snapshot, **144-byte** seed-built artifact with BLAKE3-256 `3f9f35e6fe8c8ec00e0490fa3e9f9b613255f6ab930c8d8ab2b9d18a221be09a`, repeated build identity, exact provenance/tool roots, and **6/6** matching seed-versus-hosted conformance vectors. This is B0/B1 artifact/conformance evidence only, not recursive self-hosting, fixed-point, bootstrap-minimality, timing, or runtime-performance evidence.
 
 The final M11 reproducible wheel built twice with `SOURCE_DATE_EPOCH=946684800` and matched byte-for-byte: **92,769 bytes**, SHA-256 `7be816707f5e4270d4cfd94be3591461410b76ecc5dfe3a1f57fa8630f450d97`.
 
@@ -315,7 +310,7 @@ The 2026-09-30 M13 deterministic accelerator evidence (`compiler/benchmarks/m13_
 
 The final M13 reproducible wheel built twice with `SOURCE_DATE_EPOCH=946684800` and matched byte-for-byte: **109,836 bytes**, SHA-256 `b2180788ecfb0cc697f43613f6cd553f2b26ebd1f486739b8327319988db85e7`.
 
-The 2026-09-30 M14 bootstrap evidence (`compiler/bootstrap/m14_selfhost_evidence.json`) records executed B2–B6 for the declared `xax-semantic-image-v1` closure target. The authoritative compiler image is 2,020 bytes; compiler root `097da62f7ba9832620f5d202297fc522783ed5b4c9e68f8da6b77515b185164d`; entry function `4300342f92f9ba32bcefbb45af4aad117a3bbf3699bd66266b25cefdc874b6fc`. Generation 0, 1, and 2 are byte-identical with BLAKE3-256 `6340c903f5da3e8aaf4d8ae886694a0d858687fc5c5520662a018518693f4788`; four independently compiled function vectors match. The committed immutable seed runtime reconstructs that compiler with repository Python sources removed from the import path and is itself deterministic at 46,255 bytes / SHA-256 `4e0c64d6f360359cc263c39817ec8cbe4cc3069edf20823755755c4d2707fe52`. This is self-hosting/closure/reproducibility evidence, not native-target performance, compiler-speed, tokenizer, or diverse-trust evidence. B5/B6 do not apply to the legacy native/WebAssembly/accelerator lowerers.
+The 2026-09-30 M14 bootstrap evidence (`compiler/bootstrap/m14_selfhost_evidence.json`) records executed B2–B6 for the declared `xax-semantic-image-v1` closure target. The authoritative compiler image is 2,020 bytes; compiler root `097da62f7ba9832620f5d202297fc522783ed5b4c9e68f8da6b77515b185164d`; entry function `4300342f92f9ba32bcefbb45af4aad117a3bbf3699bd66266b25cefdc874b6fc`. Generation 0, 1, and 2 are byte-identical with BLAKE3-256 `6340c903f5da3e8aaf4d8ae886694a0d858687fc5c5520662a018518693f4788`; four independently compiled function vectors match. The committed immutable seed runtime reconstructs that compiler with repository Python sources removed from the import path and is itself deterministic at 46,255 bytes / SHA-256 `4e0c64d6f360359cc263c39817ec8cbe4cc3069edf20823755755c4d2707fe52`. This is self-hosting/closure/reproducibility evidence, not native-target performance, compiler-speed, or diverse-trust evidence. B5/B6 do not apply to the legacy native/WebAssembly/accelerator lowerers.
 
 The final M14 reproducible wheel built twice with `SOURCE_DATE_EPOCH=946684800` and matched byte-for-byte: **117,715 bytes**, SHA-256 `fa4add6e966ca09fe5df6c02043e91d333f0726ec92f681a03bf7251e4a4a34e`.
 
@@ -352,7 +347,7 @@ The final M14 reproducible wheel built twice with `SOURCE_DATE_EPOCH=946684800` 
 - No B milestone is established for the whole production compiler; the M14 semantic-image META wrapper holds B2–B4 only (generated status above).
 - Calibrated target cost models, broader optimizer/search organization, stronger transformation proof systems, recursive general effect-summary fixed points, broader META construction, richer package constraints/actions, cross-target atomics, durable timing proofs, a normative atomic litmus corpus, changed-entity semantic merge, and multi-process workspace coordination remain explicit future extensions, not silently claimed behavior.
 
-*(Corrected 2026-10-06, ADR-177: this list previously still named OI-31 and OI-27 as open after ADR-174 and the OI-27 closure, and listed indirect calls as future work after they were implemented.)*
+*(Corrected 2026-10-06, ADR-177: this list previously still named OI-27 as open after its closure, and listed indirect calls as future work after they were implemented.)*
 
 ### Prototype choices pending evidence
 
@@ -370,15 +365,13 @@ The final M14 reproducible wheel built twice with `SOURCE_DATE_EPOCH=946684800` 
 - M10 uses exact roots or exactly-one logical candidate, closure-level provenance, in-memory verified cache entries, and pure direct-backend build actions. These choices prove the milestone base case but do not select version constraint algebra, provenance granularity, persistent cache format, general build-action semantics, or portable sandbox enforcement; OI-23, OI-24, and OI-30 remain open.
 - M12 uses a small deterministic pass pipeline, pure direct-call inlining, lowering-derived code-size selection, and exact polynomial validation for bounded wrapping-arithmetic search. These choices establish the milestone base case but do not select a permanent optimizer/machine-IR organization, calibrated multi-objective target cost model, or general transformation-proof granularity; OI-17, OI-18, and OI-19 remain open.
 - M13 uses one generic target-operation node family and one synthetic SIMT packet target with three memory spaces and six operation contracts. This demonstrates package-driven accelerator semantics without selecting a universal GPU scope lattice or permanent per-instruction/shared-primitive target organization; OI-13 and OI-16 remain open.
-- M6 ordinary semantic handles are generation-scoped and invalidated after commit. Proof-dependency handles record an origin generation but may remain valid across unrelated commits only while their exact content-addressed subject and verifier identity are preserved; invalidated proof handles do not revive. The reverse-reference index is rebuilt per root. The prototype transaction accounting is canonical for its same-function mutation subset; it does not select the permanent fallback protocol, close OI-01/OI-02/OI-21/OI-28, or claim C4 conformance.
+- M6 ordinary semantic handles are generation-scoped and invalidated after commit. Proof-dependency handles record an origin generation but may remain valid across unrelated commits only while their exact content-addressed subject and verifier identity are preserved; invalidated proof handles do not revive. The reverse-reference index is rebuilt per root. The prototype transaction accounting is canonical for its same-function mutation subset; it does not close OI-02/OI-21/OI-28 or claim C4 conformance.
 - M6 caller propagation follows the verified CID DAG and preserves unrelated objects. Recursion-group rebuilding remains deliberately unsupported until member/objectization mutation semantics are explicit.
 - M6 multi-function propagation topologically rebuilds edited standalone functions and their affected users, preserving local caller edits plus callee replacements. Recursion-group rewriting remains deliberately unsupported until member/objectization mutation semantics are explicit.
 - M6 artifact provenance is retained at emission time through the shared tooling-only `ArtifactSemanticRange` carrier for x86-64, AArch64, WebAssembly, and the M13 accelerator deployment packet. `ArtifactProvenanceBinding` adds explicit root/target/compiler/lowering/artifact/range attribution using opaque V1 toolchain identities that are deliberately not derived from human text or disassembly. Backend container layout remains private to the backend while workspace mapping semantics are target-neutral. Zero-code/non-local semantics and un-attributed container bytes remain unavailable rather than being assigned neighboring bytes. Durable persisted mapping indexes remain future work.
-- OI-01 transport harness (2026-10-01): `python -m benchmarks.ai_native transport` compares typed (`P0`/`N0`) versus unified dense-integer handles across `line`, `pipe`, and `json` `X1` framings on the five reference edits; all six candidates decode to one identical transaction and reach the target root. Offline `tiktoken` 0.14.0 totals (view+packet, five tasks) range from 262/257 (`typed`/`line`) and 279/274 (`typed`/`json`) down to 237/237 (`unified`/`pipe`) for `cl100k_base`/`o200k_base`; unified handles save 15 view tokens under both encodings. A 30-trial Claude Code (`claude-opus-5-5` subagent) run completed 30/30. Harness-token totals differed by about 1.3% peak-to-peak across arms and are below run-to-run noise; `line` framing had 0 failed checks, `pipe` 2, and `json` 14, with nine of ten JSON trials requiring at least one repair. The tested flat-array JSON framing is disfavored; line is the observed reliability leader on this corpus; typed versus unified handles remains unresolved. No candidate is canonical; OI-01 remains open (n=1, one model family, five task families missing).
-- M6 tokenizer measurement found that a generation-scoped `R0.0` output candidate saves tokens versus the full-root candidates and current graph packet but still loses total tokens to C-like text in the single measured case. The expected-root alias is now implemented in the bootstrap transaction API; the measured colon/line text framings are still non-authoritative tooling candidates and do not select a permanent fallback protocol.
 - Python remains removable bootstrap/reference code and the execution format of the immutable M14 seed artifact; it is not XAX semantics. The M14 B6 claim is scoped to ordinary semantic-image release reconstruction, not to elimination of all Python-based legacy target tooling.
 - OI-02 granularity harness (2026-10-01): `bench_oi02_granularity.py` now measures four arms: canonical function grain, tooling-only module packing, `call_indirect`, and block grain (graph skeleton + content-addressed per-block units). Block reassembly must reproduce canonical graph/function CIDs exactly; the reassembled entry is verified and executed. In `star-8x16-b4`, block grain reduces the leaf-edit rewrite from 6,628 B to 5,668 B and same-module conflict bytes from 924 B to 846 B, but grows the store from 74,938 B/396 objects to 88,617 B/537 and query bytes from 324 to 710. In `chain-8x16-b4`, direct-call CID propagation dominates and block grain is worse (394 objects/56,635 B rewritten versus function grain 266/50,581 B). `call_indirect` remains the strongest locality arm (8x16 chain leaf edit 5 objects/1,774 B) but still has a 259-object conservative verification frontier without interface-only summaries. The canonical format is unchanged; OI-02 remains open (synthetic corpus, byte-only AI context, block+indirection not combined, no interface-only callee-summary contract).
-- OI-06 memory-surface harness (2026-10-01): `bench_oi06_memory_surface.py` measures two independent allocation-derived alias classes, checked dynamic scalar load/store, and explicit raw load. Derived local alias identity costs 0 extra graph bytes/token-native atoms versus +2/+2 for redundant explicit IDs in the two-allocation comparator. Checked load/store cost +3 graph-body bytes and +1 semantic token atom each, with +24 x86-64 code bytes / +12 WebAssembly module bytes for the required runtime bounds branch. Raw initialized load costs +6 graph-body bytes / +3 atoms but 0 emitted bytes on both targets. The WebAssembly checked-load fixture executes correctly at offsets 0 and 4. OI-06 is closed for this bounded scalar/object-backed design; conservative raw/target mappings use explicit class IDs only when precise object identity is unavailable.
+- OI-06 memory-surface harness (2026-10-01): `bench_oi06_memory_surface.py` measures two independent allocation-derived alias classes, checked dynamic scalar load/store, and explicit raw load. Derived local alias identity costs 0 extra graph bytes/semantic atoms versus +2/+2 for redundant explicit IDs in the two-allocation comparator. Checked load/store cost +3 graph-body bytes and +1 semantic atom each, with +24 x86-64 code bytes / +12 WebAssembly module bytes for the required runtime bounds branch. Raw initialized load costs +6 graph-body bytes / +3 atoms but 0 emitted bytes on both targets. The WebAssembly checked-load fixture executes correctly at offsets 0 and 4. OI-06 is closed for this bounded scalar/object-backed design; conservative raw/target mappings use explicit class IDs only when precise object identity is unavailable.
 - OI-07 DMA-state harness (2026-10-01): the shared `resource<K,state>` vocabulary is `host_unmapped`, `host_mapped`, `host_dirty`, `device_owned`, `device_pending`, and `host_stale`. A split host/device non-coherent target uses all six plus explicit clean/invalidate; a coherent shared-memory target uses the same vocabulary subset and omits cache maintenance while retaining explicit mapping, ownership, device work, synchronization, and release. Deterministic packets are 163 B and 148 B respectively and both execute 4/4 vectors. `device_pending` makes synchronization verifier-visible; missing clean/sync transitions reject. OI-07 is closed without adding a device framework or changing the existing M13 target identity.
 - OI-08 effect-edge harness (2026-10-01): six representative workloads compare conservative versus proven domain-instance partitioning and explicit-frontier versus domain-grouped reconstruction. Reconstruction verifies the exact footprint/frontier relation before measurement, is deterministic under input-map ordering, rejects changed/corrupt frontiers, and includes a real XAX branch/merge fixture so compression is not limited to total chains. The selected policy is proof-directed instance granularity plus domain-grouped semantic runs with explicit non-run predecessor deltas; the carrier remains benchmark-only and store v1/CIDs are unchanged.
 - OI-09 CallContract harness (2026-10-01): five direct-contract families, 15 exact dispatch sets, and two 960-call profiles compare callable-embedded, referenced-contract, and sealed-set placement. Reuse-heavy bytes/atoms are 9,962/1,801 embedded, 9,737/1,231 referenced, and 11,651/1,341 sealed; sparse-callable bytes/atoms are 2,087/1,066, 2,387/1,021, and 4,301/1,131 respectively. Referenced verification is fastest in both measured profiles; sealed sets expose exact target sets and one-third singleton-devirtualizable calls but an implementation-only function-CID replacement churns 3 set identities and 192 affected call references while the referenced CallContract CID remains unchanged. Kind 11 is therefore the bounded semantic contract identity; sealed sets remain optional optimization facts and embedding remains only a possible future low-reuse serialization compression. OI-09 is closed as a representation decision; general indirect-call operations are still unimplemented.
@@ -653,7 +646,7 @@ Foreign-call memory rejections (release, use after release, frontier forks) are 
 - EXECUTED on Linux x86-64: the XAX store decoder makes every `StoreReader` container check in the bootstrap's order and writes the exact diagnostic (16 codes across 20 sites). That includes the digest comparison: two passes, with the digest computed by the XAX hash and compared by the decoder. `StoreReader` raises the program's diagnostic; the bootstrap parser now runs only for deferred containers and off Linux x86-64.
 - `tests/test_xax_selfhost_store.py`: 31 constructed stores, one per rule including 70-bit ULEB values, and 1,200 mutations, all equal to the bootstrap in every field and repr.
 - Store `xax_store_decoder.xax`: 212,454 bytes (was 29,910); the rule table is written once in a shared diagnostic block.
-- Full suite on this host (Linux x86-64, Python 3.13): 1,177 passed, 49 skipped, 5 failed in the first run. Three were fixed before commit: the graph-decoder store had drifted through the shared `_Decoder` base, now restored, with the S8a machinery in a `_ContainerDecoder` subclass; and the evidence binding, after regeneration. One was environmental (`tiktoken` missing, now installed). The fifth is the JVM R5 CSV digest test, which already fails on the pre-change tree (ADR-178). The affected suites were re-run green (122 passed).
+- Full suite on this host (Linux x86-64, Python 3.13): 1,177 passed, 49 skipped, 5 failed in the first run. Three were fixed before commit: the graph-decoder store had drifted through the shared `_Decoder` base, now restored, with the S8a machinery in a `_ContainerDecoder` subclass; and the evidence binding, after regeneration. The other two were environmental. The affected suites were re-run green (122 passed).
 
 #### S8b.1: object envelopes decided by XAX (2026-10-07, ADR-184)
 
@@ -935,7 +928,6 @@ The XAX JVM program now builds callbacks: JDK streams and comparators that call 
   - After the fix, those four stores, store regeneration, the driver suites and the evolution test pass: 42 passed, 324 subtests.
 - The four tests whose xdist workers crashed under memory pressure pass serially: `test_argument_counts`, the general driver's self-rebuild, the evolution test and `test_declared_rejections`.
 - Environmental failures:
-  - `tiktoken` is not installed.
   - The `compiler` package import needs the repository root on `sys.path` (`test_oi03`, `test_oi06`, the `test_oi07`-`test_oi09` collection errors).
   - Wheel builds fail on this host's setuptools (`install_layout`).
 - Already failing before this work: `test_windows_construct_platform_is_on_the_host_surface`. `xax_contract`'s construct platforms lack `android-libxposed`, added in `06f9675`.
@@ -997,7 +989,7 @@ The XAX JVM program now builds callbacks: JDK streams and comparators that call 
 - RISC-V (ADR-113): `xax_riscv64.py`, with liveness-hull linear scan into s1–s11. EXECUTED under Unicorn: the same differential corpus, a register-pressure loop, traps; every word decodes under `llvm-mc` (`test_xax_riscv64.py`, 9 tests and 383 subtests). MEASURED (emulated): Collatz 3.72× `clang -O2` instructions, 3.23× bytes (§15.9). riscv64 row: R1.
 - Evidence hosts (ADR-114): the six Windows-only x86-64 tests and both QEMU-only AArch64 tests now execute on Linux. One stale code hash was re-pinned after execution.
 - Repairs: OI-25's projection benchmark wrote zip entries in filesystem order (Python 3.11 `zipapp` uses an unsorted `rglob`), so its replay failed on some hosts; it now writes them in declared order. OI-26's replay compared the generating interpreter's version, a host observation. The wheel listed neither `xax_web` nor `xax_android_counter`.
-- Regression on this host (Linux x86-64, Python 3.11.15, OpenJDK 21.0.11, clang 18.1.3, unicorn 2.1.0): **903 passed, 19 skipped, 2 failed**. The two failures are environment-bound: `tiktoken` is not installed, and the wheel build requires Python ≥ 3.12. Before this pass: 862 passed, 16 failed.
+- Regression on this host (Linux x86-64, Python 3.11.15, OpenJDK 21.0.11, clang 18.1.3, unicorn 2.1.0): **903 passed, 19 skipped, 2 failed**. The two failures are environment-bound (the wheel build requires Python ≥ 3.12). Before this pass: 862 passed, 16 failed.
 
 ### JVM linear memory and the JVM R3 application (2026-10-04, ADR-156)
 
@@ -1080,7 +1072,6 @@ The XAX JVM program now builds callbacks: JDK streams and comparators that call 
 - MEASURED (`oi32_import_evidence.json`):
   - 14,973 of 15,806 public and protected `java.base` members import, in 1.79 s.
   - Declaration error rate is 0/30 (JVM) and 0/5 (C).
-  - An import request costs 0.40× (JVM) and 0.23× (C) the tokens of the hand-built declaration (offline).
 - **OI-32 is closed.** The JVM row's importer blocker is removed.
 
 ### JVM static field writes (2026-10-05, ADR-167)
@@ -1088,110 +1079,6 @@ The XAX JVM program now builds callbacks: JDK streams and comparators that call 
 - `jvm-putstatic`. EXECUTED (`tests/test_xax_jvm_objects.py`) against a `javac`-compiled class on the class path, because no JDK module has a public mutable static field. Java code observes the XAX writes and XAX reads Java's.
 - The importer now imports static field writes; `tests/test_xax_jvm_import.py` reproduces the hand-built declarations byte for byte.
 - The JVM direct-emission gaps listed in OI-35 are all closed.
-
-### JVM R5-candidate AI efficiency (2026-10-06, ADR-174)
-
-- MEASURED (`compiler/benchmarks/ai_native/jvm-r5-evidence.json`, `jvm-r5-results.csv`): five balanced C/XAX pairs under fixed `gpt-5.6-luna` low reasoning, one fresh session per cell, all 10/10 passing in one turn with no repair.
-- C-like text used 325,282 total tokens; XAX semantic transactions used 264,535 (0.813×, 18.675% fewer). Median per task: 64,857 versus 50,083.
-- The JVM row stays R4. The evidence is target-neutral semantic editing, not Java/Kotlin editing, and lacks the remaining §6.2 task classes required for R5.
-
-### JVM R5 full-corpus attempt (2026-10-06, ADR-176)
-
-- Added the 15-family Java/Kotlin/XAX harness and exact external checkers in `compiler/benchmarks/jvm_r5_ai.py` and `compiler/benchmarks/run_jvm_r5_ai.py`.
-- Local compiler/workspace and benchmark tests pass: 124 tests, 1 skipped.
-- The real-model run completed 42/45 cells. Three retry cells were blocked before a model turn by the Codex account usage limit; evidence is `compiler/benchmarks/ai_native/jvm-r5-full-evidence.json`.
-- Completed-cell medians: Java 50,342.5, Kotlin 50,737.5, XAX 38,679 tokens (0.7683× the lowest textual median), so the 0.50 R5 gate is not met. JVM remains R4/PROTOTYPE.
-
-### JVM snapshot-bound token workflow (2026-10-07, ADR-186)
-
-*Superseded workflow: the current host-response comparison is described in
-the ADR-187–189 follow-up below; retain this section as historical evidence.*
-
-EXECUTED: `LocalMutationSession` is normal compiler tooling, shared by direct edit arms. It binds the queried generation, derives exact old attributes, and delegates atomic verification/publication to `Workspace`. Deterministic semantic evidence is `compiler/benchmarks/local_protocol_evidence.json`. No JVM backend runtime claim changes.
-
-Validation: the affected JVM/workspace/protocol/evidence suites passed 204 tests with 3 host-unavailable skips and 276 subtests before the role-binding follow-up. The follow-up corpus/protocol suites passed 38 tests; targeted diagnostic regressions passed 37 tests with one textual-compilation case deselected (that case passed in the corpus run). The wider Windows attempt had 992 passes, 178 skips, 6 failures and 3 import errors; the inventory omission, JDK-specific member count, and two JVM line-ending failures were then fixed and rerun. Remaining broad-run issues are unrelated provenance/memory evidence and host/import/emulator availability. Unicorn crashed during RISC-V emulation on this Windows host; this is not passing execution evidence.
-
-The exploratory local profile stopped at 16 attempts: 15 successes, with a failed creation cell costing 208,350 tokens and a move cell costing 92,165. All costs and raw events remain archived, with the source snapshot. Explicit role bindings and snapshot/insertion help were then added; two fresh XAX preflights passed (move 26,518; creation 38,463 including one repair). The separate full three-trial Java/Kotlin/XAX comparison is recorded in `jvm-r5-bound-results.evidence.json`. JVM stays R4/PROTOTYPE; incomplete data and unresolved corpus-equivalence limits cannot establish R5.
-
-The historical ADR-175 CSV's CRLF bytes were restored to its original recorded SHA-256, without changing any measurement; `.gitattributes` prevents future newline normalization of result CSVs.
-
-### JVM host-response follow-up (2026-10-07, ADR-187–189)
-
-Normal snapshot setters, dead-chain pruning, compact aliases and multi-result
-help are implemented. A redundant Kotlin literal conversion is admitted only
-with matching compiled instructions; an overload-changing conversion rejects.
-Affected validation: 142 tests and 167 subtests passed on Windows/JDK 17.
-
-Response-v4 remains separate incomplete negative evidence: 137 attempts,
-134/135 successful cells, all costs known, partial ratio 0.501623. Its checker
-falsely rejected an equivalent explicit Kotlin literal conversion. The source
-snapshot and independent raw-usage audit are retained unchanged.
-
-The current response-v5 comparison runs three trials for each of the 15
-Java/Kotlin/XAX task families. Use its CSV, evidence JSON, manifest and streamed
-traces under `compiler/benchmarks/ai_native`; do not import older cells. Source
-bytes are frozen during inference. Resume with `benchmarks.run_jvm_r5_response`
-only after ensuring no runner is active; never start a second CSV writer.
-A `runs-jvm-r5-response-v5/STOP` file stops safely between cells. Every failed
-response/attempt remains in successful-cell cost. Independently audit using
-`benchmarks.audit_jvm_r5_response` before reporting a complete numeric result.
-
-JVM stays R4/PROTOTYPE pending the complete result and corpus review. The graph
-is host-projected while textual edits inspect a named file; the large fixture
-is synthetic and resource effects are abstract verifier contracts. This work
-makes no JVM backend-speed or native self-hosting claim.
-
-### JVM median token gate achieved (2026-10-07, ADR-194)
-
-*Superseded as R5 evidence by ADR-195 (2026-10-07): the corpus review found the comparison context-asymmetric; see the response-v10 section below.*
-
-Response-v9 completed 135/135 cells in 142 attempts. Medians including all failed-response/attempt costs: Java 21,564; Kotlin 21,566; XAX 10,748. Ratio 0.4984232980894083 meets 0.50, a 50.1577% median reduction against the lowest textual median. The independent audit reports zero errors, no live-source drift and complete accounting. Recorded aggregate XAX cost is 772,632 versus Java 1,033,413 and Kotlin 1,175,166; the aggregate ratio is 0.747651, so the measured 50% reduction is specifically the median gate. Validation: 146 tests and 167 subtests, plus regenerated-status checks. JVM stays R4 until corpus/context equivalence review; no runtime-speed claim changes.
-
-### JVM R5 corpus review and same-prefill profile (2026-10-07, ADR-195)
-
-*Superseded by ADR-196 (2026-10-07): option (a) measured; see the response-v12 section below.*
-
-Response-v9 is not R5 evidence. In every textual edit cell the model read its file through a tool call, a second client request with about 10,000 tokens of fixed client context. XAX got its view inline, along with an out-of-band mutation kind and target. On creation, where nobody reads a file, XAX was 1.007× Java. Response-v9 rows, traces and audits are retained unchanged.
-
-Response-v10 is same-prefill: every arm gets inline context and one request with no tools, and XAX is unbound. Textual checks admit equal compiled JVM instructions that differ from the initial program. The status distinguishes `TARGET_MET` (≤ 0.50), `ACCEPTED_WITHIN_TOLERANCE` (≤ 0.55, owner-approved) and `NOT_R5`. The pilot (jvm-01 and jvm-15, one trial, CSV SHA-256 f4839408a24567cd66a20a8014375fd334a9522d2322a90bb0f0a7f051f66c23) gives Java 10,753/10,723, Kotlin 10,738/10,747 and XAX 21,965 (one repair)/10,834. Even with one-line instructions the client still uses about 6,900 input tokens per request, so a fair ratio stays near 0.93× or above.
-
-The full 135-cell v10 run has not been executed. Resolve OI-46's measurement design first. Validation: 29 JVM R5 tests pass on Windows with Temurin 17 and Kotlin 2.1.0. JVM stays R4.
-
-### JVM minimal-client run: R5 unmet at 0.995× (2026-10-07, ADR-196)
-
-*Superseded by ADR-197 (2026-10-08): option (b) measured; see the multi-file section below.*
-
-The run uses option (a) of OI-46. Every arm goes through the pinned Codex client with all configurable optional tools, skills and instruction blocks removed, one-line base instructions, and `gpt-6-luna` at low reasoning. The fixed per-request floor was calibrated at 3,501 input tokens, identical in three samples. The gate subtracts it once per request from every arm, and failed attempts still count.
-
-Two adapter defects were fixed first, and each fix started a new profile. Edit forms are now listed one per line as labelled placeholders. Cross-function views now alias callee parameters instead of leaking `F2.B0.P0`. v10 (stopped) and v11 (stopped, 113/135 cells) are retained unchanged.
-
-Response-v12 had 151 attempts and 123/135 successful cells after one refill pass. 28 attempts failed: XAX 16, Kotlin 10 and Java 2. Medians including failed costs were Java 3,710, Kotlin 3,702 and XAX 3,701. The raw ratio is 0.99973 and the floor-adjusted ratio is **0.99502**. Aggregate recorded tokens were Java 200,712, Kotlin 283,035 and XAX 322,843. The independent audit has zero errors and no source drift. CSV SHA-256: c39f72bedb1e7162938ab1d642669be7c0fe9846fd4bad4c794c332c94cc6bac.
-
-R5 is unmet, with a target of 0.50 and acceptance at 0.55. On single-function edits the XAX view plus edit list costs about the same as the inline program plus a patch, and the model repairs XAX more often. 12 cells never passed: XAX jvm-07, jvm-09, jvm-14 and jvm-15, and Kotlin jvm-12 and jvm-14, where "u16" invites `UShort`. JVM stays R4. Validation: 47 JVM R5/local-protocol tests pass.
-
-### JVM multi-file corpus: 1.68× vs IDE excerpts (2026-10-08, ADR-197)
-
-`benchmarks.run_jvm_r5_multifile` compares XAX with four textual workflows on generated five-class projects. The textual workflows are Java and Kotlin, each with whole files or an IDE-style excerpt of the same call hierarchy. There are three families: a cross-file API change, a large-class operation change with its dependent assertion, and a transitive constant change. XAX gets the target and its transitive callers from the workspace `callers` query. Client, model (`gpt-6-luna`, low) and the calibrated 3,501-token floor are as in ADR-196.
-
-Profile v5 had 48 attempts and 42/45 cells after one refill pass. Floor-adjusted medians:
-
-| Arm | Median |
-|---|---|
-| Kotlin excerpt | 286 |
-| Java excerpt | 306 |
-| XAX | 481 |
-| Kotlin files | 1,315 |
-| Java files | 1,391 |
-
-XAX is **1.68×** the lowest textual median (raw 1.05×) and 0.35× the whole-file workflows. XAX had 6 failed attempts and the textual arms none. Every XAX mf-02 attempt changed the operation but not the assertion constant. CSV SHA-256: 9414ad6a56deac5ef95939b6de419e0bdb033be60c535142360dd04a39f8c0aa. Profiles v1–v4 were stopped for protocol defects and are retained.
-
-Normal-protocol work from this corpus:
-- A workspace fix: an edited function no longer calls a stale, rebuilt callee.
-- Exact `type OLD NEW` and `type F OLD NEW` retypes.
-- Removal of edits the batch already implies.
-- Kind-specific node diagnostics.
-
-R5 is unmet and JVM stays R4. The remaining gap is the per-request edit-form help, which the textual arms don't pay because the model knows Java and Kotlin, and lower model reliability on XAX.
 
 ### JVM R6: `xwc` — 2026-10-10 (ADR-257)
 
@@ -1371,7 +1258,7 @@ Bounded API-102 hot reload is also implemented structurally. `libxposed-hot-relo
 - ADR-109: all 12 libxposed module profiles EXECUTED on ART (`dalvikvm64` from the system image) with a stand-in framework. Each matches its declared behaviour: argument/result/combined replacement, deopt before hook, stable hook ID, unhook through the retained handle, capability-gated remote preferences/files, and service pass-through with `propagate`. ART's nativeloader loads each module's XAX library and JNI dispatches into it. A patched-literal control is observed. Hooks on `Activity` methods use a simulated receiver.
 - ADR-110: the AArch64 register path now covers general (v4 and bare-metal general) functions with integer, pointer, and compare values, including loops: `cmp`/`cset` compares, plus value homes for cross-block uses. The differential corpus (48 programs, 288 results under bionic) matches the reference executor, and two mutation checks prove it can fail. v3 bytes are unchanged; the packed probe is 3,016 → 2,760 B and the thread library 1,936 → 1,664 B.
 - ADR-111: stateful app `xax.counter` (`benchmarks/android_counter_app.py`). XAX native code owns the count, the file reads and writes, and descriptor closing; DEX only opens the descriptor and shows the number. ART verifies both classes. Under bionic the APK's library restores, increments, and persists across a simulated restart (0,1,2,3 → 3 → 4; 8-byte file; descriptors closed). The DEX emitter gained generic assembled methods, and existing DEX is byte-identical. The official-tools and ART evidence now cover 21 APKs (64 classes, all `Verified`). Device run pending: `integration/android/validate_counter_apk.sh`.
-- Regression: 717 tests. The failure set equals the baseline except for environment effects of installing `tiktoken` (OI-03 now passes; OI-12/OI-13 evidence replays fail whenever `tiktoken` is present, as already recorded below).
+- Regression: 717 tests. The failure set equals the baseline.
 
 ### Android counter: verified descriptor ownership, durable writes, Java + NDK twin (2026-10-04, ADR-153)
 
@@ -1429,7 +1316,7 @@ Bounded API-102 hot reload is also implemented structurally. `libxposed-hot-relo
 - **Kept**: every other emitted descriptor, lifecycle override, hook/Chain/HookHandle call, capability constant, hot-reload path and native ABI already matched API 102 as Vector implements it.
 - **Layer 1 (STRUCTURAL)**: `xax_vector.check_vector_module_apk` accepts all 13 module fixtures; `tests/test_xax_vector_contract.py` pins exact descriptor sets and rejects native-only, API-102-behind-101, legacy, implementation and bundled-API modules.
 - **Layer 4 (Vector runtime)**: `compiler/integration/android/vector/vector_harness.py` - 27 checks over 14 signed profiles (`android_vector_profiles_evidence.json`). **UNEXECUTED**: no rooted arm64 device with Zygisk and Vector v2.2+ on this host; `android_vector_runtime_evidence.json` records the plan.
-- Full suite (Linux x86-64, Python 3.13, `/opt/android` built by `make_android_root.py`, pip setuptools): **1184 passed, 36 skipped, 1 failed**. The failure, `test_jvm_r5_candidate_evidence_is_consistent` (a JVM AI-token CSV SHA-256 mismatch), fails identically on the pre-change tree (clean baseline: 1144 passed, 47 skipped, 3 failed; the other two were wheel builds under Debian's patched setuptools).
+- Full suite (Linux x86-64, Python 3.13, `/opt/android` built by `make_android_root.py`, pip setuptools): **1184 passed, 36 skipped, 1 failed**; the failure fails identically on the pre-change tree (clean baseline: 1144 passed, 47 skipped, 3 failed; two were wheel builds under Debian's patched setuptools).
 
 ### Declarative Android Surface Activity (2026-10-07)
 
@@ -1553,9 +1440,9 @@ A Windows XAX DLL may forward exports to another module (`package.forwards`) and
 
 ### Replacement levels v3 — 2026-10-08 (ADR-207)
 
-R4 is now performance leadership: XAX's median must be at most 0.9999× the fastest non-XAX median, compared unrounded, with a significant one-sided Mann–Whitney advantage on raw samples (validator `xax-replacement-validator-v3`). R5 is autonomous maintenance; R6 is a proven 100% XAX-developed application (new field `xax_only_application`). AI-token trials are a deferred milestone and gate no level. Effect: JVM keeps R4 (`jsonmin` 0.835× `javac`, p ≈ 3e-5); `android-arm64` drops from R4 to R3 (1.007273× `clang_ndk_java`). No row has R5 or R6 evidence. Earlier dated statements that Android holds R4, or that R5 means AI tokens, are superseded by this section. Next milestone: U2 in `XAX_IMPLEMENTATION_ROADMAP.md`.
+R4 is now performance leadership: XAX's median must be at most 0.9999× the fastest non-XAX median, compared unrounded, with a significant one-sided Mann–Whitney advantage on raw samples (validator `xax-replacement-validator-v3`). R5 is autonomous maintenance; R6 is a proven 100% XAX-developed application (new field `xax_only_application`). Effect: JVM keeps R4 (`jsonmin` 0.835× `javac`, p ≈ 3e-5); `android-arm64` drops from R4 to R3 (1.007273× `clang_ndk_java`). No row has R5 or R6 evidence. Earlier dated statements that Android holds R4 are superseded by this section. Next milestone: U2 in `XAX_IMPLEMENTATION_ROADMAP.md`.
 
-Test state on this host (Python 3.13, x86-64, no QEMU/Wine/JDK/Android tools): 1,305 passed, 74 skipped, and 4 failed for host reasons (wheel build and install without a working setuptools; two AArch64 execution tests without `qemu-aarch64`), with `unicorn` and `tiktoken` installed.
+Test state on this host (Python 3.13, x86-64, no QEMU/Wine/JDK/Android tools): 1,305 passed, 74 skipped, and 4 failed for host reasons (wheel build and install without a working setuptools; two AArch64 execution tests without `qemu-aarch64`), with `unicorn` installed.
 
 ### Linux x86-64 raw-sample re-run — 2026-10-08 (ADR-208)
 
@@ -1599,8 +1486,8 @@ A Linux R5 maintenance record (`compiler/benchmarks/r5_linux_jsonmin_maintenance
 - New platform row `linux-aarch64` at R2 (emulator-only): static and explicit-loader ELF64 executables from the shared AAPCS64 lowerer, `linux-aarch64-syscall-v1` thunks, `aapcs64-linux-c` imports, and the unchanged `filestat` graph executed under qemu-aarch64 with glibc and `libz.so.1`. 14,024 bytes vs 67,496 for gcc -O2; 6.6× gcc's emulated time (frame path).
 - AArch64 frame path: integer completion operations; liveness-shared value slots on the Linux identities (filestat frame 4,848 → 240 bytes).
 - Fixed a miscompile: a duplicate `_cset` made frame-path integer and float compares crash or pick the wrong condition. Regression test executes every compare kind.
-- Matrix validator now enforces conformance §23.17 (no performance evidence on emulator-only rows). `requires-python` lowered to 3.11, where the full suite passes.
-- Full suite: 809 tests pass, 17 skipped (host-bound), on Python 3.11 with qemu-user, pytest, tiktoken, and unicorn installed.
+- Matrix validator now enforces conformance §22.17 (no performance evidence on emulator-only rows). `requires-python` lowered to 3.11, where the full suite passes.
+- Full suite: 809 tests pass, 17 skipped (host-bound), on Python 3.11 with qemu-user, pytest, and unicorn installed.
 
 ### First R3 application: `jsonmin` (ADR-126) — 2026-10-03
 
@@ -1636,8 +1523,6 @@ A Linux R5 maintenance record (`compiler/benchmarks/r5_linux_jsonmin_maintenance
 ### Shared edit grammar (2026-10-08, ADR-200)
 
 The per-request edit-form help is now optional in the normal protocol. `edit_grammar()` is the complete, request-independent carrier grammar, and `edit_grammar_id()` is its identity. A client sends the grammar once as shared context, and `session.instructions(shared=ID)` then adds nothing per request. A stale ID rejects, and acceptance rules don't change. The protocol is specified in `docs/09_AI_PROTOCOL.md`.
-
-There is no model measurement yet. In the existing one-request-per-cell profiles the grammar would still be sent with every request, and the full grammar (about 1 KB) is larger than the filtered help. The saving needs multi-request sessions or prompt caching. A new R5 profile has to pin the grammar as shared context, count it, and leave its accounting against textual arms to the owner. R5 is still unmet and JVM stays R4.
 
 ### Linux AArch64 R5 and R6: `jsonmin` maintenance and `xcksum` — 2026-10-10 (ADR-258)
 
@@ -1744,7 +1629,7 @@ Executed evidence is in `compiler/benchmarks/xax_native_blake3_evidence.json`, r
 
 A checked load or store on a `bits<8>` view can now move 2, 4, or 8 bytes as one little-endian integer (a `u64` from a `bytes_rw` view is one node instead of eight). Every proof obligation is unchanged. x86-64, AArch64, JVM, and wasm run it; RISC-V rejects it (`RISCV64-CHECKED-BYTE-VIEW-WIDTH`); SPIR-V kernels take word views only. The XAX facts engine decides these accesses itself. Host contract minor 2.
 
-## AI protocol and token efficiency
+## Upgrade U1 targets
 
 ### U1.1 hosted Windows PE32+ executable — 2026-10-02
 
@@ -1755,7 +1640,7 @@ A checked load or store on a `bits<8>` view can now move 2, 4, or 8 bytes as one
 - Returning from a PE entry left the process alive (observed hang; loader worker threads), so termination is an explicit `ExitProcess` call; the container adds no exit path (ADR-076).
 - EXECUTED at U1.1 (evidence file since regenerated by U1.2a below): 2,048-byte PE (SHA-256 `4c0bffdf87a5042eccb3737f7e0891e6ebb563e41a5fa75c2d7bc15efd6c7c46`), 918 code bytes, six kernel32 imports; fixture writes `XAX\n` from stack storage, allocates/frees 64 heap bytes, runs a looping `sum_to(10)` direct call, exits 57; 20/20 runs on Windows 11 10.0.26200 AMD64 (AMD Family 25 Model 80). Process wall median 19.3 ms (includes CreateProcess/pipe; not a code-quality claim).
 - Historical limit at U1.1: R2 was not claimed because callbacks/threads/files/sockets were absent. ADR-170 later adds executed callbacks and thread lifecycle and advances the row to R2. R4, files/sockets, unwind/PDB/TLS, and the other listed gaps remain open.
-- Tests: `tests/test_xax_pe.py` 5/5 (execution test runs only on Windows x86-64), `tests/test_replacement_matrix.py` 3/3. Full suite: 577 tests; the 31 failures/errors are identical by name to the pre-change baseline (missing `pytest`/tokenizer modules, stale pinned evidence/code hashes, host-bound cases); 0 new.
+- Tests: `tests/test_xax_pe.py` 5/5 (execution test runs only on Windows x86-64), `tests/test_replacement_matrix.py` 3/3. Full suite: 577 tests; the 31 failures/errors are identical by name to the pre-change baseline (missing `pytest` modules, stale pinned evidence/code hashes, host-bound cases); 0 new.
 
 ### U1.2a heap views on x86-64 and U1.4 WASI — 2026-10-02
 
@@ -1774,11 +1659,6 @@ A checked load or store on a `bits<8>` view can now move 2, 4, or 8 bytes as one
 - MEASURED (`x86_register_path_evidence.json`): `sum_to(200,000,000)` frame path 433 B / 738.7 ms median vs register path 89 B / 92.1 ms (8.02x), 7 runs.
 - EXECUTED: PE fixture code 1,269 bytes (was 2,181), PE 2,560 bytes (SHA-256 `a5e01731…`), exit 1339, 20/20 runs; OOB heap store still traps.
 
-### Post-upgrade token test (lowest cost) — 2026-10-02
-
-- Offline, with no model tokens: after installing `tiktoken` 0.14.0, the AI-native harness and the OI-03/OI-04 tokenizer replays pass 44/44.
-- Model: one `task-01` pair (change a shared constant) run as fresh `haiku` subagents. C used 38,278 tokens and 4 tool calls; XAX used 39,997 tokens and 7 tool calls (1.04× C). Both passed the external checkers on the first attempt with no repairs. This is n=1 with fixed agent-harness overhead dominating, so it is not OI-31 evidence. It agrees with the earlier `task-02` smoke check (1.04×): on tiny edits, the XAX protocol's extra inspect/test round trips cost about as much as the C edit saves.
-
 ### U1.3 Linux x86-64 executables and the Linux register path — 2026-10-02
 
 - Kernel integer completion (ADR-084): `bit.and` 67, `bit.or` 68, `udiv` 69, `urem` 70, `int.truncate` 71, `int.zero_extend` 72, with verifier rules, reference semantics, and x86-64 lowering. Portable trap reason 2 is `integer-divide-by-zero`. Only the Linux target packages advertise these operations.
@@ -1789,28 +1669,7 @@ A checked load or store on a `bits<8>` view can now move 2, 4, or 8 bytes as one
 - Register path (ADR-089): `xax_x86_64_regalloc.py`, separate from the PE allocator (ADR-083); convergence is OI-38. Differential corpus: `compiler/tests/test_xax_regalloc_differential.py` (120 seeded programs executed natively versus the reference executor).
 - Workload: `compiler/benchmarks/linux_filestat.py`. MEASURED (`u1_linux_filestat_evidence.json`, `XAX_BENCHMARKS.md` §15.1): 0.95–1.14× `gcc -O2` and 1.41–1.82× `clang -O2` over seven runs; 3,560-byte artifact; 1,184 KiB peak RSS (loader + libz + libc). R4 is not met.
 - Construction tooling: `xax_graph_builder.py` (block/node builder and reachable-closure store writer); it is not a source language.
-- Token test after the upgrade (lowest cost). Offline: with `tiktoken` installed, the OI-01 transport counts and the OI-03/OI-04 replays reproduce, and the AI-native tests pass 17/17. The OI-12 and OI-13 committed evidence records `tiktoken` as unavailable, so those replays fail whenever it is present (environment-dependent; predates this work). Model: one `task-02` pair with `haiku` subagents — C 35,151 tokens, XAX 36,492 tokens (1.04×), both pass; this is not OI-31 evidence.
-- Regression on Linux x86-64 (Python 3.11.15, pytest, `tiktoken` installed): the merged tree has exactly main's 17 environment/evidence failures — host-bound Windows/QEMU cases, the stale stack-memory hash pin, the OI-25/OI-26 replays, the OI-12/OI-13 `tiktoken` replays, and the wheel build — with 781 tests passing.
-
-### Post-upgrade token test (lowest cost) — 2026-10-03
-
-- Offline, with no model tokens (tiktoken 0.14.0, `o200k_base`): the AI-native harness and the OI-03/OI-04 tokenizer replays pass 44/44. With a tokenizer installed, the OI-12/OI-13 suites now check real counts, and OI-12's committed evidence records them (9 and 7 tokens per timing query/response).
-- Model: one `task-01` pair (change a shared constant), each arm a fresh `haiku` subagent given the identical task prompt. C used 37,576 tokens and 3 tool calls; XAX used 40,021 tokens and 10 tool calls (1.065× C). Both pass the external checkers on the first attempt with no repairs. n=1, dominated by fixed agent-harness overhead, so this is neither R5 nor OI-31 evidence. It matches the earlier results (1.04×, 1.04×): on one-constant edits, the XAX protocol's inspect/mutate/test round trips cost slightly more than the C edit saves. The ADR-112–115 changes did not touch the workspace protocol, so this is a regression check, not a new measurement of it.
-
-### Post-upgrade token test (lowest cost) — 2026-10-03, after ADR-123–131
-
-- Offline only, with zero model tokens (tiktoken 0.14.0): the AI-native harness and the OI-03/OI-04/OI-12/OI-13 tokenizer replays pass 67/67 against the changed verifier. New offline token evidence comes from OI-36 (`oi36_stdlib_evidence.json`): using the standard packages takes a 268-token interface view plus a 1,360-token application mutation, against 3,256 tokens with the library bodies inline.
-- No model pair was run. `xax_workspace`, the AI-native harness, and `docs/09_AI_PROTOCOL.md` are unchanged since the last pair (`task-01`, `haiku`, XAX 1.065× C), so a new pair would only repeat that regression check. The next paid trial should measure something new: a library-using edit, such as adding a call to `hashset_u64.contains`.
-
-### Direct semantic-edit workflow (2026-10-06, ADR-175)
-
-- MEASURED (`compiler/benchmarks/ai_native/jvm-r5-optimized-evidence.json`, `jvm-r5-optimized-results.csv`): the same five semantic edits under one fixed controlled client profile, with task-local exact-target checkers and 10/10 passing in one turn with no repair.
-- C-like text used 197,252 total tokens; XAX-DIRECT used 98,432 (0.4990×, 50.098% fewer). Median per task: 39,479 versus 19,704.
-- `XAX-DIRECT` supplies the bounded local semantic view and uses one atomic apply/verify/commit/check operation. The matrix remains R4 until the other §6.2 classes and Java/Kotlin/repeated evidence exist.
-
-### Multi-file profile v6 with the shared grammar (2026-10-08, ADR-201)
-
-`python -m benchmarks.run_jvm_r5_multifile` from `compiler/` now runs profile v6. The XAX arm holds the shared edit grammar in its client base instructions and gets no per-request edit help. The runner calibrates the common floor and the XAX floor (`calibration-xax.json`); their difference is the grammar's cost per request. The gate counts that cost in every XAX request. The evidence JSON also reports informational ratios with the grammar counted once per attempt and excluded, for the owner's accounting decision. No inference has been run. Use the ADR-190 toolchain setup with one writer, `--repetitions 3`, and keep every failed attempt. R5 is still unmet and JVM stays R4.
+- Regression on Linux x86-64 (Python 3.11.15, pytest installed): the merged tree has exactly main's 17 environment/evidence failures — host-bound Windows/QEMU cases, the stale stack-memory hash pin, the OI-25/OI-26 replays, and the wheel build — with 781 tests passing.
 
 ## Open issues
 
@@ -1841,7 +1700,7 @@ A checked load or store on a `bits<8>` view can now move 2, 4, or 8 bytes as one
 
 ### OI-37 step: `pointer_rebase` (ADR-092) — 2026-10-02
 
-- Operation 73 in the kernel. Verifier windows, executor and frame-path rejection, Linux allocator lowering (`sub; ror; cmp; ja` to a cold trap). Spec §5.6, conformance §23 item 12.
+- Operation 73 in the kernel. Verifier windows, executor and frame-path rejection, Linux allocator lowering (`sub; ror; cmp; ja` to a cold trap). Spec §5.6, conformance §22 item 12.
 - `chains` builds `links="pointer"`, and C gains a `-DCHECKED` diagnostic. MEASURED: pointer links 1.64× `gcc -O2` (1.07× checked-pointer C); index links 2.00×. The Linux allocator also keeps a layout-next successor inline when both edges copy.
 - Tests: `compiler/tests/test_xax_pointer_rebase.py` (executed traps, verifier rejections), and `test_xax_chains.py` covers both link kinds.
 
@@ -1857,7 +1716,7 @@ A checked load or store on a `bits<8>` view can now move 2, 4, or 8 bytes as one
 
 ### OI-37 closed (ADR-096) — 2026-10-02
 
-- Closure evidence: iovecs (ADR-081); pointer-linked traversal on x86-64 (heap) and wasm32 (stack storage, the stated deviation); forged/expired vectors on both targets; verifier cost and offline edit tokens (`oi37_closure_evidence.json`).
+- Closure evidence: iovecs (ADR-081); pointer-linked traversal on x86-64 (heap) and wasm32 (stack storage, the stated deviation); forged/expired vectors on both targets; verifier cost and edit cost (`oi37_closure_evidence.json`).
 - Check-free reloads move to OI-41 (typed mixed storage, deferred).
 
 ### OI-41 closed: record links (ADR-097) — 2026-10-02
@@ -1893,7 +1752,7 @@ All emitted forms have no mandatory XAX runtime, allocator, libc, assembler, lin
 
 - Replacement levels in `README.md`, this file, `XAX_HANDOFF.md`, the roadmap, and the architecture document are now generated from `XAX_REPLACEMENT_MATRIX.json` by `compiler/src/xax_status_docs.py`; `tests/test_status_docs.py` fails while any copy is stale. Stale current-status text was corrected (README: "no platform is above R2", the 1.4–1.8× `clang` figure, and Python 3.12; the architecture snapshot after ADR-129; roadmap U1.8). Superseded benchmark sections (§15.1, §15.12) now point at §15.14.
 - Markdown structure: one H1 per document (architecture, specification, bootstrap README), fence languages in `docs/10_TARGET_MODEL.md` and `docs/11_ABI_PLATFORM.md`, and a store table in `compiler/bootstrap/README.md`.
-- `compiler/pyproject.toml` gains a `test` extra (`pytest`, `pytest-xdist`, `unicorn`, `tiktoken`).
+- `compiler/pyproject.toml` gains a `test` extra (`pytest`, `pytest-xdist`, `unicorn`).
 - Full suite on Linux x86-64 (Python 3.11.15, the `XAX_HANDOFF.md` environment, Android root from `make_android_root.py`): **1,070 passed, 5 skipped** (two Windows-host PE runs, the physical arm64 device, and the two opt-in `XAX_FIXED_POINT=1` emulation runs).
 
 ### Documentation sync: generated Targets table and R0–R6 summary (2026-10-04)

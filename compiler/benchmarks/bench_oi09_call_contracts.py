@@ -517,7 +517,7 @@ def _contract_atoms(summary: CallContractSummary) -> int:
     return 1 + len(summary.inputs) + 1 + len(summary.outputs) + 2
 
 
-def token_atoms(corpus: Corpus, candidate: Candidate) -> int:
+def semantic_atoms(corpus: Corpus, candidate: Candidate) -> int:
     calls = 1 + len(candidate.calls)
     if candidate.name == "embedded":
         placements = sum(1 + _contract_atoms(corpus.contract_summaries[next(i for i,c in enumerate(corpus.contracts) if c.cid == item.contract_cid)]) for item in corpus.callables)
@@ -617,7 +617,7 @@ def _candidate_rows(corpus: Corpus, *, include_timing: bool) -> dict:
         rows[candidate.name] = {
             "persistent_bytes": candidate.persistent_bytes,
             "object_count": candidate.object_count,
-            "ideal_token_atoms": token_atoms(corpus, candidate),
+            "semantic_atoms": semantic_atoms(corpus, candidate),
             "contract_object_count": len(candidate.contract_objects),
             "metadata_object_count": len(candidate.metadata_objects),
             "callable_object_count": len(candidate.callable_objects),
@@ -671,11 +671,11 @@ def collect_evidence(*, include_timing: bool = True) -> dict:
                 "contract_cid": corpus.mutated_contract_cid.hex(),
             },
         },
-        "token_metric": "ideal semantic atoms; one atom per scalar/local reference, independent of a particular text tokenizer",
+        "atom_metric": "semantic atoms; one atom per scalar or local reference",
         "workloads": workloads,
         "decision": {
             "base_contract_representation": "referenced",
-            "reason": "referenced is the only candidate that reduces ideal token atoms and verification cost in both call-heavy profiles while retaining implementation-independent content identity; its sparse-profile byte penalty is recorded rather than hidden",
+            "reason": "referenced is the only candidate that reduces semantic atoms and verification cost in both call-heavy profiles while retaining implementation-independent content identity; its sparse-profile byte penalty is recorded rather than hidden",
             "sealed_dispatch_role": "optional exact-target optimization fact, not the sole bounded contract",
             "embedded_role": "possible future serialization compression for low-reuse contracts, not semantic authority",
         },

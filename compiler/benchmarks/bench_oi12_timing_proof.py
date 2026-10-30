@@ -628,19 +628,6 @@ def timing_query_response(bound: int) -> bytes:
     return f"1|tg|{bound}|cycles".encode("ascii")
 
 
-def tokenizer_counts(payloads: tuple[bytes, ...]) -> dict[str, object]:
-    try:
-        import tiktoken
-    except ImportError:
-        return {"available": False, "tokenizer": None, "tokens": None}
-    encoding = tiktoken.get_encoding("o200k_base")
-    return {
-        "available": True,
-        "tokenizer": f"tiktoken {tiktoken.__version__} o200k_base",
-        "tokens": [len(encoding.encode(payload.decode("ascii"))) for payload in payloads],
-    }
-
-
 def program_fixture(*, leaf_extra: bool = False, unrelated_variant: bool = False, target: SemanticObject | None = None) -> Fixture:
     target = target or x86_64_windows_target()
     b1, b32 = bits_type(1), bits_type(32)
@@ -818,7 +805,6 @@ def collect_evidence() -> dict[str, object]:
         encoded = caller.canonical_bytes()
         query = timing_query_payload()
         response = timing_query_response(caller.guarantee_cycles)
-        token_measurement = tokenizer_counts((query, response))
         model_evidence[model.identity] = {
             "model_version": model.version,
             "caller_proof_bytes": len(encoded),
@@ -839,7 +825,6 @@ def collect_evidence() -> dict[str, object]:
             "dependency_fingerprint": caller.dependency_fingerprint.hex(),
             "query_request_bytes": len(query),
             "query_response_bytes": len(response),
-            "query_tokens": token_measurement,
             "cost_estimate": {
                 "kind": "separate-nonproof-estimate",
                 "available": False,
@@ -947,7 +932,6 @@ def collect_evidence() -> dict[str, object]:
             "root_cid_without_sidecar": fixture.root_cid.hex(),
             "root_cid_after_sidecar_delete": fixture.root_cid.hex(),
         },
-        "tokenizer_note": "actual tokenizer tokens are null when tiktoken is unavailable; bytes are not substituted for tokens",
     }
 
 

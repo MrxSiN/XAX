@@ -31,7 +31,7 @@ matches their task:
 | Document | Defines |
 |---|---|
 | [`08_SERIALIZATION_IDENTITY.md`](08_SERIALIZATION_IDENTITY.md) | The canonical `.xax` store: content-addressed objects in a Merkle DAG |
-| [`09_AI_PROTOCOL.md`](09_AI_PROTOCOL.md) | The AI workspace: queries, transactions, diagnostics and token cost |
+| [`09_AI_PROTOCOL.md`](09_AI_PROTOCOL.md) | The AI workspace: queries, transactions and diagnostics |
 
 ## Targets and platforms
 
