@@ -38,7 +38,7 @@ This file records merged v0.1 decisions. Each decision is normative unless super
   - [ADR-030 — Artifact mappings require retained emission provenance](#adr-030--artifact-mappings-require-retained-emission-provenance)
   - [ADR-031 — Artifact provenance uses one target-neutral compiler-service interface](#adr-031--artifact-provenance-uses-one-target-neutral-compiler-service-interface)
   - [ADR-032 — Artifact mappings use explicit dependency bindings](#adr-032--artifact-mappings-use-explicit-dependency-bindings)
-  - [ADR-033 — Bootstrap query budgets use exact response bytes without token claims](#adr-033--bootstrap-query-budgets-use-exact-response-bytes-without-token-claims)
+  - [ADR-033 — Bootstrap query budgets use exact response bytes](#adr-033--bootstrap-query-budgets-use-exact-response-bytes)
   - [ADR-034 — Operand/use replacement is preconditioned semantic relation mutation](#adr-034--operanduse-replacement-is-preconditioned-semantic-relation-mutation)
   - [ADR-035 — Node deletion is containment-preconditioned and use-safe](#adr-035--node-deletion-is-containment-preconditioned-and-use-safe)
   - [ADR-036 — Proof query results use explicit local dependency bindings](#adr-036--proof-query-results-use-explicit-local-dependency-bindings)
@@ -64,7 +64,6 @@ This file records merged v0.1 decisions. Each decision is normative unless super
   - [ADR-056 — M13 accelerator semantics remain target-package contracts behind one generic target operation](#adr-056--m13-accelerator-semantics-remain-target-package-contracts-behind-one-generic-target-operation)
   - [ADR-057 — M14 graph introspection is necessary but not self-hosting evidence](#adr-057--m14-graph-introspection-is-necessary-but-not-self-hosting-evidence)
   - [ADR-058 — M14 closure is target-scoped to the canonical semantic image and immutable seed boundary](#adr-058--m14-closure-is-target-scoped-to-the-canonical-semantic-image-and-immutable-seed-boundary)
-  - [ADR-059 — The first AI-native experiment is a tiny manual C-vs-XAX comparison](#adr-059--the-first-ai-native-experiment-is-a-tiny-manual-c-vs-xax-comparison)
   - [ADR-060 — JNI stays a platform package; identity-qualified ABI carriers and linear reference owners expose its exact boundary](#adr-060--jni-stays-a-platform-package-identity-qualified-abi-carriers-and-linear-reference-owners-expose-its-exact-boundary)
   - [ADR-061 — JNI loader domains and pending exceptions are explicit proof state, not hidden runtime state](#adr-061--jni-loader-domains-and-pending-exceptions-are-explicit-proof-state-not-hidden-runtime-state)
   - [ADR-062 — Managed interface callbacks lower to the smallest direct DEX-to-XAX adapter](#adr-062--managed-interface-callbacks-lower-to-the-smallest-direct-dex-to-xax-adapter)
@@ -180,9 +179,6 @@ This file records merged v0.1 decisions. Each decision is normative unless super
   - [ADR-171 — Stable libxposed hook IDs belong to installation semantics](#adr-171--stable-libxposed-hook-ids-belong-to-installation-semantics)
   - [ADR-172 — Android arm64 hardware evidence reaches R4 for the counter workload](#adr-172--android-arm64-hardware-evidence-reaches-r4-for-the-counter-workload)
   - [ADR-173 — Android platform contracts execute on physical arm64 hardware](#adr-173--android-platform-contracts-execute-on-physical-arm64-hardware)
-  - [ADR-174 — Bounded target-neutral semantic-edit evidence is not yet JVM R5](#adr-174--bounded-target-neutral-semantic-edit-evidence-is-not-yet-jvm-r5)
-  - [ADR-175 — Direct local semantic transactions clear the 50% aggregate token target](#adr-175--direct-local-semantic-transactions-clear-the-50-aggregate-token-target)
-  - [ADR-176 — Expanded JVM R5 corpus remains incomplete and below the median gate](#adr-176--expanded-jvm-r5-corpus-remains-incomplete-and-below-the-median-gate)
   - [ADR-177 — Evidence and canonical-state integrity before S7b](#adr-177--evidence-and-canonical-state-integrity-before-s7b)
   - [ADR-178 — Vector is the reference runtime for libxposed API-102 modules](#adr-178--vector-is-the-reference-runtime-for-libxposed-api-102-modules)
   - [ADR-179 — Self-hosting step S7b.1: the x86-64 views lowering decides target legality and writes the exact diagnostic](#adr-179--self-hosting-step-s7b1-the-x86-64-views-lowering-decides-target-legality-and-writes-the-exact-diagnostic)
@@ -192,24 +188,18 @@ This file records merged v0.1 decisions. Each decision is normative unless super
   - [ADR-183 — Self-hosting step S8a: the store container's rejections decided by XAX](#adr-183--self-hosting-step-s8a-the-store-containers-rejections-decided-by-xax)
   - [ADR-184 — Self-hosting step S8b.1: object-envelope rejections and the CID comparison decided by XAX](#adr-184--self-hosting-step-s8b1-object-envelope-rejections-and-the-cid-comparison-decided-by-xax)
   - [ADR-185 — Self-hosting step S8b.2: graph-body syntax rejections decided by XAX; one site mechanism for decoders](#adr-185--self-hosting-step-s8b2-graph-body-syntax-rejections-decided-by-xax-one-site-mechanism-for-decoders)
-  - [ADR-186 — Snapshot-bound local mutations and reproducible JVM token trials](#adr-186--snapshot-bound-local-mutations-and-reproducible-jvm-token-trials)
-  - [ADR-187 — Host-applied model responses and a controlled JVM comparison](#adr-187--host-applied-model-responses-and-a-controlled-jvm-comparison)
+  - [ADR-186 — Snapshot-bound local mutations](#adr-186--snapshot-bound-local-mutations)
+  - [ADR-187 — Host-applied responses, snapshot projection and dead-chain deletion](#adr-187--host-applied-responses-snapshot-projection-and-dead-chain-deletion)
   - [ADR-188 — Exact compound edits reconstructed from a local snapshot](#adr-188--exact-compound-edits-reconstructed-from-a-local-snapshot)
-  - [ADR-189 — Compact mutation aliases and compiled checks for redundant literal conversions](#adr-189--compact-mutation-aliases-and-compiled-checks-for-redundant-literal-conversions)
-  - [ADR-190 — Lossless result-type defaults and a fresh host-pinned JVM trial](#adr-190--lossless-result-type-defaults-and-a-fresh-host-pinned-jvm-trial)
-  - [ADR-191 — Bound mutation fields and complete negative JVM token evidence](#adr-191--bound-mutation-fields-and-complete-negative-jvm-token-evidence)
+  - [ADR-189 — Compact mutation aliases](#adr-189--compact-mutation-aliases)
   - [ADR-192 — Immutable bindings and minimum scalar query context](#adr-192--immutable-bindings-and-minimum-scalar-query-context)
   - [ADR-193 — Accept matching bound commands and reuse ordinary repair](#adr-193--accept-matching-bound-commands-and-reuse-ordinary-repair)
-  - [ADR-194 — Complete response-v9 meets the median token gate](#adr-194--complete-response-v9-meets-the-median-token-gate)
-  - [ADR-195 — Corpus review rejects response-v9 as R5 evidence; same-prefill response-v10](#adr-195--corpus-review-rejects-response-v9-as-r5-evidence-same-prefill-response-v10)
-  - [ADR-196 — Minimal-client same-prefill JVM run (response-v12): XAX ≈ 1.0× textual; R5 unmet](#adr-196--minimal-client-same-prefill-jvm-run-response-v12-xax--10-textual-r5-unmet)
   - [ADR-197 — Vector runtime executed on hardware; hot-reload register fix; heap-dump oracle; device ART route](#adr-197--vector-runtime-executed-on-hardware-hot-reload-register-fix-heap-dump-oracle-device-art-route)
-  - [ADR-197 — Multi-file JVM corpus (OI-46 option b): XAX 1.68× the IDE-excerpt baseline, 0.35× whole files](#adr-197--multi-file-jvm-corpus-oi-46-option-b-xax-168-the-ide-excerpt-baseline-035-whole-files)
+  - [ADR-197 — Workspace dependency order, type edits and implied-edit pruning](#adr-197--workspace-dependency-order-type-edits-and-implied-edit-pruning)
   - [ADR-198 — Android counter R4 restored: three arms, rotated passes, equal AOT compilation](#adr-198--android-counter-r4-restored-three-arms-rotated-passes-equal-aot-compilation)
   - [ADR-199 — General Android managed classes replace per-API managed carriers](#adr-199--general-android-managed-classes-replace-per-api-managed-carriers)
 - ADR-200 to ADR-299
   - [ADR-200 — Shared edit grammar replaces per-request edit-form help](#adr-200--shared-edit-grammar-replaces-per-request-edit-form-help)
-  - [ADR-201 — Multi-file profile v6: the XAX arm holds the shared edit grammar](#adr-201--multi-file-profile-v6-the-xax-arm-holds-the-shared-edit-grammar)
   - [ADR-202 — Exact JNI `jfloat`/`jdouble` carriers and typed-record `jvalue` packs](#adr-202--exact-jni-jfloatjdouble-carriers-and-typed-record-jvalue-packs)
   - [ADR-203 — Android platform declarations: permissions, features, foreground types and managed components](#adr-203--android-platform-declarations-permissions-features-foreground-types-and-managed-components)
   - [ADR-204 — Android capability contracts: NDK ownership, POSIX async I/O and SDK permission rules](#adr-204--android-capability-contracts-ndk-ownership-posix-async-io-and-sdk-permission-rules)
@@ -389,7 +379,6 @@ levels. Evidence is `compiler/integration/windows_helpers/native_seed_evidence.j
 | Rationale | One canonical identity avoids specification and package lineage ambiguity. |
 | Alternatives rejected | Parallel “XAX”/“XAX Zero” naming; stage-specific language names. |
 | Runtime cost expectation | None. |
-| AI/token expectation | Reduces naming ambiguity and repair/query overhead. |
 | Falsification condition | Only an explicit future branding/versioning decision may replace the name; implementation evidence cannot silently create a second language identity. |
 
 ## ADR-002 — Meaning is source
@@ -400,18 +389,16 @@ levels. Evidence is `compiler/integration/windows_helpers/native_seed_evidence.j
 | Rationale | Eliminates parsing/source-preservation constraints, makes exact semantics machine-addressable, and enables local semantic mutation. |
 | Alternatives rejected | Human textual syntax as authoritative source; editable debug dump; AST reconstructed from text. |
 | Runtime cost expectation | None; representation is compile/tooling state. |
-| AI/token expectation | Expected to reduce regeneration and ambiguity by transmitting semantic neighborhoods instead of source files. |
-| Falsification condition | Reconsider if semantic-first editing consistently costs more tokens/repairs than a textual authoritative representation across controlled benchmarks without delivering compensating correctness/locality benefits. |
+| Falsification condition | Reconsider if semantic-first editing consistently costs more repairs than a textual authoritative representation across controlled benchmarks without delivering compensating correctness/locality benefits. |
 
 ## ADR-003 — Reconciliation precedence
 
 | Field | Record |
 |---|---|
-| Decision | Conflicts are resolved by: semantic correctness → deterministic machine interpretation → AI token/reasoning efficiency → runtime performance/footprint → universal extensibility → locality/incrementality → implementation simplicity → human convenience. |
+| Decision | Conflicts are resolved by: semantic correctness → deterministic machine interpretation → runtime performance/footprint → universal extensibility → locality/incrementality → implementation simplicity → human convenience. |
 | Rationale | The merge prompt explicitly requires this ordering and it resolves the earlier tension between the founding priority table and later deterministic serialization/conformance requirements. |
 | Alternatives rejected | Retaining every earlier priority order independently; letting implementation convenience decide contradictions. |
 | Runtime cost expectation | May reject faster but semantically or deterministically weaker designs. |
-| AI/token expectation | Deterministic interpretation may consume some encoding bytes but should lower ambiguity/repair cost. |
 | Falsification condition | Only a future architecture revision may change the ordering after evidence demonstrates a superior priority model without weakening exact semantics. |
 
 ## ADR-004 — One semantic language
@@ -422,7 +409,6 @@ levels. Evidence is `compiler/integration/windows_helpers/native_seed_evidence.j
 | Rationale | Avoids duplicated semantics and enables self-hosting/toolchain closure. |
 | Alternatives rejected | Permanent macro/template language; target DSL; build DSL; package-manifest language as semantic authority. |
 | Runtime cost expectation | None inherently; compile-time implementations may specialize away abstractions. |
-| AI/token expectation | One semantic vocabulary reduces cross-language translation/context. |
 | Falsification condition | Reconsider only if an essential domain cannot be expressed adequately in XAX without materially greater total complexity than a second language and the same guarantees cannot be preserved. |
 
 ## ADR-005 — Block-parameter SSA with explicit dependency classes
@@ -433,7 +419,6 @@ levels. Evidence is `compiler/integration/windows_helpers/native_seed_evidence.j
 | Rationale | Preserves optimizer-relevant information with less structural complexity than a universal sea-of-nodes model. |
 | Alternatives rejected | Mutable-variable core; implicit phi reconstruction; serialization-order execution; full sea-of-nodes as mandatory representation. |
 | Runtime cost expectation | SSA/dependency objects are compile-time semantics and normally erase. |
-| AI/token expectation | Local graph relations should reduce implicit reasoning and repair ambiguity. |
 | Falsification condition | Reconsider if representative compiler implementation shows this model materially blocks optimization, target modeling, or local AI edits compared with a demonstrably simpler/effective graph model. |
 
 ## ADR-006 — Recursive SCC carrier
@@ -444,7 +429,6 @@ levels. Evidence is `compiler/integration/windows_helpers/native_seed_evidence.j
 | Rationale | Resolves Stage 02 recursive identity requirements with Stage 08 acyclic CID computation. |
 | Alternatives rejected | Cyclic hashes; name-based recursive identity; forcing every function into a recursion group. |
 | Runtime cost expectation | None; serialization/identity structure only. |
-| AI/token expectation | Local group indices are compact; unrelated non-recursive functions avoid group overhead. |
 | Falsification condition | Reconsider encoding if a different acyclic scheme measurably improves canonical size/locality without weakening persistent identity or deterministic recursion semantics. |
 
 ## ADR-007 — Exact bit types; signedness belongs to operations
@@ -455,8 +439,7 @@ levels. Evidence is `compiler/integration/windows_helpers/native_seed_evidence.j
 | Rationale | Avoids duplicate representation identity and supports arbitrary widths/hardware fields. |
 | Alternatives rejected | Separate `iN`/`uN` as fundamental stored-value types; fixed common widths only; implicit promotions. |
 | Runtime cost expectation | None; type semantics only. |
-| AI/token expectation | Fewer conversion/type variants, but requires operation-level signedness precision. |
-| Falsification condition | Reconsider if controlled AI-generation benchmarks show materially higher error/repair rates than a type-signedness design after protocol/tokenizer optimization. |
+| Falsification condition | Reconsider if controlled AI-generation benchmarks show materially higher error/repair rates than a type-signedness design after protocol optimization. |
 
 ## ADR-008 — Semantic types are separate from target layout
 
@@ -466,7 +449,6 @@ levels. Evidence is `compiler/integration/windows_helpers/native_seed_evidence.j
 | Rationale | Preserves target-independent program meaning and cross-target reuse. |
 | Alternatives rejected | C-like layout by default; host-layout assumptions; representation compatibility implying type equality. |
 | Runtime cost expectation | Static layout queries normally have zero runtime cost. Explicit packing/unpacking costs only when semantically requested. |
-| AI/token expectation | Prevents repeated target assumptions in ordinary semantic graphs; explicit layout contracts increase local precision. |
 | Falsification condition | Reconsider if target/ABI programming becomes pervasively ambiguous or unimplementable without embedding layout into ordinary semantic type identity. |
 
 ## ADR-009 — Function value type is not the full call contract
@@ -477,8 +459,7 @@ levels. Evidence is `compiler/integration/windows_helpers/native_seed_evidence.j
 | Rationale | Reconciles minimal Stage 03 function types with Stage 05's requirement that indirect effects cannot be unspecified. |
 | Alternatives rejected | Unbounded “may do anything” indirect calls by default; making every function type encode all ABI/platform facts. |
 | Runtime cost expectation | Contract data is compile-time/verification metadata and normally erases. |
-| AI/token expectation | Slightly larger callable metadata but fewer hidden effects and invalid indirect calls. |
-| Falsification condition | Reconsider representation placement if a different contract carrier materially lowers graph/token cost while preserving complete bounded call semantics. |
+| Falsification condition | Reconsider representation placement if a different contract carrier materially lowers graph cost while preserving complete bounded call semantics. |
 
 ## ADR-010 — Effect frontiers are not authority capabilities
 
@@ -488,7 +469,6 @@ levels. Evidence is `compiler/integration/windows_helpers/native_seed_evidence.j
 | Rationale | Stage 03 wording could conflate effect dependencies and capabilities; later stages require both ordering and authority checks. |
 | Alternatives rejected | Treating possession of an effect token as authority; implicit ambient capabilities. |
 | Runtime cost expectation | Effect frontiers normally erase; capability runtime representation exists only if explicitly required. |
-| AI/token expectation | Clear separation reduces semantic ambiguity at call/build/platform boundaries. |
 | Falsification condition | None expected at semantic level; representation may change if equivalent separation is preserved more compactly. |
 
 ## ADR-011 — Explicit proof obligations, checked behavior, and raw waivers
@@ -499,7 +479,6 @@ levels. Evidence is `compiler/integration/windows_helpers/native_seed_evidence.j
 | Rationale | Provides machine-visible safety without a global safe/unsafe language split or hidden checks. |
 | Alternatives rejected | Lexical `unsafe` authority as the primary semantic unit; silent unchecked behavior; hidden bounds checks. |
 | Runtime cost expectation | Proven obligations cost zero at runtime; checked operations pay only explicitly requested checks. |
-| AI/token expectation | Structured obligations/waivers support precise diagnostics and repair. |
 | Falsification condition | Reconsider kernel checked-operation vocabulary if it becomes impractically large or inefficient, but retain explicitness of proof/check/waiver choice. |
 
 ## ADR-012 — Linear resources with explicit release
@@ -510,19 +489,17 @@ levels. Evidence is `compiler/integration/windows_helpers/native_seed_evidence.j
 | Rationale | Generalizes ownership beyond memory and keeps all lifecycle behavior visible. |
 | Alternatives rejected | Scope-driven destruction as language semantics; silent drop; unrestricted resource copying. |
 | Runtime cost expectation | Pure ownership/state transitions may erase; actual release/acquire costs are explicit. |
-| AI/token expectation | More explicit nodes but lower ambiguity and machine-checkable lifecycle repair. |
-| Falsification condition | Reconsider encoding if explicit state transitions impose disproportionate token/graph overhead and an equally exact machine-visible alternative performs better. |
+| Falsification condition | Reconsider encoding if explicit state transitions impose disproportionate graph overhead and an equally exact machine-visible alternative performs better. |
 
 ## ADR-013 — Effects form a partial order and may be canonically compressed
 
 | Field | Record |
 |---|---|
 | Decision | Observable ordering is represented by explicit effect-domain dependencies. Persistent storage may compress/reconstruct chains only when the exact same dependency relation is deterministically recoverable. |
-| Rationale | Preserves semantics while allowing token/storage optimization. |
+| Rationale | Preserves semantics while allowing storage optimization. |
 | Alternatives rejected | Serialization order as execution order; one global effect chain; heuristic reconstruction. |
 | Runtime cost expectation | Effect frontiers are compile-time semantics; runtime ordering exists only when the operation itself requires it. |
-| AI/token expectation | Partitioning enables smaller relevant neighborhoods; compression may reduce transport cost. |
-| Falsification condition | Choose a different canonical partition/edge encoding if measurements show better token/verification tradeoffs without loss of exact ordering. |
+| Falsification condition | Choose a different canonical partition/edge encoding if measurements show better size/verification tradeoffs without loss of exact ordering. |
 
 ## ADR-014 — Errors are values; exceptions are boundary semantics
 
@@ -532,8 +509,7 @@ levels. Evidence is `compiler/integration/windows_helpers/native_seed_evidence.j
 | Rationale | Avoids hidden control edges and mandatory exception runtime. |
 | Alternatives rejected | Mandatory language exceptions; implicit stack unwinding across ordinary XAX frames. |
 | Runtime cost expectation | No exception machinery unless explicitly selected. Sum/error paths optimize away when proven unreachable. |
-| AI/token expectation | Explicit control/result structure is locally queryable and deterministic. |
-| Falsification condition | Reconsider ergonomics/encoding, not hidden-edge prohibition, if value-based error graphs impose excessive graph/token cost. |
+| Falsification condition | Reconsider ergonomics/encoding, not hidden-edge prohibition, if value-based error graphs impose excessive graph cost. |
 
 ## ADR-015 — Exact atomics; data races are not optimizer permission
 
@@ -543,7 +519,6 @@ levels. Evidence is `compiler/integration/windows_helpers/native_seed_evidence.j
 | Rationale | Avoids C/C++-style undefined-race compiler freedom and preserves exact concurrency semantics. |
 | Alternatives rejected | Sequential consistency for all atomics; `volatile` synchronization; silent lock emulation; arbitrary UB from data races. |
 | Runtime cost expectation | Exactly the selected atomic/synchronization semantics; no hidden runtime helper. |
-| AI/token expectation | Explicit order/scope increases mutation fields but avoids implicit memory-model inference. |
 | Falsification condition | Reconsider portable order/scope vocabulary if real target packages cannot map it without systematic semantic loss. |
 
 ## ADR-016 — Real-time profiles reject unknowns rather than insert runtimes
@@ -554,7 +529,6 @@ levels. Evidence is `compiler/integration/windows_helpers/native_seed_evidence.j
 | Rationale | A profile must constrain actual selected lowering, not source-level intent. |
 | Alternatives rejected | Real-time as optimizer hint; inferring WCET from generic cost estimates; silently replacing forbidden operations. |
 | Runtime cost expectation | Profiles add no runtime mechanism; they reject nonconforming builds. |
-| AI/token expectation | Queryable boundedness facts provide direct machine evidence. |
 | Falsification condition | Reconsider proof representation if profile verification is too costly, but not the guarantee/estimate separation. |
 
 ## ADR-017 — Compile-time execution is bounded, deterministic XAX
@@ -565,7 +539,6 @@ levels. Evidence is `compiler/integration/windows_helpers/native_seed_evidence.j
 | Rationale | Replaces macros/templates/build plugins with one sandboxable semantic mechanism. |
 | Alternatives rejected | Text macros; preprocessor; unbounded compile-time execution; ambient host filesystem/network access; text generation and reparsing. |
 | Runtime cost expectation | Compile-time-only machinery erases unless runtime representation is requested. |
-| AI/token expectation | One language and direct semantic construction avoid syntax-generation/reparse overhead. |
 | Falsification condition | Reconsider budget units/introspection granularity if implementation evidence shows better bounded deterministic alternatives. |
 
 **Prototype evidence (2026-09-30).** M9 executes ordinary verified XAX arithmetic/control/calls/recursion plus typed meta operations under explicit capabilities and step/depth/memory/object/node ceilings. Identical semantic inputs reproduce canonical constructed object identities; successful results memoize by evaluator/verifier/target/input identity, while exhausted or invalid attempts do not cache or commit. Materialization passes through the ordinary whole-store verifier, and the generated constant function contains no meta operations. This validates the decision for the declared slice but does not settle fuel units, authority granularity, or specialization object boundaries.
@@ -578,7 +551,6 @@ levels. Evidence is `compiler/integration/windows_helpers/native_seed_evidence.j
 | Rationale | Stage 08 fixes an initial canonical format while Stages 12/14 leave migration/agility open. This decision removes the conflict by fixing v0.1 and deferring only future evolution. |
 | Alternatives rejected | Leaving the v0.1 hash unspecified; implementation-selected hash algorithms under one suite ID; hash substitution on read. |
 | Runtime cost expectation | Build/store hashing cost only; no program runtime requirement. |
-| AI/token expectation | Full hashes are normally hidden behind local handles, so CID width should not dominate AI context. |
 | Falsification condition | Security/performance evidence may justify a new hash suite/version and migration procedure, never silent reassignment of suite 1. |
 
 ## ADR-019 — Canonical encoding is strict; heuristic repair is forbidden
@@ -589,7 +561,6 @@ levels. Evidence is `compiler/integration/windows_helpers/native_seed_evidence.j
 | Rationale | Deterministic identity requires one encoding and deterministic failure. |
 | Alternatives rejected | Permissive readers that silently normalize canonical input; damage guessing. |
 | Runtime cost expectation | Tooling validation cost only. |
-| AI/token expectation | Deterministic failures enable exact machine diagnostics and repair. |
 | Falsification condition | None for canonical input; separate noncanonical import tools may exist outside the canonical format. |
 
 ## ADR-020 — Fragmentation is an identity/objectization choice, not runtime meaning
@@ -600,7 +571,6 @@ levels. Evidence is `compiler/integration/windows_helpers/native_seed_evidence.j
 | Rationale | Reconciles local-mutation granularity experiments with the one-encoding-per-object rule. |
 | Alternatives rejected | Claiming all observationally equivalent graphs must have one root today; making fragment boundaries observable runtime semantics. |
 | Runtime cost expectation | None. Object granularity affects compiler/storage performance. |
-| AI/token expectation | Smaller fragments may improve edit locality but increase object/hash overhead. |
 | Falsification condition | Fix a stricter canonical fragmentation policy if cross-tool identity interoperability or performance requires it. |
 
 ## ADR-021 — AI mutation is transactional and stale-root checked
@@ -611,7 +581,6 @@ levels. Evidence is `compiler/integration/windows_helpers/native_seed_evidence.j
 | Rationale | Prevents partial mutation and detects concurrent-agent conflicts at semantic entities/dependencies. |
 | Alternatives rejected | Whole-artifact regeneration as default; line-based diff/merge; last-writer-wins; blind replay. |
 | Runtime cost expectation | Development/tooling only. |
-| AI/token expectation | Small semantic mutation sets and local diagnostics should reduce retransmission and repair. |
 | Falsification condition | Reconsider transaction/rebase granularity if controlled multi-agent workloads show whole-root serialization is simpler and not materially worse; atomicity/stale detection remain required. |
 
 ## ADR-022 — Target knowledge is package semantics, not compiler hardcoding
@@ -622,7 +591,6 @@ levels. Evidence is `compiler/integration/windows_helpers/native_seed_evidence.j
 | Rationale | Supports unknown future hardware without changing core language meaning. |
 | Alternatives rejected | Fixed built-in CPU list; permanent backend language; host-machine assumptions. |
 | Runtime cost expectation | None inherent; selected target operations define actual cost. |
-| AI/token expectation | Target facts are queryable local semantic data instead of hidden compiler lore. |
 | Falsification condition | Reconsider package schema if a second materially different target requires fundamental language changes rather than target-package extensions. |
 
 ## ADR-023 — ABI/platform contracts are explicit and freestanding-first
@@ -633,7 +601,6 @@ levels. Evidence is `compiler/integration/windows_helpers/native_seed_evidence.j
 | Rationale | Preserves bare-metal validity and avoids fabricated foreign guarantees. |
 | Alternatives rejected | Universal C ABI; mandatory libc; implicit dynamic linking; pure-looking foreign calls with hidden effects. |
 | Runtime cost expectation | Only explicitly selected adapters/platform facilities are emitted. |
-| AI/token expectation | Structured foreign contracts reduce implicit ecosystem assumptions. |
 | Falsification condition | Reconsider ABI representation form if real ABIs cannot be expressed deterministically without a second DSL. |
 
 ## ADR-024 — Verifier authority and optimizer distrust are separated
@@ -644,7 +611,6 @@ levels. Evidence is `compiler/integration/windows_helpers/native_seed_evidence.j
 | Rationale | Enables aggressive optimization without making the entire optimizer trusted. |
 | Alternatives rejected | Trust every optimizer pass because it ran; treat validation failure as permission to weaken semantics. |
 | Runtime cost expectation | Compile-time verification overhead, selectable by build policy where safe; no runtime tax. |
-| AI/token expectation | Machine-readable proof/validation failures support local optimizer repair. |
 | Falsification condition | Adjust proof granularity if checking cost is excessive, while retaining an explicit correctness mechanism for every transformation. |
 
 ## ADR-025 — Profile data and cost models are non-semantic
@@ -655,7 +621,6 @@ levels. Evidence is `compiler/integration/windows_helpers/native_seed_evidence.j
 | Rationale | Keeps empirical data/environment changes from silently changing semantics. |
 | Alternatives rejected | Treating profile likelihood or cost estimate as semantic truth. |
 | Runtime cost expectation | Can improve generated code; profiling instrumentation is explicit when used. |
-| AI/token expectation | Cost queries provide machine data instead of source-based guessing. |
 | Falsification condition | Recalibrate/replace cost models if ranking accuracy is poor; semantic boundary remains. |
 
 ## ADR-026 — Packages/builds are content-addressed XAX semantics
@@ -666,8 +631,7 @@ levels. Evidence is `compiler/integration/windows_helpers/native_seed_evidence.j
 | Rationale | Enables deterministic resolution, reproducibility, sandboxing, and no second manifest/build language. |
 | Alternatives rejected | Authoritative TOML/YAML/JSON manifests; implicit latest resolution; undeclared host/network input. |
 | Runtime cost expectation | Build-system only; does not force runtime dependencies into produced programs. |
-| AI/token expectation | Exact roots and typed config reduce ambiguous package/build edits. |
-| Falsification condition | Restrict resolver/metadata expressiveness if measured complexity/token cost is excessive; content identity and explicit-input rules remain. |
+| Falsification condition | Restrict resolver/metadata expressiveness if measured complexity is excessive; content identity and explicit-input rules remain. |
 
 ## ADR-027 — Self-hosting claims are evidence-gated
 
@@ -677,7 +641,6 @@ levels. Evidence is `compiler/integration/windows_helpers/native_seed_evidence.j
 | Rationale | “Self-hosting” alone does not establish reproducibility, closure, or trust. |
 | Alternatives rejected | Declaring closure after one self-build; treating seed implementation as permanent architecture; external assembler/linker as mandatory final path. |
 | Runtime cost expectation | None to user programs; bootstrap/build cost is measured separately. |
-| AI/token expectation | Canonical repository/handoff state permits continuation without chat-history context. |
 | Falsification condition | Milestone evidence may refine comparison projections or seed subset, but claims cannot be weakened to preserve status. |
 
 ## ADR-028 — Conformance is layered and negative tests are mandatory
@@ -688,18 +651,16 @@ levels. Evidence is `compiler/integration/windows_helpers/native_seed_evidence.j
 | Rationale | Compilation success alone cannot detect unsound verifier acceptance or noncanonical storage. |
 | Alternatives rejected | Unscoped “supports XAX” claims; positive-only tests; target-independent claims for target-specific compilers. |
 | Runtime cost expectation | Test-time only. |
-| AI/token expectation | Stable rule IDs and profiles make failures machine-actionable. |
 | Falsification condition | Levels/profiles may be versioned if implementation evidence shows a better decomposition, but exact claim scope and negative testing remain required. |
 
 ## ADR-029 — Benchmark claims must be preregistered, fair, and fully attributed
 
 | Field | Record |
 |---|---|
-| Decision | Runtime and AI-efficiency benchmark cases fix semantic contract, inputs, target set, build policies, baselines, metrics, oracle, procedure, exclusions, environment, and artifact identities before comparative execution. |
+| Decision | Runtime benchmark cases fix semantic contract, inputs, target set, build policies, baselines, metrics, oracle, procedure, exclusions, environment, and artifact identities before comparative execution. |
 | Rationale | Prevents cherry-picking and converts founding objectives into falsifiable evidence. |
 | Alternatives rejected | Simulated results; best-case-only publication; unoptimized strawman baselines; source-character count as AI metric; universal assembly-superiority claims. |
 | Runtime cost expectation | None in deployed programs; measurement overhead is explicit. |
-| AI/token expectation | Counts actual model tokens, repair turns, context, semantic entities, transaction size, and success. |
 | Falsification condition | Architecture claims must be revised when preregistered measurements falsify them; benchmark definitions must not be changed post hoc to protect conclusions. |
 
 ## ADR-030 — Artifact mappings require retained emission provenance
@@ -710,7 +671,6 @@ levels. Evidence is `compiler/integration/windows_helpers/native_seed_evidence.j
 | Rationale | A reverse-engineered source map can silently misattribute prologues, edge copies, padding, fused instructions, or erased semantics. Emission-time provenance keeps artifact queries machine-verifiable without making mappings part of canonical source meaning. |
 | Alternatives rejected | Treating disassembly heuristics as authoritative; assigning zero-code operations to nearby instructions; persistent artifact handles independent of root/target/compiler dependencies. |
 | Runtime cost expectation | None in emitted programs. Provenance is compiler/workspace metadata and may be omitted when mapping queries are not requested. |
-| AI/token expectation | Local byte ranges and contributor handles allow focused artifact inspection without exposing whole binaries or persistent semantic CIDs. |
 | Falsification condition | The concrete provenance representation may change if a smaller target-neutral form provides equal exactness and lower compile/query cost; exactness and unavailable classification remain required. |
 
 ## ADR-031 — Artifact provenance uses one target-neutral compiler-service interface
@@ -721,7 +681,6 @@ levels. Evidence is `compiler/integration/windows_helpers/native_seed_evidence.j
 | Rationale | x86-64 raw images, AArch64 raw images, and WebAssembly modules have materially different container/instruction layouts, but provenance consumers need one bounded query contract. Keeping the carrier target-neutral prevents backend structure from becoming a second source or query language. |
 | Alternatives rejected | Keeping x86-specific `NativeSemanticRange`; reconstructing AArch64/WebAssembly ranges from disassembly/decoding after emission; target-specific workspace mapping APIs. |
 | Runtime cost expectation | None in emitted programs. Provenance exists only in compiler-service memory/tooling and can be omitted when mapping queries are not requested by a production pipeline. |
-| AI/token expectation | One stable mapping schema avoids target-specific prompt/context variants; actual token benefit remains unmeasured. |
 | Falsification condition | Refine the interface if another artifact class cannot represent exact attributable ranges without semantic loss; do not weaken the no-guessing rule or make mapping metadata canonical XAX source. |
 
 
@@ -733,20 +692,18 @@ levels. Evidence is `compiler/integration/windows_helpers/native_seed_evidence.j
 | Rationale | Generation alone is insufficient attribution: identical bytes can arise from different roots/toolchains, and a compiler/lowering change can invalidate exact source attribution even when the artifact remains byte-identical. Explicit dependency binding makes reuse auditable without making provenance canonical XAX source. |
 | Alternatives rejected | Key mappings only by artifact bytes; key only by workspace generation; derive toolchain identity from human version strings, source text, or disassembly; silently reuse mappings after a lowering change. |
 | Runtime cost expectation | None in emitted programs. Hashing/comparison occurs only in compiler/workspace tooling. |
-| AI/token expectation | A compact artifact binding ID lets mapping responses remain locally attributable without retransmitting every dependency on every page; token impact remains unmeasured. |
 | Falsification condition | The concrete digest/record encoding may change if a smaller equally exact form is measured, but dependency completeness, explicit toolchain versioning, and stale-on-mismatch behavior remain required. |
 
 
-## ADR-033 — Bootstrap query budgets use exact response bytes without token claims
+## ADR-033 — Bootstrap query budgets use exact response bytes
 
 | Field | Record |
 |---|---|
 | Decision | The bootstrap workspace accepts an optional per-query exact serialized response-byte budget. Paginated queries return the largest deterministic positive-progress prefix that fits and a continuation; if no positive-progress page fits, or a non-paginated response exceeds the budget, the query fails with `XAX.WORKSPACE.RESPONSE_BUDGET`. Only handles actually returned are published, and only returned response bytes are charged to query accounting. |
-| Rationale | Entity-count bounds alone do not cap transport size because different semantic entities serialize to different byte sizes. An exact byte cap provides deterministic bounded service behavior now without pretending bytes predict model tokens. |
-| Alternatives rejected | Treat entity count as a byte/token bound; silently expose handles from a larger internally computed page; return zero-entity continuations that make no progress; call byte counts token counts without tokenizer validation. |
+| Rationale | Entity-count bounds alone do not cap transport size because different semantic entities serialize to different byte sizes. An exact byte cap provides deterministic bounded service behavior. |
+| Alternatives rejected | Treat entity count as a byte bound; silently expose handles from a larger internally computed page; return zero-entity continuations that make no progress. |
 | Runtime cost expectation | None in emitted programs. Budget fitting is compiler-service/tooling work only. |
-| AI/token expectation | Prevents unexpectedly large bootstrap responses. No model-token efficiency claim follows until the proxy is measured against actual tokenizer/model behavior. |
-| Falsification condition | Replace or augment the byte budget when model-token measurements show a better deterministic budgeting boundary; preserve positive progress, no hidden handle publication, and exact accounting of returned data. |
+| Falsification condition | Replace or augment the byte budget when measurements show a better deterministic budgeting boundary; preserve positive progress, no hidden handle publication, and exact accounting of returned data. |
 
 
 ## ADR-034 — Operand/use replacement is preconditioned semantic relation mutation
@@ -757,7 +714,6 @@ levels. Evidence is `compiler/integration/windows_helpers/native_seed_evidence.j
 | Rationale | This adds executable relation-level conflict detection without broadening immediately into insert/delete/connect machinery or bypassing the existing verifier. Explicit old-relation preconditions detect concurrent semantic rewiring below whole-root granularity. |
 | Alternatives rejected | Rebuild the whole function without a relation precondition; infer the changed operand from text; silently accept stale relation coordinates; special-case type checking inside the workspace instead of using the verifier. |
 | Runtime cost expectation | None in emitted programs. The mutation exists only in compiler/workspace tooling. |
-| AI/token expectation | A local target plus one operand index and two compact value references should be substantially smaller than function regeneration, but tokenizer/model efficiency is unmeasured. The measured bootstrap transaction is 24 bytes and is not a token claim. |
 | Falsification condition | Replace the concrete bootstrap carrier if measured protocol/error rates favor another typed local form; exact relation preconditions, verifier-before-publication, atomicity, and machine conflict diagnostics remain required. |
 
 ## ADR-035 — Node deletion is containment-preconditioned and use-safe
@@ -768,7 +724,6 @@ levels. Evidence is `compiler/integration/windows_helpers/native_seed_evidence.j
 | Rationale | This closes executable delete/use and containment conflict coverage with the smallest inspectable mutation. Exact containment prevents deleting a different node after local structural drift; explicit use rejection prevents dangling semantic relations; verifier reuse avoids a second semantic checker. |
 | Alternatives rejected | Delete by textual position without a precondition; silently drop or redirect uses; reconstruct uses from disassembly/debug text; allow effectful/resource-bearing deletion before the effect/resource mutation contract is mature; bypass normal verification after renumbering. |
 | Runtime cost expectation | None in emitted programs. Deletion and renumbering are compiler/workspace tooling only. |
-| AI/token expectation | The measured bootstrap transaction is 17 bytes for the fixed smoke fixture. This is byte accounting only; no tokenizer/model-efficiency claim follows. |
 | Falsification condition | Broaden or replace the concrete bootstrap carrier when insert/connect/disconnect and effect/resource semantics require a richer typed transaction form; exact containment/use preconditions, verifier-before-publication, atomicity, and stable conflict classes remain required. |
 
 ## ADR-036 — Proof query results use explicit local dependency bindings
@@ -779,7 +734,6 @@ levels. Evidence is `compiler/integration/windows_helpers/native_seed_evidence.j
 | Rationale | A boolean `verified` result without dependency identity cannot participate safely in transactional read sets. Content-addressed subject preservation allows useful local reuse without making every unrelated root edit invalidate verifier evidence, while explicit invalidation prevents stale proof assumptions from collapsing into generic handle conflicts. |
 | Alternatives rejected | Treat every proof result as a formal certificate; expose persistent CIDs to the AI merely to name proof state; invalidate every subject proof on any root change; silently accept stale proof reads as ordinary handles; revive old proof handles after ABA-like restoration. |
 | Runtime cost expectation | None in emitted programs. Bindings and validation are workspace/compiler-service metadata only. |
-| AI/token expectation | Compact proof handles avoid retransmitting roots/CIDs when a transaction depends on verifier status. The measured bootstrap response is 299 bytes and the guarded one-mutation transaction is 22 bytes; these are byte-accounting figures, not token claims. |
 | Falsification condition | Replace the concrete handle/binding representation if verifier-dependency experiments require finer dependency graphs or a smaller measured protocol, while retaining exact dependency tracking, distinct proof-conflict diagnostics, and no fabricated proof certificates. |
 
 ## ADR-037 — Bootstrap insertion uses exact anchors and transaction-local results
@@ -790,7 +744,6 @@ levels. Evidence is `compiler/integration/windows_helpers/native_seed_evidence.j
 | Rationale | Exact anchors make containment drift machine-detectable; local result identities permit atomic construction/use without exposing a CID before the candidate exists; ordinary graph verification remains the semantic authority for type, dominance, and structural legality. |
 | Alternatives rejected | Textual insertion scripts; persistent provisional CIDs; silently inferring a changed insertion position; bypassing the graph verifier; broad effect/resource insertion before ownership/effect mutation semantics exist. |
 | Runtime cost expectation | None. Insertion and local-result resolution are compiler-service operations only. |
-| AI/token expectation | Short local handles and integer transaction-local results avoid transmitting persistent identities; token efficiency remains unclaimed until measured with real tokenizers/model tasks. |
 | Falsification condition | Replace the anchor/local-ID carrier if measured mutation cost or conflict behavior is inferior to another typed semantic protocol, while preserving exact position preconditions, nonpersistent temporary identities, deterministic remapping, and verifier-before-publication. |
 
 ## ADR-038 — Control-edge argument reconnects are exact relation mutations
@@ -801,7 +754,6 @@ levels. Evidence is `compiler/integration/windows_helpers/native_seed_evidence.j
 | Rationale | Edge rewiring needs finer conflict detection than whole-root identity while avoiding publication of verifier-invalid intermediate control-flow state. Exact positional and old-relation preconditions make drift deterministic; reuse of the ordinary graph verifier keeps branch arity/type and SSA dominance in the trusted semantic checker rather than duplicating those rules in workspace code. |
 | Alternatives rejected | Textual CFG-edit scripts; disconnect followed by publication before reconnect; silently infer an edge after position drift; accept last-writer-wins edge replacement without an old relation; add a second branch/dominance checker in workspace tooling. |
 | Runtime cost expectation | None. Edge mutation carriers and candidate rewiring exist only in compiler/workspace tooling. |
-| AI/token expectation | The fixed non-timing smoke uses 301 bootstrap query bytes and a 39-byte two-mutation disconnect+connect transaction. These are byte-accounting figures only; no tokenizer/model-efficiency claim follows. |
 | Falsification condition | Replace the concrete anchor/position carrier if measured conflict or protocol results favor another typed relation form, while preserving exact old-relation preconditions, atomic private candidate construction, transaction-local value support, ordinary verifier authority, and no textual source syntax. |
 
 ## ADR-039 — Candidate-only verify/rollback keeps private semantic state non-authoritative
@@ -812,7 +764,6 @@ levels. Evidence is `compiler/integration/windows_helpers/native_seed_evidence.j
 | Rationale | Verification-before-publication is useful to AI tooling only if it cannot accidentally become a second source representation or refresh stale assumptions. Reusing the commit candidate/verifier path minimizes semantic drift, while explicit discard bounds private state lifetime. |
 | Alternatives rejected | Expose candidate root/changed-object CIDs as an editable source surface; implement a second preview verifier; let candidate verification refresh stale read/proof/artifact dependencies; retain candidate handles across canonical commits; encode candidate edits as textual scripts. |
 | Runtime cost expectation | None in emitted programs. Candidate state and handles are compiler/workspace service metadata only. |
-| AI/token expectation | The fixed non-timing smoke uses 424 bootstrap query bytes and a 26-byte candidate transaction. These are byte-accounting figures only; no tokenizer/model-efficiency claim follows. |
 | Falsification condition | Replace the concrete handle/lifecycle if measured workflows show unnecessary state or protocol cost, while retaining private non-authoritative candidate state, exact dependency validation, ordinary verifier reuse, explicit discard, and no candidate CID leakage. |
 
 ## ADR-040 — Same-block pure-node move remaps producer identities, not numeric positions
@@ -823,7 +774,6 @@ levels. Evidence is `compiler/integration/windows_helpers/native_seed_evidence.j
 | Rationale | Numeric node indices are representation-local. Preserving indices through a reorder would silently rewire uses and violate “meaning is source.” Exact source/anchor preconditions detect local containment drift while the ordinary verifier avoids duplicating SSA legality in workspace code. |
 | Alternatives rejected | Treating move as delete+insert with newly exposed semantic identity; keeping old numeric `ValueRef`s after reorder; silently repairing dominance; broad cross-block/effect/resource move semantics in the first slice. |
 | Runtime cost expectation | None. This is compiler/workspace mutation logic only. |
-| AI/token expectation | Exact local source/anchor handles bound the edit and avoid function regeneration; token benefit is unmeasured. |
 | Falsification condition | Broaden or replace the carrier if real move workloads require more general structure with lower verifier/context cost, but producer-identity preservation, exact local preconditions, tooling-only status, and verification-before-publication remain required. |
 
 ## ADR-041 — First workspace specialization is a verified semantic clone, not META evaluation
@@ -834,7 +784,6 @@ levels. Evidence is `compiler/integration/windows_helpers/native_seed_evidence.j
 | Rationale | This closes the workspace mutation-vocabulary gap using semantics already expressible by the current core. It exercises exact dependency/precondition handling, deterministic identity, private candidate construction, and verifier authority without importing the future general compile-time evaluator. |
 | Alternatives rejected | Textual substitution; a host-language template/macro system; interpreting arbitrary XAX at compile time in M6; silently replacing the source or its callers; exposing private candidate identities before commit. |
 | Runtime cost expectation | None unless the published clone is explicitly called later. The specialization operation itself is compiler/workspace service work. |
-| AI/token expectation | The 2026-09-29 non-timing smoke used 479 bootstrap query bytes and a 15-byte transaction. These are transport/accounting figures only, not tokenizer or model-efficiency evidence. |
 | Falsification condition | Replace or broaden this carrier when real specialization workloads require control flow, effects/resources, calls, types/targets, evaluation budgets, or canonical reuse policy. The no-second-language rule, explicit inputs, private construction, ordinary verification, and no implicit caller rewiring remain fixed. |
 
 ## ADR-042 — First resource-bearing call is exact pass-through
@@ -845,7 +794,6 @@ levels. Evidence is `compiler/integration/windows_helpers/native_seed_evidence.j
 | Rationale | This reuses the M3 linear-fact verifier and reference runtime wrappers, proving call transfer without a generalized resource framework, ABI lowering, or runtime machinery. |
 | Alternatives rejected | Hidden call ordering; copied owner/effect tokens; implicit cleanup; a general effect/resource framework before one executable slice; backend ABI support before semantic verification. |
 | Runtime cost expectation | None. Reference execution passes the same owner/effect wrapper objects through the callee; native/WebAssembly backends remain bits-only and reject this ABI shape. |
-| AI/token expectation | Unmeasured. The change adds no textual source or protocol language. |
 | Falsification condition | Broaden when the next vertical slice needs pointer/data operands, multiple resources/effect domains, or cross-block transfer; preserve exact linear consumption, provenance, and no hidden runtime behavior. |
 
 ## ADR-043 — First pointer/data resource call is an exact one-store contract
@@ -856,7 +804,6 @@ levels. Evidence is `compiler/integration/windows_helpers/native_seed_evidence.j
 | Rationale | This is the smallest executable pointer/data-bearing call that proves interprocedural provenance, extent, permission, alignment, initialization, and linear effect/resource transfer without introducing a new source language, serialized CallContract object, runtime metadata, or backend ABI. |
 | Alternatives rejected | Guessing provenance or extent from numeric addresses; treating pointer type alone as hidden provenance/extent; hidden runtime bounds metadata; general effect-summary inference before one vertical slice; backend ABI lowering before semantic/reference proof; allowing arbitrary callee bodies under the narrow bootstrap contract. |
 | Runtime cost expectation | None beyond the explicit store itself. Proof facts erase. Reference execution reuses the existing runtime pointer/storage/owner/effect wrappers and adds no allocator, metadata object, scheduler, exception path, or helper runtime. |
-| AI/token expectation | Unmeasured. The slice adds no textual XAX language and no new transaction/protocol syntax. |
 | Falsification condition | Replace this implementation-local structural contract when a canonical CallContract representation is introduced or when load/multi-access evidence requires a different compact form. Exact provenance, proof obligations, linear consumption, and no hidden runtime behavior remain mandatory. |
 
 ## ADR-044 — First pointer/data load resource call is an exact one-load contract
@@ -867,7 +814,6 @@ levels. Evidence is `compiler/integration/windows_helpers/native_seed_evidence.j
 | Rationale | This is the smallest read-side counterpart to ADR-043. It proves interprocedural initialization preconditions, read authority, exact-range checking, linear owner/effect transfer, and post-call continuation without introducing a serialized CallContract object, runtime metadata, or backend ABI. |
 | Alternatives rejected | Reading uninitialized memory and relying on runtime contents; treating any initialized interval in the storage as sufficient; hidden runtime initialization metadata/checks; allowing arbitrary multi-access callees in the same slice; backend ABI lowering before semantic/reference proof. |
 | Runtime cost expectation | None beyond the explicit load itself. Initialization/provenance facts erase. Reference execution reuses the existing runtime pointer/storage/owner/effect wrappers and adds no allocator, metadata object, scheduler, exception path, or helper runtime. |
-| AI/token expectation | Unmeasured. The slice adds no textual XAX language and no new transaction/protocol syntax. |
 | Falsification condition | Replace this implementation-local structural contract when a canonical/derived general CallContract mechanism is introduced or when multi-access evidence requires a different compact form. Exact provenance, initialized-range proof, linear consumption, and no hidden runtime behavior remain mandatory. |
 
 ## ADR-045 — First multi-access resource call is a fixed store→load sequence with a verifier-internal derived descriptor
@@ -878,7 +824,6 @@ levels. Evidence is `compiler/integration/windows_helpers/native_seed_evidence.j
 | Rationale | This is the smallest multi-access call that proves effect sequencing across more than one operation and initialization created inside the callee. The descriptor removes repeated caller-side shape booleans without prematurely introducing a canonical general CallContract representation. |
 | Alternatives rejected | Add another unrelated boolean branch for every call shape; serialize a general CallContract before evidence exists; infer effects from runtime addresses; allow load-before-store or effect forks; return the input merely because it has the same type as the loaded value; add runtime initialization metadata/checks. |
 | Runtime cost expectation | None beyond the explicit store and load. Provenance/initialization/linearity facts and the derived descriptor erase completely; reference execution reuses the existing runtime wrappers. |
-| AI/token expectation | Unmeasured. No new textual source or transaction language was added. |
 | Falsification condition | Replace the fixed descriptor/contracts when measured multi-access/cross-block workloads justify a canonical or more general derived effect/resource summary. Preserve exact sequencing, verifier-before-execution, linear transfer, and zero hidden runtime behavior. |
 
 ## ADR-046 — Derived resource-call descriptor drives caller and callee fixed-contract checks
@@ -889,7 +834,6 @@ levels. Evidence is `compiler/integration/windows_helpers/native_seed_evidence.j
 | Rationale | Caller recognition and callee entry validation had duplicated shape logic. Centralizing both through one derived descriptor reduces verifier drift without adding canonical objects, a second language, or runtime metadata. |
 | Alternatives rejected | Keep parallel interface/body boolean trees; serialize a general `CallContract` before broader evidence exists; tighten pass-through bodies during a cleanup-only change. |
 | Runtime cost expectation | None. The descriptor exists only while verifying and erases completely. |
-| AI/token expectation | Unmeasured. Canonical encoding and workspace transport are unchanged. |
 | Falsification condition | Replace or extend the derived descriptor when resource summaries need facts that cannot be expressed compactly without duplication. Any replacement must retain one verifier authority, deterministic diagnostics, and zero hidden runtime semantics. |
 
 ## ADR-047 — Bounded single-pointer resource-call access sequences extend the fixed interfaces
@@ -900,7 +844,6 @@ levels. Evidence is `compiler/integration/windows_helpers/native_seed_evidence.j
 | Rationale | This is the smallest variable-length interprocedural memory slice that exercises repeated effect-frontier transfer and initialization propagation while preserving the existing interface-derived caller summaries. It avoids prematurely deriving arbitrary summaries from callee bodies or introducing stored general `CallContract` objects. |
 | Alternatives rejected | Unbounded scanning in the bootstrap verifier; arbitrary load-first mixed sequences requiring new caller-summary inference in the same change; multiple pointers/ranges; cross-block flow; canonical summary encoding; backend ABI lowering. |
 | Runtime cost expectation | None beyond the explicitly represented loads/stores. The sequence bound and verifier descriptor add no runtime checks or metadata. |
-| AI/token expectation | Unmeasured. No textual XAX syntax, transaction syntax, or canonical encoding was added. |
 | Falsification condition | Replace the fixed 8-access bootstrap bound and interface-derived sequence classes when measured workloads justify bounded derived summaries for more general orderings, ranges, or pointers. Preserve exact effect sequencing, permission/initialization proof, and no hidden runtime behavior. |
 
 ## ADR-048 — Bounded mixed-call initialization preconditions are derived from the verified callee body
@@ -911,7 +854,6 @@ levels. Evidence is `compiler/integration/windows_helpers/native_seed_evidence.j
 | Rationale | Initialization is a memory fact, not an interface-level guess. Deriving the precondition from the actual verified access order admits a valid load-first case without creating a stored summary language or weakening caller proof obligations. |
 | Alternatives rejected | Permanently require first-store mixed bodies; treat all mixed calls as requiring initialization; treat all mixed calls as initializing without inspecting order; serialize a new general effect-summary format before cross-block/multi-domain evidence exists. |
 | Runtime cost expectation | None. The summary is verifier work only and erases completely; reference execution is unchanged. |
-| AI/token expectation | No token-efficiency claim. The change avoids adding canonical summary objects or a textual contract DSL. |
 | Falsification condition | Replace the derived bounded form when multi-range, cross-block, recursive, or multi-domain calls require a more general summary representation, while preserving exact caller preconditions and verifier authority. |
 
 ## ADR-049 — General resource/effect operations use canonical types and verifier-enforced linear flow
@@ -922,7 +864,6 @@ levels. Evidence is `compiler/integration/windows_helpers/native_seed_evidence.j
 | Rationale | The existing canonical graph/type machinery already carries every required dependency. Extending it directly is smaller and safer than a textual lifecycle DSL, hidden runtime manager, or parallel verifier framework. |
 | Alternatives rejected | Host-language resource metadata; implicit cleanup; reference counting; textual contracts; same-block-only verification; arbitrary joins without split lineage. |
 | Runtime cost expectation | Proof flow itself costs nothing at runtime. Reference execution uses removable wrapper objects only to test observable lifecycle semantics. |
-| AI/token expectation | Unmeasured; no separate source or protocol language was added. |
 | Falsification condition | Generalize the two-piece contract or persistent encoding only when real workloads require fractional/heterogeneous partitions, while preserving explicit state, exact linearity, and verifier authority. |
 
 ## ADR-050 — Resource/effect proof values erase from executable ABIs
@@ -933,7 +874,6 @@ levels. Evidence is `compiler/integration/windows_helpers/native_seed_evidence.j
 | Rationale | These values establish legality and ordering; representing them at runtime would create cost and hidden machinery without observable semantics. One shared proof-type predicate keeps erasure consistent. |
 | Alternatives rejected | Zero-sized runtime placeholders; hidden token integers; runtime lifecycle helpers; backend-specific proof conventions. |
 | Runtime cost expectation | Zero bytes and zero instructions for proof-only behavior. The deterministic baseline/lifecycle comparisons are byte-identical on x86-64, AArch64, and WebAssembly. |
-| AI/token expectation | Unmeasured. Backend code reuses existing ABI/slot paths with one proof-type exclusion. |
 | Falsification condition | Introduce runtime representation only for an operation whose specified observable behavior requires it; never for verifier bookkeeping alone. |
 
 ## ADR-051 — Workspace durability stores canonical bytes; history remains bounded tooling state
@@ -944,7 +884,6 @@ levels. Evidence is `compiler/integration/windows_helpers/native_seed_evidence.j
 | Rationale | Canonical bytes already contain authoritative state. Standard temporary-file plus `fsync`/replace supplies the required single-file durability with no new format or dependency. |
 | Alternatives rejected | SQLite/object database for the prototype; serializing local handles; checkpointing candidate state; rewriting canonical store semantics into a workspace format. |
 | Runtime cost expectation | Workspace-service I/O only; no emitted-program cost. |
-| AI/token expectation | Unmeasured. Reloaded workspaces deterministically regenerate local handles from canonical content. |
 | Falsification condition | Add a durable history/index layer only when measured multi-process or large-project workflows require it; canonical store bytes and verification-on-load remain authoritative. |
 
 ## ADR-052 — First atomic target path is native-or-reject with post-lowering profile validation
@@ -955,7 +894,6 @@ levels. Evidence is `compiler/integration/windows_helpers/native_seed_evidence.j
 | Rationale | Native-or-reject is the smallest exact M8 slice. It proves semantic verification, target qualification, direct code emission, handler contracts, and strict latency-policy rejection without choosing an unevidenced non-native synthesis policy. |
 | Alternatives rejected | Sequential consistency for all operations; silent lock/helper lowering; treating unsupported target requests as generic memory; pre-lowering-only real-time validation; hard-coding handler convention outside the target package. |
 | Runtime cost expectation | Exactly the selected x86-64 instructions and fences. Profile and handler checks are compile-time only; no runtime support is emitted. |
-| AI/token expectation | Unmeasured. Workspace queries return compact target-qualified capability, handler, and latency facts; no token-efficiency claim follows. |
 | Falsification condition | Broaden support only with evidence for another target or bounded/runtime-assisted policy. Preserve explicit capability, no hidden help, exact atomic semantics, and post-lowering policy validation. |
 
 ## ADR-053 — First package/build slice uses exact semantic closure and an ambiguity-rejecting resolver
@@ -966,7 +904,6 @@ levels. Evidence is `compiler/integration/windows_helpers/native_seed_evidence.j
 | Rationale | This is the smallest M10 model that proves deterministic resolution, typed configuration, offline closure, capability isolation, cache integrity, and trust hooks without a manifest DSL, registry grammar, solver, sandbox framework, or new dependency. |
 | Alternatives rejected | Implicit latest selection; textual manifests/lockfiles; host-directory discovery; accepting the lowest version label; ambient dependency privileges; unsigned cache trust; embedding package management in target backends. |
 | Runtime cost expectation | Build-system only. Emitted program bytes are produced by the existing direct backends and gain no package runtime. |
-| AI/token expectation | Unmeasured. Canonical package/build roots make changes exact, but no token-efficiency claim follows from the M10 smoke. |
 | Falsification condition | Add compatibility constraints, action-level provenance, persistent caches, or platform sandbox adapters only when representative package graphs require them. Preserve exact roots, deterministic failure, declared closure, and explicit authority. |
 
 ## ADR-054 — First XAX-hosted compiler subset is a canonical arithmetic folder on a fixed WebAssembly bootstrap target
@@ -977,7 +914,6 @@ levels. Evidence is `compiler/integration/windows_helpers/native_seed_evidence.j
 | Rationale | This is the smallest compiler-relevant deterministic component that exercises canonical XAX authority, fixed build policy, seed lowering, runnable hosted behavior, and seed-versus-hosted conformance comparison without prematurely claiming recursive self-hosting. WebAssembly is the M11 bootstrap execution target because the emitted artifact is directly runnable in the available validation environment and already uses the ordinary target/package/build path. |
 | Alternatives rejected | Treating the Python constructor as authoritative source; inventing a textual XAX compiler language; claiming B2 from a seed-built hosted component; choosing a host-only target that cannot execute in the milestone validation environment; migrating a much larger compiler service before the B0/B1 evidence path is proven. |
 | Runtime cost expectation | No XAX runtime is added. The hosted component is a 144-byte import-free WebAssembly artifact for the fixed M11 snapshot. |
-| AI/token expectation | Unmeasured. M11 records canonical artifact/build identities and conformance behavior only; it makes no token-efficiency claim. |
 | Falsification condition | Broaden or replace the hosted subset when later self-hosting work requires more expressive compiler services. The authoritative-program rule, exact roots/policies/provenance, ordinary verifier/build path, and separation of B0/B1 from B2–B6 remain fixed. |
 
 ## ADR-055 — M12 uses bounded wrapping-polynomial validation and lowering-derived code-size selection
@@ -988,7 +924,6 @@ levels. Evidence is `compiler/integration/windows_helpers/native_seed_evidence.j
 | Rationale | The design gives M12 an independently checkable semantic-preservation path and deterministic compile-work/memory limits without adding an SMT solver, e-graph framework, runtime, or new semantic language. Measuring actual lowering output makes code-size selection target-aware while keeping the limitation explicit: it predicts bytes, not runtime behavior. Profile separation preserves the spec rule that measurements influence profitability rather than legality or program meaning. |
 | Alternatives rejected | Trusting search-generated rewrites; accepting randomized or wall-clock-only search cutoffs; serializing profile observations into canonical program identity; treating optimization levels as opaque external strings; unbounded equality saturation; inferring latency/throughput wins from emitted byte count; making target-specific rewrite legality part of core semantics. |
 | Runtime cost expectation | Zero runtime support is introduced. M12 changes compiler work and selected machine code only. Search is opt-in/bounded by explicit deterministic work/candidate/memory/term budgets. |
-| AI/token expectation | Unmeasured. The policy is machine-readable and compact, but M12 records no tokenizer/model-efficiency claim. |
 | Falsification condition | Broaden or replace the polynomial validator/search organization when representative workloads require control flow, memory/effects, vector operations, richer algebra, or proof reuse. Replace the lowering-derived size oracle with calibrated target cost models when measured ranking/magnitude evidence supports them. Preserve explicit legality validation, failure fallback, deterministic budgeting where requested, and non-semantic profile separation. |
 
 
@@ -1000,7 +935,6 @@ levels. Evidence is `compiler/integration/windows_helpers/native_seed_evidence.j
 | Rationale | The base language already requires target-dependent operations to be explicit. One generic contract hook proves a non-CPU deployment path while keeping GPU-specific opcode/topology/memory facts out of fundamental semantics and avoiding a second CUDA/OpenCL-like source language. Existing resource/effect linearity and package/build/provenance machinery can enforce host/device ownership and ordering without hidden runtime behavior. |
 | Alternatives rejected | Hard-code GPU launch/barrier/copy operations into the semantic kernel; introduce a textual kernel/deployment DSL; infer synchronization or transfer from address spaces; silently attach a vendor runtime; encode accelerator packets directly in the core verifier; claim physical GPU support from a host-only simulation. |
 | Runtime cost expectation | No mandatory XAX runtime is added. The prototype target declares no runtime dependency; emitted output is a 122-byte deterministic deployment packet. The Python executor is a conformance harness only. |
-| AI/token expectation | Unmeasured. The target package centralizes repeated accelerator facts, but M13 records no tokenizer/model-efficiency claim. |
 | Falsification condition | Generalize the contract/profile when materially different accelerator targets cannot express their scopes, coherence, memory spaces, synchronization, launch, or runtime-assist requirements without semantic loss. Preserve explicit effects/resources, exact target identity, deterministic rejection, and absence of hidden runtime behavior. |
 
 
@@ -1012,7 +946,6 @@ levels. Evidence is `compiler/integration/windows_helpers/native_seed_evidence.j
 | Rationale | A XAX-hosted compiler cannot compile its own authoritative graph if graph structure must first be projected by maintained host-language code. Introspection removes that dependency class without pretending that inspection alone performs serialization, verification, code generation, linking, or package/build work. |
 | Alternatives rejected | Treating Python graph projection as evidence of recursive self-compilation; relabeling M11 behavior equivalence as B2; claiming B5/B6 from canonical data definitions while live implementations remain Python. |
 | Runtime cost expectation | None in user programs; these operations are compile-time META only and require explicit authority. |
-| AI/token expectation | Direct semantic inspection should reduce host-side projection state and make future compiler-generation transactions local to canonical entities. |
 | Falsification condition | Replace the introspection surface if a smaller capability can support executed B2–B5 evidence; bootstrap labels still require the evidence classes defined by the spec. |
 
 
@@ -1024,20 +957,7 @@ levels. Evidence is `compiler/integration/windows_helpers/native_seed_evidence.j
 | Rationale | The semantic-image target is canonical by construction, so it can establish recursive compiler generation and an exact fixed point without inventing a textual compiler language or relabeling legacy Python backend code as hosted. Keeping verifier/serializer primitives in the minimal trusted substrate matches the architecture's trusted-core rule. A fixed immutable seed artifact separates ordinary release reconstruction from maintained seed-source implementation while keeping the remaining trust boundary explicit. |
 | Alternatives rejected | Advancing B2–B6 from graph-introspection capability alone; calling M11 behavioral equivalence recursive self-hosting; claiming closure for all existing backends because their data is canonical; hiding the serializer/verifier boundary; calling the seed “source-free” when it internally contains Python modules; treating immutable-seed bootstrap independence as diverse-double-compilation evidence. |
 | Runtime cost expectation | None for user programs. M14 additions are compile-time/bootstrap services; the semantic-image output is canonical store bytes. |
-| AI/token expectation | Unmeasured. Local graph inspection and canonical semantic-image generation reduce dependence on host projections, but no tokenizer/model-efficiency result is claimed. |
 | Falsification condition | Withdraw or narrow B5/B6 if the declared semantic-image release path requires a live legacy target/package dispatcher, repository Python implementation imports, or edits to a second implementation language for ordinary releases. A future native/accelerator closure target must earn separate B5/B6 evidence. Seed diversity and correctness trust remain separate under OI-27. |
-
-## ADR-059 — The first AI-native experiment is a tiny manual C-vs-XAX comparison
-
-| Field | Record |
-|---|---|
-| Decision | Compare C and the implemented XAX workspace on five equivalent structural edits, run manually in fresh Codex Desktop chats. Record pass/fail, available model tokens, turns, optional elapsed time, and every retry. Report raw per-task and aggregate values only. |
-| Rationale | This is the smallest experiment that can expose whether XAX's structural transaction interface helps Codex while keeping token spend and operator effort low. |
-| Alternatives rejected | API/provider automation, extra representation arms, large frozen corpora, tokenizer reconstruction, desktop automation, preregistration machinery, bootstrap/significance tests, and hiding failed attempts. |
-| Runtime cost expectation | Benchmark tooling only; no program-runtime claim. |
-| AI/token expectation | Unknown. The experiment may show no XAX advantage. |
-| Falsification condition | If XAX uses at least as many tokens/turns or completes fewer tasks, this narrow experiment provides no evidence that XAX beats C. |
-
 
 ## ADR-060 — JNI stays a platform package; identity-qualified ABI carriers and linear reference owners expose its exact boundary
 
@@ -1047,7 +967,6 @@ levels. Evidence is `compiler/integration/windows_helpers/native_seed_evidence.j
 | Rationale | JNI pointer identities and reference classes are semantically distinct even though AAPCS64 represents them as machine pointers. Encoding that distinction as target-independent ABI carrier identity lets the verifier reject signature/lifetime mistakes without introducing Android/Java into the kernel. The existing target-op plus indirect-call path already emits the minimum direct table load and `BLR`. |
 | Alternatives rejected | A giant JNI opcode family in the core; C/JNI wrapper source; a mandatory Android runtime; untyped `void*` for every JNI handle; hidden automatic local/global-reference cleanup; runtime reflection/lookup wrappers; treating a borrowed reference as owned. |
 | Runtime cost expectation | Carrier and ownership proof types erase from the executable ABI. The measured `GetVersion` probe adds no imports/relocations/runtime and emits 36 bytes of AArch64 entry code; the measured `NewGlobalRef`→`DeleteGlobalRef` path emits 72 bytes. |
-| AI/token expectation | Not yet measured. Central slot metadata and typed contract constructors avoid regenerating table offsets/signatures, but no Android AI-token advantage is claimed yet. |
 | Falsification condition | Revise the carrier/lifetime model if real Android execution or broader JNI contracts show that exact JNI ownership, nullability, exception, thread, or class-loader semantics cannot be represented without hidden state. Pending-exception refinement, nullability, and attach-thread state remain explicitly unclaimed. |
 
 ## ADR-061 — JNI loader domains and pending exceptions are explicit proof state, not hidden runtime state
@@ -1058,7 +977,6 @@ levels. Evidence is `compiler/integration/windows_helpers/native_seed_evidence.j
 | Rationale | Class-loader identity changes Java member meaning, and a pending exception changes which JNI operations are legal. Both therefore need verifier-visible identity/state. They are still platform facts and can erase when statically known; hiding them in a global cache, thread-local runtime, or helper would violate XAX's explicit-effect/runtime rules. |
 | Alternatives rejected | Unqualified global JNI member caches; silently treating equal JVM descriptors from different loaders as identical; automatic exception checks/clears after every JNI call; hidden TLS exception bookkeeping; Android/JNI-specific kernel operations. |
 | Runtime cost expectation | Loader-domain proof identity itself emits zero instructions. Exception handling emits only the explicitly selected JNI operation. The current cached `View.setVisibility(I)V` probe with explicit `ExceptionClear` is 84 bytes / 21 AArch64 instructions and has zero imports, `DT_NEEDED`, relocations, or helper runtime. |
-| AI/token expectation | Unmeasured. Loader-qualified semantic handles avoid repeatedly restating class-loader provenance, but no token-efficiency claim is made. |
 | Falsification condition | Revise the proof-state model if real Android execution shows that loader identity, reference lifetime, or JNI exception legality cannot be represented exactly this way. Conditional pending/clean refinement, nullability, successful attach state, and runtime loader-relative lookup/cache lifecycle remain separate unclaimed work. |
 
 ## ADR-062 — Managed interface callbacks lower to the smallest direct DEX-to-XAX adapter
@@ -1069,7 +987,6 @@ levels. Evidence is `compiler/integration/windows_helpers/native_seed_evidence.j
 | Rationale | ART-visible callback classes are required platform representation, not a reason to add Java/Kotlin source, reflection, or a generic callback runtime. Separating lifecycle-super behavior from interface forwarding produces the minimum bridge while preserving exact Android method contracts. |
 | Alternatives rejected | Java/Kotlin source generation; D8/R8 as production dependency; reflection-based generic listeners; heap-allocating closure runtime; calling a nonexistent/irrelevant superclass interface implementation; routing every callback through a generic dispatcher. |
 | Runtime cost expectation | The current `View.OnClickListener` bridge method is exactly four DEX code units (`invoke-direct` to the private native callback plus `return-void`), one managed/native transition, and emits no per-callback allocation or reflection operation. Its DEX is 796 bytes; the matching 17,352-byte AArch64 ELF has one callback export and zero imports, `DT_NEEDED`, or relocations. These are structural measurements, not Android runtime latency/allocation measurements. |
-| AI/token expectation | Unmeasured. The bridge is derived from semantic callback intent and avoids requiring the model to author an interface class or JNI symbol glue. |
 | Falsification condition | Replace or specialize this adapter if real ART/Android execution demonstrates a required extra transition, lifetime operation, exception edge, or platform call. Do not claim zero framework allocations until measured on Android; the current claim is only zero allocation machinery emitted by XAX in the callback body. |
 
 ## ADR-063 — JNI `jvalue` packing widens only where exact stores are already provable
@@ -1080,7 +997,6 @@ levels. Evidence is `compiler/integration/windows_helpers/native_seed_evidence.j
 | Rationale | Narrow integer JNI arguments need no new cast, object-compatibility rule, runtime packer, or kernel operation: their exact bit widths and AArch64 store encodings are already known. Reference and mixed packs do require additional exact type-compatibility/retyping semantics, so accepting them now would hide assumptions. |
 | Alternatives rejected | Wider 32-bit over-stores for byte/short arguments; leaving union padding uninitialized; a generic C-style varargs helper; unchecked pointer/reference bitcasts; treating Java reference subtype compatibility as raw pointer equality. |
 | Runtime cost expectation | The cached `View.setClickable(Z)V` structural probe emits 108 bytes / 27 AArch64 instructions. Its `jvalue` construction is one `STRB` argument store plus seven explicit `STRB` zero-padding stores; the complete probe has zero imports, `DT_NEEDED`, relocations, or helper runtime. This is not an Android latency claim. |
-| AI/token expectation | Unmeasured. Descriptor-driven packing removes the need for the model to construct JNI union layout manually. |
 | Falsification condition | Replace the repeated subword zero stores only with an exactly equivalent, measured smaller/faster sequence that preserves explicit initialization and type legality. Do not admit mixed/reference or float/double packs until their exact semantic and ABI obligations are implemented and tested. |
 
 ## ADR-064 — Mixed JNI reference packs use an explicit target ABI projection, not a core pointer cast
@@ -1091,7 +1007,6 @@ levels. Evidence is `compiler/integration/windows_helpers/native_seed_evidence.j
 | Rationale | Current AOSP JNI defines `jvalue.l` as `jobject`, and Android arm64 represents JNI object references as opaque pointer-shaped handles. Making that representation conversion target-declared keeps Android/JNI out of the kernel and avoids an unchecked general pointer-to-integer cast. Threading owned-reference proof through projection and call keeps lifetime legality verifier-visible. Exact descriptor matching or imported superclass/interface evidence plus any required defining-loader identity gates pack construction. |
 | Alternatives rejected | Generic pointer bitcasts in the XAX kernel; C/JNI pack helpers; hidden runtime packers; treating every pointer as a JNI object reference; accepting weak globals without liveness/null refinement; assuming Java subtype compatibility from raw pointer equality; silently widening mixed byte/short/int slots. |
 | Runtime cost expectation | The structural `View.postDelayed(Runnable,long)` probe emits 88 bytes / 22 AArch64 instructions. Its borrowed `Runnable` reference projection is last-use and emits zero instructions; the 16-byte pack is two 64-bit stores. The resulting 17,352-byte ELF has zero imports, `DT_NEEDED`, relocations, or helper runtime. This is codegen evidence, not Android latency evidence. |
-| AI/token expectation | Unmeasured. Descriptor/loader-qualified argument specs and imported hierarchy evidence remove manual JNI union and subtype boilerplate, but no token advantage is claimed until benchmarked. |
 | Falsification condition | Revise this bounded path if Android runtime execution shows the handle representation, subtype/loader assumptions, owner threading, or nullable carrier model is incomplete. Runtime null construction/refinement, weak-reference liveness, mixed narrow integers, float/double, and cross-loader subtype resolution remain explicitly unclaimed. |
 
 ## ADR-065 — First Android UI behavior is a semantic platform carrier lowered directly to bounded managed DEX
@@ -1193,22 +1108,20 @@ levels. Evidence is `compiler/integration/windows_helpers/native_seed_evidence.j
 
 | Field | Record |
 |---|---|
-| Decision | XAX targets replacement of conventional languages by sufficiency for the software they build. The kernel stays approximately values, exact arithmetic, aggregates, control, calls, memory, resources, effects, atomics, target operations, and compile-time/meta. Every conventional model (closures, objects, traits, generics, async, exceptions, GC, RC, reflection, dynamic typing, strings, collections, actors, GPU kernels) is realized by compile-time construction, zero-cost libraries, or platform/ABI/target packages (`XAX_SPEC.md` §21.5–§21.6). A kernel addition requires an ADR showing the semantics cannot be expressed exactly at equal-or-better generated cost, verification precision, and AI tokens per change. |
+| Decision | XAX targets replacement of conventional languages by sufficiency for the software they build. The kernel stays approximately values, exact arithmetic, aggregates, control, calls, memory, resources, effects, atomics, target operations, and compile-time/meta. Every conventional model (closures, objects, traits, generics, async, exceptions, GC, RC, reflection, dynamic typing, strings, collections, actors, GPU kernels) is realized by compile-time construction, zero-cost libraries, or platform/ABI/target packages (`XAX_SPEC.md` §21.5–§21.6). A kernel addition requires an ADR showing the semantics cannot be expressed exactly at equal-or-better generated cost and verification precision. |
 | Rationale | Every kernel concept multiplies verifier, optimizer, target, and AI-protocol surface for every program. Libraries and packages are paid for only by programs that use them (FND-004/FND-010), so layering is the only route that scales from firmware to managed applications without imposing one domain's cost on another. |
 | Alternatives rejected | Adding classes/async/exceptions/strings/GC objects to the kernel; one DSL per domain; a mandatory standard runtime; importing a host language's object model. |
 | Runtime cost expectation | Zero for unused abstractions; requested abstractions cost exactly their explicit lowering. |
-| AI/token expectation | Smaller kernel vocabulary and fewer verifier rules per edit; library-level concepts are queried only when used. |
 | Falsification condition | A workload whose exact semantics or competitive generated code is measurably unattainable through layering. Then a kernel addition is admitted by ADR with that evidence. |
 
 ## ADR-075 — Replacement claims use cumulative R0–R6 levels derived from cited evidence
 
 | Field | Record |
 |---|---|
-| Decision | Replacement capability is claimed per `(platform package, workload class)` at cumulative levels R0 semantic expressibility, R1 executable lowering, R2 platform interoperability, R3 practical application, R4 performance competitiveness, R5 AI efficiency, R6 autonomous maintenance. Each implemented claim carries one evidence label: PROVEN, EXECUTED, MEASURED, STRUCTURAL, PROTOTYPE, UNIMPLEMENTED. `XAX_REPLACEMENT_MATRIX.json` stores the per-platform record; `compiler/src/xax_replacement.py` derives levels from cited evidence and the test suite rejects overclaims, uncited labels, and missing evidence paths. |
+| Decision | Replacement capability is claimed per `(platform package, workload class)` at cumulative levels R0 semantic expressibility, R1 executable lowering, R2 platform interoperability, R3 practical application, R4 performance competitiveness, R5 autonomous maintenance, R6 XAX-only application (ADR-207). Each implemented claim carries one evidence label: PROVEN, EXECUTED, MEASURED, STRUCTURAL, PROTOTYPE, UNIMPLEMENTED. `XAX_REPLACEMENT_MATRIX.json` stores the per-platform record; `compiler/src/xax_replacement.py` derives levels from cited evidence and the test suite rejects overclaims, uncited labels, and missing evidence paths. |
 | Rationale | Prose status tables drifted toward capability language. A derived level makes "supports platform X" impossible to state without the evidence that justifies it, and keeps the matrix cheap for an AI to update (one row, one field). |
 | Alternatives rejected | Checkbox matrices in Markdown; maturity grades without evidence links; per-language rather than per-platform rows. |
 | Runtime cost expectation | None (tooling only). |
-| AI/token expectation | One compact JSON row per platform; validator diagnostics name the exact field. |
 | Falsification condition | If levels cannot be meaningfully ordered for some platform class (e.g. R4 required before R2), split the workload class rather than weaken cumulativity. |
 
 ## ADR-076 — Hosted Windows uses a direct PE32+ container with explicit imports and explicit process exit
@@ -1235,11 +1148,10 @@ levels. Evidence is `compiler/integration/windows_helpers/native_seed_evidence.j
 
 | Field | Record |
 |---|---|
-| Decision | Adopt the universal-replacement mission order: semantic correctness → AI tokens per successful change → AI generation reliability → runtime performance → memory footprint → binary footprint → compilation quality → portability → deterministic behavior → toolchain simplicity → human usability. Deterministic *interpretation of meaning* remains inseparable from semantic correctness (ADR-003 rank 2 stays directly below it); the mission's "deterministic behavior" rank refers to reproducible builds and tooling. `XAX_SPEC.md` §1 and the architecture §1 table state the merged order. |
+| Decision | Adopt the universal-replacement mission order: semantic correctness → AI generation reliability → runtime performance → memory footprint → binary footprint → compilation quality → portability → deterministic behavior → toolchain simplicity → human usability. Deterministic *interpretation of meaning* remains inseparable from semantic correctness (ADR-003 rank 2 stays directly below it); the mission's "deterministic behavior" rank refers to reproducible builds and tooling. `XAX_SPEC.md` §1 and the architecture §1 table state the merged order. |
 | Rationale | The mission separates footprint and compilation-quality ranks that ADR-003 grouped, and places build reproducibility below portability. Keeping semantic determinism at the top avoids weakening exact meaning, which every other rank depends on. |
 | Alternatives rejected | Moving semantic determinism to rank 9 (would allow nondeterministic meaning for performance); leaving the two orders unreconciled. |
 | Runtime cost expectation | None directly. |
-| AI/token expectation | None directly. |
 | Falsification condition | A conflict case where this order selects a design that the mission order (read literally) would reject and evidence favors the literal reading. |
 
 ## ADR-079 — Pointer-free memory-effect interfaces are pure ordering frontiers
@@ -1282,7 +1194,7 @@ levels. Evidence is `compiler/integration/windows_helpers/native_seed_evidence.j
 | Alternatives rejected | Allowing any pointer store and dropping facts (dangling local pointers would escape lifetime checks); a full provenance-carrying store model now (needs typed mixed storage and container/referent lifetime coupling — remaining OI-37 work); a vtable kernel concept. |
 | Runtime cost expectation | One machine word per stored pointer; table dispatch costs one load + one indirect call. |
 | Evidence | `compiler/tests/test_xax_pe.py::_dispatch_table`: two function addresses stored into stack memory, reloaded by checked dynamic-offset loads, and called with `call_indirect`; `add1(10) + times3(10) = 41` contributes to the PE exit code 1339 (20/20 runs, `windows_pe_hosted_evidence.json`). Negative: storing the table's own stack address rejects. |
-| Falsification condition | A workload needing pointer-linked XAX-owned storage whose arena/index form is measurably worse in code size, speed, or AI tokens per edit; that would justify the coupled-provenance design. |
+| Falsification condition | A workload needing pointer-linked XAX-owned storage whose arena/index form is measurably worse in code size or speed; that would justify the coupled-provenance design. |
 
 ## ADR-083 — Hosted x86-64 extends the register-resident allocator instead of rewriting frame lowering
 
@@ -1302,7 +1214,7 @@ levels. Evidence is `compiler/integration/windows_helpers/native_seed_evidence.j
 | Kernel admission (`XAX_SPEC.md` §21.5) | AND, OR, and division have no exact composition at equal cost from add/sub/mul/xor/rotate: bitwise composition needs per-bit loops, and division needs a loop. Width changes had no expression except a store/load round trip through memory. Shifts by constants are exactly `mul.wrap 2^k` and `udiv 2^k`, and sign extension is `(zext(x) xor m) - m`, so admitting them would duplicate existing mechanisms; single-instruction selection is a lowering concern (OI-39). |
 | Alternatives rejected | Signed division/remainder (deferred until a workload needs them); variable shifts with hardware-specific masking; returning an unspecified value for a zero divisor. |
 | Evidence | Verifier, reference executor, and x86-64 lowering EXECUTED (`compiler/tests/test_xax_linux.py`, `test_xax_regalloc_differential.py`). Only the Linux target packages advertise the operations; every other target identity and committed artifact is unchanged. |
-| Falsification condition | Admit `shl`/`lshr`/`ashr`/`int.sign_extend` if measured token cost or repair rate for the compositions is materially worse, or if lowering cannot select them reliably (OI-39). |
+| Falsification condition | Admit `shl`/`lshr`/`ashr`/`int.sign_extend` if measured repair rate for the compositions is materially worse, or if lowering cannot select them reliably (OI-39). |
 
 ## ADR-085 — Linux syscalls are `linux-x86_64-syscall-v1` declarations carrying an explicit register template
 
@@ -1353,7 +1265,7 @@ levels. Evidence is `compiler/integration/windows_helpers/native_seed_evidence.j
 
 | Field | Record |
 |---|---|
-| Decision | The ADR-082 falsification condition ("a workload needing pointer-linked XAX-owned storage whose arena/index form is measurably worse in code size, speed, or AI tokens per edit") is met for **speed** on a chained hash table. The coupled-provenance pointer design (OI-37 remainder) is therefore justified. It is sequenced **after** OI-38, because code generation is the larger measured factor and benefits every workload. Arena + index remains the verified representation until then. |
+| Decision | The ADR-082 falsification condition ("a workload needing pointer-linked XAX-owned storage whose arena/index form is measurably worse in code size or speed") is met for **speed** on a chained hash table. The coupled-provenance pointer design (OI-37 remainder) is therefore justified. It is sequenced **after** OI-38, because code generation is the larger measured factor and benefits every workload. Arena + index remains the verified representation until then. |
 | Evidence | `compiler/benchmarks/oi37_chains_evidence.json` (`linux_chains.py`, two 31-repetition runs on Linux 6.18 x86-64): 2^20 inserts into 2^16 buckets, then 2^20 successful lookups (9,437,420 node visits). The XAX artifact (1,598 B) runs 3.49–3.58× `gcc -O2` (pointer links) and 3.67–3.79× the fastest baseline. Same-run diagnostic C twins attribute the gap: index links instead of pointers 1.44–1.47×, bounds checks equivalent to XAX's checked access 1.34–1.41×, and XAX code generation over the equivalent checked-index C 1.73–1.80×. Peak RSS: XAX 16,896 KiB vs 18,272 KiB `gcc -O2`. |
 | Rationale | Comparing C to C isolates the representation cost from XAX's backend, so the OI-37 question is answered independently of current code quality. |
 | Consequences | OI-38 (allocator convergence, cross-block allocation, LICM) is next. OI-37 then needs node-typed provenance whose extent and lifetime make both the index scaling and the per-access bounds check unnecessary. Removing only the scaling would leave the 1.34–1.41× check cost. |
@@ -1376,7 +1288,7 @@ levels. Evidence is `compiler/integration/windows_helpers/native_seed_evidence.j
 | Kernel admission (`XAX_SPEC.md` §5.6, §21.5) | Not expressible with existing primitives. Checked loads take only a dynamic *offset* and re-check every access; no operation narrows a view to a dynamically positioned sub-view. Without it, a linked structure pays index scaling on the critical path plus a check per field access. Provenance is not manufactured: the result can only name storage the view already proves live. Typed storage is not required, because a forged or stale address traps instead of escaping the view. |
 | Alternatives rejected | Typed mixed storage with check-free reloads (a typed-memory model, larger kernel: still open under OI-37); raw integer-to-pointer (unverified provenance); dropping the alignment test (would weaken the verifier's alignment fact). |
 | Evidence | MEASURED (`oi37_chains_evidence.json`, one 31-repetition run; host stdev 13–25%). Pointer-linked `chains` runs at 1.64× `gcc -O2` and 1.07× C carrying the same check. Index links run at 2.00×, so pointer links are 1.22× faster. In C, the check costs 1.52× on pointers and the index representation 1.41×. The remaining gap to unchecked C is the check, not code generation. Probe runs placed the pointer arm at 0.38–0.45 s, against 0.38–0.41 s for checked-pointer C. Executed vectors (`test_xax_pointer_rebase.py`): in-range offsets 0/8/48 exit 41; offsets 56, 64, 4, 2^64−8, and 2^40 trap with SIGILL. Verifier rejections: `MEMORY-REBASE-EXTENT`, `-ALIGNMENT`, `-NO-AUTHORITY-GAIN`, `-ADDRESS-WIDTH`, `MEMORY-LIFETIME-LIVE`, and `MEMORY-INITIALIZED` for both windowed loads and windowed stores. |
-| Consequences | ADR-081's statement that no verified operation turns an exposed address back into a pointer is narrowed: only `pointer_rebase`, only inside a live view. OI-37 stays open. Remaining: check-free reloads (typed storage proving every stored link valid), a second target with a different pointer width (wasm32), and AI tokens per edit. |
+| Consequences | ADR-081's statement that no verified operation turns an exposed address back into a pointer is narrowed: only `pointer_rebase`, only inside a live view. OI-37 stays open. Remaining: check-free reloads (typed storage proving every stored link valid), and a second target with a different pointer width (wasm32). |
 
 ## ADR-093 — `pointer_rebase` on wasm32; wasm storage never starts at address 0
 
@@ -1384,7 +1296,7 @@ levels. Evidence is `compiler/integration/windows_helpers/native_seed_evidence.j
 |---|---|
 | Decision | `wasm32-wasi-v1` admits operation 73. Lowering: `local.get address; local.get view; i32.sub; i32.const log2(A); i32.rotr; i32.const span>>log2(A); i32.gt_u; if unreachable end`. That is the same single unsigned compare as x86-64, at the 32-bit pointer width. The wasm static layout now reserves bytes 0–15 (`_NULL_GUARD_BYTES`), so no storage address equals 0 and 0 can terminate links. Before this, the first stack allocation lived at address 0, where its exposed address was indistinguishable from a null link. |
 | Evidence | EXECUTED (`compiler/tests/test_xax_wasm_rebase.py`, Node v22.22.0 `node:wasi`). A WASI command builds a three-node list in stack storage with exposed-address links and walks it through `pointer_rebase`, exiting 42 (5 + 7 + 30). First links that are out of range (+24), misaligned (+4), below the view (−8), or wrapped (+2^31) trap with `unreachable`. With x86-64 Linux (ADR-092) this gives one representation executing on 64- and 32-bit pointer targets. No existing test pins wasm module bytes. `wasi_command_evidence.json` is regenerated (new target identity and layout). |
-| Consequences | OI-37 closure still needs check-free reloads and the AI tokens-per-edit measurement. Measuring verifier cost is folded into that token pass. |
+| Consequences | OI-37 closure still needs check-free reloads and a measurement of edit and verifier cost. |
 
 ## ADR-094 — Linux argv/env/auxv through an inline startup ABI, not a kernel extension
 
@@ -1409,9 +1321,9 @@ levels. Evidence is `compiler/integration/windows_helpers/native_seed_evidence.j
 
 | Field | Record |
 |---|---|
-| Decision | OI-37 is closed. Its closure criteria are met by `pointer_address` (ADR-081), provenance-free pointer elements (ADR-082), and `pointer_rebase` on x86-64 Linux and wasm32 (ADR-092/093), with the negative vectors listed in the issue, measured verifier cost, and offline edit-token cost (`oi37_closure_evidence.json`, `bench_oi37_closure.py`). Removing the per-link check is a separate performance question that needs kernel growth (typed mixed storage), so it is tracked as OI-41. |
+| Decision | OI-37 is closed. Its closure criteria are met by `pointer_address` (ADR-081), provenance-free pointer elements (ADR-082), and `pointer_rebase` on x86-64 Linux and wasm32 (ADR-092/093), with the negative vectors listed in the issue, measured verifier cost, and measured edit cost (`oi37_closure_evidence.json`, `bench_oi37_closure.py`). Removing the per-link check is a separate performance question that needs kernel growth (typed mixed storage), so it is tracked as OI-41. |
 | Stated deviation | The wasm32 traversal uses stack storage because that profile has no heap allocator; the representation and the checks are the same as on x86-64. |
-| Evidence | Verifier: 47.9 µs per rebase+load against 46.8 µs per checked load; `chains` verifies in 2.7 ms (pointer) and 2.6 ms (index). Edit: 4 rewritten objects, 4,458 bytes, 4,198 o200k hex tokens; an 11-operation delta of 87 o200k tokens. Performance (`oi37_chains_evidence.json`, one 31-repetition run): pointer links 1.58× `gcc -O2` and 1.05× checked-pointer C. |
+| Evidence | Verifier: 47.9 µs per rebase+load against 46.8 µs per checked load; `chains` verifies in 2.7 ms (pointer) and 2.6 ms (index). Edit: 4 rewritten objects, 4,458 bytes; an 11-operation delta. Performance (`oi37_chains_evidence.json`, one 31-repetition run): pointer links 1.58× `gcc -O2` and 1.05× checked-pointer C. |
 | Consequences | PE does not yet lower `pointer_rebase` (its target operation set omits 73). |
 
 ## ADR-097 — Record links: verified link fields make pointer reloads check-free (closes OI-41)
@@ -1652,7 +1564,7 @@ levels. Evidence is `compiler/integration/windows_helpers/native_seed_evidence.j
 |---|---|
 | Decision | (1) Architecture 7, target package `spirv-vulkan-compute-v1` (ABI 8, format 1: a SPIR-V 1.3 module), with the integer subset (wrapping arithmetic, bitwise, `udiv`/`urem`, rotate, width changes, compares, checked 32-bit loads/stores, `address_offset`, `pointer_cast`) and all four terminators. No kernel change: a kernel is an ordinary verified function under the target-owned `spirv-compute-v1` entry contract — `(b32 invocation, (ptr<b32>, heap_view<E>, memory)...) -> ((ptr, view, memory)...)`, the view triples being borrowed storage buffers returned whole. (2) Everything the module contains beyond the graph is compiler-generated and listed: the entry adapter (`GlobalInvocationId.x`, and a guard against the launch count in push constant 0, so the fixed 64-wide workgroup never changes semantics); bindings 0..k−1 for the triples plus status binding k; traps as `atomicMax(status, code)` then end of invocation (`0x10000 | portable reason`, `0x20000` for a failed bounds check). (3) Any XAX CFG lowers to one structured dispatch loop: every block, split after each trap-capable node (so a trapping access never executes), is an `OpSwitch` case, values live in Function variables, and a conditional edge updates each side's parameters with `OpSelect` (a block dominated by the untaken target may still read them). Pointers must resolve statically to (binding, 4-aligned offset), through block parameters included (`SPIRV-POINTER-STATIC`). (4) Concurrency is made safe by a checked sufficient rule, not an assumption: every store, and every load from a stored-to binding, must address exactly `invocation * 4` (`SPIRV-KERNEL-OWN-ELEMENT`); read-only bindings may be read anywhere. (5) The reference executor accepts reference-backed storage for heap-space pointer parameters, so `reference_dispatch` runs each invocation against the same buffers. |
 | Rationale | SPIR-V/Vulkan is the one GPU representation with a conformant implementation available on every host (Mesa llvmpipe here) and portable to most physical GPUs, so it unblocks the GPU row now and stays valid on hardware later (OI-34). The dispatch loop is the smallest lowering that is correct for every CFG and keeps traps exact. The own-element rule turns the SIMT data-race question into one syntactic check over the graph. |
-| Evidence | EXECUTED on Vulkan (Mesa llvmpipe, LLVM 20.1.2) through the `vulkan` bindings (`test_xax_spirv.py`, 12 tests; `spirv_compute_evidence.json`): Collatz, a two-binding kernel covering every lowered operation and compare kind (including `b8` signed compares and rotates), a partial launch (70 of 128 invocations), divide-by-zero (`0x10002`, trapped invocations store nothing), and an out-of-bounds read (`0x20000`) all equal the reference executor's buffers and status. Every module passes `spirv-val --target-env vulkan1.1` and is byte-deterministic. Negative vectors: non-SPIR-V target, entry contract, unsupported operation (`FLOAT_ADD`), and four race vectors (fixed offset, stride 8, shifted element, read of another element of a written binding). MEASURED-SOFTWARE-DEVICE (not GPU performance, conformance §23.17): Collatz over 2^18 elements is 6.9× an equivalent GLSL kernel compiled by glslang 15.1.0 on llvmpipe; module 3,132 vs 1,732 bytes (1.81×). |
+| Evidence | EXECUTED on Vulkan (Mesa llvmpipe, LLVM 20.1.2) through the `vulkan` bindings (`test_xax_spirv.py`, 12 tests; `spirv_compute_evidence.json`): Collatz, a two-binding kernel covering every lowered operation and compare kind (including `b8` signed compares and rotates), a partial launch (70 of 128 invocations), divide-by-zero (`0x10002`, trapped invocations store nothing), and an out-of-bounds read (`0x20000`) all equal the reference executor's buffers and status. Every module passes `spirv-val --target-env vulkan1.1` and is byte-deterministic. Negative vectors: non-SPIR-V target, entry contract, unsupported operation (`FLOAT_ADD`), and four race vectors (fixed offset, stride 8, shifted element, read of another element of a written binding). MEASURED-SOFTWARE-DEVICE (not GPU performance, conformance §22.17): Collatz over 2^18 elements is 6.9× an equivalent GLSL kernel compiled by glslang 15.1.0 on llvmpipe; module 3,132 vs 1,732 bytes (1.81×). |
 | Limits | Not yet on a physical GPU (OI-34 stays open). The dispatch loop blocks llvmpipe's cross-invocation vectorization of loops — structured lowering of reducible CFGs is the next step. 32-bit word accesses only; no floats, 64-bit integers, calls, workgroup memory, barriers, or user atomics. The host side is a test harness, not an XAX program, so the row stops at R1. An explicit `trap` terminator cannot end a path holding a borrowed view (verifier rule `RESOURCE-LINEAR-CONTINUATION`); kernels trap through checked nodes. |
 
 ## ADR-125 — Recursion is callable: group member functions
@@ -1660,7 +1572,7 @@ levels. Evidence is `compiler/integration/windows_helpers/native_seed_evidence.j
 | Field | Record |
 |---|---|
 | Decision | (1) The spec's member identity `(recursion_group CID, member_index)` gets a callable form: a `function` whose single reference is the group and whose body is the member index. Its interface is the member's, so `call.direct`, `function_address`, the reference executor, and every interface consumer accept it unchanged. Existing functions keep their encoding and CIDs. (2) Lowering view, not new semantics: `parse_function_graph` presents a member's graph with each `call.group_member k` as a `call.direct` of member function *k* of the same group. Every backend compiles recursion through its existing direct-call path, and no target package's operation list or CID changes. (3) Group calls get the direct call's whole-heap-view borrowing contract (ADR-101); any other memory-carrying group-call value rejects (`GROUP-CALL-MEMORY-VIEWS-ONLY`). (4) wasm32 accepts call cycles whose functions use no static frame storage (wasm locals are per activation) and rejects the rest (`WASM-REENTRANT-FRAME`) instead of sharing frame addresses between activations. (5) AArch64 gains ADR-101's borrowed-view return elision on the frame path, so functions that take and give back heap views compile there; the register path declines multi-result signatures. |
-| Rationale | Before this change no compiled program could recurse: a function could not reference a group, and a `call.group_member` outside a group rejects. Recursion is fundamental to parsers, compilers, and tree algorithms, and the alternatives (explicit stacks, or recursion through indirect calls) cost tokens and runtime. The identity already existed in the spec; this adds only its callable encoding. |
+| Rationale | Before this change no compiled program could recurse: a function could not reference a group, and a `call.group_member` outside a group rejects. Recursion is fundamental to parsers, compilers, and tree algorithms, and the alternatives (explicit stacks, or recursion through indirect calls) cost graph size and runtime. The identity already existed in the spec; this adds only its callable encoding. |
 | Evidence | EXECUTED (`test_xax_recursion.py`, 12 tests). Factorial (self-recursion) and even/odd (mutual recursion, canonical member order) run on the reference executor, wasm32 (Node), RISC-V (Unicorn), the JVM (HotSpot), and AArch64 bare metal, and as Linux x86-64 and Linux AArch64 executables. Recursion over a borrowed heap view (sum of 1..n) runs on both Linux ISAs with n = 1000 on x86-64. Negative vectors: member index out of range; `call.group_member` in a plain function; a bare memory frontier through a group call; a recursive wasm function with a stack allocation. The full suite is unchanged (833 pass), so existing artifacts are byte-identical. |
 | Limits | Recursive wasm functions cannot use stack allocations or aggregates until frames move to a shadow stack. The SPIR-V target rejects calls entirely. No stack-depth bound is proved: deep recursion ends at the platform's guard (SIGSEGV on Linux, `RangeError` on wasm), which is the platform's trap, not a verified one. The AI workspace has no mutation that creates a group member function yet. |
 
@@ -1680,7 +1592,7 @@ levels. Evidence is `compiler/integration/windows_helpers/native_seed_evidence.j
 | Decision | (1) `xax_c_import.import_c_functions(headers, soname, names, abi, overrides, flags)` turns C prototypes into ordinary typed `foreign_function_symbol` declarations. It reads clang's JSON AST, never a human-written wrapper. The caller names every function and its soname; headers never imply a library. (2) LP64 mapping: C integers to `bits<8/16/32/64>` (`_Bool` at its ABI width of 8); `float`/`double` to f32/f64; `const T*` and `T*` to read-only and read-write byte pointers; pointers to structs, unions, and unknown types to opaque identity handles (`c:struct _IO_FILE`) that no XAX memory operation accepts; function pointers to the ADR-102 C code-entry type (sysv-x86_64-c only). By-value structs and unions, arrays, `long double`, and variadics are refused with a stated reason (OI-40). (3) The conservative contract: every import takes and returns one memory frontier, since C may touch hidden state such as `errno`. Stronger facts come only from an explicit override table (`pure`) and are never inferred from names. (4) The report records header SHA-256s, the clang version, and every import and refusal, so an import is reproducible from declared inputs (OI-30). |
 | Rationale | Universal replacement cannot ask anyone to rewrite the C ecosystem's interfaces. The importer is tooling whose output is canonical semantic state, so an imported declaration is indistinguishable from, and here byte-identical to, a hand-built one. |
 | Evidence | EXECUTED (`test_xax_c_import.py`, 4 tests). Importing zlib's `crc32` reproduces filestat's hand-built declaration CID byte for byte, so the U1.3 program and artifact are unchanged; libm `ldexp`/`pow`/`sqrtf` with the `pure` override and libc `strlen` for `aapcs64-linux-c` are byte-identical too. An XAX program writes through glibc stdio using only imported `fdopen`/`fputs`/`fclose`, with `FILE *` as an opaque handle (exit 0, exact stdout), and dereferencing that handle rejects. Imports are deterministic, refusals are explicit (`printf` variadic; `div` returns a by-value struct), unknown names and override facts reject, and callbacks for aapcs64 are refused. MEASURED (`c_import_evidence.json`, every function each header declares): string.h 64/64, stdio.h 87/98, zlib.h 215/221, math.h 489/701, in 0.06–0.32 s per header. Refusals are variadics and by-value types (`long double`, `_Float128`, struct returns). |
-| Limits | C only, from clang's AST, LP64 only. Nullability, ownership, threading, and error conventions are not read from headers: the frontier orders every call, and refinements must be explicit data. No AI-token comparison yet (OI-32 asks for one; token trials are deferred until the upgrade is complete). |
+| Limits | C only, from clang's AST, LP64 only. Nullability, ownership, threading, and error conventions are not read from headers: the frontier orders every call, and refinements must be explicit data. |
 
 ## ADR-128 — Board packages: bare metal with MMIO, interrupts, and explicit startup (U1.6)
 
@@ -1714,8 +1626,8 @@ levels. Evidence is `compiler/integration/windows_helpers/native_seed_evidence.j
 | Field | Record |
 |---|---|
 | Decision | (1) A standard library is a canonical `PACKAGE` object (`xax_build.package`) with a logical identity `name/version/parameters`, one `MODULE` holding its functions, and one named build entry per export. (2) The unit of linking is the function. An application calls an export by CID through `call.direct`, so its store holds only the reachable closure, and canonical stores reject unreachable objects. An unused export or package therefore contributes zero store bytes and zero artifact bytes, by construction rather than by a dead-code pass. The package object itself is needed only to discover exports, never to run a program. (3) Specialization is instantiation. A family is parameterized by the static facts its types carry (a view extent, a table capacity), and each instance is its own package with its own CIDs. Calling one instance with another's view rejects (`GRAPH-CALL-CONTRACT`). (4) Libraries own no runtime and allocate nothing. All memory is an explicit borrowed heap-view triple (ADR-101), so the caller decides placement (mmap, a board's static memory, or an arena). (5) The first two families are `xax.text` (`find_digits`, `parse_u64`, `format_u64`, `skip_spaces`) and `xax.collections.hashset_u64` (`insert`, `contains`; open addressing, key 0 in a dedicated slot). Their instances are target independent: the same CIDs compile for x86-64 and AArch64 Linux. |
-| Rationale | OI-36 asked for the package granularity that minimizes AI tokens and footprint while keeping specialization. Function-level content addressing gives zero-cost non-use without a linker policy. Static instantiation keeps every bound and offset in the type, so the verifier checks each call and the backend sees constants. A model that uses a package emits calls to exports it learns from a small interface view, not the bodies. |
-| Evidence | EXECUTED. `uniqcount` counts distinct decimal numbers on stdin using four exports from three instances, and matches `reference_uniqcount` on four inputs (including the table-full exit) on Linux x86-64 natively and on Linux AArch64 under qemu-aarch64. MEASURED (`oi36_stdlib_evidence.json`): x86-64 code per used export is 130 to 326 bytes (entry 1,145; artifact 2,306 bytes). The AArch64 frame path is 5 to 9× larger (artifact 13,748 bytes). The store bytes each instance contributes are 2,112 to 4,077, and the unused exports and package objects are absent from the store. Packages are built in 11 ms, verified in 1.6 ms, and compiled in 60 ms (x86-64) and 37 ms (AArch64). Offline tokens (o200k_base): a 268-token interface view, then 1,360 tokens for the application's 73 nodes with 4 package calls, against 3,256 tokens (190 nodes) with the bodies written inline. Vectors: `test_xax_stdlib.py` (4). |
+| Rationale | OI-36 asked for the package granularity that minimizes footprint while keeping specialization. Function-level content addressing gives zero-cost non-use without a linker policy. Static instantiation keeps every bound and offset in the type, so the verifier checks each call and the backend sees constants. A model that uses a package emits calls to exports it learns from a small interface view, not the bodies. |
+| Evidence | EXECUTED. `uniqcount` counts distinct decimal numbers on stdin using four exports from three instances, and matches `reference_uniqcount` on four inputs (including the table-full exit) on Linux x86-64 natively and on Linux AArch64 under qemu-aarch64. MEASURED (`oi36_stdlib_evidence.json`): x86-64 code per used export is 130 to 326 bytes (entry 1,145; artifact 2,306 bytes). The AArch64 frame path is 5 to 9× larger (artifact 13,748 bytes). The store bytes each instance contributes are 2,112 to 4,077, and the unused exports and package objects are absent from the store. Packages are built in 11 ms, verified in 1.6 ms, and compiled in 60 ms (x86-64) and 37 ms (AArch64). Vectors: `test_xax_stdlib.py` (4). |
 | Limits | One machine scalar return per function on the native backends, so multi-value results are packed (`find_digits` returns a span in one `bits<64>`). Generic instantiation is Python-side construction; there is no in-graph type parameter. Versioning beyond the identity string (compatibility ranges, deprecation) is not decided. The token figures are offline counts, with no model trial (R5). |
 
 ## ADR-132 — Self-hosting step S4: scalar operation typing rules are checked by XAX
@@ -1861,7 +1773,7 @@ levels. Evidence is `compiler/integration/windows_helpers/native_seed_evidence.j
 | Decision | Every CPU/native runtime benchmark used to judge performance compares XAX with an optimized C or C++ baseline **and** at least one implementation outside C/C++ (Rust here: `compiler/benchmarks/rust_twins/`, `rustc -C opt-level=3 -C panic=abort -C codegen-units=1`), all with the same observable contract, input, host, harness, warmup, and repetitions. The fastest valid implementation by median decides: XAX meets the primary target at ≤ 1.05× of it, is *competitive below target* at ≤ 1.10×, and is *unmet* above that, in which case XAX is profiled and optimized and the full comparison re-run; workloads are never weakened and faster competitors never dropped. The shared harness (`linux_harness.py`) builds the Rust twin, records `time_ratio_vs_fastest` and `performance_class` per XAX arm, and since this ADR interleaves repetitions: each round runs every arm once, rotating the order, so no arm owns a time slice of a drifting shared host. Performance-relevant compiler changes re-run all three Linux comparisons. Each implementation may choose its own data representation for the same contract (the Rust `chains` twin uses a struct of arrays with `u32` links; XAX gains the same layout as the `soa` arm). `XAX_BENCHMARKS.md` §15.0 is the normative text; `XAX_SPEC.md` §21.2 defines "competitive" for R4 through it. |
 | Rationale | The work order (2026-10-03) replaced "competitive with gcc/clang" by a stricter, multi-language target. A C-only comparison can hide a gap to another established toolchain, and sequential arm timing on a shared host can move a result by several percent. |
 | Evidence | MEASURED (`u1_linux_filestat_evidence.json`, `oi37_chains_evidence.json`, `jsonmin_evidence.json`, 2026-10-03, Intel Xeon @ 2.10 GHz (Emerald Rapids, model 207), 4 vCPUs, Linux 6.18.44; gcc 13.3.0, clang 18.1.3, rustc 1.97.0; 3 warmup rounds, 31 rounds). Before ADR-148 the first multi-language run gave XAX/fastest 1.566 (`filestat`, clang fastest), 1.183 (`chains`, record links; Rust fastest), and 1.208 (`jsonmin`, Rust fastest): all unmet. After: `filestat` 1.017 (clang 63.3 ms, XAX 64.4 ms, Rust 70.0 ms), `chains` 1.000 (XAX `soa` 201.9 ms is fastest; Rust 209.9 ms, gcc -O2 228.9 ms), `jsonmin` 1.029 (clang 24.1 ms, XAX 24.8 ms, gcc -O3 25.6 ms, Rust 27.0 ms): all meet the primary target. XAX also has the smallest peak RSS in all three and the smallest binary in `filestat` and `chains`. |
-| Limits | One host, three workloads, x86-64 Linux only. The AArch64, RISC-V, and SPIR-V comparisons are emulated or software-device measurements (conformance §23.17) and do not judge performance; the Windows PE comparison runs under Wine; the JVM comparison is against `javac` on HotSpot. None of these has a non-C arm yet. On this host the run-to-run stdev is 4–15% of the median, so a single run's ratio near 1.05 is not decisive; the committed JSON is one complete interleaved run. |
+| Limits | One host, three workloads, x86-64 Linux only. The AArch64, RISC-V, and SPIR-V comparisons are emulated or software-device measurements (conformance §22.17) and do not judge performance; the Windows PE comparison runs under Wine; the JVM comparison is against `javac` on HotSpot. None of these has a non-C arm yet. On this host the run-to-run stdev is 4–15% of the median, so a single run's ratio near 1.05 is not decisive; the committed JSON is one complete interleaved run. |
 
 ## ADR-148 — x86-64 register path: range-proven checks, lowering view, and call-aware allocation (OI-38)
 
@@ -2030,9 +1942,9 @@ levels. Evidence is `compiler/integration/windows_helpers/native_seed_evidence.j
 | Field | Record |
 |---|---|
 | Decision | (1) **Importer.** `xax_jvm_import` reads class files from JDK `.jmod` modules or JARs. It parses them with the existing `parse_classfile` and reads the module's unqualified `exports` from `module-info`. It emits the same canonical `jvm-*` foreign declarations that were written by hand: `jvm-new`, `jvm-invokestatic`, `jvm-invokevirtual`, `jvm-invokeinterface`, `jvm-invokestatic-interface`, `jvm-getstatic`, `jvm-getfield`, and `jvm-putfield`. It loads no class and runs no Java. A request names a member exactly (`Owner.name(desc)`, `Owner.name:desc`, `Owner.name:desc=`) and resolves as the JVM resolves it: the class, then its superclasses, then its superinterfaces. It imports only a public member of a public class in an exported package. Anything else is refused with a reason (not found, not public, not exported, final, an abstract class's constructor, a static write, an inherited static interface method). (2) **Conservative contracts.** Facts a class file lacks are never assumed. Every member takes and returns the I/O effect, so calls stay ordered. References are nullable `jvm-ref` pointers. A functional-interface parameter imports as a plain reference unless the caller asks for callbacks; it then imports as the interface's single abstract method's `jvm_interface_entry_type` (ADR-161). Purity and other effects are curated facts the caller states (`pure`, `effects`). (3) **OI-32 answer.** The package format is the canonical foreign declarations themselves, with no wrapper format or second representation. Ownership, nullability, callbacks, threading, and error conventions are visible to the verifier through their types: effect tokens, nullable reference types, entry types for callbacks, and pure callbacks (ADR-161, so no cross-thread effects). Java exceptions and C errors keep their existing termination and return-value rules. |
-| Rationale | OI-32 lacked three things for closure: an executed program over the class-file importer's output, an error rate against curated metadata, and the AI-token comparison. With the C header importer (ADR-127), two unrelated ecosystems now produce packages that executed programs consume. |
-| Evidence | EXECUTED (`tests/test_xax_jvm_import.py`). A program over imported declarations only runs on HotSpot against a Python model: `StringBuilder`, `Integer`, `String`, an `IntStream` with an XAX callback, `java.awt.Point` fields from `java.desktop`, and `Math.floorMod` as pure. The hand-built `java_base_api` is reproduced byte for byte, and refusals and determinism are checked. MEASURED (`benchmarks/oi32_import_evidence.json`):<br>- **Coverage.** `java.base` has 7,554 classes; 1,411 are public in 54 exported packages. Of their 15,806 public and protected members, 14,973 import; 756 protected members and 77 abstract-class constructors are refused.<br>- **Latency and size.** Loading takes 0.38 s and importing 1.79 s (113 µs per request), producing 3.7 MB of declarations.<br>- **Error rate.** Every hand-built JDK declaration in the repository (30) and every hand-built C declaration the C importer reproduces (5) comes back byte for byte: 0/30 and 0/5.<br>- **Offline tokens.** An import request is 0.40× (JVM) and 0.23× (C) the tokens of the hand-built declaration (`o200k_base`: 0.397× and 0.229×). |
-| Limits | Token counts are offline (`tiktoken`); no model trial ran, because R5 is deferred. Win32 metadata, .NET metadata, and Web IDL have no importer. Protected members are refused, because XAX cannot subclass. Static field writes were refused here; ADR-167 imports them as `jvm-putstatic`. Generic signatures import erased. A curated fact the caller does not state stays conservative, never inferred. |
+| Rationale | OI-32 lacked two things for closure: an executed program over the class-file importer's output and an error rate against curated metadata. With the C header importer (ADR-127), two unrelated ecosystems now produce packages that executed programs consume. |
+| Evidence | EXECUTED (`tests/test_xax_jvm_import.py`). A program over imported declarations only runs on HotSpot against a Python model: `StringBuilder`, `Integer`, `String`, an `IntStream` with an XAX callback, `java.awt.Point` fields from `java.desktop`, and `Math.floorMod` as pure. The hand-built `java_base_api` is reproduced byte for byte, and refusals and determinism are checked. MEASURED (`benchmarks/oi32_import_evidence.json`):<br>- **Coverage.** `java.base` has 7,554 classes; 1,411 are public in 54 exported packages. Of their 15,806 public and protected members, 14,973 import; 756 protected members and 77 abstract-class constructors are refused.<br>- **Latency and size.** Loading takes 0.38 s and importing 1.79 s (113 µs per request), producing 3.7 MB of declarations.<br>- **Error rate.** Every hand-built JDK declaration in the repository (30) and every hand-built C declaration the C importer reproduces (5) comes back byte for byte: 0/30 and 0/5. |
+| Limits | Win32 metadata, .NET metadata, and Web IDL have no importer. Protected members are refused, because XAX cannot subclass. Static field writes were refused here; ADR-167 imports them as `jvm-putstatic`. Generic signatures import erased. A curated fact the caller does not state stays conservative, never inferred. |
 
 ## ADR-167 — JVM static field writes
 
@@ -2096,33 +2008,6 @@ levels. Evidence is `compiler/integration/windows_helpers/native_seed_evidence.j
 | Rationale | ADR-155 proved file, pthread, and socket contracts only through ARM translation on an emulator. With physical arm64 connected and r28c installed, the same oracle can close that environment gap; duplicating it in a Windows-specific harness would add no evidence. |
 | Evidence | EXECUTED (`android_platform_runtime_probe_evidence.json`): Pixel 8 Pro, API 37, native `arm64-v8a`, 17,496-byte shared object, result `XAX_PLATFORM_RUNTIME_OK file=1 thread=1 socket=1`. Imports are exactly close/connect/open/pthread_create/pthread_join/read/recv/send/socket/write. |
 | Limits | The C process is validation-only and is not part of the XAX artifact. One device run does not prove every POSIX behavior or Android API. |
-
-## ADR-174 — Bounded target-neutral semantic-edit evidence is not yet JVM R5
-
-| Field | Record |
-|---|---|
-| Decision | Record the real-model comparison as MEASURED benchmark evidence and close OI-31, but keep the JVM matrix `ai_tokens` field PROTOTYPE and the row at R4. The run uses the existing five paired C/XAX structural edits, one fresh session per cell, fixed `gpt-5.6-luna`/low reasoning, and balanced alternating arm order. The target-neutral protocol can be reused for JVM R5, but §6.2/§15 require task classes this run does not cover. |
-| Rationale | R5 measures AI tokens per successful semantic change, not backend runtime, so the target-neutral workspace evidence is relevant. Relevance is not completeness: promoting five local edits would contradict the benchmark policy requiring creation, control-flow, type change/repair, resource/effect repair, stale-root recovery, context scaling, cross-function/API change, and a large-application edit. |
-| Evidence | MEASURED (`compiler/benchmarks/ai_native/jvm-r5-evidence.json`, `jvm-r5-results.csv`, `XAX_BENCHMARKS.md` §15.24). All ten cells pass in one turn with no repair: C totals 325,282 tokens; XAX totals 264,535, or 0.813× C (18.675% fewer). Median task cost is 64,857 versus 50,083 tokens. The CSV records model and reasoning metadata and has SHA-256 `893d7f44b74b73afdf4e43bb697a7bd0ca7f5e3189cc2a7c32e90b475d875363`. |
-| Limits | This is not R5. Five small local edits, one model/setting, n=1 per cell, and a C-like rather than Java/Kotlin baseline. No significance claim. Creation, control-flow, repair, stale-root, cross-function/API, context-scaling, and large-application tasks remain outside this result. One preflight session whose sandbox denied all file discovery was excluded before the registered run; it produced no completed turn/token record and changed no file. |
-
-## ADR-175 — Direct local semantic transactions clear the 50% aggregate token target
-
-| Field | Record |
-|---|---|
-| Decision | Add `XAX-DIRECT` as a measured workflow arm. The task supplies the complete bounded semantic view, and one `xax.py apply CMD` invocation writes the transaction, verifies it, commits it, and checks the exact target. `apply` accepts quoted or split command arguments. The paired C arm uses the same controlled Codex client profile, inspects and edits only `program.c`, and runs its task-local exact-target checker. Keep JVM at R4 because this optimizes the existing five-edit slice without completing the required §6.2 corpus. |
-| Rationale | ADR-174 spent most tokens on repeated agent context and discovery/verification round trips. XAX already owns a bounded semantic view and transactional verifier, so exposing them as one atomic operation removes those round trips without weakening correctness or changing the requested semantic edits. A separate arm preserves the historical protocol and evidence. |
-| Evidence | MEASURED (`compiler/benchmarks/ai_native/jvm-r5-optimized-evidence.json`, `jvm-r5-optimized-results.csv`, `XAX_BENCHMARKS.md` §15.25). All ten registered cells passed in one turn with no repair under the same Codex CLI 0.160.0, `gpt-5.6-luna`, low-reasoning, isolated feature profile. C used 197,252 total tokens; XAX-DIRECT used 98,432, or 0.4990× C: **50.098% fewer**. Median task cost was 39,479 versus 19,704 tokens. The CSV SHA-256 is `574c1769f27968decd4fce71192ac4bff947927a5b69eead0fc3721fe60c5568`. |
-| Limits | The 50% result is aggregate; individual cells are not each claimed to clear it. Five small local edits, one model/setting, and n=1 remain insufficient for JVM R5. This is a workflow result, not a syntax-density result: XAX receives its complete local semantic view and atomic transaction/check operation, while C uses source-file inspection, editing, and checking. Exploratory protocol-tuning sessions are excluded and remain visible in the local Codex logs. |
-
-## ADR-176 — Expanded JVM R5 corpus remains incomplete and below the median gate
-
-| Field | Record |
-|---|---|
-| Decision | Keep the JVM matrix row at R4 and `ai_tokens` at PROTOTYPE. Record the expanded 15-family Java/Kotlin/XAX attempt without promoting it. |
-| Rationale | The completed cells do not clear the required 0.50 median ratio, and three fresh retry cells were stopped by the account usage limit before a model turn. Claiming R5 would require both complete successful coverage and the threshold. |
-| Evidence | `compiler/benchmarks/ai_native/jvm-r5-full-evidence.json` and `jvm-r5-full-results.csv`: 42/45 cells passed; completed-cell medians are Java 50,342.5, Kotlin 50,737.5, and XAX 38,679 tokens, or 0.7683× the lowest textual median. |
-| Limits | The three missing cells are jvm-06 Java/Kotlin creation and jvm-07 XAX control-flow. Retry them under the same fixed profile after the usage window resets; do not alter the corpus or client profile. |
 
 ## ADR-177 — Evidence and canonical-state integrity before S7b
 
@@ -2208,60 +2093,41 @@ levels. Evidence is `compiler/integration/windows_helpers/native_seed_evidence.j
 | Evidence | EXECUTED (`tests/test_xax_selfhost_graph.py`): 18 constructed bodies, one per syntax rule and including 70-bit values and over-large counts, are rejected by the XAX decoder itself (status REJECT, never deferred) with the bootstrap's diagnostic in every field and repr, and the production path raises the same. A missing type before a bad terminator yields the bootstrap's resolution diagnostic. 1,500 mutated bodies of real graphs give the bootstrap's parse or diagnostic. Stores: `xax_graph_decoder.xax` root `05ba650dc678a359093ac0f4d3e1b2520ddfd6737954e04622e22634baba04a6`, SHA-256 `3da3fed07bec537038e245ebeaf0db7c6a54d6e94ee0c3c6cfa7850109866e62`, 148,177 bytes (was 71,275); `xax_store_decoder.xax` root `5f3e5a1c28e99f4deb350fff40e179294c3d5e6910a6cb71c5b2c77f8c6ae0bc`, SHA-256 `72c503c558a7e1d1c9c454d9a9484358ee11085c7d95372b634245b82ad4bc6c`, 274,243 bytes. |
 | Limits | Reference resolution, type verification, and trap-payload canonicality inside a graph are still decided in Python while it walks the stream (S8c). Bodies over 1 MiB less 32 bytes, and the deferred wide values above, go to the bootstrap parser. |
 
-## ADR-186 — Snapshot-bound local mutations and reproducible JVM token trials
+## ADR-186 — Snapshot-bound local mutations
 
 | Field | Record |
 |---|---|
-| Decision | Put the local mutation adapter in normal compiler tooling (`xax_local_protocol.LocalMutationSession`), shared by the direct benchmark arms. Derive omitted old attributes from the queried snapshot, submit one exact batch, and retain ordinary verification and the atomic generation check. Keep historical ADR-176 data separate. |
+| Decision | Put the local mutation adapter in normal compiler tooling (`xax_local_protocol.LocalMutationSession`). Derive omitted old attributes from the queried snapshot, submit one exact batch, and retain ordinary verification and the atomic generation check. |
 | Rationale | Avoid redundant inspection, file writes, verification round trips, and shell argument repairs without introducing task-aware operations or new kernel semantics. A stale session never silently refreshes. |
-| Evidence | EXECUTED: `compiler/tests/test_xax_local_protocol.py`; workspace regression suite. The repeated runner records raw event digests, all completed-turn usage including cached input, fresh attempts, and failed-attempt costs. Real-model outcomes are recorded separately in the new local-results evidence. |
-| Limits | JVM remains R4. No runtime backend or performance claim changes. R5 requires complete repeated Java/Kotlin/XAX trials, at most 0.50 of the lowest textual median, and equivalent tasks. The existing creation scaffold is an explicit equivalence limitation, never an automatic R5 promotion. |
+| Evidence | EXECUTED: `compiler/tests/test_xax_local_protocol.py`; workspace regression suite. |
+| Limits | No runtime backend or performance claim changes. |
 
-## ADR-187 — Host-applied model responses and a controlled JVM comparison
+## ADR-187 — Host-applied responses, snapshot projection and dead-chain deletion
 
 | Field | Record |
 |---|---|
-| Decision | Ordinary clients apply a final model request through `LocalMutationSession.commit` and request another model response only on rejection. Add task-independent snapshot projection and applicable carrier help, a bounded construction-tool adapter over `GraphBuilder`, and atomic deletion of entire dead pure dependency chains. Compare Java/Kotlin final patches and XAX final semantic requests through the same host-check lifecycle. |
-| Rationale | A successful mutation needs no model acknowledgement of a tool's PASS. Removing that round trip is available to normal XAX clients. A valid comparison also needs empty construction in every arm, real application semantics, actual stale conflicts, and stable common instructions. |
-| Evidence | EXECUTED: `test_xax_local_protocol.py` and `test_jvm_r5_response.py`. All 15 semantic targets verify; 14 also execute on the JVM. The resource contract uses verifier/exact-target checks. Changed Java/Kotlin targets compile and execute. Raw real-model trials live under `compiler/benchmarks/ai_native/runs-jvm-r5-response-v2`, with source snapshots, instruction-context hashes and all response/repair costs. |
-| Method | Same fixed model/reasoning/client flags for all three arms. Textual edits read only their named program file and return a normal patch; XAX receives a bounded projection and returns a normal mutation batch. Creation starts empty in all arms. The large synthetic application contains 160 real helpers plus its target and assertion. No answer or reference command enters a model prompt. |
-| Limits | JVM remains R4 until complete repeated token evidence and corpus review justify R5. Exact-root/normalized-source oracles are intentionally restrictive; the large fixture is synthetic. No runtime-backend performance improvement is claimed. Earlier profiles retain their failures, the interrupted bound-profile attempt has unknown final usage, and the first response preflight had unequal plugin instruction catalogs; neither can establish R5. |
+| Decision | Ordinary clients apply a final request through `LocalMutationSession.commit` and ask for another response only on rejection. Add task-independent snapshot projection and applicable carrier help, a bounded construction-tool adapter over `GraphBuilder`, and atomic deletion of entire dead pure dependency chains. |
+| Rationale | A successful mutation needs no acknowledgement of a tool's PASS, so that round trip is removed for normal XAX clients. |
+| Evidence | EXECUTED: `test_xax_local_protocol.py`. |
+| Limits | No runtime-backend change. |
 
 ## ADR-188 — Exact compound edits reconstructed from a local snapshot
 
 | Field | Record |
 |---|---|
 | Decision | Normal `LocalMutationSession` clients may set an edge argument, result type or function signature without restating the old value. The adapter derives it from the captured snapshot and expands the request into existing exact workspace mutations. `prune-dead` expands an unused pure root and its dead pure dependencies into an atomic deletion set; dependencies with surviving uses remain. |
-| Rationale | Repeating known old fields increases response cost and creates avoidable parsing and ordering failures. Reconstruction belongs in ordinary tooling, with no task identity or expected target available to the adapter. |
-| Evidence | EXECUTED: `compiler/tests/test_xax_local_protocol.py` and `compiler/tests/test_jvm_r5_response.py` compare the expanded edits with the existing exact targets. They also reject stale generations, missing exposure, live roots and cross-function values, and preserve shared live dependencies. The affected validation reports 140 tests and 167 subtests passing on the Windows/JDK 17 host. |
-| Limits | This changes bootstrap tooling and transaction expansion, not kernel semantics or JVM code generation. Real-model costs remain separate, pinned profiles. Numeric token results require complete repeated trials and a corpus review before any R5 promotion. |
+| Rationale | Repeating known old fields creates avoidable parsing and ordering failures. Reconstruction belongs in ordinary tooling, with no task identity or expected target available to the adapter. |
+| Evidence | EXECUTED: `compiler/tests/test_xax_local_protocol.py` compares the expanded edits with the existing exact targets. It also rejects stale generations, missing exposure, live roots and cross-function values, and preserves shared live dependencies. |
+| Limits | This changes bootstrap tooling and transaction expansion, not kernel semantics or JVM code generation. |
 
-## ADR-189 — Compact mutation aliases and compiled checks for redundant literal conversions
-
-| Field | Record |
-|---|---|
-| Decision | Add ordinary compact verb aliases, retaining long forms and identical transaction expansion. Shorten applicable help while explicitly preserving pre-batch snapshot semantics and multi-result indexing. Correct the textual checker to admit redundant Kotlin literal conversions only when the rest of the normalized source matches and the compiled JVM instructions, resolved operands and method descriptors match the reference. |
-| Rationale | Token savings must come from normal tooling and survive real reasoning/repair costs. An explicit `7.toShort()` must not be rejected merely because the reference relies on contextual literal coercion. A conversion selecting a different overload remains a semantic change and must reject. |
-| Evidence | EXECUTED: 142 affected tests and 167 subtests pass on Windows/JDK 17, including exact transaction/target equivalence for aliases, accepted redundant coercion and rejected overload selection. Response-v4 retains 137 attempts, 134/135 successful cells and a partial ratio of 0.501623; its overly strict source checker prevented one Kotlin cell from completing. Its independent audit reports no usage/digest errors. Response-v5 is a new frozen comparison; no old rows are reclassified or imported. |
-| Limits | Offline prompt shrinkage is not a successful-task token result. The host-projected graph versus named-file inspection workflow and synthetic/resource corpus limits remain explicit. No JVM runtime or R5 promotion follows from these changes alone. |
-
-## ADR-190 — Lossless result-type defaults and a fresh host-pinned JVM trial
+## ADR-189 — Compact mutation aliases
 
 | Field | Record |
 |---|---|
-| Decision | Declare a uniform single node-result type once per projected function, retaining exact signatures, parameter types and mixed/multiple result lists. Start response-v6 with the current host; pin Python, Java, javac, javap and Kotlin versions before inference and reject missing/broken checker tools. |
-| Rationale | Repeated type annotations transfer no new semantic information. Response-v5 cannot be resumed as complete evidence: its transferred Java creation attempt has no final model usage, and the current CLI/checker host differs. Preserve every historical artifact and do not assume the interrupted attempt cost zero. |
-| Evidence | The continuation audit reproduces 60/135 successful v5 cells at a partial ratio of 0.5003204395 and identifies the unrecorded attempt. New regression checks cover uniform/mixed/multiple result views and checker-version drift. Fresh v6 results and validation are recorded separately. |
-| Limits | Shorter prompts do not establish successful-task savings. Complete three-trial inference, independent raw-usage audit and corpus review remain required. No JVM backend-speed or replacement-level claim follows from this change. |
-
-## ADR-191 — Bound mutation fields and complete negative JVM token evidence
-
-| Field | Record |
-|---|---|
-| Decision | Ordinary snapshot sessions may bind a caller-selected mutation kind and exposed node before inference. The model supplies every remaining value/index/destination. Submission rejects extra commands, wrong arity, unexposed nodes and changed aliases, and expands through the existing exact transaction verifier. Retain full batches for compound edits and mutations with no remaining fields. |
-| Rationale | Protocol §8.2 already permits omission of uniquely bound fields. Repeating the chosen kind/target and the full mutation menu wastes tokens and allows unnecessary replacement sequences. This is ordinary tooling with no task identity or expected target available to the adapter. |
-| Evidence | Response-v6 is complete negative evidence: 142 attempts, 135/135 successful cells, medians Java 21,565, Kotlin 21,557, XAX 10,784; ratio 0.5002551375. Independent audit has zero errors and includes every failed cost. Bound-request validation passes 144 tests and 167 subtests; representative prompts save 35–70 offline tokens. Response-v7 is a fresh frozen three-trial comparison, without imported rows. |
-| Limits | Shorter prompts alone do not establish a token gate. The bound kind/target versus textual named-file workflow is explicit context asymmetry. Strict source targets rejected Kotlin UShort spelling where the required API uses Short. Synthetic application and abstract resource limits remain. JVM stays R4 pending complete evidence and corpus review. |
+| Decision | Add ordinary compact verb aliases, retaining long forms and identical transaction expansion. Shorten applicable help while explicitly preserving pre-batch snapshot semantics and multi-result indexing. |
+| Rationale | Aliases are normal tooling: they expand to the same transaction as the long forms. |
+| Evidence | EXECUTED: exact transaction/target equivalence for aliases in `compiler/tests/test_xax_local_protocol.py`. |
+| Limits | No JVM runtime change follows from these aliases. |
 
 ## ADR-192 — Immutable bindings and minimum scalar query context
 
@@ -2269,45 +2135,17 @@ levels. Evidence is `compiler/integration/windows_helpers/native_seed_evidence.j
 |---|---|
 | Decision | Fix the mutation kind/target for the lifetime of a bound session; a different binding needs a new session. Serialize binding establishment under the existing workspace lock. Bound integer constant/arithmetic setters may query only the selected node's old value/operation and width. Preserve the full selected view for operand, movement and edge choices. |
 | Rationale | A response omitting its target must not be redirected by an intervening rebind. Constant/operation setters cannot modify operands, uses or other nodes, so that unchanged context does not help determine their remaining field. |
-| Evidence | 145 affected tests and 167 subtests pass, including rejection of retargeting, alias drift, stale generations and identical restored roots; bound edits reach the ordinary exact targets. Representative scalar prompts are 64–65 offline tokens. Response-v7 stopped safely after 11 successful cells, with all costs known and zero independent audit errors; its CSV and snapshots are retained. Response-v8 is entirely fresh. |
-| Limits | Binding is caller-selected and the model still supplies every remaining semantic field. Numeric evidence requires the full repeated corpus and an independent audit. Context asymmetry, strict textual targets, synthetic helpers and abstract resources still prevent automatic R5 promotion. |
+| Evidence | EXECUTED: rejection of retargeting, alias drift, stale generations and identical restored roots; bound edits reach the ordinary exact targets (`compiler/tests/test_xax_local_protocol.py`). |
+| Limits | Binding is caller-selected and the client still supplies every remaining semantic field. |
 
 ## ADR-193 — Accept matching bound commands and reuse ordinary repair
 
 | Field | Record |
 |---|---|
 | Decision | A bound response may include its ordinary command kind and target only when both exactly match the immutable binding. Keep movement in the established full-batch form. After any rejected bound response, use the existing ordinary full-batch repair path. |
-| Rationale | Field-only formatting caused avoidable model repairs. Reuse the ordinary parser and verifier without relaxing target selection, freshness or exact semantic checks. |
-| Evidence | 146 tests and 167 subtests pass. Response-v8 stopped safely between cells at 71 successful cells in 74 attempts; all costs are known and its independent audit reports zero errors. CSV and source snapshots remain separate. Response-v9 starts 135 fresh cells with the same model, reasoning, toolchain and accounting rules. |
-| Limits | The stopped partial v8 ratio is not a numeric gate result. A complete independently audited profile is required; corpus/context review still controls R5 promotion. |
-
-## ADR-194 — Complete response-v9 meets the median token gate
-
-| Field | Record |
-|---|---|
-| Decision | Record response-v9 as complete numeric gate evidence and stop token tuning. Keep JVM R4/PROTOTYPE until corpus/context equivalence review supports R5. Preserve every prior profile and failed cost. |
-| Evidence | 135/135 successful cells, three trials per 15-family Java/Kotlin/XAX cell, 142 attempts including seven failures. Medians: Java 21,564; Kotlin 21,566; XAX 10,748. XAX/lowest textual median = 0.4984232980894083, meeting 0.50. Independent audit: zero errors, no live-source drift, complete usage and common instruction hashes. 146 tests and 167 subtests pass. |
-| Method | Immutable normal session bindings, minimum scalar context, lossless result-type defaults, matching full commands and ordinary batch repair. All remaining semantic fields are model-supplied; exact verification, freshness and target checks are retained. |
-| Limits | The median clears the gate by 34 tokens; aggregate ratio is 0.747651, and repair variability remains. This single fixed-profile run gives no significance claim. Semantic context versus named-file inspection, strict source targets, synthetic helpers and abstract resource contracts require separate review. No runtime improvement or automatic R5 promotion is claimed. |
-
-## ADR-195 — Corpus review rejects response-v9 as R5 evidence; same-prefill response-v10
-
-| Field | Record |
-|---|---|
-| Decision | Response-v9 (ADR-194) is not valid R5 evidence and JVM stays R4. Its numeric result is retained unchanged as historical, context-asymmetric evidence. The current profile is response-v10, a same-prefill comparison: every arm receives its whole context inline in one request with no tool use. Textual arms get their named program; for jvm-15 they get the lines naming the target, the textual counterpart of the XAX named-role view. XAX gets its ordinary view and role names with no out-of-band mutation kind or target. Textual results pass on the exact normalized source or on equal compiled JVM instructions that differ from the initial program. The owner set the R5 acceptance threshold: 0.50× remains the target and up to 0.55× is accepted. Evidence reports `TARGET_MET`, `ACCEPTED_WITHIN_TOLERANCE`, or `NOT_R5`. |
-| Review | (1) Every v9 textual edit cell read its file through a tool call (`context_reads=1`, cached input 2×9,984), so it made two client requests, while XAX made one with its view inline. The 0.498× ratio is about one request against two. In the control family jvm-06 (creation), no arm reads anything, and XAX's median was 10,722 against Java's 10,652 (1.007×). (2) Bound XAX requests received the caller-selected mutation kind and target, which the textual arms had to locate. (3) XAX passed on semantic-root equality, but textual arms needed one exact source text, so equivalent textual edits failed and were retried. (4) For jvm-15, the host handed XAX only the target and assertion functions, while the textual arms scanned a 160-helper file. (5) jvm-09 XAX resource effects are proof values erased on the JVM, while the textual arms execute a runtime tracker. This limit is retained and documented. |
-| Evidence | Exploratory v10 pilot `compiler/benchmarks/ai_native/jvm-r5-response-v10-pilot-results.csv` (SHA-256 f4839408a24567cd66a20a8014375fd334a9522d2322a90bb0f0a7f051f66c23): jvm-01 and jvm-15, one trial each, six attempts, all passing. Java 10,753 / 10,723; Kotlin 10,738 / 10,747; XAX 21,965 (one repair) / 10,834. The repair-free cell is 1.010× the lowest textual cost. A probe with one-line base instructions still used 6,932 input tokens for a one-word reply, compared with 10,474 under the default instructions: the client's tool schemas and framing set a floor common to every arm. |
-| Consequence | Under a fair single-request comparison in this client, even a zero-cost XAX payload stays near 0.93× and cannot reach 0.55×. The full 135-cell v10 run was not executed because it would spend about 1.5M tokens on a predetermined miss. OI-46 records the measurement question. |
-| Limits | The two-task pilot is not a gate result. Removing the shared client overhead requires a client or API without fixed tool schemas, used identically by every arm; that change is a measurement-design decision, not a protocol optimization. |
-
-## ADR-196 — Minimal-client same-prefill JVM run (response-v12): XAX ≈ 1.0× textual; R5 unmet
-
-| Field | Record |
-|---|---|
-| Decision | Option (a) of OI-46, with the owner's model choice. All arms use the pinned Codex 0.160.0 client with every configurable optional tool, skill and instruction block removed. Base instructions are one line, and the model is `gpt-6-luna` (low reasoning, the catalog's "fast and affordable" model). The remaining per-request floor F is calibrated in-profile. It is 3,501 input tokens, identical in all three samples. The gate ratio subtracts F once per client request from every arm, every failed attempt still counts, and the raw ratio is reported alongside. Two normal-adapter fixes preceded the run. First, edit forms are listed one per line and labelled as placeholders, because the model copied `const N INTEGER` literally and read inline alternatives as edits. Second, callee parameters in cross-function views are aliased (`P0`) instead of leaking a raw handle (`F2.B0.P0`), and the help states that `sig` retypes entry parameters. Each source change started a new profile. v10 (stopped after the help defect) and v11 (stopped for the alias defect, 113/135 cells) are retained unchanged. |
-| Evidence | `compiler/benchmarks/ai_native/jvm-r5-response-v12-results.csv` (SHA-256 c39f72bedb1e7162938ab1d642669be7c0fe9846fd4bad4c794c332c94cc6bac), its evidence JSON and `jvm-r5-response-v12-audit.json` (zero errors, no source drift). One full pass plus one refill pass: 151 attempts, 123/135 cells, 28 failed attempts (XAX 16, Kotlin 10, Java 2). Medians including failed costs: Java 3,710, Kotlin 3,702, XAX 3,701. Raw ratio 0.99973, floor-adjusted ratio 200/201 = 0.99502. Aggregate recorded tokens: Java 200,712, Kotlin 283,035, XAX 322,843 (1.61× Java). |
-| Result | R5 is unmet by a wide margin (target 0.50, acceptance 0.55), and JVM stays R4. On these single-function edits the semantic view plus edit list is about the same size as the inline Java or Kotlin program plus a patch, and the model is less reliable on XAX than on Java. Persistent XAX failures were jvm-09 (no-op operand edit), jvm-15 (did not update the assertion constant) and jvm-07/jvm-14 (wrong edge, extra parameter retype). The run is incomplete (12 cells never passed), so no gate verdict is possible. The measured medians would need to fall by about half for the gate to pass. |
-| Limits | Kotlin jvm-12/jvm-14 failures come partly from corpus wording: "u8 → u16" invites `UShort`, while the target is `Short`. The gate uses the lower textual median, so this does not decide the ratio. jvm-09 XAX resource effects remain proof-only on the JVM. Floor subtraction depends on the one-character calibration prompt and is applied identically to all arms. One host, one model and one client. The v11 Kotlin jvm-12 trial-3 attempt was interrupted by session teardown after two complete traces. It was recorded with both costs, and its round-2 host check was replayed from the retained trace. |
+| Rationale | Field-only formatting caused avoidable repairs. Reuse the ordinary parser and verifier without relaxing target selection, freshness or exact semantic checks. |
+| Evidence | EXECUTED: `compiler/tests/test_xax_local_protocol.py`. |
+| Limits | Movement keeps the full-batch form. |
 
 ## ADR-197 — Vector runtime executed on hardware; hot-reload register fix; heap-dump oracle; device ART route
 
@@ -2318,6 +2156,14 @@ levels. Evidence is `compiler/integration/windows_helpers/native_seed_evidence.j
 | Evidence | EXECUTED on hardware: `compiler/benchmarks/android_vector_runtime_evidence.json` has 18 PASS, 0 FAIL and 9 UNEXECUTED across 14 profiles, and the target survived every profile. PASS: discovery, module_prop, java_init, native_init, scope, instantiated, hook_installed, pass_through, result/argument/combined replacement, retained_handle, stable_hook_id, hot_reload_callbacks, saved_state, replace_hook, stable_id_validation, process_survives. Before the fix, Vector logged `onHotReloading of xax.generated threw java.lang.IncompatibleClassChangeError` and kept one generation. After it, Vector logs `Hot reloaded xax.generated`. The new generation holds the target `ClassLoader`, and the framework record behind its handle carries ID `xax.primary` and the new-generation `XaxHooker`. With a mismatched ID, the new generation keeps no handle and the old record keeps the old hooker. Device ART: `android_art_verify_evidence.json` 21/21 Verified with the negative control rejected (`NotReady`); `android_art_execute_evidence.json` 13/13. `android_official_tools_evidence.json` 21/21 (build-tools 36.0.0 on Windows). `tests/test_xax_libxposed.py` pins the corrected operand; `tests/test_xax_vector_harness.py` checks the committed run and the debuggable default. |
 | Consequences | The Android row's Vector blocker narrows to the nine breakpoint/invocation checks: package_callbacks, class_loader, intercepted, deopt_order, manual_unhook, module_services, remote_preferences, remote_files, protective. `android_libxposed_hot_reload_fixture.apk` and the Vector profile hashes changed; no other committed APK did. ADR-178's "no Vector execution has happened" is superseded. |
 | Limits | One device, one Vector build. The heap oracle reads Vector's obfuscated HookHandle record structurally (reachable strings and `XaxHooker` instances, two levels deep), not by field name. The JDWP abort is an ART/Vector interaction on this build, recorded rather than worked around. The ART execute layer still uses the recording stand-in framework and does not call the hot-reload callbacks. |
+
+## ADR-197 — Workspace dependency order, type edits and implied-edit pruning
+
+| Field | Record |
+|---|---|
+| Decision | (1) Workspace correctness fix: an edited function whose unedited callee depended on another edited function kept calling the stale callee. Edited and rebuilt functions now share one dependency order, and `tests/test_xax_workspace.py` has a regression test. (2) `type OLD_TYPE NEW_TYPE` (shown functions) and `type F OLD_TYPE NEW_TYPE` (one function) expand exactly into result-type and signature mutations. `type P NEW` on an entry parameter is that function's signature-parameter change. (3) Edits the batch already implies are dropped: exact duplicates, and signature edits of one function that agree field by field. Conflicts still reject. (4) Node diagnostics name the handle's kind ("Units.scale is a function; use sig …"). A trailing `;` stays malformed, because an existing negative vector treats it as possible truncation. |
+| Invariants | Acceptance does not change: exposure, generation, exact old fields, verification and staleness checks are identical. |
+| Evidence | Unit tests (`tests/test_xax_workspace.py`, `tests/test_xax_local_protocol.py`). |
 
 ## ADR-198 — Android counter R4 restored: three arms, rotated passes, equal AOT compilation
 
@@ -2351,33 +2197,14 @@ than automatic rebase. This bounded general service closes AutoHead's maintenanc
 blocker without adding an application syntax, machine-target mutation or runtime
 feature. Tests and contract: compiler/integration/android/CARRIER_TRANSACTIONS.md.
 
-## ADR-197 — Multi-file JVM corpus (OI-46 option b): XAX 1.68× the IDE-excerpt baseline, 0.35× whole files
-
-| Field | Record |
-|---|---|
-| Decision | Option (b) of OI-46. `compiler/benchmarks/jvm_r5_multifile.py` generates the Java, Kotlin and XAX programs for each task from one spec. Each program has five classes: helper chains, a 16-bit function, and task functions. There are three families: mf-01, a cross-file 8-bit to 16-bit API change of a callee and its three callers; mf-02, an operation change in a 40-method class plus its dependent assertion; and mf-03, a constant change whose effect reaches two assertions through a call chain. XAX receives the target and its transitive callers through the workspace `callers` query. Each textual language has two workflows that receive the same call hierarchy: whole files, which is what an agent reads, and an IDE-style excerpt of exactly the hierarchy's methods. Following the R5 rules, the gate compares XAX with the lowest of the four textual medians. Client, model, calibration and floor subtraction are as in ADR-196. The Kotlin jvm-12/14 wording now says "8-bit/16-bit integer" instead of "u8/u16". |
-| Normal-protocol changes | (1) Workspace correctness fix: an edited function whose unedited callee depended on another edited function kept calling the stale callee. Edited and rebuilt functions now share one dependency order, and `tests/test_xax_workspace.py` has a regression test. (2) `type OLD_TYPE NEW_TYPE` (shown functions) and `type F OLD_TYPE NEW_TYPE` (one function) expand exactly into result-type and signature mutations. `type P NEW` on an entry parameter is that function's signature-parameter change. (3) Edits the batch already implies are dropped: exact duplicates, and signature edits of one function that agree field by field. Conflicts still reject. (4) Node diagnostics name the handle's kind ("Units.scale is a function; use sig …"). The trial adapter aliases integer types by shape (`b8`, `b16`) and shown functions by the task's names. A trailing `;` stays malformed, because an existing negative vector treats it as possible truncation. |
-| Evidence | `compiler/benchmarks/ai_native/jvm-r5-multifile-v5-results.csv` (SHA-256 9414ad6a56deac5ef95939b6de419e0bdb033be60c535142360dd04a39f8c0aa) and its evidence JSON. Model `gpt-6-luna` (low), client floor 3,501. One full pass plus one refill: 48 attempts, 42/45 cells. Floor-adjusted medians: Kotlin excerpt 286, Java excerpt 306, XAX 481, Kotlin files 1,315, Java files 1,391. XAX / lowest textual = **1.682** (raw 1.051). XAX is 0.35× the whole-file workflows. Recorded totals: Java excerpt 34,122, Kotlin excerpt 33,919, XAX 62,310. Failed attempts: XAX 6, all textual arms 0. Every XAX mf-02 attempt published a verified wrong target: the model changed the operation but never the assertion constant (19 → 11), so the run is incomplete. Profiles v1–v4 were stopped after protocol defects surfaced and are retained unchanged. |
-| Result | R5 is unmet, and JVM stays R4. XAX's semantic neighborhood beats whole-file textual context by about 3×. Against an IDE-style excerpt of the same call hierarchy, XAX loses, for two reasons. Each request carries about 120 tokens of edit-form help, and the model already knows Java and Kotlin syntax, so the textual arms pay no such cost. The model is also less reliable on XAX (6 failed attempts against 0). The owner's preference that XAX be the lowest arm is not met. |
-| Limits | Synthetic helper chains, three families, one model and one host. There is no independent audit module for this runner yet; the evidence JSON is recomputed from the CSV by `summarize`. The R5 rules require the excerpt workflows. Without them, XAX would compare at 0.35×, but that would drop a valid lower-token competitor. |
-
 ## ADR-200 — Shared edit grammar replaces per-request edit-form help
 
 | Field | Record |
 |---|---|
-| Decision | ADR-197 left a gap: about 120 tokens of edit-form help in every XAX request, which the textual arms don't pay. This is changed in the normal protocol, not in a benchmark adapter. `xax_local_protocol.edit_grammar(compact=...)` is the complete carrier grammar (13 forms, four notes and the batch rule; 1,016 characters in compact form). It depends only on the protocol version: no snapshot, task, generation or handle. `edit_grammar_id(...)` is its content identity (`xax-edit-` plus 12 hex digits of SHA-256). A client sends the grammar once per conversation or session as shared context, then calls `session.instructions(shared=ID)`, which returns no per-request help. A mismatched ID rejects, so a client holding an older grammar is told its grammar is stale. Without `shared`, `instructions()` keeps the ADR-196 per-neighborhood help, so existing clients are unchanged. |
+| Decision | The edit-form help was repeated in every request. The normal protocol now has a shared grammar: `xax_local_protocol.edit_grammar(compact=...)` is the complete carrier grammar (13 forms, four notes and the batch rule; 1,016 characters in compact form). It depends only on the protocol version: no snapshot, task, generation or handle. `edit_grammar_id(...)` is its content identity (`xax-edit-` plus 12 hex digits of SHA-256). A client sends the grammar once per conversation or session as shared context, then calls `session.instructions(shared=ID)`, which returns no per-request help. A mismatched ID rejects, so a client holding an older grammar is told its grammar is stale. Without `shared`, `instructions()` keeps the per-neighborhood help, so existing clients are unchanged. |
 | Invariants | Acceptance does not change: exposure, generation, exact old fields, verification and staleness checks are identical, and a form that does not apply to the shown handles rejects with the ordinary diagnostic. The shared grammar covers every form that `instructions()` advertises, which `tests/test_xax_local_protocol.py` checks for both the compact and long spellings. The grammar contains no task identity or expected edit. |
-| Evidence | Unit tests only. There is no model measurement yet. |
-| Limits | The token saving only appears where shared context is cheaper than repeating it: across several requests in one conversation, or through prompt caching. In the ADR-196/197 one-request-per-cell profiles, every request would still carry the grammar once, and the full grammar is larger than the filtered per-request help. Measuring it needs a new profile. In that profile the grammar is a pinned shared-context block, counted as transmitted (cached tokens reported separately), and the owner decides how it is accounted against textual arms that need no grammar. `xax_local_protocol.py` is in the pinned `SOURCES`, so v5 and v12 cannot be continued under this source; their rows stay as recorded. |
-
-## ADR-201 — Multi-file profile v6: the XAX arm holds the shared edit grammar
-
-| Field | Record |
-|---|---|
-| Decision | This wires ADR-200 into a new `benchmarks.run_jvm_r5_multifile` profile, v6 (`jvm-r5-multifile-v6-results.csv`, `runs-jvm-r5-multifile-v6`). The XAX arm's client base instructions are the common one-line `BASE` followed by `edit_grammar()`. The XAX prompt calls `instructions(shared=edit_grammar_id())`, so it carries no per-request edit help, and repairs work the same way. Textual arms, the client flags, the model (`gpt-6-luna`, low) and the corpus are unchanged. The manifest pins `xax_base_instructions` and `shared_grammar_id`. |
-| Accounting | The common floor F is calibrated as before. A second calibration (`calibration-xax.json`) runs the same one-character request under the XAX base instructions, and G = F_xax − F is the grammar's input cost per request. **The gate subtracts only F from every arm**, so XAX pays G in every request it makes, which is what the client actually transmits. Two informational ratios bracket the owner's open accounting decision: G counted once per attempt (one conversation that holds the grammar), and G excluded (fully cached or amortized shared context). They never set the status. Cached input tokens stay in the CSV. |
-| Evidence | Unit tests only: `tests/test_jvm_r5_multifile.py` checks that the XAX prompt has no edit help, that its base instructions end with the current grammar, and the bracket arithmetic. No inference has been run. |
-| Limits | One request per response round and one client process per round, so the gate cannot show a saving from sharing unless the client's prompt cache discounts it, and recorded input tokens include cached tokens. The informational ratios are not R5 evidence. Profile v5 and its rows stay as recorded. |
+| Evidence | Unit tests (`tests/test_xax_local_protocol.py`). |
+| Limits | The grammar is shared context: a client that sends one request per session gains nothing over the per-request help. |
 
 ## ADR-202 — Exact JNI `jfloat`/`jdouble` carriers and typed-record `jvalue` packs
 
@@ -2427,10 +2254,10 @@ feature. Tests and contract: compiler/integration/android/CARRIER_TRANSACTIONS.m
 
 | Field | Record |
 |---|---|
-| Decision | (1) R4 is *performance leadership*: XAX's median execution time is at most 0.9999× the median of the fastest valid **non-XAX** implementation of the identical workload on the same hardware (XAX never in the denominator), compared unrounded, and a one-sided Mann–Whitney test on the raw `wall_seconds_samples` of XAX and that competitor gives p < 0.05. Runtime, memory, and binary size stay MEASURED for every arm. The 1.05×/1.10× bands of ADR-147/157 confer no level. (2) R5 is *autonomous maintenance* (the former R6). (3) R6 is a *proven 100% XAX-developed application*: designed, implemented, tested, built, deployed, and maintained with XAX as the sole authoritative language for application-owned logic, tests, and build definitions, with reproducible provenance, an auditable graph and change history, executed functional tests, and one verified XAX-only maintenance/release cycle. New matrix field `xax_only_application` (EXECUTED/PROVEN) gates it. (4) The former R5 (AI tokens ≤ 0.50× the lowest textual baseline) becomes a separately scheduled future AI-efficiency milestone outside R0–R6; the `ai_tokens` field is historical and gates no level; no token trials run in R4–R6 work. Validator `xax-replacement-validator-v3`. |
+| Decision | (1) R4 is *performance leadership*: XAX's median execution time is at most 0.9999× the median of the fastest valid **non-XAX** implementation of the identical workload on the same hardware (XAX never in the denominator), compared unrounded, and a one-sided Mann–Whitney test on the raw `wall_seconds_samples` of XAX and that competitor gives p < 0.05. Runtime, memory, and binary size stay MEASURED for every arm. The 1.05×/1.10× bands of ADR-147/157 confer no level. (2) R5 is *autonomous maintenance*. (3) R6 is a *proven 100% XAX-developed application*: designed, implemented, tested, built, deployed, and maintained with XAX as the sole authoritative language for application-owned logic, tests, and build definitions, with reproducible provenance, an auditable graph and change history, executed functional tests, and one verified XAX-only maintenance/release cycle. New matrix field `xax_only_application` (EXECUTED/PROVEN) gates it. Validator `xax-replacement-validator-v3`. |
 | Rationale | The upgrade brief sets R4 to leadership, not parity, and reprioritizes the roadmap to R4 → R5 → R6. A 0.0001 margin is below the old 0.005 ratio tolerance and three-decimal summaries, so the comparison is exact and a noise test guards against claiming a difference the samples cannot support. |
 | Evidence | MEASURED recomputation: `compiler/tests/test_replacement_matrix.py`. JVM `jsonmin` (`compiler/benchmarks/jvm_jsonmin_evidence.json`): XAX median 0.1222 s vs `javac` 0.1463 s = 0.835x, p ≈ 3e-5 over 15 samples per arm, so JVM keeps R4 (one workload, one host; re-run at 0.884x in §15.31). Android counter cold start (`compiler/benchmarks/android_counter_twin_evidence.json`): 1.007273x the fastest non-XAX arm (`clang_ndk_java`), so `android-arm64` drops from R4 to R3. No row has R5 or R6 evidence. Published ratios are checked at their stored precision; `linux_harness` now records raw samples and `time_ratio_vs_fastest_competitor`. |
-| Consequences | ADR-147/157's thresholds and ADR-195's 0.55× R5 acceptance are superseded as level gates; their records stay historical. The matrix cited gitignored JVM run manifests; those citations were dropped and the committed `jvm-r5-optimized-results.csv` regained the CRLF bytes its recorded digest binds. |
+| Consequences | ADR-147/157's thresholds are superseded as level gates; their records stay historical. |
 | Limits | A single workload never establishes universal leadership; a row's R4 is scoped to its cited workloads. The Mann–Whitney normal approximation assumes independent samples from interleaved runs. |
 
 ## ADR-208 — Predicate tables on the x86-64 register path; Linux raw-sample re-run

@@ -9,7 +9,7 @@ Run ``python -m benchmarks.spirv_kernels --write`` to regenerate
 executed on the first Vulkan device, and compared with the reference
 executor; Collatz also against an equivalent GLSL kernel compiled by
 glslang.  The device here is llvmpipe (a CPU implementation), so times are
-not GPU performance evidence (conformance §23.17).
+not GPU performance evidence (conformance §22.17).
 """
 
 from __future__ import annotations

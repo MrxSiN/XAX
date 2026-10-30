@@ -58,8 +58,6 @@ A platform gets a level only when evidence exists. Levels are cumulative. Full r
 | R5 | An AI maintains the app through semantic transactions |
 | R6 | A complete app is built and maintained 100% in XAX |
 
-AI token efficiency (≤ 0.50× textual languages) is a later milestone, not a level.
-
 ### Targets
 
 Generated from [`XAX_REPLACEMENT_MATRIX.json`](XAX_REPLACEMENT_MATRIX.json). "—" means not started.

@@ -541,10 +541,10 @@ This design should be revised if implementation evidence demonstrates one or mor
 5. **Mandatory verification of generated fragments creates prohibitive repeated cost** and no sound content-addressed validation strategy can remove that cost.
 6. **Specialization causes unavoidable graph or code explosion** for common generic workloads and equivalence reuse cannot control it.
 7. **Bounded execution prevents practical generic, target-generation, or self-hosting tasks** under any defensible resource policy.
-8. **The absence of a separate macro/template language materially increases AI token cost or semantic error rate** compared with a competing semantic mechanism under controlled measurements.
+8. **The absence of a separate macro/template language materially increases semantic error rate** compared with a competing semantic mechanism under controlled measurements.
 9. **Content-addressed compile-time memoization provides negligible reuse** while imposing substantial semantic or storage complexity.
 10. **Declared-input isolation cannot support necessary real build workflows** without routinely falling back to undeclared ambient host state.
 11. **The same compile-time semantics cannot be implemented consistently across substantially different host platforms**, undermining reproducibility.
-12. **Generated semantic construction remains more error-prone for AI agents than an alternative representation** after accounting for verification failures, repair turns, transmitted semantic entities, and total tokens per successful semantic change.
+12. **Generated semantic construction remains more error-prone for AI agents than an alternative representation** after accounting for verification failures, repair turns, and transmitted semantic entities.
 
 Failure of an implementation to optimize a valid instance is not by itself a failure of this semantic model. The design is falsified when the stated invariants prevent XAX from expressing, specializing, verifying, caching, or targeting required programs with acceptable measurable cost, or when a simpler semantic-first model demonstrably performs better.

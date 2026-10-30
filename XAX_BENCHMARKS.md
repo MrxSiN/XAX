@@ -10,7 +10,6 @@ This document defines benchmark methodology, result templates, and current resul
   - [3. Global validity and fairness rules](#3-global-validity-and-fairness-rules)
   - [4. Runtime/compiler benchmark family](#4-runtimecompiler-benchmark-family)
   - [5. Target-cost-model validation](#5-target-cost-model-validation)
-  - [6. AI-efficiency benchmark family](#6-ai-efficiency-benchmark-family)
   - [7. Context-scaling experiment](#7-context-scaling-experiment)
   - [8. Serialization/compiler-service microbenchmarks](#8-serializationcompiler-service-microbenchmarks)
   - [9. Reproducibility protocol](#9-reproducibility-protocol)
@@ -21,15 +20,9 @@ This document defines benchmark methodology, result templates, and current resul
 - [Part II — Results](#part-ii--results)
   - [14. Current result status](#14-current-result-status)
   - [M14 recursive self-hosting/closure evidence — non-performance](#m14-recursive-self-hostingclosure-evidence--non-performance)
-  - [Tiny AI-native C vs XAX experiment](#tiny-ai-native-c-vs-xax-experiment)
   - [Android libxposed API-102 structural evidence — non-runtime](#android-libxposed-api-102-structural-evidence--non-runtime)
   - [Compiler-latency fast paths — 2026-10-02 (timed, host-local)](#compiler-latency-fast-paths--2026-10-02-timed-host-local)
   - [15. Universal-replacement benchmarks](#15-universal-replacement-benchmarks)
-  - [JVM response-v6 complete token result (2026-10-07, ADR-190/191)](#jvm-response-v6-complete-token-result-2026-10-07-adr-190191)
-  - [JVM response-v9 median token gate met (2026-10-07, ADR-194)](#jvm-response-v9-median-token-gate-met-2026-10-07-adr-194)
-  - [JVM response-v10 same-prefill pilot (2026-10-07, ADR-195)](#jvm-response-v10-same-prefill-pilot-2026-10-07-adr-195)
-  - [JVM response-v12 minimal-client same-prefill run (2026-10-07, ADR-196)](#jvm-response-v12-minimal-client-same-prefill-run-2026-10-07-adr-196)
-  - [JVM multi-file R5 corpus v5 (2026-10-08, ADR-197)](#jvm-multi-file-r5-corpus-v5-2026-10-08-adr-197)
 - [Part III — Host setup](#part-iii--host-setup)
   - [Host setup for the full test and benchmark suite](#host-setup-for-the-full-test-and-benchmark-suite)
 
@@ -37,14 +30,9 @@ This document defines benchmark methodology, result templates, and current resul
 
 ### 1. Purpose
 
-The benchmark suite has two co-equal families:
+The benchmark suite measures generated-program and compiler quality.
 
-1. generated-program/compiler quality; and
-2. AI effort per successful semantic change.
-
-XAX does not satisfy its founding objectives merely by winning one family while failing the other.
-
-Every result MUST identify exact benchmark-suite version, compiler/toolchain revision, semantic root, target/platform package, build policy, model/tokenizer where applicable, and measurement environment.
+Every result MUST identify exact benchmark-suite version, compiler/toolchain revision, semantic root, target/platform package, build policy, and measurement environment.
 
 ### 2. Benchmark case schema
 
@@ -54,7 +42,7 @@ Every case has a machine-readable logical record equivalent to:
 BenchmarkCase {
   case_id
   case_version
-  family                 # runtime | ai-efficiency
+  family                 # runtime
   semantic_contract
   inputs
   target_set
@@ -82,14 +70,12 @@ Measured/profile data remains non-semantic.
 4. Cases/results are version/content identified.
 5. Per-case outcomes remain available behind aggregates.
 6. Failures, timeouts, unsupported cases, verifier rejection, and regressions remain visible.
-7. Repair turns count toward AI-efficiency cost.
-8. Compilation effort is reported when optimization effort differs.
-9. Claims do not generalize beyond measured targets, workloads, objectives, models, or tokenizers.
-10. Fewer bytes/characters do not imply better AI efficiency.
-11. A transformation receives performance credit only if verifier/oracle requirements pass.
-12. Benchmark corpus, target set, build policies, baselines, and primary metrics are fixed before comparative execution for a published suite run.
-13. Exploratory results are labeled and separated from preregistered results.
-14. XAX-specific tuning is not permitted unless equivalent permitted tuning is available to baselines.
+7. Compilation effort is reported when optimization effort differs.
+8. Claims do not generalize beyond measured targets, workloads, and objectives.
+9. A transformation receives performance credit only if verifier/oracle requirements pass.
+10. Benchmark corpus, target set, build policies, baselines, and primary metrics are fixed before comparative execution for a published suite run.
+11. Exploratory results are labeled and separated from preregistered results.
+12. XAX-specific tuning is not permitted unless equivalent permitted tuning is available to baselines.
 15. Semantic weakening is valid only when every compared implementation receives the same relaxed contract.
 16. Simulated benchmark outcomes are forbidden; missing capability is reported unavailable.
 
@@ -181,80 +167,6 @@ Candidate sets MUST contain materially different legal implementations; testing 
 
 Objectives that cannot be credibly measured on a target are marked unvalidated.
 
-### 6. AI-efficiency benchmark family
-
-#### 6.1 Required representation arms
-
-The first decisive family compares identical semantic tasks using:
-
-1. C-like text;
-2. conventional SSA text;
-3. compact graph packets;
-4. tokenizer-native XAX transactions.
-
-Later replacement-scale studies (§15) additionally include, where relevant: Rust-like source, a verbose structured protocol, the compact fallback protocol, and a binary/tool-call protocol. An encoding is never called optimal without these measurements; a form with fewer tokens but more repair turns loses on tokens per successful change.
-
-The tokenizer-native arm is valid only when the evaluated model/tokenizer actually supports the dedicated vocabulary/integration. Otherwise it is `unavailable`.
-
-#### 6.2 Required task classes
-
-The initial corpus MUST include:
-
-- creation of small valid programs;
-- one-literal edits;
-- operation substitutions;
-- control-flow edits;
-- type-changing edits;
-- repair after verifier-detectable type error;
-- resource/effect repair once supported;
-- targeted local optimization;
-- stale-root recovery once workspace transactions exist;
-- constant local edit with increasing unrelated repository/project size;
-- cross-function refactor and API (interface) change;
-- local change inside a large repository/application.
-
-Each task defines the desired semantic end state independently of representation.
-
-#### 6.3 AI metrics
-
-For every attempted task record:
-
-| Metric | Definition |
-|---|---|
-| input tokens | all task-attributable model input tokens |
-| output tokens | all task-attributable generated tokens |
-| total tokens | input + output across initial and repair turns |
-| tokens/success | total tokens divided by successful semantic changes |
-| local context | bytes, tokens, and semantic entity count supplied |
-| invalid generation rate | initial outputs unable to produce a valid candidate/form |
-| repair iterations | additional attempts after initial failure |
-| semantic entities transmitted | distinct semantic objects exchanged |
-| transaction size | bytes and tokens of attempted/committed mutation payload |
-| commit conflict rate | stale/conflicted expected-base rejection fraction |
-| context growth | context change as unrelated project size increases |
-| task success rate | fraction passing verifier and behavioral oracle within attempt budget |
-| bytes transmitted | request/response payload bytes |
-| irrelevant context | retrieved entities/tokens not needed by the final mutation |
-| verifier failures | rejected candidates by diagnostic code |
-| stale transaction failures | expected-root/read-set rejections |
-| latency | wall time from task start to committed success |
-| final semantic correctness | behavioral oracle result of the committed root |
-
-Token accounting uses the exact evaluated tokenizer.
-
-#### 6.4 Fairness across representations
-
-All arms receive:
-
-- the same semantic task and behavioral oracle;
-- the same attempt budget;
-- equivalent diagnostic information to the extent their representation supports it;
-- the same model, sampling policy, context limit, tokenizer, and tool-access policy unless the experiment explicitly varies one of these.
-
-Representation-specific protocol instructions may explain mechanics but may not leak the solution to only one arm.
-
-If an arm must regenerate a larger unit because it lacks local mutation, that cost remains part of the result.
-
 ### 7. Context-scaling experiment
 
 Hold the requested local semantic edit and its dependency neighborhood constant while increasing unrelated project content.
@@ -298,7 +210,6 @@ ResultEnvironment {
   machine/firmware identifiers
   OS/runtime identifiers if present
   measurement-tool identity
-  model/tokenizer/sampling identity for AI cases
   warmup/reset/run-count protocol
   input seeds/digests
   timestamp as non-semantic observation
@@ -320,9 +231,7 @@ A published summary MUST NOT:
 - grant target-specific assumptions to only one side;
 - compare high-effort XAX optimization against low-effort baseline builds while hiding build effort;
 - use a faster algorithm on only one side and call it a compiler comparison;
-- merge materially different hardware environments into one score;
-- publish only final successful AI outputs while excluding failed/repair attempts;
-- approximate tokenizer-native results using ordinary text and label them tokenizer-native.
+- merge materially different hardware environments into one score.
 
 ### 11. Result templates
 
@@ -352,35 +261,7 @@ RuntimeResult {
 }
 ```
 
-#### 11.2 AI case result
-
-```text
-AIResult {
-  case_id
-  case_version
-  representation_arm
-  model
-  tokenizer
-  task_success
-  verifier_status
-  oracle_status
-  input_tokens
-  output_tokens
-  total_tokens
-  repair_iterations
-  local_context_bytes
-  local_context_tokens
-  semantic_entities_transmitted
-  transaction_bytes
-  transaction_tokens
-  conflict_count
-  elapsed_tool_time?
-  final_root_or_artifact
-  notes
-}
-```
-
-#### 11.3 Aggregate summary
+#### 11.2 Aggregate summary
 
 ```text
 Aggregate {
@@ -406,8 +287,6 @@ A benchmark becomes valid only after the implementation capability it measures e
 Examples:
 
 - before direct native backend: no native runtime-performance claims;
-- before transactional workspace: no XAX local-transaction AI claim;
-- before actual tokenizer integration: tokenizer-native arm unavailable;
 - before calibrated target model: magnitude accuracy unvalidated;
 - before self-hosting subset: no self-build benchmarks;
 - before GPU/accelerator path: accelerator performance unavailable.
@@ -416,16 +295,15 @@ Examples:
 
 The architecture must be reconsidered if reproducible fair measurements establish any of the following after reasonable implementation maturity:
 
-1. semantic graph transactions do not materially reduce tokens per successful change versus source/SSA regeneration after repair cost;
-2. local-edit context grows approximately with unrelated repository size;
-3. a second substantially different native target requires changes to fundamental program semantics;
-4. calibrated target cost models cannot usefully rank candidate implementations;
-5. generated code remains materially worse across a preregistered fair corpus for selected objectives despite reasonable optimizer maturity/effort;
-6. programs with no semantic runtime requirement still acquire allocator/scheduler/libc/GC/reference-counting/etc. dependencies;
-7. local edits routinely rewrite/retransmit unrelated program regions because identity/objectization is too coarse;
-8. exact verification becomes too globally coupled for practical incremental checking;
-9. aggressive optimization cannot be paired with adequate correctness validation;
-10. self-hosting closure requires a permanently maintained second compiler/backend/target/build/package language.
+1. local-edit context grows approximately with unrelated repository size;
+2. a second substantially different native target requires changes to fundamental program semantics;
+3. calibrated target cost models cannot usefully rank candidate implementations;
+4. generated code remains materially worse across a preregistered fair corpus for selected objectives despite reasonable optimizer maturity/effort;
+5. programs with no semantic runtime requirement still acquire allocator/scheduler/libc/GC/reference-counting/etc. dependencies;
+6. local edits routinely rewrite/retransmit unrelated program regions because identity/objectization is too coarse;
+7. exact verification becomes too globally coupled for practical incremental checking;
+8. aggressive optimization cannot be paired with adequate correctness validation;
+9. self-hosting closure requires a permanently maintained second compiler/backend/target/build/package language.
 
 A falsified claim is recorded as falsified. Benchmark definitions must not be changed after results merely to preserve a preferred conclusion.
 
@@ -433,51 +311,47 @@ A falsified claim is recorded as falsified. Benchmark definitions must not be ch
 
 ### 14. Current result status
 
-No comparative runtime or model-driven AI-efficiency benchmark has been run.
-
-Section 9 records one exploratory static representation-token comparison using two actual tokenizers. C-like text wins that case. It contains no model invocation or success evidence and supports no general AI-efficiency conclusion.
-
 `compiler/benchmarks/m6_workspace_smoke.json` records one exploratory deterministic M6 accounting check: 4 entities exposed in 534 response bytes, 4 read handles, 101 transaction bytes, 6 new objects, and 2 reused objects for three verified mutations committed through one graph rebuild. It contains no timing data and supports no performance conclusion.
 
-`compiler/benchmarks/m6_artifact_mapping_smoke.json` records deterministic non-timing artifact-query accounting reproduced by `bench_artifact_mapping.py`. The unchanged x86-64 stack artifact is 43 bytes. The v2 record includes semantic-root handle, target CID, explicit compiler/lowering identities, artifact SHA-256 digest, and compact provenance-binding identity. Seven artifact/mapping queries expose 9 local entities in **2,499** bootstrap response bytes: artifact 564 bytes, function mapping 282, unavailable stack-allocation mapping 223, store mapping 285, and two one-entity reverse-mapping pages 290/297. The exact store span is `[12,21)` and the stack-allocation node is explicitly unavailable because it emits no independently attributable bytes. The increase from the prior v1 accounting is retained evidence of attribution overhead, not a regression selected away. This is accounting/conformance evidence only and supports no runtime or AI-efficiency performance conclusion.
+`compiler/benchmarks/m6_artifact_mapping_smoke.json` records deterministic non-timing artifact-query accounting reproduced by `bench_artifact_mapping.py`. The unchanged x86-64 stack artifact is 43 bytes. The v2 record includes semantic-root handle, target CID, explicit compiler/lowering identities, artifact SHA-256 digest, and compact provenance-binding identity. Seven artifact/mapping queries expose 9 local entities in **2,499** bootstrap response bytes: artifact 564 bytes, function mapping 282, unavailable stack-allocation mapping 223, store mapping 285, and two one-entity reverse-mapping pages 290/297. The exact store span is `[12,21)` and the stack-allocation node is explicitly unavailable because it emits no independently attributable bytes. The increase from the prior v1 accounting is retained evidence of attribution overhead, not a regression selected away. This is accounting/conformance evidence only and supports no runtime performance conclusion.
 
-`compiler/benchmarks/m6_artifact_mapping_cross_target.json` extends the same non-timing seven-query v2 accounting shape to all currently emitted artifact formats using `bench_artifact_mapping_cross_target.py`. Each target exposed 9 entities. Total bootstrap response bytes are x86-64 **2,499**, AArch64 **2,502**, and WebAssembly **2,495**. Exact function/store ranges remain x86-64 `[0,43)` / `[12,21)`, AArch64 `[0,44)` / `[12,20)`, and WebAssembly body `[39,78)` / `[56,63)`. Stack allocation remains unavailable on all three because it emits no independently attributable bytes. These response-byte counts include dependency-attribution identities and are not token counts, timings, code-quality results, or evidence that one target is more AI-efficient.
+`compiler/benchmarks/m6_artifact_mapping_cross_target.json` extends the same non-timing seven-query v2 accounting shape to all currently emitted artifact formats using `bench_artifact_mapping_cross_target.py`. Each target exposed 9 entities. Total bootstrap response bytes are x86-64 **2,499**, AArch64 **2,502**, and WebAssembly **2,495**. Exact function/store ranges remain x86-64 `[0,43)` / `[12,21)`, AArch64 `[0,44)` / `[12,20)`, and WebAssembly body `[39,78)` / `[56,63)`. Stack allocation remains unavailable on all three because it emits no independently attributable bytes. These response-byte counts include dependency-attribution identities and are not timings or code-quality results.
 
 
-`compiler/benchmarks/m6_response_budget_smoke.json` records deterministic non-timing response-byte-budget accounting reproduced by `bench_response_budget.py`. For the three-node workspace query, the unbounded one-page response is **424 bytes**. An exact **178-byte** budget forces three positive-progress pages of **171 / 171 / 178 bytes**, exposing one entity per page with continuations `1 / 2 / none`; total returned bytes increase to **520** because pagination metadata and repeated framing are retained rather than hidden. This is transport accounting only. It is not a model-token measurement and makes no AI-efficiency or timing claim.
+`compiler/benchmarks/m6_response_budget_smoke.json` records deterministic non-timing response-byte-budget accounting reproduced by `bench_response_budget.py`. For the three-node workspace query, the unbounded one-page response is **424 bytes**. An exact **178-byte** budget forces three positive-progress pages of **171 / 171 / 178 bytes**, exposing one entity per page with continuations `1 / 2 / none`; total returned bytes increase to **520** because pagination metadata and repeated framing are retained rather than hidden. This is transport accounting only. It makes no timing claim.
 
 
 #### M6 relation-transaction accounting smoke
 
-`compiler/benchmarks/m6_relation_transaction_smoke.json` is reproduced by `bench_relation_transaction.py`. It is a deterministic **non-timing** accounting/conformance record for the first operand/use relation mutation. The one-mutation `ReplaceUse` transaction uses a generation-scoped root alias and encodes to **24 bootstrap transaction bytes**. In the harness fixture it changes `add(p0,p1)` to `add(p1,p1)`, changing the direct function result for `(2,3)` from **5 to 6**, rebuilds/verifies **6** affected objects, reuses **1** reachable object, and retains one direct caller relationship to the rebuilt callee. These values are implementation/accounting evidence only; they are not tokenizer, model-efficiency, compile-time, or runtime-performance results.
+`compiler/benchmarks/m6_relation_transaction_smoke.json` is reproduced by `bench_relation_transaction.py`. It is a deterministic **non-timing** accounting/conformance record for the first operand/use relation mutation. The one-mutation `ReplaceUse` transaction uses a generation-scoped root alias and encodes to **24 bootstrap transaction bytes**. In the harness fixture it changes `add(p0,p1)` to `add(p1,p1)`, changing the direct function result for `(2,3)` from **5 to 6**, rebuilds/verifies **6** affected objects, reuses **1** reachable object, and retains one direct caller relationship to the rebuilt callee. These values are implementation/accounting evidence only; they are not compile-time, or runtime-performance results.
 
 #### M6 node-deletion accounting smoke
 
-`compiler/benchmarks/m6_delete_node_smoke.json` is reproduced by `bench_delete_node.py`. It is a deterministic **non-timing** accounting/conformance record for the first containment-preconditioned node deletion. The one-mutation `DeleteNode` transaction uses a generation-scoped root alias and encodes to **17 bootstrap transaction bytes**. In the harness fixture it deletes one unused constant from a two-node callee, deterministically renumbers the surviving arithmetic node and return reference, preserves the callee result for `(2,3)` at **5**, rebuilds/verifies **6** affected objects, reuses **2** reachable objects, and retains one direct caller relationship to the rebuilt callee. These values are implementation/accounting evidence only; they are not tokenizer, model-efficiency, compile-time, or runtime-performance results.
+`compiler/benchmarks/m6_delete_node_smoke.json` is reproduced by `bench_delete_node.py`. It is a deterministic **non-timing** accounting/conformance record for the first containment-preconditioned node deletion. The one-mutation `DeleteNode` transaction uses a generation-scoped root alias and encodes to **17 bootstrap transaction bytes**. In the harness fixture it deletes one unused constant from a two-node callee, deterministically renumbers the surviving arithmetic node and return reference, preserves the callee result for `(2,3)` at **5**, rebuilds/verifies **6** affected objects, reuses **2** reachable objects, and retains one direct caller relationship to the rebuilt callee. These values are implementation/accounting evidence only; they are not compile-time, or runtime-performance results.
 
 #### M6 proof-dependency accounting smoke
 
-`compiler/benchmarks/m6_proof_dependency_smoke.json` is reproduced by `bench_proof_dependency.py`. It is a deterministic **non-timing** accounting/conformance record for verifier-status proof reads. The `proof` query returns local dependency handle `P0.0` without exposing a persistent semantic CID and accounts **299 bootstrap response bytes**. A one-mutation transaction guarded by that dependency uses **22 bootstrap transaction bytes**, changes the fixed fixture result from **5 to 6**, rebuilds/verifies **4** affected objects, and reuses **4** reachable objects. Reusing the same proof handle after its semantic subject changes rejects as `XAX.WORKSPACE.PROOF_CONFLICT` / `WORKSPACE-PROOF-DEPENDENCY`. These values are byte-accounting/conformance evidence only; they are not tokenizer, model-efficiency, formal-proof, compile-time, or runtime-performance results.
+`compiler/benchmarks/m6_proof_dependency_smoke.json` is reproduced by `bench_proof_dependency.py`. It is a deterministic **non-timing** accounting/conformance record for verifier-status proof reads. The `proof` query returns local dependency handle `P0.0` without exposing a persistent semantic CID and accounts **299 bootstrap response bytes**. A one-mutation transaction guarded by that dependency uses **22 bootstrap transaction bytes**, changes the fixed fixture result from **5 to 6**, rebuilds/verifies **4** affected objects, and reuses **4** reachable objects. Reusing the same proof handle after its semantic subject changes rejects as `XAX.WORKSPACE.PROOF_CONFLICT` / `WORKSPACE-PROOF-DEPENDENCY`. These values are byte-accounting/conformance evidence only; they are not formal-proof, compile-time, or runtime-performance results.
 
 #### M6 pure-node insertion accounting smoke
 
-`compiler/benchmarks/m6_insert_node_smoke.json` is reproduced by `bench_insert_node.py`. It is a deterministic **non-timing** accounting/conformance record for the first exact-position pure-node insertion plus same-transaction consumption of the new result. The two context queries expose **4 entities in 576 bootstrap response bytes**. The generation-root transaction contains `InsertPureNode` plus `ReplaceUse`, uses transaction-local result `I4.R0`, and encodes to **43 bootstrap transaction bytes**. In the fixed fixture it changes 3 nodes to 4 and the function result from **5 to 12**, rebuilds/verifies **5** affected objects, and reuses **4** reachable objects. These values are implementation/accounting evidence only; they are not tokenizer, model-efficiency, compile-time, or runtime-performance results.
+`compiler/benchmarks/m6_insert_node_smoke.json` is reproduced by `bench_insert_node.py`. It is a deterministic **non-timing** accounting/conformance record for the first exact-position pure-node insertion plus same-transaction consumption of the new result. The two context queries expose **4 entities in 576 bootstrap response bytes**. The generation-root transaction contains `InsertPureNode` plus `ReplaceUse`, uses transaction-local result `I4.R0`, and encodes to **43 bootstrap transaction bytes**. In the fixed fixture it changes 3 nodes to 4 and the function result from **5 to 12**, rebuilds/verifies **5** affected objects, and reuses **4** reachable objects. These values are implementation/accounting evidence only; they are not compile-time, or runtime-performance results.
 
 #### M6 control-edge argument accounting smoke
 
-`compiler/benchmarks/m6_edge_argument_smoke.json` is reproduced by `bench_edge_argument.py`. It is a deterministic **non-timing** accounting/conformance record for the first exact-position block-terminator edge-argument reconnect. The bootstrap context query exposes **2 node entities in 301 response bytes**. The generation-root transaction contains one `DisconnectEdgeArgument` and one `ConnectEdgeArgument`, changes edge argument 0 from source parameter 0 to source parameter 1, and encodes to **39 bootstrap transaction bytes**. In the fixed one-caller fixture the callee result for `(2,3,300)` changes from **2 to 3**, rebuilds/verifies **6** affected objects, reuses **4** reachable objects, and retains one direct caller relationship. These values are implementation/accounting evidence only; they are not tokenizer, model-efficiency, compile-time, or runtime-performance results.
+`compiler/benchmarks/m6_edge_argument_smoke.json` is reproduced by `bench_edge_argument.py`. It is a deterministic **non-timing** accounting/conformance record for the first exact-position block-terminator edge-argument reconnect. The bootstrap context query exposes **2 node entities in 301 response bytes**. The generation-root transaction contains one `DisconnectEdgeArgument` and one `ConnectEdgeArgument`, changes edge argument 0 from source parameter 0 to source parameter 1, and encodes to **39 bootstrap transaction bytes**. In the fixed one-caller fixture the callee result for `(2,3,300)` changes from **2 to 3**, rebuilds/verifies **6** affected objects, reuses **4** reachable objects, and retains one direct caller relationship. These values are implementation/accounting evidence only; they are not compile-time, or runtime-performance results.
 
 #### M6 candidate-only verify/rollback accounting smoke
 
-`compiler/benchmarks/m6_candidate_verify_smoke.json` is reproduced by `bench_candidate_verify.py`. It is a deterministic **non-timing** accounting/conformance record for private candidate verification, explicit rollback, and a subsequent ordinary commit from the unchanged base. The bootstrap context query exposes **3 node entities in 424 response bytes**. Candidate verification of one generation-root `SetOperation` transaction uses **26 bootstrap transaction bytes**, touches/verifies **4** objects, reuses **4** reachable objects, returns local candidate handle `C0.0`, and leaves canonical root/generation unchanged. Rollback also leaves root/generation unchanged. The same ordinary transaction then commits successfully and changes the fixed result **5→6**. Candidate verification/verified-object accounting is maintained separately from ordinary commit accounting. These values are implementation/accounting evidence only; they are not tokenizer, model-efficiency, compile-time, or runtime-performance results.
+`compiler/benchmarks/m6_candidate_verify_smoke.json` is reproduced by `bench_candidate_verify.py`. It is a deterministic **non-timing** accounting/conformance record for private candidate verification, explicit rollback, and a subsequent ordinary commit from the unchanged base. The bootstrap context query exposes **3 node entities in 424 response bytes**. Candidate verification of one generation-root `SetOperation` transaction uses **26 bootstrap transaction bytes**, touches/verifies **4** objects, reuses **4** reachable objects, returns local candidate handle `C0.0`, and leaves canonical root/generation unchanged. Rollback also leaves root/generation unchanged. The same ordinary transaction then commits successfully and changes the fixed result **5→6**. Candidate verification/verified-object accounting is maintained separately from ordinary commit accounting. These values are implementation/accounting evidence only; they are not compile-time, or runtime-performance results.
 
 #### M6 narrow specialization accounting smoke
 
-`compiler/benchmarks/m6_specialize_smoke.json` is reproduced by `bench_specialize.py`. It is a deterministic **non-timing** accounting/conformance record for one exact-constant `SpecializeFunction` request. Three bootstrap queries expose **4 entities in 479 response bytes**. The generation-root transaction specializes parameter 0 of a two-parameter `bits<8>` wrapping-add function to constant 5 and encodes **15 bootstrap transaction bytes**. The published one-parameter clone returns **8** for input 3, while the original source and direct caller remain unchanged. Construction adds/verifies **5** objects and reuses **5** reachable objects. These values are implementation/accounting and semantic-execution evidence only; they are not tokenizer, model-efficiency, general META, compile-time-performance, or runtime-performance results.
+`compiler/benchmarks/m6_specialize_smoke.json` is reproduced by `bench_specialize.py`. It is a deterministic **non-timing** accounting/conformance record for one exact-constant `SpecializeFunction` request. Three bootstrap queries expose **4 entities in 479 response bytes**. The generation-root transaction specializes parameter 0 of a two-parameter `bits<8>` wrapping-add function to constant 5 and encodes **15 bootstrap transaction bytes**. The published one-parameter clone returns **8** for input 3, while the original source and direct caller remain unchanged. Construction adds/verifies **5** objects and reuses **5** reachable objects. These values are implementation/accounting and semantic-execution evidence only; they are not general META, compile-time-performance, or runtime-performance results.
 
 #### M6 same-block pure-node move accounting smoke
 
-`compiler/benchmarks/m6_move_node_smoke.json` is reproduced by `bench_move_node.py`. It is a deterministic **non-timing** accounting/conformance record for the first exact-source/exact-anchor same-block pure-node move. The bootstrap context query exposes **3 node entities in 424 response bytes**. The generation-root `MovePureNode` transaction moves the second constant immediately before the first, encodes to **28 bootstrap transaction bytes**, remaps the arithmetic operands by original producer identity, preserves the callee result at **5**, rebuilds/verifies **6** affected objects, reuses **4** reachable objects, and retains one direct caller relationship. These values are implementation/accounting evidence only; they are not tokenizer, model-efficiency, compile-time, or runtime-performance results.
+`compiler/benchmarks/m6_move_node_smoke.json` is reproduced by `bench_move_node.py`. It is a deterministic **non-timing** accounting/conformance record for the first exact-source/exact-anchor same-block pure-node move. The bootstrap context query exposes **3 node entities in 424 response bytes**. The generation-root `MovePureNode` transaction moves the second constant immediately before the first, encodes to **28 bootstrap transaction bytes**, remaps the arithmetic operands by original producer identity, preserves the callee result at **5**, rebuilds/verifies **6** affected objects, reuses **4** reachable objects, and retains one direct caller relationship. These values are implementation/accounting evidence only; they are not compile-time, or runtime-performance results.
 
 #### M7 resource/effect proof-erasure check
 
@@ -489,19 +363,19 @@ Section 9 records one exploratory static representation-token comparison using t
 | AArch64 | 28 | 28 | `fb5970c1e6ab2c3be407a4a0a7ef6003051549e163cc76811138a552d3ca68db` |
 | WebAssembly | 59 | 59 | `40997b5662863f0ba9253c23bf4e915b1e32c0a2878f0e4635d00063532bfc88` |
 
-This proves zero emitted-byte overhead for this fixed proof-only lifecycle fixture. It is not a runtime-performance, compile-time-performance, tokenizer, model-efficiency, or general generated-code-quality result.
+This proves zero emitted-byte overhead for this fixed proof-only lifecycle fixture. It is not a runtime-performance, compile-time-performance, or general generated-code-quality result.
 
 The M7 clean deterministic wheel was built twice with `SOURCE_DATE_EPOCH=946684800` and matched byte-for-byte: `xax_compiler-0.1.0-py3-none-any.whl`, **66,118 bytes**, SHA-256 `578486a736f73d82db13dbcc82bbe21a9ba13ee68ae12a58bf5693c71534d9ba`. This is packaging/reproducibility evidence only. An earlier dirty/non-normalized ad hoc wheel comparison was discarded and is not evidence.
 
 #### M8 atomic artifact/execution smoke
 
-`compiler/benchmarks/m8_atomic_smoke.json` is reproduced by `bench_m8_atomic.py`. It is a deterministic **non-timing** artifact/execution record for one verified x86-64 stack-resident atomic sequence containing release store, wrapping acq-rel RMW, strong seq-cst/acquire compare-exchange, seq-cst fence, and seq-cst load. The raw load image is **108 bytes**, SHA-256 `3766932e195970e563376f48093c6ccf479aa838d08845b70571a8903266d938`; reference and isolated native execution both return **8** for inputs `(5,3,11)`. The selected target CID is `24e312c773b777ac4dd892b39a9477f1758ff8bf05d7708bfb8282120a9ded56`, and the record declares no runtime assists. This is direct-emission/conformance evidence only; it is not synchronization-cost, latency, throughput, cross-target, tokenizer, or model-efficiency evidence.
+`compiler/benchmarks/m8_atomic_smoke.json` is reproduced by `bench_m8_atomic.py`. It is a deterministic **non-timing** artifact/execution record for one verified x86-64 stack-resident atomic sequence containing release store, wrapping acq-rel RMW, strong seq-cst/acquire compare-exchange, seq-cst fence, and seq-cst load. The raw load image is **108 bytes**, SHA-256 `3766932e195970e563376f48093c6ccf479aa838d08845b70571a8903266d938`; reference and isolated native execution both return **8** for inputs `(5,3,11)`. The selected target CID is `24e312c773b777ac4dd892b39a9477f1758ff8bf05d7708bfb8282120a9ded56`, and the record declares no runtime assists. This is direct-emission/conformance evidence only; it is not synchronization-cost, latency, throughput, or cross-target evidence.
 
 The M8 `SOURCE_DATE_EPOCH=946684800` wheel reproducibility test passed. The final wheel is **75,365 bytes**, SHA-256 `7f812534ddd002efbaa29510071f5bcf0886e70da67debfcca5d7ceb40a82db4`. This is packaging/reproducibility evidence only.
 
 #### M9 compile-time construction/cache smoke
 
-`compiler/benchmarks/m9_comptime_smoke.json` is reproduced by `bench_m9_comptime.py`. It is a deterministic **non-timing** META construction/cache/artifact record. One ordinary XAX compile-time function inspects a `bits<32>` type, constant 5, and the x86-64 target package; reads declared input 7; computes 44; and constructs a verified constant-return function. Evaluation uses **8 semantic steps**, creates three canonical objects, and a repeated identical request is a cache hit. The generated function CID is `03dfe6520ab043dd40d391d8834a41ce4314481ce6d7cc8dd8bf15ea560b5adc`. Explicit materialization emits a **35-byte** x86-64 image with SHA-256 `6fba4d01d380cba2d2dc500f6ac96b6cdee1df35e810e587ee517be248bf754e`; reference and isolated native execution both return **44**. This record is not a compile-time-duration, runtime-performance, tokenizer, model-efficiency, cache-hit-rate, or general generated-code-quality result.
+`compiler/benchmarks/m9_comptime_smoke.json` is reproduced by `bench_m9_comptime.py`. It is a deterministic **non-timing** META construction/cache/artifact record. One ordinary XAX compile-time function inspects a `bits<32>` type, constant 5, and the x86-64 target package; reads declared input 7; computes 44; and constructs a verified constant-return function. Evaluation uses **8 semantic steps**, creates three canonical objects, and a repeated identical request is a cache hit. The generated function CID is `03dfe6520ab043dd40d391d8834a41ce4314481ce6d7cc8dd8bf15ea560b5adc`. Explicit materialization emits a **35-byte** x86-64 image with SHA-256 `6fba4d01d380cba2d2dc500f6ac96b6cdee1df35e810e587ee517be248bf754e`; reference and isolated native execution both return **44**. This record is not a compile-time-duration, runtime-performance, cache-hit-rate, or general generated-code-quality result.
 
 The M9 `SOURCE_DATE_EPOCH=946684800` wheel built twice and matched byte-for-byte: **79,608 bytes**, SHA-256 `407922eb7017f5a0bb841fa7b69e915654afd0bf14c19d4e0b7e8f4143ac5a67`. This is packaging/reproducibility evidence only.
 
@@ -514,7 +388,7 @@ The M9 `SOURCE_DATE_EPOCH=946684800` wheel built twice and matched byte-for-byte
 | x86-64 | `0441036881fb4ca91a8f3acf52d0bcb8b076e1a92592039da0a11a6668767349` | `cf3528c16cc24b16c341568282b11871ad49079b5034722ef88bf8e8158dd3be` | 35 | `4c6bd5edce503f68519033d7d58cc43c5a2bd8fe0636cc625855ee63f6b3b889` |
 | WebAssembly | `0c7823663324f58e25e73e477356407f4e004720d245d23d5517bb674082c117` | `92b705a924300f62ac1897f0a855486054f94d6e1e509a4a6fe9ee707a7be590` | 62 | `1cc566ee4cc39286fd638b71a81e5e148637cf7cfe827a3bdd630b90f826f022` |
 
-Both cache reads revalidated artifact digest and provenance closure. This is deterministic identity/artifact/cache evidence, not resolver performance, runtime performance, build-time performance, sandbox portability, supply-chain security, tokenizer, or AI-efficiency evidence.
+Both cache reads revalidated artifact digest and provenance closure. This is deterministic identity/artifact/cache evidence, not resolver performance, runtime performance, build-time performance, sandbox portability, or supply-chain security evidence.
 
 The final M10 `SOURCE_DATE_EPOCH=946684800` wheel built twice and matched byte-for-byte: **89,076 bytes**, SHA-256 `05d55cc76e28d3e677465c37afe06af5820a41b112a3e2a8dbab5dfd653cb482`. This is packaging/reproducibility evidence only.
 
@@ -526,7 +400,7 @@ The authoritative compiler program store is **820 bytes** with program root `e73
 
 The resulting import-free WebAssembly artifact is **144 bytes** with BLAKE3-256 digest `3f9f35e6fe8c8ec00e0490fa3e9f9b613255f6ab930c8d8ab2b9d18a221be09a`. Repeating the build produces identical `BuildResult` data. Six conformance vectors compare the Python seed/reference execution against the seed-built XAX-hosted artifact, including wrapping-add and wrapping-multiply cases; all **6/6 match**.
 
-This establishes implementation-local B0/B1 evidence for the declared arithmetic-folding compiler component only. It is **not** a self-build timing benchmark, recursive self-hosting result, B2/B3/B4 fixed-point result, toolchain-closure claim, bootstrap-independence claim, tokenizer result, or runtime-performance result.
+This establishes implementation-local B0/B1 evidence for the declared arithmetic-folding compiler component only. It is **not** a self-build timing benchmark, recursive self-hosting result, B2/B3/B4 fixed-point result, toolchain-closure claim, bootstrap-independence claim, or runtime-performance result.
 
 The M11 `SOURCE_DATE_EPOCH=946684800` wheel built twice and matched byte-for-byte: **92,769 bytes**, SHA-256 `7be816707f5e4270d4cfd94be3591461410b76ecc5dfe3a1f57fa8630f450d97`. This is packaging/reproducibility evidence only.
 
@@ -545,7 +419,7 @@ The x86-64 target root is `24e312c773b777ac4dd892b39a9477f1758ff8bf05d7708bfb828
 
 The same evidence record includes profile-guided inlining: a tooling-only hot call-weight profile changes profitability/output relative to the cold case, all before/after/reference vectors match, and the profile identity bytes do not occur in the canonical store. This demonstrates non-semantic profile separation for the declared fixture only.
 
-The evidence JSON was generated twice and compared byte-for-byte; SHA-256 is `046d6996ec1619a6e3150b728cd3256fea02bda7d570fb862d433f620f89dfff`. This is not broad optimizer-quality, compile-time-duration, runtime-performance, solver-generality, tokenizer, or AI-efficiency evidence.
+The evidence JSON was generated twice and compared byte-for-byte; SHA-256 is `046d6996ec1619a6e3150b728cd3256fea02bda7d570fb862d433f620f89dfff`. This is not broad optimizer-quality, compile-time-duration, runtime-performance, or solver-generality evidence.
 
 The M12 `SOURCE_DATE_EPOCH=946684800` wheel built twice and matched byte-for-byte: **102,449 bytes**, SHA-256 `e21d519dff45f9972f4a094a2998cef26d6971c7fbdbd10d77041298875591ab`. This is packaging/reproducibility evidence only.
 
@@ -558,7 +432,7 @@ The target package declares 32-lane execution, device/workgroup scopes, and thre
 
 Six wrapping-add vectors, including 32-bit wraparound, all match the expected result. Two negative fixtures prove deterministic rejection of unsupported execution scope (`TARGET-OPERATION-SCOPE-SUPPORTED`) and memory-space pairing (`TARGET-OPERATION-MEMORY-SPACES`). Evidence JSON SHA-256 is `58e12d090e82c330e554728638b4070c9514a73d5861fad56afdea3aa463ce9a`.
 
-This is not physical-GPU execution, runtime latency/throughput/energy, compiler-performance, tokenizer, AI-efficiency, multi-vendor scope portability, or cost-model evidence.
+This is not physical-GPU execution, runtime latency/throughput/energy, compiler-performance, multi-vendor scope portability, or cost-model evidence.
 
 The M13 `SOURCE_DATE_EPOCH=946684800` wheel built twice and matched byte-for-byte: **109,836 bytes**, SHA-256 `b2180788ecfb0cc697f43613f6cd553f2b26ebd1f486739b8327319988db85e7`. This is packaging/reproducibility evidence only.
 
@@ -571,16 +445,9 @@ The authoritative compiler image is **2,020 bytes**, program root `097da62f7ba98
 
 The immutable seed runtime is **46,255 bytes**, SHA-256 `4e0c64d6f360359cc263c39817ec8cbe4cc3069edf20823755755c4d2707fe52`, BLAKE3-256 `eb8157fd2a00fcca5666ea574b7641b4adcb43382f5fbb60f8addead5f04b7b6`. It reconstructs the compiler byte-identically with repository `PYTHONPATH` removed. The seed internally contains Python modules and requires a Python interpreter; this is an immutable-seed B6 boundary, not an implementation-language-elimination or diverse-trust claim. Evidence JSON is **3,240 bytes**, SHA-256 `36c2a9a57aea432250ff7a1595e19535ed1d37f2aa7588cd4edd1f01710c6dfa`.
 
-The compiler image, seed runtime, and evidence JSON were generated twice after the final evidence-label correction and matched byte-for-byte. No self-build wall time, native code speed, throughput, latency, memory footprint, tokenizer/model efficiency, or diverse-double-compilation result is inferred from these numbers. Legacy x86-64, AArch64, WebAssembly, and accelerator lowerers are explicitly outside the B5/B6 closure target.
+The compiler image, seed runtime, and evidence JSON were generated twice after the final evidence-label correction and matched byte-for-byte. No self-build wall time, native code speed, throughput, latency, memory footprint, or diverse-double-compilation result is inferred from these numbers. Legacy x86-64, AArch64, WebAssembly, and accelerator lowerers are explicitly outside the B5/B6 closure target.
 
 The final M14 `SOURCE_DATE_EPOCH=946684800` wheel built twice and matched byte-for-byte: **117,715 bytes**, SHA-256 `fa4add6e966ca09fe5df6c02043e91d333f0726ec92f681a03bf7251e4a4a34e`. This is packaging/reproducibility evidence only.
-### Tiny AI-native C vs XAX experiment
-
-`compiler/benchmarks/ai_native/` now contains a five-task, manually run Codex Desktop comparison with exactly two arms: C and the real XAX workspace transaction interface. It records pass/fail, available model tokens, turns, optional elapsed time, and no inferential statistics. The sole runbook is `compiler/benchmarks/ai_native/README.md`.
-
-For OI-01 the same benchmark also compares six versioned `X1` fallback-transport candidates: typed (`P0`/`N0`) versus unified dense-integer handles, each with `line`, `pipe`, and `json` packet framing. `python -m benchmarks.ai_native transport` records offline `cl100k_base`/`o200k_base` token and byte counts in `transport-oi01.json`. Unified handles save 15 view tokens across the five tasks under both encodings, and unified/pipe has the smallest combined view+packet total at 237 tokens under either encoding. A 30-trial Claude Code run (`claude-opus-5-5` subagents, 5 tasks × 6 arms, n=1) completed 30/30. Five-task harness-token totals were 278,750 typed/line, 280,478 typed/pipe, 280,648 typed/json, 278,301 unified/line, 281,968 unified/pipe, and 280,587 unified/json; the roughly 1.3% spread is below run-to-run noise because each trial includes roughly 55.6k fixed harness-context tokens. Reliability separated the framings: failed `verify`/`test` checks were `line` 0, `pipe` 2, and `json` 14; nine of ten JSON trials had at least one failed check. Typed versus unified handles had 9 versus 7 failed checks, all attributable to framing. Raw packets and per-invocation traces are in `runs-claude/`; rows are in `results-claude.csv`. These results disfavor the tested flat-array JSON framing and make line framing the observed reliability leader on this corpus, but they do not select a canonical transport or close OI-01.
-
-
 ### Android libxposed API-102 structural evidence — non-runtime
 
 The Android/libxposed structural evidence suite records deterministic generated DEX/APK shape and MUST NOT be interpreted as runtime framework validation. Current bounded evidence includes direct service wrappers, capability-gated remote preferences/files, deoptimization, retained manual unhook, and stable-ID guarded hot reload with host-owned target-ClassLoader saved-state transfer. `android_libxposed_hot_reload_evidence.json` currently records a **34,347-byte** deterministic APK and **2,920-byte** generated module DEX. Initial install contains API-102 `HookBuilder.setId("xax.primary")` and stores the package-ready ClassLoader. `onHotReloading` is **11 code units** with a missing-loader rejection branch plus one `setSavedInstanceState`; `onHotReloaded` is **51 code units**, restores that loader, then uses explicit saved-state, empty-transfer, and ID-mismatch guards before one `HookHandle.replaceHook`. The Hooker/interceptor DEX is byte-identical to the retained non-hot-reload baseline. All runtime fields in that evidence remain `UNEXECUTED`.
@@ -607,7 +474,7 @@ Generated x86-64/AArch64 code is byte-identical before/after; M14 compiler root,
 
 ### 15. Universal-replacement benchmarks
 
-Replacement level R4 (`XAX_SPEC.md` §21.2) is earned only through this section. AI-token trials belong to the deferred AI-efficiency milestone (ADR-207) and earn no level.
+Replacement level R4 (`XAX_SPEC.md` §21.2) is earned only through this section.
 
 #### 15.0 Multi-language runtime rule (normative, ADR-147, ADR-207)
 
@@ -627,7 +494,6 @@ Each implementation may choose its own data representation for the same observab
 
 **Record per result.** Exact hardware; OS/build; compiler/toolchain versions and flags; optimization/build policy; workload and input; warmup; repetitions; median, p95/p99 where meaningful, and dispersion (MAD/IQR); binary size; peak memory; execution time; startup where relevant; generated instruction/code properties when useful; platform-required runtime and generated adapters. Unavailable baselines are recorded as unavailable with the reason; they are never estimated.
 
-**AI token trials (deferred, ADR-207).** Token trials are not run in R4–R6 work. When the separate AI-efficiency milestone starts, run the §6 task classes with real models and record §6.3 metrics: at least three fresh trials per cell, the same model/version, reasoning, tools, success criteria, and equivalent repository context for XAX and at least two relevant textual languages, counting failed attempts, repairs, diagnostics, cached input, and retransmitted context. Its target is XAX's median ≤ 0.50× the lowest valid textual median. Earlier trials (ADR-176 to ADR-201) are historical and are never current R5 evidence.
 
 **Current status.** `compiler/benchmarks/windows_pe_hosted_evidence.json` is EXECUTED evidence for the hosted Windows PE fixture (current fixture: 2,560-byte executable, 1,269 code bytes after the PE register path (2,181 before), eight kernel32 imports, heap-array round trip and function-pointer dispatch table; 20/20 runs; process wall time includes CreateProcess and pipe overhead). `compiler/benchmarks/wasi_command_evidence.json` is EXECUTED evidence for the WASI command module (635 bytes, stdout via `fd_write`, Node v26.7.0, 10/10 runs). It is not an R4 result: no C/Rust baseline toolchain exists on the measuring host and the code is from the spill-every-value frame lowering. `compiler/benchmarks/windows_c_reference/hosted.c` is the fixed semantic twin for the baseline run. `compiler/benchmarks/x86_register_path_evidence.json` is MEASURED intra-XAX evidence: the register path runs `sum_to(200,000,000)` 8.02x faster than the frame path (92.1 vs 738.7 ms median, 7 runs); it is not a cross-toolchain claim.
 
@@ -791,7 +657,7 @@ The unchanged U1.3 `filestat` graph, built with the Linux AArch64 platform packa
 
 Re-run after the target package gained `pointer_address`/`pointer_rebase` (ADR-126; new target identity, same code): 7.2× emulated time, same sizes (`linux_aarch64_filestat_evidence.json`).
 
-Times are emulated and are not performance evidence (conformance §23.17); they rank two programs under one translator. The gap is the AArch64 frame path, which keeps every value in a stack slot; gcc's size includes 64 KiB segment padding. Source: `compiler/benchmarks/linux_aarch64_filestat.py`; data: `linux_aarch64_filestat_evidence.json`.
+Times are emulated and are not performance evidence (conformance §22.17); they rank two programs under one translator. The gap is the AArch64 frame path, which keeps every value in a stack slot; gcc's size includes 64 KiB segment padding. Source: `compiler/benchmarks/linux_aarch64_filestat.py`; data: `linux_aarch64_filestat_evidence.json`.
 
 #### 15.11 SPIR-V Collatz: XAX vs glslang on Mesa llvmpipe (ADR-124; MEASURED-SOFTWARE-DEVICE, 2026-10-03)
 
@@ -803,7 +669,7 @@ Device: llvmpipe (LLVM 20.1.2, 256 bits), Vulkan 1.4 through the `vulkan` Python
 | glslang | 1,732 | 0.0108 s |
 | Ratio | 1.81× | 6.88× |
 
-A CPU implementation is not GPU performance evidence (conformance §23.17). The gap is the dispatch-loop lowering, which keeps llvmpipe from vectorizing the loop across invocations. Source: `compiler/benchmarks/spirv_kernels.py`; data: `spirv_compute_evidence.json`.
+A CPU implementation is not GPU performance evidence (conformance §22.17). The gap is the dispatch-loop lowering, which keeps llvmpipe from vectorizing the loop across invocations. Source: `compiler/benchmarks/spirv_kernels.py`; data: `spirv_compute_evidence.json`.
 
 #### 15.12 `jsonmin` (R3 application): XAX vs C twins on Linux x86-64 (ADR-126; MEASURED, 2026-10-03)
 
@@ -834,7 +700,7 @@ The first version measured 2.11× gcc -O2 (59.8 ms, 16,250 bytes). Three program
 | `text.parse_u64` | 130 | 1,412 | 20 |
 | artifact | 2,306 | 13,748 | |
 
-Unused exports (`contains`, `skip_spaces`, and the other instance's functions) and the package objects are absent from the 2,306-byte artifact and from the store. Cost (medians of 5): building the packages takes 10.8 ms, verifying the store 1.6 ms, and compiling 60.3 ms on x86-64 and 37.2 ms on AArch64. Offline tokens (tiktoken o200k_base; no model run): the interface view of the four exports is 268 tokens, and the application's node rendering is 1,360 tokens. Writing the four bodies inline would take 3,256 tokens (190 nodes). Source: `compiler/benchmarks/bench_oi36_stdlib.py`; data: `oi36_stdlib_evidence.json`.
+Unused exports (`contains`, `skip_spaces`, and the other instance's functions) and the package objects are absent from the 2,306-byte artifact and from the store. Cost (medians of 5): building the packages takes 10.8 ms, verifying the store 1.6 ms, and compiling 60.3 ms on x86-64 and 37.2 ms on AArch64. Source: `compiler/benchmarks/bench_oi36_stdlib.py`; data: `oi36_stdlib_evidence.json`.
 
 #### 15.14 Multi-language comparison after ADR-148 (MEASURED, 2026-10-03)
 
@@ -1039,104 +905,6 @@ The two APKs implement the same stateful counter contract and share package/clas
 
 *(Re-evaluated 2026-10-06, ADR-177: one Java + NDK baseline arm does not meet the §15.0 baseline set, and the pooled median hides a pass effect — XAX/twin medians are 0.84× in pass 1 and 1.20× in pass 2 — so the Android row is R3; OI-45.)* XAX meets the primary runtime target because `1.016 <= 1.05`. It also uses 0.995× the twin's median PSS, 0.703× its APK bytes, and 0.471× its native-library bytes. Its two directly emitted DEX files remain 1.188× the twin's single DEX, the deliberate edit-locality tradeoff recorded in ADR-153. This advances the Android arm64 workload row to R4; the scope is this application on this device, not a universal Android performance claim.
 
-#### 15.24 JVM R5-candidate semantic-edit trial (ADR-174; MEASURED, 2026-10-06)
-
-Evidence: `compiler/benchmarks/ai_native/jvm-r5-evidence.json` and `jvm-r5-results.csv` (SHA-256 `893d7f44b74b73afdf4e43bb697a7bd0ca7f5e3189cc2a7c32e90b475d875363`). The existing five paired structural edits ran in fresh Codex sessions with fixed `gpt-5.6-luna`, low reasoning, Codex CLI 0.160.0, and alternating order `C/XAX`, `XAX/C`, `C/XAX`, `XAX/C`, `C/XAX`. Every cell passed its external checker in one turn with no repair.
-
-| Arm | Passes | Total tokens | Median tokens/task | Turns | Repairs |
-|---|---:|---:|---:|---:|---:|
-| C-like text | 5/5 | 325,282 | 64,857 | 5 | 0 |
-| XAX semantic transaction | 5/5 | 264,535 | 50,083 | 5 | 0 |
-
-XAX used 0.813× the textual arm's total tokens, a reduction of 18.675%, and 0.772× its median task cost. This is positive target-neutral evidence relevant to the JVM row, but it does **not** meet R5: the §6.2/§15 corpus gate requires task classes absent here. It also does not claim Java/Kotlin editing evidence.
-
-Scope is deliberately narrow: five small local edits, one model/setting, and n=1 per cell. Before matrix promotion, run at least one cell per missing §6.2 task class with equivalent textual/XAX oracles, then repeat only if the difference is within run-to-run noise. A preflight session was excluded before registration because its sandbox denied every discovery command; it produced no completed turn/token record and left the workspace unchanged.
-
-#### 15.25 Direct local semantic workflow (ADR-175; MEASURED, 2026-10-06)
-
-Evidence: `compiler/benchmarks/ai_native/jvm-r5-optimized-evidence.json` and `jvm-r5-optimized-results.csv` (SHA-256 `574c1769f27968decd4fce71192ac4bff947927a5b69eead0fc3721fe60c5568`). The five §15.24 edits were rerun in fresh sessions with fixed Codex CLI 0.160.0, `gpt-5.6-luna`, low reasoning, and the same isolated client/tool profile for both arms. The C arm inspected and edited only `program.c`, then ran a task-local exact-target checker. `XAX-DIRECT` received the complete bounded semantic view and invoked one atomic `apply` operation that wrote, verified, committed, and target-checked its transaction.
-
-| Arm | Passes | Total tokens | Median tokens/task | Turns | Repairs |
-|---|---:|---:|---:|---:|---:|
-| C-like text | 5/5 | 197,252 | 39,479 | 5 | 0 |
-| XAX-DIRECT | 5/5 | 98,432 | 19,704 | 5 | 0 |
-
-XAX-DIRECT used 0.4990× the C arm's aggregate tokens: **50.098% fewer**. Its median task cost was 0.4991× C. This clears the requested 50% aggregate target for this corpus without weakening either exact-target oracle.
-
-This is still R5-candidate evidence, not JVM R5. It covers five small local edits, one model/setting, and one trial per cell; it is a workflow comparison rather than syntax density, and one cell need not individually clear 50%. The remaining §6.2 task classes, a Java/Kotlin textual arm, and repeated trials remain required before matrix promotion. Exploratory sessions used to tune the interface are excluded and remain present in the local Codex logs.
-
-#### 15.26 JVM R5 full-corpus attempt (ADR-176; INCOMPLETE, 2026-10-06)
-
-Evidence: `compiler/benchmarks/ai_native/jvm-r5-full-evidence.json` and `jvm-r5-full-results.csv` (SHA-256 `30df47ba1ae3e9a7271274ec3a45189e190fd5eeed15529f52b32839296b0383`). The expanded 15-task corpus prepared Java, Kotlin, and XAX arms under the fixed `gpt-5.6-luna`/low profile. Forty-two of 45 cells completed and passed; the three fresh creation/control-flow retries were rejected by the account usage limit before a model turn and carry no token record.
-
-Among completed cells, Java and Kotlin medians were 50,342.5 and 50,737.5 tokens; XAX was 38,679 (0.7683× the lowest textual median), above the 0.50 R5 gate. The JVM row therefore remains R4/PROTOTYPE. No promotion is claimed from this incomplete run.
-
-
-#### 15.27 JVM local protocol profiling and bound-role follow-up (ADR-186, 2026-10-07)
-
-The normal snapshot-bound adapter is shared by direct arms, with unchanged canonical semantics and target-root oracles. `local_protocol_evidence.json` is deterministic EXECUTED semantic evidence, with no runtime or token-performance claim. The new runner retains all model events and their digests, counts every completed turn and retry, rotates Java/Kotlin/XAX order, and requires three trials per cell for a numeric gate.
-
-Exploratory profile: `ai_native/jvm-r5-local-results.csv`, its evidence and manifest, and `runs-jvm-r5-local/source-snapshot`. It stopped after 16 attempts (15 successes). Move used 92,165 tokens because role names were not bound to handles. Creation failed after 208,350 tokens; the prompt omitted insertion-result and snapshot-numbering facts. These costs are retained rather than selected away.
-
-Bound-role profile: `ai_native/jvm-r5-bound-results.csv`, its `.evidence.json` and bound manifest. Role metadata supplies the same names available in textual source, without conveying the answer; ordinary session aliases and batch help are available outside the benchmark. Creation targets are retained and Java/Kotlin probes are strengthened to nine inputs, including wraparound. Two preflight XAX cells pass: move 26,518 tokens; creation 38,463, including one repair. These observations are not a complete comparison or R5 evidence. The full three-trial comparison is recorded separately under this unchanged profile.
-
-The runner's `transmitted_bytes` counts the supplied prompt plus retained JSON event transport; provider framing is unavailable. Failed-command and diagnostic counters are proxies retained beside raw traces, not a proof that every failure was a semantic verifier rejection. The inherited creation scaffold, repair candidate representation, and large-application context require equivalence review before any R5 claim. No numeric gate automatically promotes the matrix.
-
-#### 15.28 JVM host-applied responses and exact compound edits (ADR-187/188, 2026-10-07)
-
-The new corpus uses final responses in every arm: normal context patches for
-Java/Kotlin and ordinary snapshot-bound requests for XAX. Successful requests
-need no model acknowledgement of PASS. All creation arms start empty. The
-conditional executes both branches, the stale task performs a real concurrent
-update, and every large-application arm contains 160 helpers plus its target
-and assertion. Fourteen XAX targets execute on the JVM; the abstract resource
-contract uses verifier and exact-root checks. These changes do not alter JVM
-runtime-performance evidence or the historical ADR-176 rows.
-
-Each frozen profile has its own source snapshot, manifest, CSV and streamed
-events under `compiler/benchmarks/ai_native`. The fixed client/model is Codex
-CLI 0.162.0-alpha.2, `gpt-5.6-luna`, low reasoning. Shared client flags disable
-unrelated plugin/skill injection; saved common instruction hashes must match.
-Every completed-turn input/output cost counts, including cached input, failed
-responses and earlier attempts for the same successful task/arm/trial cell.
-The comparison requires three trials for all 15 families in all three arms.
-
-| Profile | Outcome and reason for the next revision |
-|---|---|
-| bound | Interrupted attempt lacked final usage; its retained rollout gives a lower bound only. Ineligible for a numeric gate. |
-| response | Initial host-response preflight discovered unequal injected plugin instruction catalogs. Ineligible for a numeric gate. |
-| response-v2 | Stable common instructions and ordinary context patches; exposed numeric-alias and multi-function projection failures. Costs retained. |
-| response-v3 | XAX preflight passed 11/15 cells; edge/type/signature ambiguity and incomplete dead-chain deletion motivated normal compound carriers and explicit type facts. Costs retained. |
-| response-v4 | Full repeated comparison of snapshot-derived setters and dead-chain pruning. Consult its evidence JSON for completeness and numeric outcome. |
-| response-v5 | Compact public spellings/help and artifact-checked redundant Kotlin literal conversions; fresh repeated comparison, with no imported earlier cells. |
-
-`benchmarks.audit_jvm_r5_response` independently recomputes raw usage and pooled
-attempt costs and checks live/snapshot source hashes, trace hashes, common
-instructions, CSV/result agreement and successful host checks. Model context
-commands require separate review. Creation attempts sometimes inspect local
-task/checker-launcher/trace metadata; these expose no target implementation,
-and their costs remain counted.
-
-Exact-root and whitespace-normalized textual targets are more restrictive
-than behavioral equivalence. The large fixture is synthetic; resource effects
-are abstract. Numeric success therefore remains subject to corpus review and
-does not automatically promote JVM beyond R4/PROTOTYPE.
-
-Response-v4 stopped after its scheduled comparison and retained retries:
-137 attempts, 134/135 successful cells, all usage known. Successful-cell medians
-including earlier costs were Java 21,869, Kotlin 21,928 and XAX 10,970, a
-**partial** 0.501623 ratio. One Kotlin API cell remained unsuccessful: its
-checker rejected an explicit literal conversion that compiled equivalently.
-This is incomplete negative evidence, not a gate result. The independent
-`jvm-r5-response-v4-audit.json` reproduces its totals and hashes without errors.
-
-Response-v5 corrects that false rejection without dropping the semantic target:
-only literal-conversion spelling differences qualify, and compiled instructions,
-resolved operands, descriptors and behavioral execution must agree. A distinct
-overload-selection case rejects. Its manifest also explicitly records the
-host-prefilled graph versus named-file inspection workflow; a same-prefill
-comparison has not been measured. Current artifacts use the response-v5 prefix.
-
 #### 15.29 Android counter on arm64 hardware: XAX vs Java + NDK and pure Java (ADR-198; MEASURED, 2026-10-07)
 
 *(Superseded by §15.34, ADR-253: this install-per-pass protocol let device drift fall on whichever arm a pass held.)* Supersedes §15.23 as the current Android result. Hardware: Pixel 8 Pro, Google Tensor G3, `arm64-v8a`; Android 17/API 37 (`CP3A.261005.005`), security patch 2026-10-05, kernel `6.1.162-android14-11-g9dd05ae3a1de`, on AC power, Battery Saver off. Host: Windows 11 x86-64. Toolchains: NDK r28c (`28.2.13676358`) `clang -O2`, build-tools 36.0.0, `android-36`, Temurin `javac 17.0.20.1`, `d8 --release --min-api 28`. Evidence: `compiler/benchmarks/android_counter_twin_evidence.json` (`results` holds raw `wall_seconds_samples` per arm).
@@ -1232,90 +1000,6 @@ Same harness, arms, and XAX image (`049cf5ee…`) as §15.35, on an original Goo
 | rustc -O3 | 82.97 | 1.508 | 14,468 |
 
 XAX is 0.898444x the fastest non-XAX arm, p < 1e-6: the lead holds on a second microarchitecture and kernel. A OnePlus One (`bacon`, Snapdragon 801) was also tried: it is 32-bit ARMv7 (`armeabi-v7a` only), so the AArch64 image gets `Exec format error`; XAX has no 32-bit ARM target.
-
-### JVM response-v6 complete token result (2026-10-07, ADR-190/191)
-
-All 135 Java/Kotlin/XAX cells eventually passed across three fresh trials and
-142 retained attempts. Including failed-attempt/response costs, successful-cell
-medians are Java 21,565, Kotlin 21,557 and XAX 10,784 tokens. The ratio is
-0.5002551375423296, above 0.50; this is complete negative gate evidence.
-Total recorded costs are Java 1,099,050, Kotlin 1,306,465 and XAX 706,714 tokens.
-The independent raw-usage/source/digest audit reports zero errors. CSV bytes,
-source snapshots and traces remain unchanged after this result.
-
-Normal bound-field requests now omit a caller-selected kind/target and the
-unneeded full command menu; all remaining fields come from the model. They
-expand through the same snapshot-bound transaction machinery. A fresh response-v7
-comparison measures them without importing earlier rows. Numeric success still
-requires corpus review; named semantic targets versus named textual files,
-strict source targets, synthetic application helpers and abstract resources
-remain explicit limits. No JVM runtime-speed claim is made.
-
-### JVM response-v9 median token gate met (2026-10-07, ADR-194)
-
-*Superseded as R5 evidence by ADR-195 (2026-10-07): the corpus review found the comparison context-asymmetric; see the response-v10 section below.*
-
-All 135 cells passed: 15 task families × Java/Kotlin/XAX × three fresh trials, across 142 attempts. Codex CLI 0.160.0, gpt-5.6-luna/low, Temurin JDK 17 and Kotlin 2.1.0 are pinned in the manifest. Every completed response and failed attempt, including cached input, is counted. Seven failed attempts remain in successful-cell costs.
-
-| Arm | Successful cells | Median tokens including retries | Total recorded tokens | Repair responses |
-|---|---:|---:|---:|---:|
-| Java | 45/45 | 21,564 | 1,033,413 | 4 |
-| Kotlin | 45/45 | 21,566 | 1,175,166 | 11 |
-| XAX | 45/45 | 10,748 | 772,632 | 20 |
-
-The median ratio is 10,748 / min(21,564, 21,566) = **0.4984232980894083**, meeting ADR-176's 0.50 gate (50.1577% fewer median tokens). The aggregate ratio is **0.7476507456360623** (25.2349% fewer total tokens than Java); this is not a 50% aggregate reduction. The median clears the threshold by 34 tokens; one fixed-profile run does not establish a robust margin or statistical significance.
-
-Evidence: `compiler/benchmarks/ai_native/jvm-r5-response-v9-results.csv`, `.evidence.json`, `jvm-r5-response-v9-audit.json`, `jvm-r5-response-v9-context-review.json`, and the frozen manifest/source snapshots/raw events under `runs-jvm-r5-response-v9/`. CSV SHA-256: `a2e678fb689910fac1cd9844ad5834f8ab7876d8eb72e54a0d290f056b0c93ce`; manifest SHA-256: `8b90953f14fc6d57978d2973e0348add97ba9389e31f249eb68e6bc8076b34e2`. The independent audit has zero errors, checks live sources without drift and confirms complete usage and common instruction context. The agent reviewed all 15 distinct context commands: only named `Program.java`/`Program.kt` reads, with no unexpected context commands.
-
-Normal tooling uses lossless uniform result-type defaults, immutable caller-selected bindings, minimum scalar views, matching ordinary command acceptance and ordinary full-batch repair. No remaining semantic field is supplied from a reference answer. Earlier profiles remain separately preserved. Response-v7/v8 stopped safely with complete accounting; transferred v5 retains its unknown usage marker.
-
-Validation: 146 focused tests and 167 subtests passed; status/matrix checks pass after regeneration. JVM remains **R4/PROTOTYPE** pending corpus/context equivalence review: host-projected semantic context and named-file inspection differ, exact oracles are restrictive, the large fixture is synthetic and abstract resource effects do not execute on the JVM. Numeric success alone does not promote R5 or change runtime/backend performance claims.
-
-### JVM response-v10 same-prefill pilot (2026-10-07, ADR-195)
-
-*Superseded by ADR-196 (2026-10-07): option (a) measured; see the response-v12 section below.*
-
-Response-v9 is not R5 evidence. In every textual edit cell the model read its file through a tool call, a second client request with about 10,000 tokens of fixed client context. XAX got its view inline, along with an out-of-band mutation kind and target. On creation, where nobody reads a file, XAX was 1.007× Java. Response-v9 rows, traces and audits are retained unchanged.
-
-Response-v10 is same-prefill: every arm gets inline context and one request with no tools, and XAX is unbound. Textual checks admit equal compiled JVM instructions that differ from the initial program. The status distinguishes `TARGET_MET` (≤ 0.50), `ACCEPTED_WITHIN_TOLERANCE` (≤ 0.55, owner-approved) and `NOT_R5`. The pilot (jvm-01 and jvm-15, one trial, CSV SHA-256 f4839408a24567cd66a20a8014375fd334a9522d2322a90bb0f0a7f051f66c23) gives Java 10,753/10,723, Kotlin 10,738/10,747 and XAX 21,965 (one repair)/10,834. Even with one-line instructions the client still uses about 6,900 input tokens per request, so a fair ratio stays near 0.93× or above.
-
-The full 135-cell v10 run has not been executed. Resolve OI-46's measurement design first. Validation: 29 JVM R5 tests pass on Windows with Temurin 17 and Kotlin 2.1.0. JVM stays R4.
-
-### JVM response-v12 minimal-client same-prefill run (2026-10-07, ADR-196)
-
-*Superseded by ADR-197 (2026-10-08): option (b) measured; see the multi-file section below.*
-
-The run uses option (a) of OI-46. Every arm goes through the pinned Codex client with all configurable optional tools, skills and instruction blocks removed, one-line base instructions, and `gpt-6-luna` at low reasoning. The fixed per-request floor was calibrated at 3,501 input tokens, identical in three samples. The gate subtracts it once per request from every arm, and failed attempts still count.
-
-Two adapter defects were fixed first, and each fix started a new profile. Edit forms are now listed one per line as labelled placeholders. Cross-function views now alias callee parameters instead of leaking `F2.B0.P0`. v10 (stopped) and v11 (stopped, 113/135 cells) are retained unchanged.
-
-Response-v12 had 151 attempts and 123/135 successful cells after one refill pass. 28 attempts failed: XAX 16, Kotlin 10 and Java 2. Medians including failed costs were Java 3,710, Kotlin 3,702 and XAX 3,701. The raw ratio is 0.99973 and the floor-adjusted ratio is **0.99502**. Aggregate recorded tokens were Java 200,712, Kotlin 283,035 and XAX 322,843. The independent audit has zero errors and no source drift. CSV SHA-256: c39f72bedb1e7162938ab1d642669be7c0fe9846fd4bad4c794c332c94cc6bac.
-
-R5 is unmet, with a target of 0.50 and acceptance at 0.55. On single-function edits the XAX view plus edit list costs about the same as the inline program plus a patch, and the model repairs XAX more often. 12 cells never passed: XAX jvm-07, jvm-09, jvm-14 and jvm-15, and Kotlin jvm-12 and jvm-14, where "u16" invites `UShort`. JVM stays R4. Validation: 47 JVM R5/local-protocol tests pass.
-
-### JVM multi-file R5 corpus v5 (2026-10-08, ADR-197)
-
-`benchmarks.run_jvm_r5_multifile` compares XAX with four textual workflows on generated five-class projects. The textual workflows are Java and Kotlin, each with whole files or an IDE-style excerpt of the same call hierarchy. There are three families: a cross-file API change, a large-class operation change with its dependent assertion, and a transitive constant change. XAX gets the target and its transitive callers from the workspace `callers` query. Client, model (`gpt-6-luna`, low) and the calibrated 3,501-token floor are as in ADR-196.
-
-Profile v5 had 48 attempts and 42/45 cells after one refill pass. Floor-adjusted medians:
-
-| Arm | Median |
-|---|---|
-| Kotlin excerpt | 286 |
-| Java excerpt | 306 |
-| XAX | 481 |
-| Kotlin files | 1,315 |
-| Java files | 1,391 |
-
-XAX is **1.68×** the lowest textual median (raw 1.05×) and 0.35× the whole-file workflows. XAX had 6 failed attempts and the textual arms none. Every XAX mf-02 attempt changed the operation but not the assertion constant. CSV SHA-256: 9414ad6a56deac5ef95939b6de419e0bdb033be60c535142360dd04a39f8c0aa. Profiles v1–v4 were stopped for protocol defects and are retained.
-
-Normal-protocol work from this corpus:
-- A workspace fix: an edited function no longer calls a stale, rebuilt callee.
-- Exact `type OLD NEW` and `type F OLD NEW` retypes.
-- Removal of edits the batch already implies.
-- Kind-specific node diagnostics.
-
-R5 is unmet and JVM stays R4. The remaining gap is the per-request edit-form help, which the textual arms don't pay because the model knows Java and Kotlin, and lower model reliability on XAX.
 
 ## Part III — Host setup
 

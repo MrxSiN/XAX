@@ -319,7 +319,7 @@ Required vectors include:
 - deterministic local handles for a fixed workspace/query mode;
 - minimal neighborhood query plus bounded expansion;
 - explicit truncation and continuation;
-- when response-byte budgets are supported: exact-boundary success, deterministic one-byte-under failure or bounded positive-progress truncation, no publication of unreturned local handles, exact accounting of returned response bytes only, stable diagnostics, and unchanged behavior when no byte budget is supplied; byte-budget evidence MUST NOT be labeled model-token-budget conformance;
+- when response-byte budgets are supported: exact-boundary success, deterministic one-byte-under failure or bounded positive-progress truncation, no publication of unreturned local handles, exact accounting of returned response bytes only, stable diagnostics, and unchanged behavior when no byte budget is supplied;
 - authoritative/derived/estimate/unknown/stale result classification;
 - generation-scoped local artifact identities for artifact-mapping queries;
 - deterministic bounded `map_semantic` semantic-to-artifact ranges and `map_artifact` artifact-range contributors for supported emitted artifacts;
@@ -509,11 +509,7 @@ The 2026-10-02 OI-13 experiment preserves the original M13 target root and deplo
 
 The measured portable synchronization-scope subset is exactly `workgroup < device`. Portable-to-target mapping returns the same scope meaning on both target packages and rejects absence; target-to-portable mapping round-trips those two scopes exactly and reports coherent-grid `system` as nonportable rather than approximating it. Conformance vectors cover atomic and barrier ordering, both portable scopes, workgroup global/local cross-space synchronization, rejection of device scope over local-only memory, coherent-grid target-only system scope, and SIMT rejection of that system scope. These are semantic and target-package conformance vectors only; no physical accelerator execution or performance claim follows.
 
-### 21. AI-native C-vs-XAX experiment obligations
-
-The exploratory suite MUST use the same Codex Desktop model/reasoning setting, the same semantic goal, equivalent starting states and checks, fresh chats, and the same token-counting rule for C and XAX. Every question, failed edit, retry, turn, and associated token count remains in the recorded result. The task prompt must not include expected answers. Report all five paired rows and simple totals without inferential claims. The complete operator procedure is `compiler/benchmarks/ai_native/README.md`.
-
-### 22. Android direct-artifact/platform-package obligations
+### 21. Android direct-artifact/platform-package obligations
 
 An implementation claiming the current direct Android prototype slice MUST
 demonstrate, for the exact declared profile:
@@ -648,7 +644,7 @@ demonstrate, for the exact declared profile:
     Runtime saved-state transfer, ID transfer, mismatch behavior, and replacement atomicity
     remain unproven until compatible framework execution.
 
-### 23. Universal-replacement obligations
+### 22. Universal-replacement obligations
 
 Replacement claims (`XAX_SPEC.md` §21) are separate from C0–C4: C-levels certify an implementation; R-levels certify a `(platform package, workload class)` pair.
 
@@ -699,58 +695,27 @@ Replacement claims (`XAX_SPEC.md` §21) are separate from C0–C4: C-levels cert
 35. **Views-profile aggregates and stack arguments (ADR-151).** Both RISC-V generators MUST give the same image for programs with made aggregates, aggregate call results, and arguments past a7, and that image MUST execute with the reference results; an aggregate in a block parameter, edge, or call argument MUST be rejected with the same diagnostic by both (`RISCV64-AGGREGATE-VALUE`, `RISCV64-AGGREGATE-USE`). The BLAKE3 hash compiled this way MUST give the production digest. Vectors: `compiler/tests/test_xax_riscv64.py`, `compiler/tests/test_xax_selfhost_riscv64_backend.py`, `compiler/tests/test_xax_selfhost_blake3.py`, `compiler/tests/test_xax_selfhost_closure.py`.
 36. **x86-64 views profile and its XAX backend (ADR-152).** The bootstrap generator MUST match the reference executor on the integer differential corpus, traps included, and execute aggregate results and stack arguments; the XAX x86-64 backend program MUST give its image byte for byte (code, offsets, ranges) or decline, MUST keep the bootstrap's diagnostic on a rejection, and compiling its own store with its own image MUST reproduce that image. Vectors: `compiler/tests/test_xax_x86_64_views.py`, `compiler/tests/test_xax_selfhost_x86_64_backend.py`.
 37. **Win64 foreign entries and thread resources (ADR-170).** A `win64-c` entry MUST have no proof parameters or results, MUST lower to the XAX function's own Win64 entry, and MUST reject on an x86-64 Linux profile (`WIN64-ENTRY-TARGET`). A thread handle returned by `CreateThread` MUST remain a linear resource through `WaitForSingleObject` and `GetExitCodeThread` and MUST be consumed by `CloseHandle`. Vector: `compiler/tests/test_xax_pe.py::HostedPeTests::test_win64_thread_calls_back_into_xax_and_closes_its_handle`; evidence: `compiler/benchmarks/windows_pe_hosted_evidence.json`.
-38. **JVM AI-token evidence (ADR-174/175; historical since ADR-207).** This item governs the deferred AI-efficiency milestone, not R5. A token-efficiency claim MUST cite real-model rows with a fixed model/reasoning/client profile, fresh sessions, exact token accounting, explicit workflow mechanics, external semantic checks, preserved failures, and every task class required by `XAX_BENCHMARKS.md` §6.2. `jvm-r5-optimized-results.csv` MUST aggregate to `jvm-r5-optimized-evidence.json` (XAX-DIRECT 98,432 tokens versus C 197,252, at least 50% fewer), but this five-edit corpus MUST remain PROTOTYPE in the matrix until the missing task classes run. Vector: `compiler/tests/test_replacement_matrix.py::ReplacementMatrixTests::test_jvm_r5_candidate_evidence_is_consistent`.
-39. **Evidence and canonical-state integrity (ADR-177).** Every committed self-hosting store MUST equal its builder's output on every host and on a repeated build in the same process. A committed B level MUST equal `xax_selfhost.bootstrap_status`, and no evidence file MAY carry a hand-written B field. Routine generation MUST NOT write the pinned seed. A component that claims XAX-hosted execution under `XAX_REQUIRE_NATIVE=1` MUST fail rather than fall back to Python. A native image cache entry MUST be rejected unless its key, length, and code digest match. The wheel MUST contain every compiler module and canonical store. Matrix validator v2 MUST reject EXECUTED/MEASURED/PROVEN fields that cite only documents, sources, scripts, or images, MEASURED fields without a recorded .json/.csv, MEASURED performance without raw samples, and a competitive verdict that differs from its recomputation from raw per-arm samples under §15.0/§15.0a (`tests/test_audit_remediation.py`, `tests/test_store_regeneration.py`, `tests/test_wheel_install.py`, `tests/test_replacement_matrix.py`).
+38. **Evidence and canonical-state integrity (ADR-177).** Every committed self-hosting store MUST equal its builder's output on every host and on a repeated build in the same process. A committed B level MUST equal `xax_selfhost.bootstrap_status`, and no evidence file MAY carry a hand-written B field. Routine generation MUST NOT write the pinned seed. A component that claims XAX-hosted execution under `XAX_REQUIRE_NATIVE=1` MUST fail rather than fall back to Python. A native image cache entry MUST be rejected unless its key, length, and code digest match. The wheel MUST contain every compiler module and canonical store. Matrix validator v2 MUST reject EXECUTED/MEASURED/PROVEN fields that cite only documents, sources, scripts, or images, MEASURED fields without a recorded .json/.csv, MEASURED performance without raw samples, and a competitive verdict that differs from its recomputation from raw per-arm samples under §15.0/§15.0a (`tests/test_audit_remediation.py`, `tests/test_store_regeneration.py`, `tests/test_wheel_install.py`, `tests/test_replacement_matrix.py`).
 
-40. **Replacement levels v3 (ADR-207).** The validator MUST derive R4 only from a recomputed leadership verdict (ratio against the fastest non-XAX arm ≤ 0.9999, unrounded, significant), R5 only from EXECUTED/PROVEN `autonomous_maintenance`, and R6 only from EXECUTED/PROVEN `xax_only_application` that cites more than documents or sources. `ai_tokens` evidence MUST NOT raise any level. A published `time_ratio_vs_fastest` or `time_ratio_vs_fastest_competitor` MUST equal the recomputation at its stored precision. Vectors: `compiler/tests/test_replacement_matrix.py` (`test_r5_is_maintenance_r6_is_xax_only_application_and_tokens_gate_nothing`, `test_r4_margin_is_exact_and_noise_is_not_leadership`).
+39. **Replacement levels v3 (ADR-207).** The validator MUST derive R4 only from a recomputed leadership verdict (ratio against the fastest non-XAX arm ≤ 0.9999, unrounded, significant), R5 only from EXECUTED/PROVEN `autonomous_maintenance`, and R6 only from EXECUTED/PROVEN `xax_only_application` that cites more than documents or sources. A published `time_ratio_vs_fastest` or `time_ratio_vs_fastest_competitor` MUST equal the recomputation at its stored precision. Vectors: `compiler/tests/test_replacement_matrix.py` (`test_r5_is_maintenance_r6_is_xax_only_application`, `test_r4_margin_is_exact_and_noise_is_not_leadership`).
 
-41. **Predicate tables (ADR-208).** A boolean of one value proven below 256 that the x86-64 register path reads from a table MUST equal the expression for every value of the subject, in value and branch form; tests shared with other code MUST still be computed for their other uses. Vectors: `compiler/tests/test_x86_64_optimizations.py::PredicateTableTests`, `::RangeEliminationTests::test_membership_value_matches_every_byte`.
+40. **Predicate tables (ADR-208).** A boolean of one value proven below 256 that the x86-64 register path reads from a table MUST equal the expression for every value of the subject, in value and branch form; tests shared with other code MUST still be computed for their other uses. Vectors: `compiler/tests/test_x86_64_optimizations.py::PredicateTableTests`, `::RangeEliminationTests::test_membership_value_matches_every_byte`.
 
-42. **Recursion-group member edits (ADR-209).** A committed edit of a group member MUST produce a verified store whose group is in canonical member order with group-local call indices renumbered to it, whose member function identities all name the new group, and whose execution equals the edited semantics; an edited member that calls a rebuilt non-member function MUST reject with `WORKSPACE-RECURSION-EDIT-CALLEES`. Vectors: `compiler/tests/test_workspace_recursion_edit.py`.
+41. **Recursion-group member edits (ADR-209).** A committed edit of a group member MUST produce a verified store whose group is in canonical member order with group-local call indices renumbered to it, whose member function identities all name the new group, and whose execution equals the edited semantics; an edited member that calls a rebuilt non-member function MUST reject with `WORKSPACE-RECURSION-EDIT-CALLEES`. Vectors: `compiler/tests/test_workspace_recursion_edit.py`.
 
-43. **Construction carrier (ADR-210).** `xax_construct.construct` MUST return a verified store or reject; a malformed request (unknown format, operation, type, entity, unbound value, duplicate function, missing release entry) MUST raise, and a verifier failure MUST surface before a store exists. The same request MUST produce identical store bytes. Vectors: `compiler/tests/test_xax_construct.py`.
+42. **Construction carrier (ADR-210).** `xax_construct.construct` MUST return a verified store or reject; a malformed request (unknown format, operation, type, entity, unbound value, duplicate function, missing release entry) MUST raise, and a verifier failure MUST surface before a store exists. The same request MUST produce identical store bytes. Vectors: `compiler/tests/test_xax_construct.py`.
 
-44. **Next-iteration prefetch and edge sinking (ADR-211).** A prefetch transform MUST add only pure nodes, division only by nonzero constants, and loads proven in bounds; its loaded values MUST feed only `prefetcht0` hints. A sunk edge value MUST equal the wrapped add/sub at its width. Vectors: `compiler/tests/test_x86_64_optimizations.py::EdgeSinkAndPrefetchTests`.
+43. **Next-iteration prefetch and edge sinking (ADR-211).** A prefetch transform MUST add only pure nodes, division only by nonzero constants, and loads proven in bounds; its loaded values MUST feed only `prefetcht0` hints. A sunk edge value MUST equal the wrapped add/sub at its width. Vectors: `compiler/tests/test_x86_64_optimizations.py::EdgeSinkAndPrefetchTests`.
 
-### 24. Snapshot-bound mutation and JVM token evidence (ADR-186)
+### 23. Snapshot-bound mutation (ADR-186)
 
 The normal local adapter MUST preserve snapshot preconditions, reject stale generations including restored identical roots, reject unexposed or cross-function values, and publish a batch atomically. Bounded function binding MUST reject truncation. Vectors: `compiler/tests/test_xax_local_protocol.py`.
 
-The JVM runner MUST sum all completed model turns, include cached input and every failed attempt in eventual successful-task costs, retain raw events with SHA-256, use fresh workspaces per attempt, and resume successful cells only. Missing cells, unknown usage, fewer than three trials per cell, mixed client profiles, or a ratio above 0.55 MUST prevent a token-gate verdict; a ratio in (0.50, 0.55] MUST be reported as accepted within tolerance, not as the 0.50 target (ADR-195). Comparisons MUST give every arm equivalent context in the same number of client requests. Passing the numeric gate alone MUST NOT promote the matrix without equivalent-task and corpus review. Vectors: `compiler/tests/test_jvm_r5_runner.py`.
+Host-applied responses (ADR-187) MUST use the ordinary snapshot-bound session, return actual rejection diagnostics and reject stale snapshots before refreshing. Empty construction MUST verify canonical state; construction aliases MUST NOT affect its identity. Pure batch deletion MUST accept a fully dead dependency chain while rejecting any surviving use. Vectors: `compiler/tests/test_xax_local_protocol.py`.
 
-Host-applied responses (ADR-187) MUST use the ordinary snapshot-bound session,
-return actual rejection diagnostics, preserve failed-response costs and reject
-stale snapshots before refreshing. Empty construction MUST verify canonical
-state; construction aliases MUST NOT affect its identity. Pure batch deletion
-MUST accept a fully dead dependency chain while rejecting any surviving use.
-The JVM response corpus MUST execute both conditional branches, preserve real
-concurrent changes, and retain its application's actual helper functions.
-Vectors: `compiler/tests/test_xax_local_protocol.py`,
-`compiler/tests/test_jvm_r5_response.py`.
+Snapshot-derived compound setters (ADR-188) MUST expand to the same exact workspace transaction as explicit old/new fields. Dead-closure pruning MUST preserve dependencies with surviving uses and MUST reject unexposed closure members. These carriers MUST have no task identifier or reference target.
 
-The trial client MUST stream raw events to durable files before checking a
-response, record attempt start/result markers, pin source bytes and client
-flags, and refuse to mix profiles on resume. Missing final usage, unrecorded
-attempts or differing common instruction contexts MUST block the gate.
-Disabling unrelated plugins is a shared client setting for every arm, not a
-language-specific exemption. Textual arms MAY use the ordinary context-patch
-format without line counts; all context and exact-target checks still apply.
-
-Snapshot-derived compound setters (ADR-188) MUST expand to the same exact
-workspace transaction as explicit old/new fields. Dead-closure pruning MUST
-preserve dependencies with surviving uses and MUST reject unexposed closure
-members. These carriers MUST have no task identifier or reference target.
-`benchmarks.audit_jvm_r5_response` independently checks saved source snapshots,
-raw usage totals, trace/instruction hashes, result rows and pooled retry costs;
-its numeric audit does not establish task equivalence or promote the matrix.
-
-Compact mutation spellings (ADR-189) MUST preserve exact transaction payloads,
-arity checks, exposure, ownership and generation guards. Both spellings remain
-accepted. Textual literal-conversion normalization is only an eligibility
-filter: a differing source spelling MUST also match compiled JVM instructions,
-resolved operands and descriptors. Selecting a different overload MUST reject.
-Vectors: `compiler/tests/test_jvm_r5_response.py`.
-
+Compact mutation spellings (ADR-189) MUST preserve exact transaction payloads, arity checks, exposure, ownership and generation guards. Both spellings remain accepted.
 
 ## Part IV — Records
 
