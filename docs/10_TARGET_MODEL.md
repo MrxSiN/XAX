@@ -1,5 +1,32 @@
 # XAX Target Model
 
+## Contents
+
+- [1. Purpose and scope](#1-purpose-and-scope)
+- [2. Normative definitions](#2-normative-definitions)
+- [3. Target package model](#3-target-package-model)
+- [4. Machine value types](#4-machine-value-types)
+- [5. Memory-space model](#5-memory-space-model)
+- [6. Register model](#6-register-model)
+- [7. Instruction definitions and encodings](#7-instruction-definitions-and-encodings)
+- [8. Instruction semantic contracts](#8-instruction-semantic-contracts)
+- [9. Atomics, vectors, predication, privilege, traps, and interrupts](#9-atomics-vectors-predication-privilege-traps-and-interrupts)
+- [10. Legalization and lowering](#10-legalization-and-lowering)
+- [11. Instruction selection constraints](#11-instruction-selection-constraints)
+- [12. Scheduling and cost metadata](#12-scheduling-and-cost-metadata)
+- [13. Calling conventions and ABI profiles](#13-calling-conventions-and-abi-profiles)
+- [14. Relocations, object formats, and executable formats](#14-relocations-object-formats-and-executable-formats)
+- [15. GPU, accelerator, and heterogeneous-machine support](#15-gpu-accelerator-and-heterogeneous-machine-support)
+- [16. Universal-portability criterion and failure behavior](#16-universal-portability-criterion-and-failure-behavior)
+- [17. Invariants](#17-invariants)
+- [18. Rejected alternatives](#18-rejected-alternatives)
+- [19. Interfaces and dependencies](#19-interfaces-and-dependencies)
+- [20. Open issues requiring implementation evidence](#20-open-issues-requiring-implementation-evidence)
+- [21. Falsification criteria](#21-falsification-criteria)
+- [22. Android arm64-v8a shared-library target (2026-10-01)](#22-android-arm64-v8a-shared-library-target-2026-10-01)
+- [23. Architectures 5 and 6: the JVM and RISC-V (2026-10-03)](#23-architectures-5-and-6-the-jvm-and-risc-v-2026-10-03)
+- [24. Architecture 7 and a second AArch64 platform (2026-10-03)](#24-architecture-7-and-a-second-aarch64-platform-2026-10-03)
+
 ## 1. Purpose and scope
 
 This document defines the canonical XAX model for describing machines and code-emission constraints without adding architecture-specific rules to fundamental XAX semantics.

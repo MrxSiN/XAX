@@ -4,6 +4,33 @@
 **Source set:** founding architecture plus Stages 01–17  
 **Authority:** this document is the canonical merged documentation specification; it does not replace the canonical semantic program representation defined here.
 
+## Contents
+
+- [1. Normative language and precedence](#1-normative-language-and-precedence)
+- [2. Foundational invariants](#2-foundational-invariants)
+- [3. Canonical semantic program model](#3-canonical-semantic-program-model)
+- [4. Types, values, constants, and layout](#4-types-values-constants-and-layout)
+- [5. Memory, pointers, ownership, and resources](#5-memory-pointers-ownership-and-resources)
+- [6. Effects, calls, and errors](#6-effects-calls-and-errors)
+- [7. Concurrency, atomics, interrupts, and real-time profiles](#7-concurrency-atomics-interrupts-and-real-time-profiles)
+- [8. Compile-time execution, specialization, and metaprogramming](#8-compile-time-execution-specialization-and-metaprogramming)
+- [9. Canonical serialization, identity, and versioning](#9-canonical-serialization-identity-and-versioning)
+- [10. AI workspace, queries, transactions, and diagnostics](#10-ai-workspace-queries-transactions-and-diagnostics)
+- [11. Universal target model](#11-universal-target-model)
+- [12. ABI, foreign interoperability, platform capabilities, and standard environment](#12-abi-foreign-interoperability-platform-capabilities-and-standard-environment)
+- [13. Compiler core, verifier, incrementality, and semantic database](#13-compiler-core-verifier-incrementality-and-semantic-database)
+- [14. Optimization, lowering, code generation, and cost model](#14-optimization-lowering-code-generation-and-cost-model)
+- [15. Packages, builds, security, reproducibility, and supply chain](#15-packages-builds-security-reproducibility-and-supply-chain)
+- [16. Bootstrapping, self-hosting, and repository continuity](#16-bootstrapping-self-hosting-and-repository-continuity)
+- [17. Conformance model reference](#17-conformance-model-reference)
+- [18. Benchmark and evidence reference](#18-benchmark-and-evidence-reference)
+- [19. Open implementation choices](#19-open-implementation-choices)
+- [20. Versioning and change rule](#20-versioning-and-change-rule)
+- [21. Universal replacement](#21-universal-replacement)
+- [Appendix A. Android arm64-v8a hosted target note (2026-10-01)](#appendix-a-android-arm64-v8a-hosted-target-note-2026-10-01)
+- [Appendix B. Android direct artifact and SDK-package note (2026-10-01)](#appendix-b-android-direct-artifact-and-sdk-package-note-2026-10-01)
+- [Platform carrier replacement v1 (2026-10-07)](#platform-carrier-replacement-v1-2026-10-07)
+
 ## 1. Normative language and precedence
 
 The keywords **MUST**, **MUST NOT**, **SHOULD**, **SHOULD NOT**, and **MAY** are normative when uppercase.

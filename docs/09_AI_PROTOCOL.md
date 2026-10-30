@@ -1,5 +1,24 @@
 # XAX AI Workspace, Query, Transaction, Diagnostic, and Token Protocol
 
+## Contents
+
+- [1. Purpose and scope](#1-purpose-and-scope)
+- [2. Normative language](#2-normative-language)
+- [3. Semantic workspace model](#3-semantic-workspace-model)
+- [4. Query interface](#4-query-interface)
+- [5. Transaction model](#5-transaction-model)
+- [6. Concurrent AI agents and conflict detection](#6-concurrent-ai-agents-and-conflict-detection)
+- [7. Machine-first diagnostics](#7-machine-first-diagnostics)
+- [8. Token-native protocol](#8-token-native-protocol)
+- [9. Context and accounting](#9-context-and-accounting)
+- [10. Interfaces with other XAX subsystems](#10-interfaces-with-other-xax-subsystems)
+- [11. Invariants](#11-invariants)
+- [12. Rejected alternatives](#12-rejected-alternatives)
+- [13. Open issues](#13-open-issues)
+- [14. Falsification criteria](#14-falsification-criteria)
+- [15. Snapshot-bound local mutation adapter (ADR-186)](#15-snapshot-bound-local-mutation-adapter-adr-186)
+- [Platform carrier replacement v1 (2026-10-07)](#platform-carrier-replacement-v1-2026-10-07)
+
 ## 1. Purpose and scope
 
 This document specifies the AI-facing interaction model for XAX. It defines how an AI reasoning system observes, queries, modifies, verifies, and commits changes to an authoritative XAX semantic program without regenerating the canonical `.xax` artifact or depending on human-oriented source text.
