@@ -9,7 +9,7 @@
   "invalid_batch_diagnostic": "XAX.WORKSPACE.DUPLICATE_MUTATION",
   "invalid_batch_preserves_root": true,
   "limits": [
-    "No model/token or JVM runtime-performance measurement.",
+    "No JVM runtime-performance measurement.",
     "No XAX-hosted compiler execution claim."
   ]
 }

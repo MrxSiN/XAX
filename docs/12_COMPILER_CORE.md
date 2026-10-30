@@ -486,7 +486,7 @@ These issues MAY change representation or performance strategy but MUST NOT weak
 This design MUST be reconsidered if implementation evidence shows any of the following:
 
 - local semantic edits routinely require verification work proportional to total repository size despite unchanged unrelated identities;
-- dependency tracking consumes more time or storage than cold recomputation for representative workloads without producing meaningful latency or token savings;
+- dependency tracking consumes more time or storage than cold recomputation for representative workloads without producing meaningful latency savings;
 - cache correctness requires hidden host state that cannot be represented in canonical keys;
 - canonical object granularity causes excessive hash churn such that small edits rewrite large unaffected semantic regions;
 - deterministic diagnostics materially increase compiler cost without improving automated repair reliability;

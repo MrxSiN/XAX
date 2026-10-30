@@ -226,7 +226,7 @@ Milestone status cannot advance when required evidence is absent or invalidated 
 
 **Dependencies**: M1–M5; semantic database dependency tracking.
 
-**Benchmarks now valid**: C-like vs SSA vs graph-packet AI tasks, local-edit tokens, repair turns, context-scaling, conflict/rebase workloads. Tokenizer-native arm remains unavailable until actual integration exists.
+**Benchmarks now valid**: local-edit size, repair turns, context-scaling, conflict/rebase workloads.
 
 ### M7 — Resources and richer effects
 
@@ -474,17 +474,17 @@ M1–M14 establish a compiler-architecture prototype. U1 is the first milestone 
 | U1.6 | Bare-metal board package: vector table, sections, MMIO, interrupt entry | workload 2 | EXECUTED on QEMU `virt` (ADR-128): board profile, GICv2 and timer interrupt through a contract-checked XAX handler, UART MMIO, PSCI power-off, 5,420-byte image. Static linking of freestanding C objects EXECUTED (ADR-129: XAX calls a linked C CRC and a C allocator); aarch64-baremetal row R2 (emulated). Hardware is OI-44. |
 | U1.7 | Real GPU target package and device execution (OI-34) | workload 5 | SPIR-V/Vulkan package EXECUTED on Mesa llvmpipe (ADR-124; GPU row R1; matches the reference executor, traps included). Next: structured lowering of reducible CFGs (6.9× glslang today), floats and workgroup memory, an XAX host program driving Vulkan (R2), and a physical-GPU run with a throughput baseline (closes OI-34). |
 | U1.8 | Baseline toolchains on measuring hosts; first R4 measurements | R4 on all rows | **Linux MEASURED** against gcc -O2/-O3/-static and clang -O2 (`XAX_BENCHMARKS.md` §15.1; R4 not met then), then against gcc, clang, and rustc under the multi-language rule (§15.0, §15.14; R4 met, ADR-147/148). **JVM MEASURED** against `javac` on the same HotSpot (§15.8: 1.04× kernel time, 1.51× class bytes), then against `javac` and `kotlinc` under the JVM runtime rule (§15.0a, §15.17: `jsonmin` fastest, Collatz 0.93×; R4 met, ADR-157; §15.18: class 0.99× kotlinc's, 1.5× javac's, ADR-158). **RISC-V MEASURED-EMULATED** against `clang -O2` (§15.9: 3.72× instructions). Windows under Wine only (§15.6). |
-| U1.9 | Managed target by direct emission: JVM class files (OI-35) | JVM row; the managed-platform strategy question | EXECUTED (ADR-112): HotSpot runs XAX class files from `java -jar`, with typed JDK member calls, an explicit `System.exit`, and stack traces mapped to nodes; JVM row R2 then. ADR-156: linear memory (`jvm-classfile-memory-v1`) and `jsonmin` on HotSpot (1.18× the `javac` twin's process time); JVM row R3. ADR-157: slot coloring, Top frames, folding, compare fusion, and shared access members; `jsonmin` fastest of XAX, `javac`, and `kotlinc` (class 2.29× javac's); JVM row R4. ADR-158: expression trees, short-circuit branches, one name per value, dead-code elimination, frames only at targets, tail merging, and two-address `iinc`; `jsonmin`'s class 8,539 → 5,575 bytes (0.99× kotlinc, 1.5× javac). ADR-159/160: `jvm-classfile-general-v1` adds aggregates, sums, stack allocations, indirect calls, links, raw loads, and atomics. ADR-161: JVM→XAX callbacks as functional-interface objects, and interface method calls. ADR-162: object/array construction, string constants, casts. ADR-163: instance fields and `instanceof`; ADR-164: multi-dimensional arrays; ADR-165: native code plus a generated JNI bridge, measured against direct emission; OI-35 closed for the JVM. ADR-166: class-file importer from JDK modules; OI-32 closed. ADR-167: static field writes. ADR-175: the controlled direct semantic workflow uses 0.4990× C-like text's aggregate tokens (10/10 pass), but JVM stays R4 until the remaining §6.2 task classes run. |
+| U1.9 | Managed target by direct emission: JVM class files (OI-35) | JVM row; the managed-platform strategy question | EXECUTED (ADR-112): HotSpot runs XAX class files from `java -jar`, with typed JDK member calls, an explicit `System.exit`, and stack traces mapped to nodes; JVM row R2 then. ADR-156: linear memory (`jvm-classfile-memory-v1`) and `jsonmin` on HotSpot (1.18× the `javac` twin's process time); JVM row R3. ADR-157: slot coloring, Top frames, folding, compare fusion, and shared access members; `jsonmin` fastest of XAX, `javac`, and `kotlinc` (class 2.29× javac's); JVM row R4. ADR-158: expression trees, short-circuit branches, one name per value, dead-code elimination, frames only at targets, tail merging, and two-address `iinc`; `jsonmin`'s class 8,539 → 5,575 bytes (0.99× kotlinc, 1.5× javac). ADR-159/160: `jvm-classfile-general-v1` adds aggregates, sums, stack allocations, indirect calls, links, raw loads, and atomics. ADR-161: JVM→XAX callbacks as functional-interface objects, and interface method calls. ADR-162: object/array construction, string constants, casts. ADR-163: instance fields and `instanceof`; ADR-164: multi-dimensional arrays; ADR-165: native code plus a generated JNI bridge, measured against direct emission; OI-35 closed for the JVM. ADR-166: class-file importer from JDK modules; OI-32 closed. ADR-167: static field writes. |
 | U1.10 | Third ISA through a target package only: RISC-V RV64 | riscv64 row; U1.6 on RISC-V boards | EXECUTED under Unicorn (ADR-113): raw RV64IM image with LP64 calls and a liveness-hull register allocator; riscv64 row R1. Next: compare/branch fusion, F/D floats and memory, a Linux `ET_EXEC` profile (reusing `xax_elf`), and a hardware or QEMU-system run (OI-44). |
-| U1.11 | Standard semantic libraries, first families (OI-36) | every workload | EXECUTED (ADR-130): `xax.text` and `xax.collections.hashset_u64` as canonical packages; the `uniqcount` application runs on Linux x86-64 and AArch64; per-export bytes, compile cost, and offline tokens MEASURED. OI-36 CLOSED. |
+| U1.11 | Standard semantic libraries, first families (OI-36) | every workload | EXECUTED (ADR-130): `xax.text` and `xax.collections.hashset_u64` as canonical packages; the `uniqcount` application runs on Linux x86-64 and AArch64; per-export bytes and compile cost MEASURED. OI-36 CLOSED. |
 
 **Dependencies**: M4/M5 backends, M7 resources/effects, M10 build/provenance, M13 accelerator scopes.
 
-**Benchmarks now valid**: replacement-workload runtime/memory/size comparisons (§15 of `XAX_BENCHMARKS.md`). AI token trials are deferred to the future AI-efficiency milestone (ADR-207).
+**Benchmarks now valid**: replacement-workload runtime/memory/size comparisons (§15 of `XAX_BENCHMARKS.md`).
 
 ### U2 — Performance leadership, autonomous maintenance, XAX-only application (after U1)
 
-Priority order (ADR-207): R4, then R5, then R6. The AI-token milestone is not scheduled here.
+Priority order (ADR-207): R4, then R5, then R6.
 
 **Exit criteria**
 
@@ -680,20 +680,9 @@ Not an R level and not a B milestone: a gate that restores a reproducible, deriv
 
 ## Part IV — Dated follow-ups
 
-### JVM token optimization follow-up (2026-10-07, ADR-186)
+### Snapshot-bound local mutation (2026-10-07, ADR-186 to ADR-188)
 
-The next dependency after ADR-176 is the normal snapshot-bound local mutation interface, now implemented in `compiler/src/xax_local_protocol.py`. Direct edit arms share it; task definitions, textual competitors, and exact semantic target checks are retained. The runner supports three fresh trials per cell, rotated arm order, exact event accounting, and resumable failures with retained costs. JVM stays R4 until the complete repeated comparison meets the 0.50 lowest-textual-median gate and task equivalence is established. No backend runtime-speed improvement is claimed by this change.
-
-### JVM host-response and compound-edit follow-up (2026-10-07, ADR-187/188)
-
-The current response corpus removes the inherited creation scaffold, supplies
-real helpers in every large-application arm, and exercises a real stale
-conflict before a fresh retry. Normal setters reconstruct exact old edge,
-type and signature fields; dead-chain pruning preserves surviving users.
-These implementation steps are complete. The pinned repeated model comparison,
-independent raw-usage audit and corpus review determine the remaining token
-gate and promotion work. The large application is synthetic, and the abstract
-resource task is verifier checked rather than executed on the JVM.
+The normal snapshot-bound local mutation interface is implemented in `compiler/src/xax_local_protocol.py`. Host-applied responses use it; normal setters reconstruct exact old edge, type and signature fields, and dead-chain pruning preserves surviving users. No backend runtime-speed improvement is claimed by this change.
 
 ### Android platform capability contracts (2026-10-08, ADR-202 to ADR-204)
 

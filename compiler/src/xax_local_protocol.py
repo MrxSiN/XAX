@@ -489,7 +489,7 @@ class LocalMutationSession:
             aliases = {verb: alias for alias, verb in COMPACT_VERBS.items()}
             forms = [aliases.get(form.split(' ', 1)[0], form.split(' ', 1)[0]) + ' ' + form.split(' ', 1)[1] for form in forms]
         # One form per line, placeholders named as such: weaker models read an
-        # inline `a | b` grammar as literal output (ADR-196).
+        # inline `a | b` grammar as literal output.
         notes = (type_help + edge_help + value_help).strip()
         return "\n".join(["Edit forms (UPPERCASE words are values you supply):", *("- " + form for form in forms),
                           *([notes] if notes else []), BATCH_HELP])

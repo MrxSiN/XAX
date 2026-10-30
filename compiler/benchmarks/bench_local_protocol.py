@@ -51,7 +51,7 @@ def evidence():
         "stale_snapshot_diagnostic": stale.diagnostic.code,
         "invalid_batch_diagnostic": rejected.diagnostic.code,
         "invalid_batch_preserves_root": workspace.root.hex() == target,
-        "limits": ["No model/token or JVM runtime-performance measurement.",
+        "limits": ["No JVM runtime-performance measurement.",
                    "No XAX-hosted compiler execution claim."],
     }
 

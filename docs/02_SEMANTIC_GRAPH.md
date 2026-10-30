@@ -373,7 +373,7 @@ The first prototype SHOULD implement only enough semantics for the architecture'
 
 Aggregates, broader resource semantics, atomics, additional memory forms, target primitives, and meta operations may be added later.
 
-A new core primitive SHOULD be added only when testing or semantic necessity shows that existing operations plus specialization cannot express it exactly/efficiently; a library form would hide required effects/control/resources; repeated expansion materially harms verification, optimization, token efficiency, or lowering; or a common target-independent contract is necessary.
+A new core primitive SHOULD be added only when testing or semantic necessity shows that existing operations plus specialization cannot express it exactly/efficiently; a library form would hide required effects/control/resources; repeated expansion materially harms verification, optimization, or lowering; or a common target-independent contract is necessary.
 
 Human familiarity, syntax convenience, or elegance is not sufficient.
 
@@ -426,7 +426,7 @@ The canonical graph MUST remain fully defined if all optional diagnostic text is
 | one global effect token | Needlessly serializes independent domains. |
 | implicit effects or destructors | Hides observable ordering/resource transitions. |
 | implicit exception edges | Hides control behavior at calls. |
-| global hashes exposed to AI | Increases token cost; local handles suffice. |
+| global hashes exposed to AI | Increases context size; local handles suffice. |
 | host target assumptions | Makes meaning depend on compiler host. |
 | permanent target DSL | Creates a second language. |
 | full sea-of-nodes initially | Adds control/verification complexity without demonstrated need. |
@@ -458,7 +458,7 @@ The canonical graph MUST remain fully defined if all optional diagnostic text is
 
 ### 16.1 Effect-domain granularity
 
-The graph requires explicit effect frontiers, but optimal memory/effect partitioning is not yet fixed. A single broad domain may over-serialize; very fine domains may inflate graph/token cost. Later stages and prototype measurements must determine safe granularity.
+The graph requires explicit effect frontiers, but optimal memory/effect partitioning is not yet fixed. A single broad domain may over-serialize; very fine domains may inflate graph cost. Later stages and prototype measurements must determine safe granularity.
 
 ### 16.2 Encoding trivial recursion groups
 
@@ -474,7 +474,7 @@ The bounded callable contract is a separately content-addressed `call_contract` 
 
 This design must be revised if implementation or benchmarking shows that:
 
-1. block-parameter SSA plus explicit dependencies costs materially more AI tokens per successful semantic mutation than an equally exact alternative;
+1. block-parameter SSA plus explicit dependencies causes materially more invalid mutations or repair turns than an equally exact alternative;
 2. explicit effect frontiers cause unacceptable graph growth or lost optimization that domain refinement cannot recover;
 3. local edits routinely require broad renumbering/retransmission;
 4. recursion-group identity creates material update amplification versus an immutable Merkle-compatible alternative;

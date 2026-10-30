@@ -1,4 +1,4 @@
-# XAX AI Workspace, Query, Transaction, Diagnostic, and Token Protocol
+# XAX AI Workspace, Query, Transaction, and Diagnostic Protocol
 
 ## Contents
 
@@ -9,7 +9,7 @@
 - [5. Transaction model](#5-transaction-model)
 - [6. Concurrent AI agents and conflict detection](#6-concurrent-ai-agents-and-conflict-detection)
 - [7. Machine-first diagnostics](#7-machine-first-diagnostics)
-- [8. Token-native protocol](#8-token-native-protocol)
+- [8. Minimal mutation protocol](#8-minimal-mutation-protocol)
 - [9. Context and accounting](#9-context-and-accounting)
 - [10. Interfaces with other XAX subsystems](#10-interfaces-with-other-xax-subsystems)
 - [11. Invariants](#11-invariants)
@@ -23,7 +23,7 @@
 
 This document specifies the AI-facing interaction model for XAX. It defines how an AI reasoning system observes, queries, modifies, verifies, and commits changes to an authoritative XAX semantic program without regenerating the canonical `.xax` artifact or depending on human-oriented source text.
 
-The protocol minimizes **model tokens per successful semantic change** while preserving exact semantics, local modification, conflict detection, and machine diagnostics. The workspace is a bounded transactional view over the canonical semantic graph.
+The protocol carries **the smallest exact semantic change** while preserving exact semantics, local modification, conflict detection, and machine diagnostics. The workspace is a bounded transactional view over the canonical semantic graph.
 
 This stage defines:
 
@@ -33,9 +33,9 @@ This stage defines:
 - transactional graph mutation;
 - concurrent-agent conflict detection;
 - machine-first diagnostics and deterministic repair locality;
-- token-native protocol objectives;
-- provisional fallback wire forms for current tokenizers;
-- token/context accounting;
+- minimal mutation objectives;
+- provisional compact wire forms;
+- context accounting;
 - interfaces to serialization, verification, target, optimization, artifact, and package subsystems.
 
 This stage does **not** define a programming language, source syntax, optimizer or lowering implementation, or final wire encoding. Textual notation here is non-authoritative tooling. The canonical semantic graph remains authoritative.
@@ -61,8 +61,7 @@ The key words **MUST**, **MUST NOT**, **REQUIRED**, **SHOULD**, **SHOULD NOT**, 
 | **transaction** | An ordered or dependency-constrained set of mutations with an expected base root and atomic verification/commit semantics. |
 | **diagnostic** | Structured machine data describing a violated rule, failed precondition, invalid graph state, or rejected transaction. |
 | **repair neighborhood** | The smallest deterministic semantic neighborhood sufficient to explain and potentially repair a diagnostic under the verifier's dependency model. |
-| **token-native form** | A protocol representation designed jointly with a model vocabulary so frequent semantic operations and references can consume minimal model tokens. |
-| **fallback transport** | A compact non-authoritative transport used when the model tokenizer cannot provide dedicated XAX tokens. |
+| **compact transport** | A compact non-authoritative wire form for queries and mutations. |
 | **artifact mapping** | A relation between semantic entities and emitted or derived artifacts such as object sections, machine-code ranges, relocations, debug views, test observations, or profile records. |
 
 ### 2.2 Separation of identities
@@ -141,7 +140,7 @@ A workspace SHOULD support bounded expansion by:
 - ownership/resource dependency;
 - target dependency;
 - diagnostic dependency;
-- estimated token budget.
+- response budget.
 
 If a complete answer exceeds the budget, the response MUST indicate truncation and provide a continuation mechanism without pretending completeness.
 
@@ -384,19 +383,11 @@ This notation is a tooling view, not XAX source.
 
 ---
 
-## 8. Token-native protocol
+## 8. Minimal mutation protocol
 
 ### 8.1 Objective
 
-The primary protocol metric is:
-
-```text
-total model tokens consumed
----------------------------
-successful semantic change
-```
-
-The accounting boundary SHOULD include all model-visible protocol traffic required to complete a change:
+The protocol is judged by verified semantic changes. A change is complete when its transaction commits; the traffic it needs SHOULD include only:
 
 - query input;
 - query output;
@@ -409,9 +400,9 @@ The accounting boundary SHOULD include all model-visible protocol traffic requir
 
 A shorter packet that causes more invalid transactions can be worse than a slightly larger packet that completes in one pass.
 
-### 8.2 Minimal-token execution policy
+### 8.2 Minimal execution policy
 
-An AI-facing XAX implementation MUST minimize total model-visible tokens per successful semantic change subject first to exact semantics and successful verification. It MUST NOT require the model to reproduce any semantic fact that is uniquely reconstructible from the current workspace state, declared query or transaction mode, or previously bound protocol state.
+An AI-facing XAX implementation MUST NOT require a client to reproduce any semantic fact that is uniquely reconstructible from the current workspace state, declared query or transaction mode, or previously bound protocol state. Exact semantics and successful verification come first.
 
 The AI-facing protocol SHOULD:
 
@@ -424,21 +415,17 @@ The AI-facing protocol SHOULD:
 - after rejection, consume only the diagnostic and repair neighborhood needed to produce the correcting mutation;
 - prefer a slightly larger one-pass representation over a smaller representation that measurably increases invalid generations or repair turns.
 
-Workspace roots, generations, targets, handle bindings, types, proofs, transaction defaults, and other protocol facts MAY be bound out of band and omitted from model-visible traffic when they are unambiguous and freshness requirements remain enforceable. Such omission MUST NOT weaken stale-root detection, transaction preconditions, verification, conflict detection, or canonical commit semantics.
+Workspace roots, generations, targets, handle bindings, types, proofs, transaction defaults, and other protocol facts MAY be bound out of band and omitted from client traffic when they are unambiguous and freshness requirements remain enforceable. Such omission MUST NOT weaken stale-root detection, transaction preconditions, verification, conflict detection, or canonical commit semantics.
 
-When a query mode, transaction mode, or constrained decoder uniquely determines a field, that field SHOULD be omitted from model-visible traffic. When the mutation kind and target entity are uniquely bound, the model MAY emit only the remaining semantic value or values required to distinguish the intended mutation.
+When a query mode, transaction mode, or constrained decoder uniquely determines a field, that field SHOULD be omitted. When the mutation kind and target entity are uniquely bound, the client MAY emit only the remaining semantic value or values required to distinguish the intended mutation.
 
-This policy optimizes semantic information transfer rather than textual brevity. Any elision that introduces ambiguity, changes semantics, prevents deterministic decoding, or increases total tokens per successful semantic change loses to the more explicit representation.
+This policy optimizes semantic information transfer rather than textual brevity. Any elision that introduces ambiguity, changes semantics, or prevents deterministic decoding loses to the more explicit representation.
 
-### 8.3 Dedicated vocabulary
+### 8.3 Compact transport
 
-A future model/XAX integration SHOULD assign dedicated vocabulary entries to frequent operations, mutation/query verbs, type forms, small widths, effect domains, diagnostic fields, handles, and transaction delimiters. Optimization targets frequent semantic mutations, not bytes alone.
+A compact transport carries queries and mutations. No textual alphabet is normatively preferred.
 
-### 8.4 Fallback transport
-
-Current tokenizers require a compact fallback transport. No textual alphabet is normatively preferred without measurement.
-
-A candidate fallback may look like:
+A candidate transport may look like:
 
 ```text
 q users N3 kind=value
@@ -456,17 +443,13 @@ V
 C
 ```
 
-These shapes are **provisional until benchmarked**.
+These shapes are **provisional**.
 
-Fallback transport MUST be unambiguous, deterministically framed, versioned, and independent of whitespace; it MUST preserve semantic field boundaries, distinguish handles/literals/persistent identities, reject unknown mandatory elements, and remain non-source tooling.
+A compact transport MUST be unambiguous, deterministically framed, versioned, and independent of whitespace; it MUST preserve semantic field boundaries, distinguish handles/literals/persistent identities, reject unknown mandatory elements, and remain non-source tooling.
 
-### 8.5 Empirical selection rules
+### 8.4 Selection rules
 
-Candidate transports MUST be selected by measurement with the actual intended model/tokenizer family.
-
-Evaluation SHOULD measure input/output tokens, completion rate, invalid packet and transaction rates, repair turns, semantic entities transmitted, protocol overhead, and packet bytes. Tests SHOULD cover creation, literal/operation/control-flow edits, type and ownership/effect repair, targeted optimization, and stale-root recovery.
-
-A transport loses if its token savings are outweighed by significantly higher semantic error or repair rates.
+Candidate transports SHOULD be compared on completion rate, invalid packet and transaction rates, repair turns, semantic entities transmitted, protocol overhead, and packet bytes. Tests SHOULD cover creation, literal/operation/control-flow edits, type and ownership/effect repair, targeted optimization, and stale-root recovery.
 
 ---
 
@@ -476,8 +459,6 @@ Every workspace SHOULD maintain machine-readable accounting:
 
 ```text
 Accounting {
-    model_input_tokens
-    model_output_tokens
     semantic_entities_in
     semantic_entities_out
     query_count
@@ -490,9 +471,9 @@ Accounting {
 
 Accounting data is operational telemetry, not program semantics.
 
-For benchmarkability, tooling SHOULD separately record model tokens, protocol bytes, artifact bytes, semantic and diagnostic entities, verifier work, and target-cost query work. Token efficiency MUST NOT be inferred from characters or bytes alone.
+For benchmarkability, tooling SHOULD separately record protocol bytes, artifact bytes, semantic and diagnostic entities, verifier work, and target-cost query work.
 
-Workspace servers SHOULD support response budgets expressed in model tokens or in a proxy that is validated against model-token measurements. The current bootstrap workspace also supports an exact serialized response-byte budget as a separate transport control. This byte budget is explicitly not a model-token budget: paginated queries deterministically shrink to the largest positive-progress prefix that fits and return continuation; non-paginated responses or pages too small to make progress fail with `XAX.WORKSPACE.RESPONSE_BUDGET`. Budget failure publishes no new local handles and charges no unreturned query-response bytes.
+Workspace servers SHOULD support response budgets. The current bootstrap workspace supports an exact serialized response-byte budget as a transport control: paginated queries deterministically shrink to the largest positive-progress prefix that fits and return continuation; non-paginated responses or pages too small to make progress fail with `XAX.WORKSPACE.RESPONSE_BUDGET`. Budget failure publishes no new local handles and charges no unreturned query-response bytes.
 
 ---
 
@@ -547,9 +528,8 @@ The AI protocol MUST preserve all of the following:
 9. **Repair locality is deterministic under fixed inputs.**
 10. **Derived facts identify dependencies or subsystem versions.**
 11. **Target-dependent facts identify the relevant target package.**
-12. **Token efficiency is measured empirically.**
-13. **Fallback notation is tooling, not a second maintained language.**
-14. **No protocol feature may introduce hidden allocation, synchronization, ownership transfer, exception edges, or runtime behavior into program semantics.**
+12. **Compact notation is tooling, not a second maintained language.**
+13. **No protocol feature may introduce hidden allocation, synchronization, ownership transfer, exception edges, or runtime behavior into program semantics.**
 
 ---
 
@@ -557,15 +537,14 @@ The AI protocol MUST preserve all of the following:
 
 | Alternative | Rejection reason |
 |---|---|
-| Regenerate entire `.xax` artifacts for each edit | Defeats locality, retransmits unchanged semantics, increases token use, and weakens conflict isolation. |
+| Regenerate entire `.xax` artifacts for each edit | Defeats locality, retransmits unchanged semantics, and weakens conflict isolation. |
 | Present persistent cryptographic hashes directly for every reference | Wastes model context and increases generation error without adding semantic value for local tasks. |
 | Make a human-readable dump editable source | Creates a second programming language, reintroduces parsing/source-preservation obligations, and violates meaning-is-source. |
 | Line-based diff and merge | Lines are non-normative and do not capture semantic dependencies or graph conflicts. |
 | Unconditional last-writer-wins mutation | Can silently invalidate proof assumptions, ownership relations, control edges, or concurrent work. |
-| English-first compiler diagnostics | Consumes tokens, loses machine precision, and makes deterministic repair-neighborhood extraction harder. |
+| English-first compiler diagnostics | Loses machine precision, and makes deterministic repair-neighborhood extraction harder. |
 | Automatically transmit whole functions after every diagnostic | Violates minimal-context retrieval and can scale model context with repository size. |
-| Declare one compact text syntax permanently optimal | Tokenizer behavior is model-dependent and must be benchmarked. |
-| Treat byte size as the primary protocol metric | Small byte streams may tokenize poorly or increase repair turns. |
+| Treat byte size as the primary protocol metric | Small byte streams may increase invalid generations or repair turns. |
 | Encode target costs as semantic truth | Costs are model- and target-dependent estimates or measurements, not core program meaning. |
 
 ---
@@ -576,15 +555,11 @@ Only implementation evidence can settle the following:
 
 ### 13.1 Handle namespace shape
 
-It is not yet fixed whether handles should use typed namespaces such as `F3`, `N7`, `T2`, or a single dense integer namespace with out-of-band kind information. Tokenization efficiency and error rate must decide.
+It is not yet fixed whether handles should use typed namespaces such as `F3`, `N7`, `T2`, or a single dense integer namespace with out-of-band kind information. Error rate must decide.
 
-Prototype evidence (non-normative, 2026-10-01): on the five-task bootstrap corpus, unified dense integers saved 15 offline view tokens over typed `P0`/`N0` handles. In 30 Claude Code (`claude-opus-5-5`) trials the two namespaces showed no measurable difference in model tokens or failed checks (typed 9, unified 7, all caused by framing). This does not settle the question; see OI-01.
+### 13.2 Transport framing
 
-### 13.2 Fallback framing
-
-Textual separators, binary framing, compact CBOR-like structures, or tokenizer-informed alphabets remain candidates. The final fallback transport requires measurement on target model families.
-
-Prototype evidence (non-normative, 2026-10-01): three versioned `X1` framings were measured on the same corpus. Offline, `pipe` used the fewest tokens and `json` the most. In 30 Claude Code trials all completed, but failed `verify`/`test` checks were `line` 0, `pipe` 2, and `json` 14; nine of ten JSON trials required at least one repair because the flat single-array packet was repeatedly written as separate or nested arrays. Model-token differences were below run-to-run noise. On this corpus, line framing is the observed reliability leader and the tested flat-array JSON framing is disfavored, but one model family with n=1 per cell does not select the transport; see OI-01.
+Textual separators, binary framing, or compact CBOR-like structures remain candidates.
 
 ### 13.3 Repair-neighborhood minimization cost
 
@@ -602,18 +577,16 @@ No other unresolved issue in this stage justifies weakening the invariants above
 
 This design should be reconsidered if implementation and benchmarking show any of the following:
 
-1. Minimal semantic queries repeatedly require near-whole-program expansion for ordinary local edits, making repository size strongly correlate with model context size.
-2. Short local handles produce materially more reference mistakes than persistent identifiers after accounting for token cost.
-3. Transactional semantic edits require more model tokens or more repair rounds than regenerating a compact source-like representation for representative workloads.
+1. Minimal semantic queries repeatedly require near-whole-program expansion for ordinary local edits, making repository size strongly correlate with context size.
+2. Short local handles produce materially more reference mistakes than persistent identifiers.
+3. Transactional semantic edits require more repair rounds than regenerating a compact source-like representation for representative workloads.
 4. Structured diagnostics plus repair neighborhoods do not reduce repair turns relative to concise natural-language diagnostics.
 5. Deterministic repair neighborhoods are consistently too large or too expensive to compute to justify their protocol value.
 6. Entity/relation-level conflict detection fails to permit useful concurrent AI work beyond what whole-root serialization already provides.
 7. Semantic rebase causes unacceptable silent misapplication risk even with explicit preconditions and read sets.
-8. Token-native vocabulary fails to produce substantial token or reliability improvements over the best measured fallback transport.
-9. The best fallback transport is so syntax-dependent that it effectively requires maintaining a second programming language and parser ecosystem.
-10. Context/token accounting cannot reliably predict or explain successful semantic-change cost across supported model families.
-11. Query and mutation protocol overhead dominates compiler/verifier work for small edits to the point that direct artifact regeneration is measurably superior.
-12. Artifact/source mapping cannot remain deterministic enough to support targeted diagnostics, optimization feedback, and emitted-code inspection.
+8. The best compact transport is so syntax-dependent that it effectively requires maintaining a second programming language and parser ecosystem.
+9. Query and mutation protocol overhead dominates compiler/verifier work for small edits to the point that direct artifact regeneration is measurably superior.
+10. Artifact/source mapping cannot remain deterministic enough to support targeted diagnostics, optimization feedback, and emitted-code inspection.
 
 The architecture remains valid only if the workspace enables precise local reasoning, transactions prevent partial or stale mutation, diagnostics support machine repair, and measured protocol cost materially benefits from semantic locality.
 
@@ -654,8 +627,7 @@ because the model must choose among exposed values or destinations. Every view
 continues to read the captured snapshot, never a newer canonical root.
 
 After reporting a rejected bound request, clients MAY query a fresh local
-session and request the established full-batch carrier for repair. Token
-measurements MUST include the rejected response. If field-only movement
+session and request the established full-batch carrier for repair. If field-only movement
 requests cause more repairs, clients SHOULD retain the ordinary movement batch
 rather than requiring redundant format repair. No parser may guess a different
 mutation kind, target or replacement value to make a response pass.
@@ -668,7 +640,7 @@ MUST NOT refresh the snapshot implicitly. Commit uses the existing transaction
 verifier and final generation check, including rejection after an intervening
 change restores identical root bytes.
 
-The semicolon-separated command batch is a fallback transport, never semantic
+The semicolon-separated command batch is a compact transport, never semantic
 source. Aliases abbreviate exposed handles only. `N` used as a value means
 result zero; other results require an exposed value handle. `@I` denotes an
 existing transaction-local insertion result. Cross-function value references,
@@ -692,7 +664,7 @@ refer to the pre-batch snapshot; insertion does not change their meaning.
 A client MAY treat the model's final response as a mutation request and call
 the bound session's `commit` itself. Successful host verification requires no
 additional model acknowledgement. On failure the client MUST retain the failed
-request and usage, return the diagnostic and required repair neighborhood, and
+request, return the diagnostic and required repair neighborhood, and
 obtain a new request. A stale snapshot MUST be rejected before any refresh;
 refreshing is a separate query bound to a new session. This interaction is
 ordinary tooling, available independently of benchmark tasks.

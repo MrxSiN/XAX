@@ -260,7 +260,7 @@ may-alias<class-id>
 unknown
 ```
 
-For precise object-backed storage, the compact encoding is the storage-object/provenance identity itself: the verifier derives the local alias class from that identity and does not serialize a redundant class number on each pointer view. The OI-06 two-allocation measurement found zero added graph bytes/token-native atoms for this derived form versus two bytes/two atoms for explicit local class IDs. `exclusive` proves no conflicting live view over its extent; `shared-read` permits readers but no writer; `may-alias` distinguishes conservative alias sets; `unknown` is conservative. An explicit compact class ID is reserved for raw/target mappings where exact object identity is unavailable. Creating/ending an alias restriction is semantic and may be zero-cost; no lexical borrow syntax is fundamental.
+For precise object-backed storage, the compact encoding is the storage-object/provenance identity itself: the verifier derives the local alias class from that identity and does not serialize a redundant class number on each pointer view. The OI-06 two-allocation measurement found zero added graph bytes/semantic atoms for this derived form versus two bytes/two atoms for explicit local class IDs. `exclusive` proves no conflicting live view over its extent; `shared-read` permits readers but no writer; `may-alias` distinguishes conservative alias sets; `unknown` is conservative. An explicit compact class ID is reserved for raw/target mappings where exact object identity is unavailable. Creating/ending an alias restriction is semantic and may be zero-cost; no lexical borrow syntax is fundamental.
 
 ## 8. Placement, volatile access, MMIO, and DMA
 
@@ -504,7 +504,7 @@ A failed memory/resource proof should identify the entity, violated rule, requir
 
 ## 15. Open issues requiring implementation evidence
 
-The following representation choices remain open because their best form depends on verifier complexity, target coverage, and token-efficiency measurements rather than missing semantics:
+The following representation choices remain open because their best form depends on verifier complexity, target coverage, and size measurements rather than missing semantics:
 
 1. **Alias-class encoding.** The semantic relations above are fixed, but whether canonical storage uses explicit class objects, interval capabilities, compact relation tables, or reconstructed proof edges should be benchmarked.
 2. **Provenance compression.** Persistent object identity is required, but the best local-handle and serialization strategy for very large graphs requires measurement.
@@ -523,7 +523,7 @@ Revise this design if implementation or benchmark evidence shows:
 - static pointer/resource metadata causes unavoidable runtime fat-pointer or bookkeeping overhead on targets where the facts should be erasable;
 - region, arena, allocator, target-memory, or raw classes cannot express at least two substantially different architectures without adding hidden platform semantics;
 - MMIO or DMA correctness requires ad hoc compiler knowledge that cannot be supplied through target/platform packages and explicit effects;
-- explicit resource transitions cause graph/token growth large enough to outweigh their reduction in AI repair errors, after compact serialization and local-handle protocols are implemented;
+- explicit resource transitions cause graph growth large enough to outweigh their reduction in AI repair errors, after compact serialization and local-handle protocols are implemented;
 - deterministic cleanup cannot be expressed without introducing implicit destructor or exception behavior;
 - optimization using the defined alias/provenance rules produces worse code than a less precise model because the proof machinery blocks common transformations rather than enabling them;
 - translation validation or targeted compiler tests find a transformation considered legal by these rules that changes observable memory, device, or resource behavior.
