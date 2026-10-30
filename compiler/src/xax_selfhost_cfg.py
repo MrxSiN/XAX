@@ -52,8 +52,8 @@ from xax_graph_builder import GraphBuilder, program_store
 from xax_native import bootstrap_dir  # noqa: E402
 
 STORE_PATH = bootstrap_dir() / "xax_cfg_analysis.xax"
-IN_EXTENT = 1 << 24
-OUT_EXTENT = 1 << 25
+IN_EXTENT = 1 << 26  # S15e.6i.2a (ADR-358): 8M input words (was 2M), so the driver's own function can grow
+OUT_EXTENT = 1 << 27  # its input words and the tables after them
 IN_WORDS, OUT_WORDS = IN_EXTENT // 8, OUT_EXTENT // 8
 ACCEPT, REJECT, DEFER = 0, 1, 2
 

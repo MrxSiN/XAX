@@ -89,7 +89,8 @@ Generated from [`XAX_REPLACEMENT_MATRIX.json`](XAX_REPLACEMENT_MATRIX.json). "â€
 
 On Linux x86-64 the XAX compiler rebuilds itself byte for byte, and its seed needs no Python. The self-built compiler
 builds Linux and Windows executables, bare-metal, RISC-V and WebAssembly images, SPIR-V modules, browser pages, JVM JARs
-and signed and unsigned Android APKs. libxposed JVM modules are still built by the bootstrap (S15e.6i.2). The self-hosting steps
+signed and unsigned Android APKs and libxposed JVM modules: everything `build` makes (S15, ADR-358). The whole compiler's
+bootstrap levels are derived from its executed record (S15g). The self-hosting steps
 (S0-S15) and the bootstrap levels (B0-B6) are tracked in [`XAX_IMPLEMENTATION_ROADMAP.md`](XAX_IMPLEMENTATION_ROADMAP.md)
 and [`compiler/bootstrap/README.md`](compiler/bootstrap/README.md).
 

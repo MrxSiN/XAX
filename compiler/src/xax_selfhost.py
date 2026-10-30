@@ -664,20 +664,23 @@ def bootstrap_status(evidence: M14RecursiveEvidence) -> dict:
     import json
 
     seed = json.loads(SEED_EVIDENCE.read_text(encoding="utf-8")) if SEED_EVIDENCE.exists() else None
-    linux = linux_x86_64_status(json.loads(FULL_SELFHOST_EVIDENCE.read_text(encoding="utf-8")), seed) if FULL_SELFHOST_EVIDENCE.exists() else None
+    record = json.loads(FULL_SELFHOST_EVIDENCE.read_text(encoding="utf-8")) if FULL_SELFHOST_EVIDENCE.exists() else None
+    linux = linux_x86_64_status(record, seed) if record is not None else None
+    # S15g (ADR-358): the Linux x86-64 production compiler builds every target and artifact ``build`` makes (its
+    # record's scope has nothing outside it), so the whole production compiler's levels are that compiler's, derived
+    # from the same executed record; until then none is established.
+    if linux is not None and record["scope"].get("outside_scope") is None:
+        reasons = "; ".join(f"{level}: {reason}" for level, reason in linux["blockers"].items())
+        full = {**{f"B{level}": linux[f"B{level}"] for level in range(7)},
+                "blocker": "derived from the Linux x86-64 production compiler, whose executed record covers every target and artifact "
+                           "`build` makes (S15g, ADR-358)" + (f"; {reasons}" if reasons else "")}
+    else:
+        full = {**{f"B{level}": False for level in range(7)},
+                "blocker": "the Linux x86-64 production compiler's executed record does not cover every target and artifact (its "
+                           "scope's outside_scope: " + (str(record["scope"].get("outside_scope")) if record is not None else "no record") + ")"}
     return {
         "derivation_source": "xax_selfhost.bootstrap_status",
-        "full_production_compiler": {
-            **{f"B{level}": False for level in range(7)},
-            "blocker": "libxposed JVM modules are not the production compiler's: the driver keeps no external input's bytes "
-                       "and chains no libxposed JVM program (S15e.6i.2); signed and unsigned APKs on Android targets are the "
-                       "production compiler's through the XAX Android program and APK signer (S15e.6h, S15e.6i.1, ADR-354 to "
-                       "ADR-357), as are Linux x86-64 and AArch64 "
-                       "executables, Windows PE32+ executables and DLLs, RISC-V, Wasm, Windows load-image and bare-metal AArch64 "
-                       "raw images, accelerator deployments, SPIR-V modules, browser pages and JVM JARs; the Linux x86-64 "
-                       "production compiler is reported separately (ADR-180, ADR-285, ADR-308, ADR-315, ADR-317, ADR-320, ADR-321, "
-                       "ADR-322, ADR-324, ADR-325, ADR-326, ADR-334, ADR-339, ADR-351, ADR-356, ADR-357)",
-        },
+        "full_production_compiler": full,
         **({"linux_x86_64_production_compiler": linux} if linux is not None else {}),
         "m14_semantic_image_wrapper": {
             "scope": M14_SCOPE,

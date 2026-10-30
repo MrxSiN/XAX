@@ -93,6 +93,11 @@ SG_EFFECT, SG_SIGNED, SG_TN, SIGNER_N = (SIGN_AT + k for k in range(4))
 SG_DIGEST = SIGN_AT + 8
 TRANSPORT_AT, TRANSPORT_LIMIT = SIGN_AT + 1024, 1 << 16
 SIGNER_AT = SIGN_AT + (1 << 18)
+# S15e.6i.2b (ADR-358): the external inputs' bytes, kept by the driver as it hashes them, for the Android program's
+# libxposed JVM profile: ``INPUT_BYTES_N`` records, each the digest (32 bytes, a byte a word), the length and the bytes
+# packed eight to a word, from ``INPUT_BYTES_AT`` (``INPUT_BYTES_END``: past the last).
+INPUT_BYTES_N, INPUT_BYTES_END = SIGN_AT + 4, SIGN_AT + 5
+INPUT_BYTES_AT, INPUT_BYTES_LIMIT = 170 << 20, 64 << 20
 SIGN_KIND = 7  # ``BuildCapabilityKind.SIGN``
 ACCELERATOR_ARCHITECTURE, ACCELERATOR_FORMAT = 4, 3
 # S15e.3b (ADR-320): 1 for a Windows DLL request on the PE profile: ``B_ENTRY`` is then the request itself (the general
@@ -746,6 +751,9 @@ def _build_request(tables, verify):
             e.var("android", e.flag(e.both(e.ne(p["apk"], 0), e.eq(p["hosted"], 0), e.eq(p["architecture"], ANDROID_ARCHITECTURE),
                                            e.eq(p["abi"], ANDROID_ABI), e.either(*(e.eq(p["image_format"], value) for value in ANDROID_FORMATS)),
                                            e.le(_ctrl(e, B_NMOD), MAX_MODULES))))
+            # S15e.6i.2b (ADR-358): an APK on a JVM target is a libxposed JVM module (``build``'s APK branch comes before its
+            # JVM branch): the Android program's libxposed JVM profile, given the external inputs' bytes.
+            e.if_(e.both(e.ne(p["apk"], 0), e.ne(p["jvm"], 0), e.le(_ctrl(e, B_NMOD), MAX_MODULES)), lambda: (e.set("android", 1), e.set("jvm", 0)))
             e.if_(e.ne(p["android"], 0), lambda: e.set("path", PATH_ANDROID))
             e.if_(e.both(e.ne(p["apk"], 0), e.eq(p["android"], 0)), lambda: e.set("outcome", DECLINE))
             _set(e, B_PATH, p["path"])
