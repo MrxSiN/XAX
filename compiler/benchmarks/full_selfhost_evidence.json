@@ -13,17 +13,24 @@
       "x86_64-linux-views-exec-v1",
       "RISC-V raw images (architecture 6, format 1; S15e.1)",
       "aarch64-linux-elf-exec-v1, aarch64-linux-elf-dynexec-v1 (S15e.2)",
-      "x86_64-windows-pe-v1 executables (S15e.3)"
+      "x86_64-windows-pe-v1 executables (S15e.3)",
+      "Windows PE32+ DLLs (S15e.3b)",
+      "browser pages (S15e.4)",
+      "JVM library and executable JARs (S15e.5)",
+      "unsigned and signed Android APKs (S15e.6h, S15e.6i.1)",
+      "libxposed JVM modules (S15e.6i.2)",
+      "accelerator deployments and SPIR-V modules (S15e.7)",
+      "raw Wasm modules, Windows load images and bare-metal AArch64 images (S15f)"
     ],
-    "outside_scope": "every other target and artifact (Windows DLLs, JVM, WebAssembly, Android, SPIR-V, accelerator): Python (S15e.3-S15e.7)"
+    "outside_scope": null
   },
   "spec_revision": "XAX_SPEC.md \u00a716",
   "compiler": {
     "store": "xax_compiler_driver_general.xax",
-    "store_sha256": "5026da328a12c6b488074cd3410e65df3391bf03999604637cd08acb88b5cab5",
-    "semantic_root": "18ee57c6c488ebefe8e6e52568f48b064715f8616d8ad3b394d98320af867ec7",
-    "request_store_sha256": "ad1bf5c91ae6e22ed946f37094ef483ab4442939fbab95e827bb2dc4ca9b4196",
-    "request_root": "9d26c3cd401aae73453415d8ceccd4d6a39efcec3433e91d3b1dcf472cc5f670",
+    "store_sha256": "d0d297b3302d918591f7b5fa667bc550b08a73ad08b37972745e5baa290a7a71",
+    "semantic_root": "92cea7a30687fd2b6b5a041e8742bae5b37b8193cafd93ac6868feb3ba8e495d",
+    "request_store_sha256": "d2d50be5bf01b68ca7227c528aba1988b60b1684e0b5e1ee5508a48d9a6d7017",
+    "request_root": "2ccfbc2b1bec33caeb57119ee13e2482aa742e2024c84d79687b9570b86c2770",
     "target_root": "0843714bb8ab058c655fa9e2833f37ed0ddcd009338ce44669fc2ef5117d682e",
     "resolver_identity": "xax-driver-resolver-v1",
     "policy_root": "15264515d69f8d9ed3287f17674e1d0e87809fd366832b905d9423121ec62540",
@@ -31,52 +38,52 @@
   },
   "seed": {
     "kind": "the driver store lowered by the XAX views backend for x86_64-linux-views-exec-v1, in a Python host process",
-    "sha256": "51afb2cc5c267eeee7736357f1f840e2e8dfff50ec18967ccc3eb47a0ddae5b1",
-    "bytes": 95673646,
+    "sha256": "6875bc34094ff45ff6acdc621938474de684d429b93933eb76004ec5e4b61d7a",
+    "bytes": 101409502,
     "requires_python": true,
-    "host_s_nonsemantic": 159.4
+    "host_s_nonsemantic": 203.4
   },
   "references": {
-    "python_resolver_snapshot_sha256": "0227f90e84f8a4c9e9ed6a4c362c08f0fe581b5b55ee7b83535a34e4b12eef54",
-    "python_resolve_s_nonsemantic": 292.9,
-    "bootstrap_compile_sha256": "c25276ad3b3b9950a10af8e5d10b8dfc21c098398458c17899c49651ea109857",
-    "bootstrap_compile_bytes": 29817099,
-    "bootstrap_compile_s_nonsemantic": 3659.3
+    "python_resolver_snapshot_sha256": "91a86a8129c6106c763ebf677733dc26534d54144e24a584b116232f0730fa4b",
+    "python_resolve_s_nonsemantic": 285.4,
+    "bootstrap_compile_sha256": "1ea22576962c17eade1039b59ef8136c164a1e6117fb78d9f237194f114a73c6",
+    "bootstrap_compile_bytes": 32016091,
+    "bootstrap_compile_s_nonsemantic": 3767.5
   },
   "generations": [
     {
       "generation": 1,
       "producer": "C0",
-      "producer_sha256": "51afb2cc5c267eeee7736357f1f840e2e8dfff50ec18967ccc3eb47a0ddae5b1",
+      "producer_sha256": "6875bc34094ff45ff6acdc621938474de684d429b93933eb76004ec5e4b61d7a",
       "resolve": {
         "status": "image",
         "outputs": [
-          "0227f90e84f8a4c9e9ed6a4c362c08f0fe581b5b55ee7b83535a34e4b12eef54"
+          "91a86a8129c6106c763ebf677733dc26534d54144e24a584b116232f0730fa4b"
         ],
-        "host_s_nonsemantic": 150.78,
-        "peak_rss_kib_nonsemantic": 8026632
+        "host_s_nonsemantic": 179.03,
+        "peak_rss_kib_nonsemantic": 8391084
       },
       "build": {
         "status": "image",
         "outputs": [
-          "c25276ad3b3b9950a10af8e5d10b8dfc21c098398458c17899c49651ea109857",
-          "7c7f1144a81f3510ab5c5b83f061435e5a14c5dcc6eaa92efc714af71ddf295c"
+          "1ea22576962c17eade1039b59ef8136c164a1e6117fb78d9f237194f114a73c6",
+          "fdfa6132aec474403f05388515534e5d65232c5424041d68be08d0bc00ed5f75"
         ],
-        "host_s_nonsemantic": 1125.52,
-        "peak_rss_kib_nonsemantic": 8026632
+        "host_s_nonsemantic": 1203.62,
+        "peak_rss_kib_nonsemantic": 8391084
       },
-      "snapshot_sha256": "0227f90e84f8a4c9e9ed6a4c362c08f0fe581b5b55ee7b83535a34e4b12eef54",
+      "snapshot_sha256": "91a86a8129c6106c763ebf677733dc26534d54144e24a584b116232f0730fa4b",
       "snapshot_equals_python_resolver": true,
-      "artifact_sha256": "c25276ad3b3b9950a10af8e5d10b8dfc21c098398458c17899c49651ea109857",
-      "artifact_bytes": 29817099,
-      "provenance_sha256": "7c7f1144a81f3510ab5c5b83f061435e5a14c5dcc6eaa92efc714af71ddf295c",
+      "artifact_sha256": "1ea22576962c17eade1039b59ef8136c164a1e6117fb78d9f237194f114a73c6",
+      "artifact_bytes": 32016091,
+      "provenance_sha256": "fdfa6132aec474403f05388515534e5d65232c5424041d68be08d0bc00ed5f75",
       "provenance": {
-        "cid": "be78689ed83c26c86763a3436f5eb28d916bdedc83684a50966270b5fd81ad87",
-        "snapshot_root": "22a3c5932e7ea916265eaa339911e21185d8f6cdff7c38233bbb7b7f4f8bf064",
-        "request_root": "9d26c3cd401aae73453415d8ceccd4d6a39efcec3433e91d3b1dcf472cc5f670",
+        "cid": "a04bfbc53d9212c71040c5478575d2c6ceef3119125573fbd7f51080c19b5b5b",
+        "snapshot_root": "1ed646fa35981a882e7c86998bea55ffa5e3bc01fad9ad13739c26fbce3dcf00",
+        "request_root": "2ccfbc2b1bec33caeb57119ee13e2482aa742e2024c84d79687b9570b86c2770",
         "target_root": "0843714bb8ab058c655fa9e2833f37ed0ddcd009338ce44669fc2ef5117d682e",
         "profile_root": "9e3dd6a9aa3ff407ed694b8705c82fcc13c472b818f189a1a45a7825ac1a967e",
-        "artifact_digest_blake3": "f5bbfb3a140bb32ef8d39d9cba802a5f666621d78ef858fbcbf24bd79a7a0055",
+        "artifact_digest_blake3": "1d68c53f2a0f1cc9db3d497f71b68e5ce3aea86c9a127d062770b7711e707530",
         "compiler_identity": "bc351ca3286fa3ff21d2b39e3ea374c3b0f01fb45a5e601d29c2dc08105ce117",
         "lowering_identity": "9dc8d0005a602a54b513fb90539525d8db5eefc9936a8d442b660b6e3c80ebd2"
       },
@@ -85,36 +92,36 @@
     {
       "generation": 2,
       "producer": "C1",
-      "producer_sha256": "c25276ad3b3b9950a10af8e5d10b8dfc21c098398458c17899c49651ea109857",
+      "producer_sha256": "1ea22576962c17eade1039b59ef8136c164a1e6117fb78d9f237194f114a73c6",
       "resolve": {
         "status": "image",
         "outputs": [
-          "0227f90e84f8a4c9e9ed6a4c362c08f0fe581b5b55ee7b83535a34e4b12eef54"
+          "91a86a8129c6106c763ebf677733dc26534d54144e24a584b116232f0730fa4b"
         ],
-        "host_s_nonsemantic": 51.82,
-        "peak_rss_kib_nonsemantic": 12527960
+        "host_s_nonsemantic": 57.24,
+        "peak_rss_kib_nonsemantic": 13130260
       },
       "build": {
         "status": "image",
         "outputs": [
-          "c25276ad3b3b9950a10af8e5d10b8dfc21c098398458c17899c49651ea109857",
-          "7c7f1144a81f3510ab5c5b83f061435e5a14c5dcc6eaa92efc714af71ddf295c"
+          "1ea22576962c17eade1039b59ef8136c164a1e6117fb78d9f237194f114a73c6",
+          "fdfa6132aec474403f05388515534e5d65232c5424041d68be08d0bc00ed5f75"
         ],
-        "host_s_nonsemantic": 287.4,
-        "peak_rss_kib_nonsemantic": 12527960
+        "host_s_nonsemantic": 306.94,
+        "peak_rss_kib_nonsemantic": 13130260
       },
-      "snapshot_sha256": "0227f90e84f8a4c9e9ed6a4c362c08f0fe581b5b55ee7b83535a34e4b12eef54",
+      "snapshot_sha256": "91a86a8129c6106c763ebf677733dc26534d54144e24a584b116232f0730fa4b",
       "snapshot_equals_python_resolver": true,
-      "artifact_sha256": "c25276ad3b3b9950a10af8e5d10b8dfc21c098398458c17899c49651ea109857",
-      "artifact_bytes": 29817099,
-      "provenance_sha256": "7c7f1144a81f3510ab5c5b83f061435e5a14c5dcc6eaa92efc714af71ddf295c",
+      "artifact_sha256": "1ea22576962c17eade1039b59ef8136c164a1e6117fb78d9f237194f114a73c6",
+      "artifact_bytes": 32016091,
+      "provenance_sha256": "fdfa6132aec474403f05388515534e5d65232c5424041d68be08d0bc00ed5f75",
       "provenance": {
-        "cid": "be78689ed83c26c86763a3436f5eb28d916bdedc83684a50966270b5fd81ad87",
-        "snapshot_root": "22a3c5932e7ea916265eaa339911e21185d8f6cdff7c38233bbb7b7f4f8bf064",
-        "request_root": "9d26c3cd401aae73453415d8ceccd4d6a39efcec3433e91d3b1dcf472cc5f670",
+        "cid": "a04bfbc53d9212c71040c5478575d2c6ceef3119125573fbd7f51080c19b5b5b",
+        "snapshot_root": "1ed646fa35981a882e7c86998bea55ffa5e3bc01fad9ad13739c26fbce3dcf00",
+        "request_root": "2ccfbc2b1bec33caeb57119ee13e2482aa742e2024c84d79687b9570b86c2770",
         "target_root": "0843714bb8ab058c655fa9e2833f37ed0ddcd009338ce44669fc2ef5117d682e",
         "profile_root": "9e3dd6a9aa3ff407ed694b8705c82fcc13c472b818f189a1a45a7825ac1a967e",
-        "artifact_digest_blake3": "f5bbfb3a140bb32ef8d39d9cba802a5f666621d78ef858fbcbf24bd79a7a0055",
+        "artifact_digest_blake3": "1d68c53f2a0f1cc9db3d497f71b68e5ce3aea86c9a127d062770b7711e707530",
         "compiler_identity": "bc351ca3286fa3ff21d2b39e3ea374c3b0f01fb45a5e601d29c2dc08105ce117",
         "lowering_identity": "9dc8d0005a602a54b513fb90539525d8db5eefc9936a8d442b660b6e3c80ebd2"
       }
@@ -122,36 +129,36 @@
     {
       "generation": 3,
       "producer": "C2",
-      "producer_sha256": "c25276ad3b3b9950a10af8e5d10b8dfc21c098398458c17899c49651ea109857",
+      "producer_sha256": "1ea22576962c17eade1039b59ef8136c164a1e6117fb78d9f237194f114a73c6",
       "resolve": {
         "status": "image",
         "outputs": [
-          "0227f90e84f8a4c9e9ed6a4c362c08f0fe581b5b55ee7b83535a34e4b12eef54"
+          "91a86a8129c6106c763ebf677733dc26534d54144e24a584b116232f0730fa4b"
         ],
-        "host_s_nonsemantic": 55.36,
-        "peak_rss_kib_nonsemantic": 12527960
+        "host_s_nonsemantic": 58.56,
+        "peak_rss_kib_nonsemantic": 13130260
       },
       "build": {
         "status": "image",
         "outputs": [
-          "c25276ad3b3b9950a10af8e5d10b8dfc21c098398458c17899c49651ea109857",
-          "7c7f1144a81f3510ab5c5b83f061435e5a14c5dcc6eaa92efc714af71ddf295c"
+          "1ea22576962c17eade1039b59ef8136c164a1e6117fb78d9f237194f114a73c6",
+          "fdfa6132aec474403f05388515534e5d65232c5424041d68be08d0bc00ed5f75"
         ],
-        "host_s_nonsemantic": 293.02,
-        "peak_rss_kib_nonsemantic": 12527960
+        "host_s_nonsemantic": 325.96,
+        "peak_rss_kib_nonsemantic": 13130260
       },
-      "snapshot_sha256": "0227f90e84f8a4c9e9ed6a4c362c08f0fe581b5b55ee7b83535a34e4b12eef54",
+      "snapshot_sha256": "91a86a8129c6106c763ebf677733dc26534d54144e24a584b116232f0730fa4b",
       "snapshot_equals_python_resolver": true,
-      "artifact_sha256": "c25276ad3b3b9950a10af8e5d10b8dfc21c098398458c17899c49651ea109857",
-      "artifact_bytes": 29817099,
-      "provenance_sha256": "7c7f1144a81f3510ab5c5b83f061435e5a14c5dcc6eaa92efc714af71ddf295c",
+      "artifact_sha256": "1ea22576962c17eade1039b59ef8136c164a1e6117fb78d9f237194f114a73c6",
+      "artifact_bytes": 32016091,
+      "provenance_sha256": "fdfa6132aec474403f05388515534e5d65232c5424041d68be08d0bc00ed5f75",
       "provenance": {
-        "cid": "be78689ed83c26c86763a3436f5eb28d916bdedc83684a50966270b5fd81ad87",
-        "snapshot_root": "22a3c5932e7ea916265eaa339911e21185d8f6cdff7c38233bbb7b7f4f8bf064",
-        "request_root": "9d26c3cd401aae73453415d8ceccd4d6a39efcec3433e91d3b1dcf472cc5f670",
+        "cid": "a04bfbc53d9212c71040c5478575d2c6ceef3119125573fbd7f51080c19b5b5b",
+        "snapshot_root": "1ed646fa35981a882e7c86998bea55ffa5e3bc01fad9ad13739c26fbce3dcf00",
+        "request_root": "2ccfbc2b1bec33caeb57119ee13e2482aa742e2024c84d79687b9570b86c2770",
         "target_root": "0843714bb8ab058c655fa9e2833f37ed0ddcd009338ce44669fc2ef5117d682e",
         "profile_root": "9e3dd6a9aa3ff407ed694b8705c82fcc13c472b818f189a1a45a7825ac1a967e",
-        "artifact_digest_blake3": "f5bbfb3a140bb32ef8d39d9cba802a5f666621d78ef858fbcbf24bd79a7a0055",
+        "artifact_digest_blake3": "1d68c53f2a0f1cc9db3d497f71b68e5ce3aea86c9a127d062770b7711e707530",
         "compiler_identity": "bc351ca3286fa3ff21d2b39e3ea374c3b0f01fb45a5e601d29c2dc08105ce117",
         "lowering_identity": "9dc8d0005a602a54b513fb90539525d8db5eefc9936a8d442b660b6e3c80ebd2"
       }
@@ -160,15 +167,15 @@
   "fixed_point": {
     "comparison": "raw executable bytes (SHA-256)",
     "artifacts": [
-      "c25276ad3b3b9950a10af8e5d10b8dfc21c098398458c17899c49651ea109857",
-      "c25276ad3b3b9950a10af8e5d10b8dfc21c098398458c17899c49651ea109857",
-      "c25276ad3b3b9950a10af8e5d10b8dfc21c098398458c17899c49651ea109857"
+      "1ea22576962c17eade1039b59ef8136c164a1e6117fb78d9f237194f114a73c6",
+      "1ea22576962c17eade1039b59ef8136c164a1e6117fb78d9f237194f114a73c6",
+      "1ea22576962c17eade1039b59ef8136c164a1e6117fb78d9f237194f114a73c6"
     ]
   },
   "empty_environment_run": {
     "environment": "empty (no PATH, no PYTHONPATH)",
     "status": "image",
-    "snapshot_sha256": "0227f90e84f8a4c9e9ed6a4c362c08f0fe581b5b55ee7b83535a34e4b12eef54"
+    "snapshot_sha256": "91a86a8129c6106c763ebf677733dc26534d54144e24a584b116232f0730fa4b"
   },
   "executables_have_interpreter": {
     "C0": false,
@@ -1058,19 +1065,19 @@
       "outcomes": {
         "C0": [
           "image",
-          "5bd81bf231fe7a3e5c13931464c413391444ba469023011d67c496226df69824"
+          "00d63dc0978e83af75342826e58b1a22d2a7a02d49ecd2d74df373397f3a5807"
         ],
         "C1": [
           "image",
-          "5bd81bf231fe7a3e5c13931464c413391444ba469023011d67c496226df69824"
+          "00d63dc0978e83af75342826e58b1a22d2a7a02d49ecd2d74df373397f3a5807"
         ],
         "C2": [
           "image",
-          "5bd81bf231fe7a3e5c13931464c413391444ba469023011d67c496226df69824"
+          "00d63dc0978e83af75342826e58b1a22d2a7a02d49ecd2d74df373397f3a5807"
         ],
         "C3": [
           "image",
-          "5bd81bf231fe7a3e5c13931464c413391444ba469023011d67c496226df69824"
+          "00d63dc0978e83af75342826e58b1a22d2a7a02d49ecd2d74df373397f3a5807"
         ]
       },
       "reference": null
@@ -1316,19 +1323,19 @@
       "outcomes": {
         "C0": [
           "image",
-          "0b1c35b6ef98fc1625c5cf87f15aba13a29caca5ef58ba1d931cd9a80c1d7a26"
+          "c8604d55ed610d1a86de86b99699cb37dcc0576706db66b90652dd1f31835382"
         ],
         "C1": [
           "image",
-          "0b1c35b6ef98fc1625c5cf87f15aba13a29caca5ef58ba1d931cd9a80c1d7a26"
+          "c8604d55ed610d1a86de86b99699cb37dcc0576706db66b90652dd1f31835382"
         ],
         "C2": [
           "image",
-          "0b1c35b6ef98fc1625c5cf87f15aba13a29caca5ef58ba1d931cd9a80c1d7a26"
+          "c8604d55ed610d1a86de86b99699cb37dcc0576706db66b90652dd1f31835382"
         ],
         "C3": [
           "image",
-          "0b1c35b6ef98fc1625c5cf87f15aba13a29caca5ef58ba1d931cd9a80c1d7a26"
+          "c8604d55ed610d1a86de86b99699cb37dcc0576706db66b90652dd1f31835382"
         ]
       },
       "reference": null
@@ -5928,6 +5935,326 @@
       ]
     },
     {
+      "case": "build: a JVM JAR (executable)",
+      "kind": "positive",
+      "command": "build",
+      "outcomes": {
+        "C0": [
+          "image",
+          "6c7c34b9fe6ff1d741ea1e8ce5564086817de11ae543ca9b6775b726826f1db9",
+          "40a87c1ac51dd2593935974361d1b6f6f0085fbd8cf2d2a6a3748f2f9e31faff"
+        ],
+        "C1": [
+          "image",
+          "6c7c34b9fe6ff1d741ea1e8ce5564086817de11ae543ca9b6775b726826f1db9",
+          "40a87c1ac51dd2593935974361d1b6f6f0085fbd8cf2d2a6a3748f2f9e31faff"
+        ],
+        "C2": [
+          "image",
+          "6c7c34b9fe6ff1d741ea1e8ce5564086817de11ae543ca9b6775b726826f1db9",
+          "40a87c1ac51dd2593935974361d1b6f6f0085fbd8cf2d2a6a3748f2f9e31faff"
+        ],
+        "C3": [
+          "image",
+          "6c7c34b9fe6ff1d741ea1e8ce5564086817de11ae543ca9b6775b726826f1db9",
+          "40a87c1ac51dd2593935974361d1b6f6f0085fbd8cf2d2a6a3748f2f9e31faff"
+        ]
+      },
+      "reference": [
+        "image",
+        "6c7c34b9fe6ff1d741ea1e8ce5564086817de11ae543ca9b6775b726826f1db9",
+        "40a87c1ac51dd2593935974361d1b6f6f0085fbd8cf2d2a6a3748f2f9e31faff"
+      ]
+    },
+    {
+      "case": "build: a JVM JAR (library)",
+      "kind": "positive",
+      "command": "build",
+      "outcomes": {
+        "C0": [
+          "image",
+          "d3a9b00510b23fe80669b05ba27363f14d77812647634f8ca4fca71744400768",
+          "079a9114b74fb4089b5047142a068c7b9444486aa33d08f01a66e4adc7863f35"
+        ],
+        "C1": [
+          "image",
+          "d3a9b00510b23fe80669b05ba27363f14d77812647634f8ca4fca71744400768",
+          "079a9114b74fb4089b5047142a068c7b9444486aa33d08f01a66e4adc7863f35"
+        ],
+        "C2": [
+          "image",
+          "d3a9b00510b23fe80669b05ba27363f14d77812647634f8ca4fca71744400768",
+          "079a9114b74fb4089b5047142a068c7b9444486aa33d08f01a66e4adc7863f35"
+        ],
+        "C3": [
+          "image",
+          "d3a9b00510b23fe80669b05ba27363f14d77812647634f8ca4fca71744400768",
+          "079a9114b74fb4089b5047142a068c7b9444486aa33d08f01a66e4adc7863f35"
+        ]
+      },
+      "reference": [
+        "image",
+        "d3a9b00510b23fe80669b05ba27363f14d77812647634f8ca4fca71744400768",
+        "079a9114b74fb4089b5047142a068c7b9444486aa33d08f01a66e4adc7863f35"
+      ]
+    },
+    {
+      "case": "build: a JVM JAR (two JARs)",
+      "kind": "negative",
+      "command": "build",
+      "outcomes": {
+        "C0": [
+          "rejected",
+          "XAX.BUILD.ARTIFACT",
+          "BUILD-ARTIFACT-SUPPORTED"
+        ],
+        "C1": [
+          "rejected",
+          "XAX.BUILD.ARTIFACT",
+          "BUILD-ARTIFACT-SUPPORTED"
+        ],
+        "C2": [
+          "rejected",
+          "XAX.BUILD.ARTIFACT",
+          "BUILD-ARTIFACT-SUPPORTED"
+        ],
+        "C3": [
+          "rejected",
+          "XAX.BUILD.ARTIFACT",
+          "BUILD-ARTIFACT-SUPPORTED"
+        ]
+      },
+      "reference": [
+        "rejected",
+        "XAX.BUILD.ARTIFACT",
+        "BUILD-ARTIFACT-SUPPORTED"
+      ]
+    },
+    {
+      "case": "build: an unsigned APK",
+      "kind": "positive",
+      "command": "build",
+      "outcomes": {
+        "C0": [
+          "image",
+          "08fec62d67cc2758035c26e04fdc783f3738d4537c73090d6e284fbfb8f6379e",
+          "a9e0b82ca908228e530252ed54116ec4434dcf3376598dd2bafb471007b77762"
+        ],
+        "C1": [
+          "image",
+          "08fec62d67cc2758035c26e04fdc783f3738d4537c73090d6e284fbfb8f6379e",
+          "a9e0b82ca908228e530252ed54116ec4434dcf3376598dd2bafb471007b77762"
+        ],
+        "C2": [
+          "image",
+          "08fec62d67cc2758035c26e04fdc783f3738d4537c73090d6e284fbfb8f6379e",
+          "a9e0b82ca908228e530252ed54116ec4434dcf3376598dd2bafb471007b77762"
+        ],
+        "C3": [
+          "image",
+          "08fec62d67cc2758035c26e04fdc783f3738d4537c73090d6e284fbfb8f6379e",
+          "a9e0b82ca908228e530252ed54116ec4434dcf3376598dd2bafb471007b77762"
+        ]
+      },
+      "reference": [
+        "image",
+        "08fec62d67cc2758035c26e04fdc783f3738d4537c73090d6e284fbfb8f6379e",
+        "a9e0b82ca908228e530252ed54116ec4434dcf3376598dd2bafb471007b77762"
+      ]
+    },
+    {
+      "case": "build: an APK whose manifest names another activity",
+      "kind": "negative",
+      "command": "build",
+      "outcomes": {
+        "C0": [
+          "rejected",
+          "XAX.BUILD.ANDROID",
+          "ANDROID-APK-ACTIVITY-IDENTITY"
+        ],
+        "C1": [
+          "rejected",
+          "XAX.BUILD.ANDROID",
+          "ANDROID-APK-ACTIVITY-IDENTITY"
+        ],
+        "C2": [
+          "rejected",
+          "XAX.BUILD.ANDROID",
+          "ANDROID-APK-ACTIVITY-IDENTITY"
+        ],
+        "C3": [
+          "rejected",
+          "XAX.BUILD.ANDROID",
+          "ANDROID-APK-ACTIVITY-IDENTITY"
+        ]
+      },
+      "reference": [
+        "rejected",
+        "XAX.BUILD.ANDROID",
+        "ANDROID-APK-ACTIVITY-IDENTITY"
+      ]
+    },
+    {
+      "case": "build-signed: a signed APK",
+      "kind": "positive",
+      "command": "build-signed",
+      "outcomes": {
+        "C0": [
+          "image",
+          "048b3130a6e0996abb9640fdc730114ca5734aa321253e5689cc6aa436b46ae5",
+          "a88cde269adece6e0f16f8038a8f7abc34a21258c49406400823fbd301bbb0d2"
+        ],
+        "C1": [
+          "image",
+          "048b3130a6e0996abb9640fdc730114ca5734aa321253e5689cc6aa436b46ae5",
+          "a88cde269adece6e0f16f8038a8f7abc34a21258c49406400823fbd301bbb0d2"
+        ],
+        "C2": [
+          "image",
+          "048b3130a6e0996abb9640fdc730114ca5734aa321253e5689cc6aa436b46ae5",
+          "a88cde269adece6e0f16f8038a8f7abc34a21258c49406400823fbd301bbb0d2"
+        ],
+        "C3": [
+          "image",
+          "048b3130a6e0996abb9640fdc730114ca5734aa321253e5689cc6aa436b46ae5",
+          "a88cde269adece6e0f16f8038a8f7abc34a21258c49406400823fbd301bbb0d2"
+        ]
+      },
+      "reference": [
+        "image",
+        "048b3130a6e0996abb9640fdc730114ca5734aa321253e5689cc6aa436b46ae5",
+        "a88cde269adece6e0f16f8038a8f7abc34a21258c49406400823fbd301bbb0d2"
+      ]
+    },
+    {
+      "case": "build: a signed APK without the SIGN effect",
+      "kind": "negative",
+      "command": "build",
+      "outcomes": {
+        "C0": [
+          "rejected",
+          "XAX.BUILD.ANDROID",
+          "ANDROID-APK-SIGNING-CAPABILITY"
+        ],
+        "C1": [
+          "rejected",
+          "XAX.BUILD.ANDROID",
+          "ANDROID-APK-SIGNING-CAPABILITY"
+        ],
+        "C2": [
+          "rejected",
+          "XAX.BUILD.ANDROID",
+          "ANDROID-APK-SIGNING-CAPABILITY"
+        ],
+        "C3": [
+          "rejected",
+          "XAX.BUILD.ANDROID",
+          "ANDROID-APK-SIGNING-CAPABILITY"
+        ]
+      },
+      "reference": [
+        "rejected",
+        "XAX.BUILD.ANDROID",
+        "ANDROID-APK-SIGNING-CAPABILITY"
+      ]
+    },
+    {
+      "case": "build: a libxposed JVM module",
+      "kind": "positive",
+      "command": "build",
+      "outcomes": {
+        "C0": [
+          "image",
+          "04e8ad1677e292f16e1b8d3baefa49337a97531e2a67996775c790515a8048a0",
+          "458d180e18ec35cb298801fdd29b90c08ca4924a2f2fa54b9261eb22b318af1d"
+        ],
+        "C1": [
+          "image",
+          "04e8ad1677e292f16e1b8d3baefa49337a97531e2a67996775c790515a8048a0",
+          "458d180e18ec35cb298801fdd29b90c08ca4924a2f2fa54b9261eb22b318af1d"
+        ],
+        "C2": [
+          "image",
+          "04e8ad1677e292f16e1b8d3baefa49337a97531e2a67996775c790515a8048a0",
+          "458d180e18ec35cb298801fdd29b90c08ca4924a2f2fa54b9261eb22b318af1d"
+        ],
+        "C3": [
+          "image",
+          "04e8ad1677e292f16e1b8d3baefa49337a97531e2a67996775c790515a8048a0",
+          "458d180e18ec35cb298801fdd29b90c08ca4924a2f2fa54b9261eb22b318af1d"
+        ]
+      },
+      "reference": [
+        "image",
+        "04e8ad1677e292f16e1b8d3baefa49337a97531e2a67996775c790515a8048a0",
+        "458d180e18ec35cb298801fdd29b90c08ca4924a2f2fa54b9261eb22b318af1d"
+      ]
+    },
+    {
+      "case": "build-signed: a signed libxposed JVM module",
+      "kind": "positive",
+      "command": "build-signed",
+      "outcomes": {
+        "C0": [
+          "image",
+          "f555d961cdd579a66b4862c48dc0fe097886daf3de1ba0c676eef2387d505f02",
+          "fb7e71cb463500b480d22ee0202470cea63970b7232bfb2737329080deb1e72b"
+        ],
+        "C1": [
+          "image",
+          "f555d961cdd579a66b4862c48dc0fe097886daf3de1ba0c676eef2387d505f02",
+          "fb7e71cb463500b480d22ee0202470cea63970b7232bfb2737329080deb1e72b"
+        ],
+        "C2": [
+          "image",
+          "f555d961cdd579a66b4862c48dc0fe097886daf3de1ba0c676eef2387d505f02",
+          "fb7e71cb463500b480d22ee0202470cea63970b7232bfb2737329080deb1e72b"
+        ],
+        "C3": [
+          "image",
+          "f555d961cdd579a66b4862c48dc0fe097886daf3de1ba0c676eef2387d505f02",
+          "fb7e71cb463500b480d22ee0202470cea63970b7232bfb2737329080deb1e72b"
+        ]
+      },
+      "reference": [
+        "image",
+        "f555d961cdd579a66b4862c48dc0fe097886daf3de1ba0c676eef2387d505f02",
+        "fb7e71cb463500b480d22ee0202470cea63970b7232bfb2737329080deb1e72b"
+      ]
+    },
+    {
+      "case": "build-signed: a libxposed JVM module missing an input",
+      "kind": "negative",
+      "command": "build-signed",
+      "outcomes": {
+        "C0": [
+          "rejected",
+          "XAX.BUILD.INPUT_CLOSURE",
+          "BUILD-EXTERNAL-COMPLETE"
+        ],
+        "C1": [
+          "rejected",
+          "XAX.BUILD.INPUT_CLOSURE",
+          "BUILD-EXTERNAL-COMPLETE"
+        ],
+        "C2": [
+          "rejected",
+          "XAX.BUILD.INPUT_CLOSURE",
+          "BUILD-EXTERNAL-COMPLETE"
+        ],
+        "C3": [
+          "rejected",
+          "XAX.BUILD.INPUT_CLOSURE",
+          "BUILD-EXTERNAL-COMPLETE"
+        ]
+      },
+      "reference": [
+        "rejected",
+        "XAX.BUILD.INPUT_CLOSURE",
+        "BUILD-EXTERNAL-COMPLETE"
+      ]
+    },
+    {
       "case": "verify: a store past the driver's capacity",
       "kind": "negative",
       "command": "verify",
@@ -5992,26 +6319,26 @@
     "transactions": [
       {
         "record": "0001-inputs-limit.edit",
-        "mutations": 36,
+        "mutations": 37,
         "kinds": [
           "SetConstant"
         ],
-        "record_sha256": "5b265ed3be33699e90ba5f9bbda7aa0c96c403a1ae458a14cbbabb1cbbb70d61",
+        "record_sha256": "bf8171c63042d46d12dd4cf4ca25cfa05b59e08c51a4f477b60c8fad3375f119",
         "driver_edit": {
           "status": "image",
           "outputs": [
-            "9ad1bae7c88a88935315db87896d4605929440bb4a2f44dabad0e3ebe6bd5f9f"
+            "5e173694dbc91192007615e3b0543d76e46a37bb32e3046b1e5d32f8edf917d7"
           ],
-          "host_s_nonsemantic": 56.82,
-          "peak_rss_kib_nonsemantic": 12527960
+          "host_s_nonsemantic": 57.45,
+          "peak_rss_kib_nonsemantic": 13130260
         },
         "request_edit": {
           "status": "image",
           "outputs": [
-            "0ca083596b86946d1b74e07cfd84559a73befe8bb3185b5dc5b8c8655be2d547"
+            "5429106339c3fcbdaac425282944a736ce6c7d4f22c8b18300598b0b58128b9c"
           ],
-          "host_s_nonsemantic": 55.78,
-          "peak_rss_kib_nonsemantic": 12527960
+          "host_s_nonsemantic": 57.61,
+          "peak_rss_kib_nonsemantic": 13130260
         }
       },
       {
@@ -6020,22 +6347,22 @@
         "kinds": [
           "DeleteNode"
         ],
-        "record_sha256": "ee64701bf72953584e18f09da2e6e422e0955297e38ac85c0ecd574ba7af196c",
+        "record_sha256": "958e636874d3f4f672343b4388db7d326bbb29c384d80591709b09fdc14bedc1",
         "driver_edit": {
           "status": "image",
           "outputs": [
-            "5026da328a12c6b488074cd3410e65df3391bf03999604637cd08acb88b5cab5"
+            "d0d297b3302d918591f7b5fa667bc550b08a73ad08b37972745e5baa290a7a71"
           ],
-          "host_s_nonsemantic": 54.51,
-          "peak_rss_kib_nonsemantic": 12527960
+          "host_s_nonsemantic": 56.93,
+          "peak_rss_kib_nonsemantic": 13130260
         },
         "request_edit": {
           "status": "image",
           "outputs": [
-            "ad1bf5c91ae6e22ed946f37094ef483ab4442939fbab95e827bb2dc4ca9b4196"
+            "d2d50be5bf01b68ca7227c528aba1988b60b1684e0b5e1ee5508a48d9a6d7017"
           ],
-          "host_s_nonsemantic": 54.83,
-          "peak_rss_kib_nonsemantic": 12527960
+          "host_s_nonsemantic": 58.59,
+          "peak_rss_kib_nonsemantic": 13130260
         }
       }
     ],
@@ -6065,7 +6392,7 @@
     "verification:hash": {
       "component": "verification:hash",
       "store_verification": "memoized",
-      "record": "verified-hash-36bb6b921c2d156d9c65043071ff009694e830cd6c8ac69eb8de36dfa3b8713c.bin"
+      "record": "verified-hash-a775487e6e0cd39acfe55e3ed54154de95c859192b60d7f94e1fd138a650e2ff.bin"
     },
     "blake3-hash": {
       "component": "blake3-hash",
@@ -6079,7 +6406,7 @@
     "verification:store-decoder": {
       "component": "verification:store-decoder",
       "store_verification": "memoized",
-      "record": "verified-store-decoder-26f0f857453a3557d6ea9d05dbe227da14fae42e0b96cbb2c2735eb3ded00795.bin"
+      "record": "verified-store-decoder-f282b47e78e1c93069d5ae001c22ba12036334f9741fe2587cce4281fd0d0c21.bin"
     },
     "store-decoder": {
       "component": "store-decoder",
@@ -6093,7 +6420,7 @@
     "verification:store-writer": {
       "component": "verification:store-writer",
       "store_verification": "memoized",
-      "record": "verified-store-writer-2682eca3bb01db25c94b913902987cf03ac47f3284f7a31b750d0ddea3c54517.bin"
+      "record": "verified-store-writer-3ecf8e87213247405e0d8702e4e8c18fe60978e31a6c1d902b1eda5a6112f948.bin"
     },
     "store-writer": {
       "component": "store-writer",
@@ -6107,12 +6434,12 @@
     "verification:graph-decoder": {
       "component": "verification:graph-decoder",
       "store_verification": "memoized",
-      "record": "verified-graph-decoder-a7b64fd4df832fda0eae8845913d26fc4301fdb710076f8713f5962e9d1532f3.bin"
+      "record": "verified-graph-decoder-6410bb64d29434f259947b77151588a62e280d950830c2a79038e02b751e7cb1.bin"
     },
     "graph-decoder": {
       "component": "graph-decoder",
-      "semantic_root": "2b34c9bb61e0911568ff51fdf38f9692897186503acc26d2f34f18b2ee2a6474",
-      "native_artifact_digest": "03b077e79c1cf10b90acae3e627229ffab07326b38f0c6213139fda245fd7032",
+      "semantic_root": "3ec7cc5e943949cd58ee2e918e17dc2092a8a1171d0cb2535a868d1508fa33d4",
+      "native_artifact_digest": "a2006887ea146d0672a6219706e76586a358151aef07118d778922d04050b34c",
       "requested_authority": "xax",
       "actual_authority": "xax",
       "fallback_occurred": false,
@@ -6121,12 +6448,12 @@
     "verification:cfg": {
       "component": "verification:cfg",
       "store_verification": "memoized",
-      "record": "verified-cfg-d20d949a97b2e64def1d7006515e62db913afe499cb7aa5bc8c13063b8c65e31.bin"
+      "record": "verified-cfg-7c72049cc3917d94ebf39a242c1b963b73bca42261b04473aa803cd8c0095d8b.bin"
     },
     "cfg": {
       "component": "cfg",
-      "semantic_root": "66d42ef0298b00e21b40906d2073dc21eef4957109bf6e5948006b75ded5c884",
-      "native_artifact_digest": "e178c633ab77fe926b0eb76f8573e1aed2720b9ca5daabc4576e5de916bb42a3",
+      "semantic_root": "852b583d5c5447ba5af47a74b5107a055aaab7891e9a4f8bb314f70cca664241",
+      "native_artifact_digest": "38ce7321dbf2abd1acae77b1014887091aa87bf881120350289692eeb5fcd77d",
       "requested_authority": "xax",
       "actual_authority": "xax",
       "fallback_occurred": false,
@@ -6135,7 +6462,7 @@
     "verification:typing": {
       "component": "verification:typing",
       "store_verification": "memoized",
-      "record": "verified-typing-e93bbdc00f2bead202810a191fe1e7416a7d6abf42df2d7718a38a11d244bc26.bin"
+      "record": "verified-typing-fb21f7adaf4fdcc032345930518ac5a9c193d0a1120b8adee6a29b660e0957ca.bin"
     },
     "typing": {
       "component": "typing",
@@ -6149,7 +6476,7 @@
     "verification:store-verifier": {
       "component": "verification:store-verifier",
       "store_verification": "memoized",
-      "record": "verified-store-verifier-00fc484970468f2d33b10b86f117994ba1856f78429d067c5c5fa5f21b5e7cc4.bin"
+      "record": "verified-store-verifier-643c8392f700671cf39b1941944a5d9b64beb7fee6e0f1634e17677cc6dcff7c.bin"
     },
     "store-verifier": {
       "component": "store-verifier",
@@ -6159,17 +6486,17 @@
       "actual_authority": "xax",
       "fallback_occurred": false,
       "fallback_reason": null,
-      "declined_inputs": 96426
+      "declined_inputs": 100662
     },
     "verification:compiler-driver-general": {
       "component": "verification:compiler-driver-general",
       "store_verification": "memoized",
-      "record": "verified-compiler-driver-general-57d83f577ff416162a86f8bd1ce692d37cc8201a907fe991d3f607ad21a828c1.bin"
+      "record": "verified-compiler-driver-general-ca12931cd6eefbe25e50301d7b58af93c6bbd6a455178a8d64efd2acca800be5.bin"
     },
     "verification:xax_x86_64_backend": {
       "component": "verification:xax_x86_64_backend",
       "store_verification": "memoized",
-      "record": "verified-xax_x86_64_backend-d8ca143943b21fba1056a8f7e0b3cdbfc8338e7a8efa976ae7b3d66162cc3775.bin"
+      "record": "verified-xax_x86_64_backend-207d18a336ff931e4652d7a3bde7947972da9c9d8ce7b0c7b66167a6bc73626a.bin"
     },
     "x86-64-views-backend": {
       "component": "x86-64-views-backend",
@@ -6183,7 +6510,7 @@
     "verification:xax_x86_64_general": {
       "component": "verification:xax_x86_64_general",
       "store_verification": "memoized",
-      "record": "verified-xax_x86_64_general-69f22ca07eebd9682123794ab5ea8bebb30d9113ee0a473077d6dcf80490ad8d.bin"
+      "record": "verified-xax_x86_64_general-795558294c5f1b29f5f25d1d25552f99c758d1d946563bd1f93c4dc7a3c5016a.bin"
     },
     "x86-64-general-frontend": {
       "component": "x86-64-general-frontend",
@@ -6197,7 +6524,7 @@
     "verification:riscv64-encoder": {
       "component": "verification:riscv64-encoder",
       "store_verification": "memoized",
-      "record": "verified-riscv64-encoder-aad85eb43617aa6de15e268df7efd81bbaf1e19504ec2ca13fb924826fe90b4b.bin"
+      "record": "verified-riscv64-encoder-1efc53f1afff594b0139cd2ca1b2fa160062983b8b1a920444d23fdfe4a1f0b7.bin"
     },
     "riscv64-encoder": {
       "component": "riscv64-encoder",
@@ -6211,7 +6538,7 @@
     "verification:xax_riscv64_backend": {
       "component": "verification:xax_riscv64_backend",
       "store_verification": "memoized",
-      "record": "verified-xax_riscv64_backend-ce29977420899ca4f9394809eb98283dd69915e836989c174cbc0521ba32775a.bin"
+      "record": "verified-xax_riscv64_backend-4123eadee76a736a872b905d93aa9828e675bad91852dd30b24627f0be91a1fd.bin"
     },
     "riscv64-backend": {
       "component": "riscv64-backend",
@@ -6225,7 +6552,7 @@
     "verification:xax_aarch64_general": {
       "component": "verification:xax_aarch64_general",
       "store_verification": "memoized",
-      "record": "verified-xax_aarch64_general-b2a0b3af969cfe16c75081e38bcff757017ff65ba7fe9edb397e5a0e5ce77613.bin"
+      "record": "verified-xax_aarch64_general-fadebad6d8a30ffdb132e6aef5c25b45e169c8c141c37126caffb35c56fe7371.bin"
     },
     "aarch64-general": {
       "component": "aarch64-general",
@@ -6236,20 +6563,118 @@
       "fallback_occurred": false,
       "fallback_reason": null
     },
+    "verification:xax_android_elf": {
+      "component": "verification:xax_android_elf",
+      "store_verification": "memoized",
+      "record": "verified-xax_android_elf-a86101cc3039624f2edb3b682fa8b5c2ed35060d645457868770a45afeed2b27.bin"
+    },
+    "android-elf": {
+      "component": "android-elf",
+      "semantic_root": "f48a64b049e5b45ecebe982bf4c5c8f19c4891799cca9418ec5216184e32e464",
+      "native_artifact_digest": "381fd4989b24f1d73144e891be535b2df5ba51ff9fa9fd0850bfb505399b2530",
+      "requested_authority": "xax",
+      "actual_authority": "xax",
+      "fallback_occurred": false,
+      "fallback_reason": null
+    },
+    "verification:xax_dex_bridge": {
+      "component": "verification:xax_dex_bridge",
+      "store_verification": "memoized",
+      "record": "verified-xax_dex_bridge-70a21d5851f64ef6f91088c021dd1634de704116ad52bd6f87c07654d32bd0a1.bin"
+    },
+    "dex-bridge": {
+      "component": "dex-bridge",
+      "semantic_root": "f12fab81bbb72e0f6333f2b56e837e180060b54ddca3e18916d788d2d1200e70",
+      "native_artifact_digest": "2bdeaae3e07c19e144628121aa7e41fe043ff03a00b3023f31e5f1b260f862b3",
+      "requested_authority": "xax",
+      "actual_authority": "xax",
+      "fallback_occurred": false,
+      "fallback_reason": null
+    },
+    "verification:xax_android_rules": {
+      "component": "verification:xax_android_rules",
+      "store_verification": "memoized",
+      "record": "verified-xax_android_rules-2798a343ca868c9542e4c5becf83d2afa63e17eb3647f3a23727435072ce81b3.bin"
+    },
+    "android-rules": {
+      "component": "android-rules",
+      "semantic_root": "2c8357458aad64c0bae81149aed2a665b31c635f25d4b03e891c442e1431ab04",
+      "native_artifact_digest": "48a076a1f111483a9191861d8998b890257d4c894db1c2022ab7049f917b7564",
+      "requested_authority": "xax",
+      "actual_authority": "xax",
+      "fallback_occurred": false,
+      "fallback_reason": null
+    },
+    "verification:xax_android_resources": {
+      "component": "verification:xax_android_resources",
+      "store_verification": "memoized",
+      "record": "verified-xax_android_resources-822d6bb33b9d3a9d2a80ee1cc75f8ff53644b68a65ccb9c67c4317e7985ffe91.bin"
+    },
+    "android-resources": {
+      "component": "android-resources",
+      "semantic_root": "8ddea017fc9e996438c8bafb0fdee1b401476ca29d9775844abf959175681446",
+      "native_artifact_digest": "5b651c84d4e2e87796fca1c22f163754589d7db5e556cc5c8e2d536550894bfe",
+      "requested_authority": "xax",
+      "actual_authority": "xax",
+      "fallback_occurred": false,
+      "fallback_reason": null
+    },
+    "verification:xax_apk_container": {
+      "component": "verification:xax_apk_container",
+      "store_verification": "memoized",
+      "record": "verified-xax_apk_container-ccb882568c8caf07469dc651d18440389abaee16fcbe5f95173ad7a7bd35062e.bin"
+    },
+    "apk-container": {
+      "component": "apk-container",
+      "semantic_root": "6086d2d04c8ca5b47103daf258148f3fc3bec0fa74652207453aa8f88e6ee5d3",
+      "native_artifact_digest": "75af2a00f04cdaf77b2cdc14b7161151f3bfac0ab28e2226ab68ddfa8ee81dd9",
+      "requested_authority": "xax",
+      "actual_authority": "xax",
+      "fallback_occurred": false,
+      "fallback_reason": null
+    },
+    "verification:xax_dex_jvm": {
+      "component": "verification:xax_dex_jvm",
+      "store_verification": "memoized",
+      "record": "verified-xax_dex_jvm-622bc2b0ee7103f923363fcc686ca3496c8075c18a8d1a1a5aa96a2752800b39.bin"
+    },
+    "dex-jvm": {
+      "component": "dex-jvm",
+      "semantic_root": "c164f77be8300ba6ac99df4cd0c83580b9376e360d5933783c33c5a60108d9fc",
+      "native_artifact_digest": "3cff70b2d2b98738e4832eddc8370d126cfdb3b347f2fb5a936213c601512c6d",
+      "requested_authority": "xax",
+      "actual_authority": "xax",
+      "fallback_occurred": false,
+      "fallback_reason": null
+    },
+    "verification:xax_dex_writer": {
+      "component": "verification:xax_dex_writer",
+      "store_verification": "memoized",
+      "record": "verified-xax_dex_writer-97204a43a63a85bfcec5d48392d36563902bd2c49a8e43ce008a2d7a9ba97967.bin"
+    },
+    "dex-writer": {
+      "component": "dex-writer",
+      "semantic_root": "5115e051acdc0736cf6106e985400ab678820f49ce95f89da25ee4a59d676f6e",
+      "native_artifact_digest": "855079a140bdba0dad6a2117e6b413bba5e982cdeb98002fe4a51b011e341a80",
+      "requested_authority": "xax",
+      "actual_authority": "xax",
+      "fallback_occurred": false,
+      "fallback_reason": null
+    },
     "verification:xax_jvm_general": {
       "component": "verification:xax_jvm_general",
       "store_verification": "memoized",
-      "record": "verified-xax_jvm_general-74ecda49d37baf9d1f67fc1070820f724f5d3a77a5d41a01617ca8e5184c5007.bin"
+      "record": "verified-xax_jvm_general-35eac4ed1fd82565b9631fbf7b2eb55e8f65c45372a5784f663fb18336154179.bin"
     },
     "verification:xax_android": {
       "component": "verification:xax_android",
       "store_verification": "memoized",
-      "record": "verified-xax_android-7b9b49fc4278b53a00b1fa882148d532e16ce371f954804c9eee63e188fb1098.bin"
+      "record": "verified-xax_android-1505c039ecba97515da027234b129a9cca8fc8c275ce852860f607025f565392.bin"
     },
     "verification:xax_apk_signer": {
       "component": "verification:xax_apk_signer",
       "store_verification": "memoized",
-      "record": "verified-xax_apk_signer-57b13ee21c558652a98a14975eea2c3817d88cc055cbe09caa9af691a3ff0f79.bin"
+      "record": "verified-xax_apk_signer-1ecf650bf1b6b7776a3c6e7b0d71a5b9c6e04af49c93b5de4218b879a787cc46.bin"
     }
   }
 }

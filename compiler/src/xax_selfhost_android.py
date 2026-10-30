@@ -27,7 +27,7 @@ from __future__ import annotations
 
 import xax_selfhost_diagnostics as D
 import xax_selfhost_facts as F
-from xax_compiler import Kind, x86_64_linux_exec_target
+from xax_compiler import Kind, Operation, x86_64_linux_exec_target
 from xax_graph_builder import program_store
 from xax_native import bootstrap_dir
 from xax_selfhost_facts import B64, E, H_ARENA, H_ARENA_END, HEADER, NONE, _function
@@ -42,7 +42,7 @@ G_INBASE = CO_AT  # ``INPUT_REDIRECT``: a chained layer's input base
 G_CUR, G_END, G_W, G_SAVE = CO_AT + 1, CO_AT + 2, CO_AT + 3, CO_AT + 4  # the payload cursor and end, the writer, the arena
 G_K = CO_AT + 64  # the constants' handles
 SPILL_AT, SPILL_WORDS = CO_AT + 1024, 3072  # a phase's variables, for the next (ADR-352's split)
-PHASES = 12
+PHASES = 16
 SLOT_AT, SLOT_END = CO_AT + 4096, CO_AT + 16384  # the frontend's variables, one word each (``_Slotted``)
 CO_ARENA_AT, CO_ARENA_END = SLOT_END, CO_AT + (3 << 19)  # this program's arena
 WRITER_AT, WRITER_END = CO_ARENA_END, HEADER - 4096  # the layers' inputs, written in turn (apart from the arena)
@@ -132,6 +132,16 @@ LIBXPOSED_TEXTS = (
     b"META-INF/xposed/module.prop", b"META-INF/xposed/java_init.list", b"META-INF/xposed/native_init.list", b"META-INF/xposed/scope.list",
     b"minApiVersion=", b"\ntargetApiVersion=", b"\nstaticScope=", b"true\n", b"false\n", b"autoHotReload=true\n", b"\n",
 )
+# S15e.6i.2b (ADR-358): the libxposed JVM module profile's texts.
+JVM_PREFIX, JVM_PREFIX_V2 = b"android-libxposed-jvm-module-v1\0", b"android-libxposed-jvm-module-v2\0"
+XPOSED_INTERFACE = b"Lio/github/libxposed/api/XposedInterface;"
+READY_PARAM = b"Lio/github/libxposed/api/XposedModuleInterface$PackageReadyParam;"
+JVM_ENTRY_DESCRIPTOR = b"(" + XPOSED_INTERFACE + READY_PARAM + b")V"
+JVM_KEYS = (b"branding", b"dex", b"fields", b"libraries", b"min_sdk", b"module_class", b"natives", b"package", b"scopes", b"target_sdk",
+            b"version_code", b"version_name")
+JVM_TEXTS = (JVM_PREFIX, JVM_PREFIX_V2, XPOSED_INTERFACE, READY_PARAM, JVM_ENTRY_DESCRIPTOR, *JVM_KEYS, b"lib/", b"res/", b"L", b";", b"xax/P",
+             b"entry", b"classes", b".dex")
+DEX_JVM_OUT = 4096  # ``xax_selfhost_dex_jvm.OUT_AT``: the lowered class
 CONSTANTS = (
     ANDROID_V3, *ANDROID_LATER, b"android-aapcs64-c", b"default", b"xaxOnCreate", b"xaxOnClick", b"onCreate", b"onClick", b"Landroid/app/Activity;",
     b"Ljava/lang/Object;", b"Landroid/view/View$OnClickListener;", b"Landroid/os/Bundle;", b"Landroid/view/View;", b"V", b"xaxapp",
@@ -140,7 +150,7 @@ CONSTANTS = (
     b"xaxOnReceive", b"onReceive", b"xaxOnDestroy", b"onDestroy", b"onBind", b"Landroid/os/IBinder;", b"Landroid/content/Intent;",
     b"Landroid/content/Context;", *(f"classes{k}.dex".encode() for k in range(3, 10)),
     *LIBXPOSED_TEXTS, *SURFACE_TEXTS, *MANAGED_TEXTS,
-    *(prefix for _name, prefix in CLASSES),
+    *(prefix for _name, prefix in CLASSES), *JVM_TEXTS,
 )
 K_INDEX = {value: k for k, value in enumerate(dict.fromkeys(CONSTANTS))}
 ACC_PUBLIC_FINAL_CLASS, ACC_NATIVE_METHOD, ACC_PROTECTED, ACC_PUBLIC = 33, 258, 4, 1
@@ -699,13 +709,616 @@ def _blob_put_fn(tables):
     return _function(("h",), build, tables)
 
 
+# -- S15e.6i.2b (ADR-358): the libxposed JVM module profile's helpers ------------------------------------------------------
+# The module record (``xax_android_libxposed_jvm.decode_libxposed_jvm_module``) is JSON: a value node is ``[1, n, bytes]``
+# (a string; ``node + 1`` is its plain handle), ``[2, value]`` (a non-negative integer), ``[3, n, nodes]`` (an array) or
+# ``[4, n, key, value, ...]`` (the object).  Anything ``json.loads`` would not return as these (a float, a literal, a
+# negative number, a nested object, a non-ASCII text) declines, as the bootstrap's error does or as its later checks would.
+G_JC, G_JH = CO_AT + 16, CO_AT + 17  # the JSON cursor (an index from 0) and the handle it reads
+JSON_SPACE = (0x20, 0x09, 0x0A, 0x0D)
+
+
+def _jbyte(e: E):
+    """The JSON byte at the cursor (256 past the end)."""
+    return e.sel(e.lt(e.ld(G_JC), e.ld(e.ld(G_JH))), at(e, e.ld(G_JH), e.add(e.sel(e.lt(e.ld(G_JC), e.ld(e.ld(G_JH))), e.ld(G_JC), 0), 1)), 256)
+
+
+def _jws_fn(tables):
+    def build(e: E):
+        e.while_(lambda: e.either(*(e.eq(_jbyte(e), c) for c in JSON_SPACE)), lambda: e.st(G_JC, e.add(e.ld(G_JC), 1)))
+        e.give(1)
+    return _function((), build, tables)
+
+
+def _jstr_fn(tables):
+    """A JSON string at the cursor: its node."""
+    def build(e: E):
+        p = e.p
+        _call(e, "an_jws")
+        _ok(e, e.eq(_jbyte(e), ord('"')))
+        e.st(G_JC, e.add(e.ld(G_JC), 1))
+        e.var("js_h", e.alloc(e.add(e.ld(e.ld(G_JH)), 2)))
+        _ok(e, e.ne(p["js_h"], NONE))
+        e.var("js_n", 0)
+        e.var("js_go", 1)
+
+        def char():
+            e.var("js_c", _jbyte(e))
+            e.st(G_JC, e.add(e.ld(G_JC), 1))
+            _ok(e, e.both(e.lt(p["js_c"], 0x80), e.le(0x20, p["js_c"])))  # past the end (256), a control or non-ASCII byte
+            e.var("js_v", p["js_c"])
+            e.if_(e.eq(p["js_c"], ord('"')), lambda: e.set("js_go", 0))
+
+            def escape():
+                e.var("js_x", _jbyte(e))
+                e.st(G_JC, e.add(e.ld(G_JC), 1))
+                e.set("js_v", NONE)
+                for code, value in ((ord('"'), ord('"')), (ord("\\"), ord("\\")), (ord("/"), ord("/")), (ord("b"), 8), (ord("f"), 12), (ord("n"), 10),
+                                    (ord("r"), 13), (ord("t"), 9)):
+                    e.if_(e.eq(p["js_x"], code), lambda value=value: e.set("js_v", value))
+
+                def unicode():
+                    e.set("js_v", 0)
+                    for _ in range(4):
+                        e.var("js_d", _jbyte(e))
+                        e.st(G_JC, e.add(e.ld(G_JC), 1))
+                        e.var("js_dv", NONE)
+                        e.if_(e.both(e.le(ord("0"), p["js_d"]), e.le(p["js_d"], ord("9"))), lambda: e.set("js_dv", e.sub(p["js_d"], ord("0"))))
+                        e.if_(e.both(e.le(ord("a"), p["js_d"]), e.le(p["js_d"], ord("f"))), lambda: e.set("js_dv", e.sub(p["js_d"], ord("a") - 10)))
+                        e.if_(e.both(e.le(ord("A"), p["js_d"]), e.le(p["js_d"], ord("F"))), lambda: e.set("js_dv", e.sub(p["js_d"], ord("A") - 10)))
+                        _ok(e, e.ne(p["js_dv"], NONE))
+                        e.set("js_v", e.add(e.mul(p["js_v"], 16), p["js_dv"]))
+                    _ok(e, e.lt(p["js_v"], 0x80))  # a non-ASCII text declines
+
+                e.if_(e.eq(p["js_x"], ord("u")), unicode)
+                _ok(e, e.ne(p["js_v"], NONE))
+
+            e.if_(e.eq(p["js_c"], ord("\\")), escape)
+
+            def keep():
+                e.st(e.add(e.add(p["js_h"], 2), p["js_n"]), p["js_v"])
+                e.set("js_n", e.add(p["js_n"], 1))
+
+            e.if_(e.ne(p["js_go"], 0), keep)
+
+        e.while_(lambda: e.ne(p["js_go"], 0), char)
+        e.st(p["js_h"], 1)
+        e.st(e.add(p["js_h"], 1), p["js_n"])
+        e.give(p["js_h"])
+    return _function((), build, tables)
+
+
+def _jint_fn(tables):
+    """A non-negative JSON integer at the cursor (no fraction or exponent): its node."""
+    def build(e: E):
+        p = e.p
+        _call(e, "an_jws")
+        e.var("ji_c", _jbyte(e))
+        _ok(e, e.both(e.le(ord("0"), p["ji_c"]), e.le(p["ji_c"], ord("9"))))
+        e.var("ji_v", 0)
+        e.var("ji_n", 0)
+        e.while_(lambda: e.both(e.le(ord("0"), _jbyte(e)), e.le(_jbyte(e), ord("9"))), lambda: (
+            _ok(e, e.lt(p["ji_n"], 18)),
+            e.set("ji_v", e.add(e.mul(p["ji_v"], 10), e.sub(_jbyte(e), ord("0")))), e.set("ji_n", e.add(p["ji_n"], 1)),
+            e.st(G_JC, e.add(e.ld(G_JC), 1))))
+        _ok(e, e.either(e.eq(p["ji_n"], 1), e.ne(p["ji_c"], ord("0"))))  # no leading zero
+        _ok(e, e.not_(e.either(e.eq(_jbyte(e), ord(".")), e.eq(_jbyte(e), ord("e")), e.eq(_jbyte(e), ord("E")))))
+        e.var("ji_h", e.alloc(2))
+        _ok(e, e.ne(p["ji_h"], NONE))
+        e.st(p["ji_h"], 2)
+        e.st(e.add(p["ji_h"], 1), p["ji_v"])
+        e.give(p["ji_h"])
+    return _function((), build, tables)
+
+
+def _jarr_fn(tables, deep: bool):
+    """A JSON array at the cursor whose items are strings (or, ``deep``, strings and arrays of strings): its node."""
+    def build(e: E):
+        p = e.p
+        _call(e, "an_jws")
+        _ok(e, e.eq(_jbyte(e), ord("[")))
+        e.st(G_JC, e.add(e.ld(G_JC), 1))
+        e.var("ja_h", e.alloc(e.add(e.ld(e.ld(G_JH)), 2)))
+        _ok(e, e.ne(p["ja_h"], NONE))
+        e.var("ja_n", 0)
+        _call(e, "an_jws")
+        e.var("ja_go", e.flag(e.ne(_jbyte(e), ord("]"))))
+        e.if_(e.eq(p["ja_go"], 0), lambda: e.st(G_JC, e.add(e.ld(G_JC), 1)))
+
+        def item():
+            _call(e, "an_jws")
+            e.var("ja_item", 0)
+            if deep:
+                e.if_(e.eq(_jbyte(e), ord('"')), lambda: e.set("ja_item", _call(e, "an_jstr")), lambda: e.set("ja_item", _call(e, "an_jarr1")))
+            else:
+                e.set("ja_item", _call(e, "an_jstr"))
+            e.st(e.add(e.add(p["ja_h"], 2), p["ja_n"]), p["ja_item"])
+            e.set("ja_n", e.add(p["ja_n"], 1))
+            _call(e, "an_jws")
+            e.var("ja_sep", _jbyte(e))
+            e.st(G_JC, e.add(e.ld(G_JC), 1))
+            _ok(e, e.either(e.eq(p["ja_sep"], ord(",")), e.eq(p["ja_sep"], ord("]"))))
+            e.if_(e.eq(p["ja_sep"], ord("]")), lambda: e.set("ja_go", 0))
+
+        e.while_(lambda: e.ne(p["ja_go"], 0), item)
+        e.st(p["ja_h"], 3)
+        e.st(e.add(p["ja_h"], 1), p["ja_n"])
+        e.give(p["ja_h"])
+    return _function((), build, tables)
+
+
+def _jobj_fn(tables):
+    """The JSON object filling handle ``h`` from item ``start`` (an index from 0): its node."""
+    def build(e: E):
+        p = e.p
+        e.st(G_JH, p["h"])
+        e.st(G_JC, p["start"])
+        _call(e, "an_jws")
+        _ok(e, e.eq(_jbyte(e), ord("{")))
+        e.st(G_JC, e.add(e.ld(G_JC), 1))
+        e.var("jo_h", e.alloc(e.add(e.ld(p["h"]), 2)))
+        _ok(e, e.ne(p["jo_h"], NONE))
+        e.var("jo_n", 0)
+        _call(e, "an_jws")
+        e.var("jo_go", e.flag(e.ne(_jbyte(e), ord("}"))))
+        e.if_(e.eq(p["jo_go"], 0), lambda: e.st(G_JC, e.add(e.ld(G_JC), 1)))
+
+        def pair():
+            e.var("jo_k", _call(e, "an_jstr"))
+            _call(e, "an_jws")
+            _ok(e, e.eq(_jbyte(e), ord(":")))
+            e.st(G_JC, e.add(e.ld(G_JC), 1))
+            _call(e, "an_jws")
+            e.var("jo_c", _jbyte(e))
+            e.var("jo_v", 0)
+            e.if_(e.eq(p["jo_c"], ord('"')), lambda: e.set("jo_v", _call(e, "an_jstr")), lambda: e.if_(
+                e.eq(p["jo_c"], ord("[")), lambda: e.set("jo_v", _call(e, "an_jarr")), lambda: e.set("jo_v", _call(e, "an_jint"))))
+            e.st(e.add(e.add(p["jo_h"], 2), e.mul(p["jo_n"], 2)), p["jo_k"])
+            e.st(e.add(e.add(p["jo_h"], 3), e.mul(p["jo_n"], 2)), p["jo_v"])
+            e.set("jo_n", e.add(p["jo_n"], 1))
+            _call(e, "an_jws")
+            e.var("jo_sep", _jbyte(e))
+            e.st(G_JC, e.add(e.ld(G_JC), 1))
+            _ok(e, e.either(e.eq(p["jo_sep"], ord(",")), e.eq(p["jo_sep"], ord("}"))))
+            e.if_(e.eq(p["jo_sep"], ord("}")), lambda: e.set("jo_go", 0))
+
+        e.while_(lambda: e.ne(p["jo_go"], 0), pair)
+        _call(e, "an_jws")
+        _ok(e, e.eq(e.ld(G_JC), e.ld(p["h"])))  # nothing after the object (``json.loads``' extra data)
+        e.st(p["jo_h"], 4)
+        e.st(e.add(p["jo_h"], 1), p["jo_n"])
+        e.give(p["jo_h"])
+    return _function(("h", "start"), build, tables)
+
+
+def _jget_fn(tables):
+    """The value of the last pair of object node ``o`` whose key is handle ``k``'s text (``json.loads`` keeps the last
+    duplicate), or NONE: not a decline."""
+    def build(e: E):
+        p = e.p
+        e.var("jg_v", NONE)
+        e.for_("jg_q", 0, at(e, p["o"], 1), lambda: e.if_(
+            e.ne(e.call(_FN["an_same"], e.add(at(e, p["o"], e.add(2, e.mul(p["jg_q"], 2))), 1), p["k"]), 0),
+            lambda: e.set("jg_v", at(e, p["o"], e.add(3, e.mul(p["jg_q"], 2))))))
+        e.give(p["jg_v"])
+    return _function(("o", "k"), build, tables)
+
+
+def _jhex_fn(tables):
+    """``bytes.fromhex`` of string node ``s`` (hex digits only, either case) when it gives 32 bytes: their handle."""
+    def build(e: E):
+        p = e.p
+        _ok(e, e.eq(at(e, p["s"], 0), 1))
+        _ok(e, e.eq(at(e, p["s"], 1), 64))
+        e.var("jx_h", e.alloc(33))
+        _ok(e, e.ne(p["jx_h"], NONE))
+        e.st(p["jx_h"], 32)
+
+        def digit(k):
+            e.var("jx_c", at(e, p["s"], e.add(2, k)))
+            e.var("jx_d", NONE)
+            e.if_(e.both(e.le(ord("0"), p["jx_c"]), e.le(p["jx_c"], ord("9"))), lambda: e.set("jx_d", e.sub(p["jx_c"], ord("0"))))
+            e.if_(e.both(e.le(ord("a"), p["jx_c"]), e.le(p["jx_c"], ord("f"))), lambda: e.set("jx_d", e.sub(p["jx_c"], ord("a") - 10)))
+            e.if_(e.both(e.le(ord("A"), p["jx_c"]), e.le(p["jx_c"], ord("F"))), lambda: e.set("jx_d", e.sub(p["jx_c"], ord("A") - 10)))
+            _ok(e, e.ne(p["jx_d"], NONE))
+            return p["jx_d"]
+
+        def byte():
+            e.var("jx_hi", digit(e.mul(p["jx_q"], 2)))
+            e.var("jx_lo", digit(e.add(e.mul(p["jx_q"], 2), 1)))
+            e.st(e.add(e.add(p["jx_h"], 1), p["jx_q"]), e.add(e.mul(p["jx_hi"], 16), p["jx_lo"]))
+
+        e.for_("jx_q", 0, 32, byte)
+        e.give(p["jx_h"])
+    return _function(("s",), build, tables)
+
+
+# -- stored ZIP archives (the JVM program's JAR, the branding archive), read as ``zipfile`` reads them -----------------------
+
+def _pbyte(e: E, h, k):
+    """Byte ``k`` of a packed record handle ``[length, words...]``."""
+    return e.and_(e.udiv(at(e, h, e.add(1, e.udiv(k, 8))), _shift8(e, e.urem(k, 8))), 255)
+
+
+def _shift8(e: E, j):
+    """``256 ** j`` for ``j`` in 0..7."""
+    result = e.c(1)
+    for q in range(1, 8):
+        result = e.sel(e.eq(j, q), 1 << (8 * q), result)
+    return result
+
+
+def _pfield(e: E, h, at_, n: int):
+    value = e.c(0)
+    for k in reversed(range(n)):
+        value = e.add(e.mul(value, 256), _pbyte(e, h, e.add(at_, k)))
+    return value
+
+
+def _crc_fn(tables):
+    """The CRC-32 of ``n`` bytes of packed handle ``h`` from byte ``start``."""
+    def build(e: E):
+        p = e.p
+        e.var("cr_c", 0xFFFFFFFF)
+
+        def byte():
+            e.set("cr_c", e.bin(Operation.BIT_XOR, p["cr_c"], _pbyte(e, p["h"], e.add(p["start"], p["cr_k"]))))
+            for _ in range(8):
+                e.set("cr_c", e.sel(e.eq(e.and_(p["cr_c"], 1), 1), e.bin(Operation.BIT_XOR, e.udiv(p["cr_c"], 2), 0xEDB88320), e.udiv(p["cr_c"], 2)))
+
+        e.for_("cr_k", 0, p["n"], byte)
+        e.give(e.bin(Operation.BIT_XOR, p["cr_c"], 0xFFFFFFFF))
+    return _function(("h", "start", "n"), build, tables)
+
+
+ZIP_WORDS = 3  # an entry: its name handle, its data's first byte, its size
+
+
+def _zip_fn(tables):
+    """The entries of the stored ZIP archive in packed handle ``h``, in central-directory order (``infolist``): ``[n,
+    (name, start, size)...]``.  Anything ``zipfile`` would read differently or refuse (ZIP64, more disks, encryption,
+    compression, a local header unlike the central one, a CRC mismatch, a non-ASCII name) declines."""
+    def build(e: E):
+        p = e.p
+        e.var("zp_len", e.ld(p["h"]))
+        _ok(e, e.le(22, p["zp_len"]))
+        e.var("zp_min", e.sel(e.lt(65557, p["zp_len"]), e.sub(p["zp_len"], 65557), 0))
+        e.var("zp_end", NONE)
+        e.var("zp_k", e.sub(p["zp_len"], 22))
+        e.while_(lambda: e.both(e.eq(p["zp_end"], NONE), e.le(p["zp_min"], p["zp_k"])), lambda: (
+            e.if_(e.eq(_pfield(e, p["h"], p["zp_k"], 4), 0x06054B50), lambda: e.set("zp_end", p["zp_k"])),
+            e.if_(e.eq(p["zp_k"], 0), lambda: e.set("zp_min", 1), lambda: e.set("zp_k", e.sub(p["zp_k"], 1)))))
+        _ok(e, e.ne(p["zp_end"], NONE))
+        end = p["zp_end"]
+        _ok(e, e.eq(e.add(e.add(end, 22), _pfield(e, p["h"], e.add(end, 20), 2)), p["zp_len"]))  # the comment reaches the end
+        _ok(e, e.both(e.eq(_pfield(e, p["h"], e.add(end, 4), 2), 0), e.eq(_pfield(e, p["h"], e.add(end, 6), 2), 0)))
+        e.var("zp_n", _pfield(e, p["h"], e.add(end, 10), 2))
+        _ok(e, e.eq(_pfield(e, p["h"], e.add(end, 8), 2), p["zp_n"]))
+        e.var("zp_cd", _pfield(e, p["h"], e.add(end, 16), 4))
+        _ok(e, e.both(e.ne(p["zp_n"], 0xFFFF), e.lt(p["zp_cd"], 0xFFFFFFFF)))
+        _ok(e, e.eq(e.add(p["zp_cd"], _pfield(e, p["h"], e.add(end, 12), 4)), end))  # no data before the archive
+        e.var("zp_out", e.alloc(e.add(e.mul(p["zp_n"], ZIP_WORDS), 1)))
+        _ok(e, e.ne(p["zp_out"], NONE))
+        e.st(p["zp_out"], p["zp_n"])
+        e.var("zp_at", p["zp_cd"])
+
+        def entry():
+            a = p["zp_at"]
+            _ok(e, e.le(e.add(a, 46), end))
+            _ok(e, e.eq(_pfield(e, p["h"], a, 4), 0x02014B50))
+            e.var("ze_flags", _pfield(e, p["h"], e.add(a, 8), 2))
+            _ok(e, e.eq(e.and_(p["ze_flags"], 1), 0))
+            _ok(e, e.eq(_pfield(e, p["h"], e.add(a, 10), 2), 0))  # stored
+            e.var("ze_crc", _pfield(e, p["h"], e.add(a, 16), 4))
+            e.var("ze_size", _pfield(e, p["h"], e.add(a, 20), 4))
+            _ok(e, e.both(e.eq(_pfield(e, p["h"], e.add(a, 24), 4), p["ze_size"]), e.ne(p["ze_size"], 0xFFFFFFFF)))
+            e.var("ze_nl", _pfield(e, p["h"], e.add(a, 28), 2))
+            e.var("ze_el", _pfield(e, p["h"], e.add(a, 30), 2))
+            e.var("ze_cl", _pfield(e, p["h"], e.add(a, 32), 2))
+            e.var("ze_local", _pfield(e, p["h"], e.add(a, 42), 4))
+            e.var("ze_next", e.add(e.add(e.add(a, 46), p["ze_nl"]), e.add(p["ze_el"], p["ze_cl"])))
+            _ok(e, e.le(p["ze_next"], end))
+            e.var("ze_name", e.alloc(e.add(p["ze_nl"], 1)))
+            _ok(e, e.ne(p["ze_name"], NONE))
+            e.st(p["ze_name"], p["ze_nl"])
+            e.for_("ze_q", 0, p["ze_nl"], lambda: (e.var("ze_c", _pbyte(e, p["h"], e.add(e.add(a, 46), p["ze_q"]))), _ok(e, e.lt(p["ze_c"], 0x80)),
+                                                   e.st(e.add(e.add(p["ze_name"], 1), p["ze_q"]), p["ze_c"])))
+            # The local header: its signature and name; the data follows its extra field.
+            l = p["ze_local"]  # noqa: E741
+            _ok(e, e.le(e.add(l, 30), p["zp_cd"]))
+            _ok(e, e.eq(_pfield(e, p["h"], l, 4), 0x04034B50))
+            _ok(e, e.eq(_pfield(e, p["h"], e.add(l, 26), 2), p["ze_nl"]))
+            e.for_("ze_r", 0, p["ze_nl"], lambda: _ok(e, e.eq(_pbyte(e, p["h"], e.add(e.add(l, 30), p["ze_r"])), at(e, p["ze_name"], e.add(p["ze_r"], 1)))))
+            e.var("ze_data", e.add(e.add(e.add(l, 30), p["ze_nl"]), _pfield(e, p["h"], e.add(l, 28), 2)))
+            _ok(e, e.le(e.add(p["ze_data"], p["ze_size"]), p["zp_cd"]))
+            _ok(e, e.eq(e.call(_FN["an_crc"], p["h"], p["ze_data"], p["ze_size"]), p["ze_crc"]))
+            slot = e.add(e.add(p["zp_out"], 1), e.mul(p["zq"], ZIP_WORDS))
+            e.st(slot, p["ze_name"])
+            e.st(e.add(slot, 1), p["ze_data"])
+            e.st(e.add(slot, 2), p["ze_size"])
+            e.set("zp_at", p["ze_next"])
+
+        e.for_("zq", 0, p["zp_n"], entry)
+        e.give(p["zp_out"])
+    return _function(("h",), build, tables)
+
+
+def _slice_bytes_fn(tables):
+    """``n`` bytes of packed handle ``h`` from byte ``start``, one per word: their handle."""
+    def build(e: E):
+        p = e.p
+        e.var("sb_h", e.alloc(e.add(p["n"], 1)))
+        _ok(e, e.ne(p["sb_h"], NONE))
+        e.st(p["sb_h"], p["n"])
+        e.for_("sb_k", 0, p["n"], lambda: e.st(e.add(e.add(p["sb_h"], 1), p["sb_k"]), _pbyte(e, p["h"], e.add(p["start"], p["sb_k"]))))
+        e.give(p["sb_h"])
+    return _function(("h", "start", "n"), build, tables)
+
+
+VERSION_CODE_ATTRIBUTE = 0x0101021B
+
+
+def _version_code_fn(tables):
+    """``_set_version_code``: the binary manifest ``m`` (one byte per word) with its one root ``android:versionCode`` set
+    to ``v``; anything the bootstrap refuses (a ``ValueError``) declines."""
+    def build(e: E):
+        p = e.p
+        b = lambda k: at(e, p["m"], e.add(k, 1))  # noqa: E731
+
+        def field(o, n: int):
+            value = e.c(0)
+            for k in reversed(range(n)):
+                value = e.add(e.mul(value, 256), b(e.add(o, k)))
+            return value
+
+        e.var("vc_len", e.ld(p["m"]))
+        _ok(e, e.le(8, p["vc_len"]))
+        _ok(e, e.both(e.eq(field(0, 2), 3), e.eq(field(4, 4), p["vc_len"])))
+        e.var("vc_ids", 0)
+        e.var("vc_nids", 0)
+        e.var("vc_sites", 0)
+        e.var("vc_site", 0)
+        e.var("vc_o", field(2, 2))
+
+        def chunk():
+            o = p["vc_o"]
+            _ok(e, e.le(e.add(o, 8), p["vc_len"]))
+            e.var("vc_kind", field(o, 2))
+            e.var("vc_header", field(e.add(o, 2), 2))
+            e.var("vc_size", field(e.add(o, 4), 4))
+            _ok(e, e.both(e.le(8, p["vc_header"]), e.le(p["vc_header"], p["vc_size"]), e.le(e.add(o, p["vc_size"]), p["vc_len"])))
+            e.if_(e.eq(p["vc_kind"], 0x0180), lambda: (e.set("vc_ids", e.add(o, p["vc_header"])),
+                                                     e.set("vc_nids", e.udiv(e.sub(p["vc_size"], p["vc_header"]), 4))))
+
+            def element():
+                _ok(e, e.both(e.le(16, p["vc_header"]), e.le(e.add(p["vc_header"], 20), p["vc_size"])))
+                e.var("vc_start", field(e.add(e.add(o, p["vc_header"]), 8), 2))
+                e.var("vc_asize", field(e.add(e.add(o, p["vc_header"]), 10), 2))
+                e.var("vc_count", field(e.add(e.add(o, p["vc_header"]), 12), 2))
+                e.var("vc_base", e.add(e.add(o, p["vc_header"]), p["vc_start"]))
+                _ok(e, e.both(e.eq(p["vc_asize"], 20), e.le(e.add(p["vc_base"], e.mul(p["vc_count"], 20)), e.add(o, p["vc_size"]))))
+
+                def attribute():
+                    e.var("vc_at", e.add(p["vc_base"], e.mul(p["vc_q"], 20)))
+                    e.var("vc_name", field(e.add(p["vc_at"], 4), 4))
+                    e.if_(e.both(e.lt(p["vc_name"], p["vc_nids"]), e.eq(field(e.add(p["vc_ids"], e.mul(e.sel(e.lt(p["vc_name"], p["vc_nids"]), p["vc_name"], 0), 4)), 4),
+                                                                      VERSION_CODE_ATTRIBUTE)),
+                          lambda: (e.set("vc_sites", e.add(p["vc_sites"], 1)), e.set("vc_site", p["vc_at"])))
+
+                e.for_("vc_q", 0, p["vc_count"], attribute)
+
+            e.if_(e.eq(p["vc_kind"], 0x0102), element)
+            e.set("vc_o", e.add(o, p["vc_size"]))
+
+        e.while_(lambda: e.lt(p["vc_o"], p["vc_len"]), chunk)
+        _ok(e, e.both(e.eq(p["vc_o"], p["vc_len"]), e.eq(p["vc_sites"], 1)))
+        _ok(e, e.eq(b(e.add(p["vc_site"], 15)), 0x10))  # a decimal integer
+        e.var("vc_h", e.alloc(e.add(p["vc_len"], 1)))
+        _ok(e, e.ne(p["vc_h"], NONE))
+        e.for_("vc_k", 0, e.add(p["vc_len"], 1), lambda: e.st(e.add(p["vc_h"], p["vc_k"]), at(e, p["m"], p["vc_k"])))
+        for k in range(4):
+            e.st(e.add(p["vc_h"], e.add(e.add(p["vc_site"], 17), k)), e.and_(e.udiv(p["v"], 1 << (8 * k)), 255))
+        e.give(p["vc_h"])
+    return _function(("m", "v"), build, tables)
+
+
+def _jtype_fn(tables):
+    """``_parse_descriptor_type``: the item after the descriptor type at item ``k`` of handle ``d`` (from 1); ``void``
+    allows ``V``.  An invalid type declines (the bootstrap's ``ValueError``)."""
+    def build(e: E):
+        p = e.p
+        e.var("jt_n", e.ld(p["d"]))
+        _ok(e, e.le(p["k"], p["jt_n"]))
+        e.var("jt_c", at(e, p["d"], p["k"]))
+        e.if_(e.eq(p["jt_c"], ord("V")), lambda: (_ok(e, e.ne(p["void"], 0)), e.give(e.add(p["k"], 1))))
+        e.if_(e.either(*(e.eq(p["jt_c"], ord(c)) for c in "ZBCSIJFD")), lambda: e.give(e.add(p["k"], 1)))
+        e.var("jt_s", p["k"])  # an array's element type follows its dimensions
+        e.if_(e.eq(p["jt_c"], ord("[")), lambda: (
+            e.while_(lambda: e.both(e.le(p["jt_s"], p["jt_n"]), e.eq(at(e, p["d"], p["jt_s"]), ord("["))), lambda: e.set("jt_s", e.add(p["jt_s"], 1))),
+            _ok(e, e.le(e.sub(p["jt_s"], p["k"]), 255)), _ok(e, e.le(p["jt_s"], p["jt_n"]))))
+        e.var("jt_e", at(e, p["d"], p["jt_s"]))
+        e.if_(e.either(*(e.eq(p["jt_e"], ord(c)) for c in "ZBCSIJFD")), lambda: e.give(e.add(p["jt_s"], 1)))
+        _ok(e, e.eq(p["jt_e"], ord("L")))
+        # ``L<internal name>;``: not empty, no leading or trailing ``/``, no ``//``, ``.`` or NUL.
+        e.var("jt_j", e.add(p["jt_s"], 1))
+        e.while_(lambda: e.both(e.le(p["jt_j"], p["jt_n"]), e.ne(at(e, p["d"], p["jt_j"]), ord(";"))), lambda: e.set("jt_j", e.add(p["jt_j"], 1)))
+        _ok(e, e.le(p["jt_j"], p["jt_n"]))
+        e.var("jt_a", e.add(p["jt_s"], 1))
+        _ok(e, e.lt(p["jt_a"], p["jt_j"]))
+        _ok(e, e.both(e.ne(at(e, p["d"], p["jt_a"]), ord("/")), e.ne(at(e, p["d"], e.sub(p["jt_j"], 1)), ord("/"))))
+        e.for_("jt_q", p["jt_a"], p["jt_j"], lambda: (
+            _ok(e, e.both(e.ne(at(e, p["d"], p["jt_q"]), ord(".")), e.ne(at(e, p["d"], p["jt_q"]), 0))),
+            _ok(e, e.not_(e.both(e.eq(at(e, p["d"], p["jt_q"]), ord("/")), e.eq(at(e, p["d"], e.add(p["jt_q"], 1)), ord("/")))))))
+        e.give(e.add(p["jt_j"], 1))
+    return _function(("d", "k", "void"), build, tables)
+
+
+def _jdesc_fn(tables):
+    """``parse_jvm_method_descriptor`` of handle ``d``: ``[n + 1, result, params...]``, each a handle; a malformed
+    descriptor declines."""
+    def build(e: E):
+        p = e.p
+        e.var("jd_n", e.ld(p["d"]))
+        _ok(e, e.both(e.lt(0, p["jd_n"]), e.eq(at(e, p["d"], 1), ord("("))))
+        e.var("jd_out", e.alloc(e.add(p["jd_n"], 2)))
+        _ok(e, e.ne(p["jd_out"], NONE))
+        e.var("jd_count", 0)
+        e.var("jd_k", 2)
+
+        def parameter():
+            e.var("jd_end", _call(e, "an_jtype", p["d"], p["jd_k"], 0))
+            e.st(e.add(p["jd_out"], e.add(2, p["jd_count"])), call_tail(e, p["d"], p["jd_k"], p["jd_end"]))
+            e.set("jd_count", e.add(p["jd_count"], 1))
+            e.set("jd_k", p["jd_end"])
+
+        e.while_(lambda: e.both(e.le(p["jd_k"], p["jd_n"]), e.ne(at(e, p["d"], e.sel(e.le(p["jd_k"], p["jd_n"]), p["jd_k"], 1)), ord(")"))), parameter)
+        _ok(e, e.le(p["jd_k"], p["jd_n"]))
+        e.var("jd_rs", e.add(p["jd_k"], 1))
+        e.var("jd_re", _call(e, "an_jtype", p["d"], p["jd_rs"], 1))
+        _ok(e, e.eq(p["jd_re"], e.add(p["jd_n"], 1)))
+        e.st(p["jd_out"], e.add(p["jd_count"], 1))
+        e.st(e.add(p["jd_out"], 1), call_tail(e, p["d"], p["jd_rs"], p["jd_re"]))
+        e.give(p["jd_out"])
+    return _function(("d",), build, tables)
+
+
+def call_tail(e: E, h, start, stop):
+    """Items ``start`` to ``stop`` (exclusive, from 1) of handle ``h``: their handle."""
+    return _call(e, "an_slice_items", h, start, stop)
+
+
+def _slice_items_fn(tables):
+    def build(e: E):
+        p = e.p
+        e.var("si_n", e.sub(p["stop"], p["start"]))
+        e.var("si_h", e.alloc(e.add(p["si_n"], 1)))
+        _ok(e, e.ne(p["si_h"], NONE))
+        e.st(p["si_h"], p["si_n"])
+        e.for_("si_k", 0, p["si_n"], lambda: e.st(e.add(e.add(p["si_h"], 1), p["si_k"]), at(e, p["h"], e.add(p["start"], p["si_k"]))))
+        e.give(p["si_h"])
+    return _function(("h", "start", "stop"), build, tables)
+
+
+def _shift4(e: E, j):
+    """``16 ** j`` for ``j`` in 0..15."""
+    result = e.c(1)
+    for q in range(1, 16):
+        result = e.sel(e.eq(j, q), 1 << (4 * q), result)
+    return result
+
+
+def _entry_desc_fn(tables):
+    """The JVM descriptor (``(params)result``) of method ``entry`` of the lowered class whose descriptor is handle
+    ``c`` among ``lowered`` (each the class-translation program's ``[count, words]``), or NONE."""
+    def build(e: E):
+        p = e.p
+
+        def text_at(h, q):
+            return e.add(q, e.add(1, at(e, h, q)))  # past the text at item ``q`` (its count, then its units)
+
+        def same_text(h, q, ref, stem):
+            """1 when the text at item ``q`` of ``h`` is handle ``ref``'s items."""
+            e.var(stem, e.flag(e.eq(at(e, h, q), e.ld(ref))))
+            e.for_(f"{stem}_k", 1, e.add(e.sel(e.ne(p[stem], 0), e.ld(ref), 0), 1), lambda: e.if_(
+                e.ne(at(e, h, e.add(q, p[f"{stem}_k"])), at(e, ref, p[f"{stem}_k"])), lambda: e.set(stem, 0)))
+            return p[stem]
+
+        e.var("ed_result", NONE)
+        e.var("k_entry", e.ld(G_K + K_INDEX[b"entry"]))
+
+        def one_class():
+            e.var("ec_h", at(e, p["lowered"], e.add(p["ecq"], 1)))
+            h = p["ec_h"]
+
+            def walk():
+                e.var("ec_q", text_at(h, e.c(1)))
+                e.set("ec_q", e.add(p["ec_q"], 1))  # the access
+                e.set("ec_q", e.sel(e.ne(at(e, h, p["ec_q"]), 0), text_at(h, e.add(p["ec_q"], 1)), e.add(p["ec_q"], 1)))  # the superclass
+                e.var("ec_ni", at(e, h, p["ec_q"]))
+                e.set("ec_q", e.add(p["ec_q"], 1))
+                e.for_("eci", 0, p["ec_ni"], lambda: e.set("ec_q", text_at(h, p["ec_q"])))
+                e.var("ec_nf", at(e, h, p["ec_q"]))
+                e.set("ec_q", e.add(p["ec_q"], 1))
+                e.for_("ecf", 0, p["ec_nf"], lambda: e.set("ec_q", e.add(text_at(h, text_at(h, p["ec_q"])), 1)))
+                e.var("ec_nm", at(e, h, p["ec_q"]))
+                e.set("ec_q", e.add(p["ec_q"], 1))
+
+                def method():
+                    e.var("em_name", p["ec_q"])
+                    e.var("em_ret", text_at(h, p["em_name"]))
+                    e.var("em_np", text_at(h, p["em_ret"]))
+                    e.set("ec_q", e.add(p["em_np"], 1))
+                    e.var("em_params", p["ec_q"])
+                    e.for_("emp", 0, at(e, h, p["em_np"]), lambda: e.set("ec_q", text_at(h, p["ec_q"])))
+                    e.var("em_end", p["ec_q"])
+                    e.set("ec_q", e.add(p["ec_q"], 1))  # the access
+
+                    def found():
+                        e.var("ed_h", e.alloc(e.add(e.ld(p["ec_h"]), 3)))
+                        _ok(e, e.ne(p["ed_h"], NONE))
+                        e.st(p["ed_h"], 0)
+
+                        def push(value):
+                            e.st(e.add(e.add(p["ed_h"], 1), e.ld(p["ed_h"])), value)
+                            e.st(p["ed_h"], e.add(e.ld(p["ed_h"]), 1))
+
+                        push(ord("("))
+                        e.var("ed_q", p["em_params"])
+                        e.while_(lambda: e.lt(p["ed_q"], p["em_end"]), lambda: (
+                            e.for_("edk", 1, e.add(at(e, h, p["ed_q"]), 1), lambda: push(at(e, h, e.add(p["ed_q"], p["edk"])))),
+                            e.set("ed_q", text_at(h, p["ed_q"]))))
+                        push(ord(")"))
+                        e.for_("edr", 1, e.add(at(e, h, p["em_ret"]), 1), lambda: push(at(e, h, e.add(p["em_ret"], p["edr"]))))
+                        e.set("ed_result", p["ed_h"])
+
+                    e.if_(e.ne(same_text(h, p["em_name"], p["k_entry"], "em_same"), 0), found)
+                    e.var("em_code", at(e, h, p["ec_q"]))
+                    e.set("ec_q", e.add(p["ec_q"], 1))
+
+                    def code():
+                        e.var("em_nu", at(e, h, e.add(p["ec_q"], 3)))
+                        e.set("ec_q", e.add(p["ec_q"], 4))
+
+                        def unit():
+                            e.var("eu_k", at(e, h, p["ec_q"]))
+                            e.set("ec_q", e.add(p["ec_q"], 1))
+                            e.if_(e.eq(p["eu_k"], 0), lambda: e.set("ec_q", e.add(p["ec_q"], 1)))
+                            e.if_(e.either(e.eq(p["eu_k"], 1), e.eq(p["eu_k"], 2)), lambda: e.set("ec_q", text_at(h, p["ec_q"])))
+                            e.if_(e.eq(p["eu_k"], 3), lambda: e.set("ec_q", text_at(h, text_at(h, text_at(h, p["ec_q"])))))
+
+                            def method_ref():
+                                e.set("ec_q", text_at(h, text_at(h, text_at(h, p["ec_q"]))))
+                                e.var("eu_np", at(e, h, p["ec_q"]))
+                                e.set("ec_q", e.add(p["ec_q"], 1))
+                                e.for_("eup", 0, p["eu_np"], lambda: e.set("ec_q", text_at(h, p["ec_q"])))
+
+                            e.if_(e.eq(p["eu_k"], 4), method_ref)
+
+                        e.for_("emu", 0, p["em_nu"], unit)
+
+                    e.if_(e.ne(p["em_code"], 0), code)
+
+                e.for_("ecm", 0, p["ec_nm"], method)
+
+            e.if_(e.ne(same_text(h, e.c(1), p["c"], "ec_same"), 0), walk)
+
+        e.for_("ecq", 0, e.ld(p["lowered"]), one_class)
+        e.give(p["ed_result"])
+    return _function(("lowered", "c"), build, tables)
+
+
+JVM_HELPERS = (("an_jws", _jws_fn), ("an_jstr", _jstr_fn), ("an_jint", _jint_fn), ("an_jarr1", lambda tables: _jarr_fn(tables, False)), ("an_jarr", lambda tables: _jarr_fn(tables, True)), ("an_jobj", _jobj_fn),
+               ("an_jget", _jget_fn), ("an_jhex", _jhex_fn), ("an_crc", _crc_fn), ("an_zip", _zip_fn), ("an_slice_bytes", _slice_bytes_fn),
+               ("an_version_code", _version_code_fn), ("an_slice_items", _slice_items_fn), ("an_jtype", _jtype_fn), ("an_jdesc", _jdesc_fn), ("an_entry_desc", _entry_desc_fn))
+
+
 HELPERS = (("an_byte", _byte_fn), ("an_uleb", _uleb_fn), ("an_bstr", _bstr_fn), ("an_same", _same_fn), ("an_prefix", _prefix_fn),
            ("an_less", _less_fn), ("an_desc", _desc_fn), ("an_java", _java_fn), ("an_jname", _jname_fn), ("an_line", _line_fn),
            ("an_dotted", _dotted_fn), ("an_cat", _cat_fn), ("an_dec", _dec_fn), ("an_dtext", _dtext_fn),
            ("an_dcid", _dcid_fn), ("an_slice", _slice_fn), ("an_native", _native_fn),
            ("an_binary", _binary_fn), ("an_tail", _tail_fn), ("an_has", _has_fn), ("an_utf16", _utf16_fn), ("an_jni", _jni_fn), ("an_cid", _cid_fn),
            ("an_incid", _incid_fn), ("an_put", _put_fn), ("an_seqput", _seq_put_fn), ("an_packput", _pack_put_fn),
-           ("an_record", _record_fn), ("an_blobput", _blob_put_fn))
+           ("an_record", _record_fn), ("an_blobput", _blob_put_fn)) + JVM_HELPERS
 
 
 # -- the frontend -----------------------------------------------------------------------------------------------------------
@@ -923,7 +1536,8 @@ def _phases(tables, layers):
             """U1 and U4 (``ANDROID-APK-TARGET``): the target's identity, quoted as the bootstrap quotes it."""
             reject(lambda: d_cid_rec(p["nobj"]), "ANDROID-APK-TARGET", lambda: D.text(e, ANDROID_V3.decode()), lambda: d_str(p["t_id"], raw=True))
 
-        e.if_(e.eq(p["t_known"], 0), target_rejected)  # U1
+        e.var("t_jvm", e.flag(e.eq(p["t_arch"], 5)))  # S15e.6i.2b: a libxposed JVM module (architecture 5)
+        e.if_(e.both(e.eq(p["t_known"], 0), e.eq(p["t_jvm"], 0)), target_rejected)  # U1
 
         # S15e.6h.4 (ADR-356): the decoding is three phases, each small enough for the general x86-64 program to emit
         # (the compiler that builds the driver; one 1.56 MB phase was not).
@@ -943,6 +1557,8 @@ def _phases(tables, layers):
         e.var("kids", e.alloc(e.add(e.mul(p["nobj"], p["nmod"]), 1)))  # every identity-only carrier, in module order
         _ok(e, e.ne(p["kids"], NONE))
         e.st(p["kids"], 0)
+        e.var("kidrecs", e.alloc(e.add(e.mul(p["nobj"], p["nmod"]), 1)))  # their record indices
+        _ok(e, e.ne(p["kidrecs"], NONE))
         e.var("exports", e.alloc(e.add(e.mul(p["nobj"], 2), 1)))  # [2n, name, function CID handle, ...]
         _ok(e, e.ne(p["exports"], NONE))
         e.st(p["exports"], 0)
@@ -964,6 +1580,7 @@ def _phases(tables, layers):
                 def carrier():
                     e.var("cid_", identity(p["c"]))
                     e.st(e.add(p["kids"], e.add(e.ld(p["kids"]), 1)), p["cid_"])
+                    e.st(e.add(p["kidrecs"], e.add(e.ld(p["kids"]), 1)), p["c"])
                     e.st(p["kids"], e.add(e.ld(p["kids"]), 1))
                     e.var("cls", NONE)
                     for k, (_name, prefix) in enumerate(CLASSES):
@@ -1013,6 +1630,7 @@ def _phases(tables, layers):
 
         e = _Slotted((yield), slots)
         p = e.p
+        e.if_(e.ne(p["t_jvm"], 0), lambda: (e.set("managed", 2), e.give(1)))  # S15e.6i.2b: the JVM profile's phases follow
 
         def managed_profile():
             """U2 (``ANDROID-MANAGED-PROFILE``); otherwise the managed-class profile (S15e.6h.2c)."""
@@ -1048,6 +1666,7 @@ def _phases(tables, layers):
 
         e = _Slotted((yield), slots)
         p = e.p
+        e.if_(e.eq(p["managed"], 2), lambda: e.give(1))
         # 5. The manifest (``decode_android_manifest_semantics`` and ``AndroidManifestSpec``).
         e.var("f_body", call("an_tail", first("manifest"), len(PREFIX["manifest"])))
         e.st(G_CUR, 0)
@@ -2223,7 +2842,7 @@ def _phases(tables, layers):
         # -- The managed-class profile (``_build_android_managed_apk``, ADR-199) ---------------------------------------
         e = _Slotted((yield), slots)
         p = e.p
-        e.if_(e.eq(p["managed"], 0), lambda: e.give(1))
+        e.if_(e.ne(p["managed"], 1), lambda: e.give(1))
         # M0. The classes (``decode_android_managed_class``, ``AndroidManagedClass``): per class a record of its CID's
         # record index, descriptor (bytes, units), superclass, library, interfaces and methods (name, descriptor, access,
         # super flag, native name, parameters, result).
@@ -2623,7 +3242,7 @@ def _phases(tables, layers):
         # M1. The managed rules program (S15e.6f.2) on ``_facts``'s words: the verdict (``Mk``), its class and method, its texts.
         e = _Slotted((yield), slots)
         p = e.p
-        e.if_(e.eq(p["managed"], 0), lambda: e.give(1))
+        e.if_(e.ne(p["managed"], 1), lambda: e.give(1))
         put_utf8 = lambda h: call("an_seqput", h)  # noqa: E731 - a text: its UTF-8 bytes, one per word
         units = lambda h: call("an_seqput", call("an_utf16", h))  # noqa: E731
 
@@ -2790,7 +3409,7 @@ def _phases(tables, layers):
         # M2. The layers' inputs (``lower_android_managed_class``, the manifest with its declarations), the layers, the APK.
         e = _Slotted((yield), slots)
         p = e.p
-        e.if_(e.eq(p["managed"], 0), lambda: e.give(1))
+        e.if_(e.ne(p["managed"], 1), lambda: e.give(1))
         text = lambda h: call("an_seqput", h)  # noqa: E731
         e.var("in_mmanifest", e.ld(G_W))
         put(0)
@@ -2887,6 +3506,641 @@ def _phases(tables, layers):
                                                      e.set("nd", e.add(p["nd"], e.flag(e.lt(2, p["my"]))))))
         e.if_(e.eq(count("resources"), 1), lambda: entry(K(b"resources.arsc"), p["m_arsc"], ENTRY_ALIGNMENT))
         layer(layers["apk"], p["in_mapk"])
+
+
+        # -- S15e.6i.2b (ADR-358): the libxposed JVM module profile (``build_libxposed_jvm_apk``, ADR-262) ---------------
+        # J1. The carriers (the last module carrier and the last libxposed metadata, ``find_carriers``), the module record,
+        # its rules and its external inputs.
+        e = _Slotted((yield), slots)
+        p = e.p
+        e.if_(e.ne(p["managed"], 2), lambda: e.give(1))
+
+        def jvm_no_roots():
+            e.st(1, 0)
+            e.st(0, 1)
+            e.give(2)
+
+        e.if_(e.eq(p["mode"], 0), jvm_no_roots)
+        _ok(e, e.both(e.eq(p["mode"], 1), e.eq(e.rd(p["roots_at"]), 0)))
+        # The external inputs after the identity: their count, then each its digest (32 bytes, a byte a word), its length
+        # and its bytes packed eight to a word.
+        e.var("ins_at", e.add(e.add(p["lid_at"], 1), e.rd(p["lid_at"])))
+        e.var("ins_n", e.rd(p["ins_at"]))
+        e.var("ins", e.alloc(e.add(p["ins_n"], 1)))
+        _ok(e, e.ne(p["ins"], NONE))
+        e.st(p["ins"], p["ins_n"])
+        e.var("ins_cur", e.add(p["ins_at"], 1))
+        e.for_("iq", 0, p["ins_n"], lambda: (e.st(e.add(e.add(p["ins"], 1), p["iq"]), p["ins_cur"]),
+                                              e.set("ins_cur", e.add(e.add(p["ins_cur"], 33), e.udiv(e.add(e.rd(e.add(p["ins_cur"], 32)), 7), 8)))))
+
+        def input_of(digest, name):
+            """The input position whose digest is handle ``digest``'s 32 bytes, or NONE."""
+            e.var(name, NONE)
+
+            def match():
+                e.var(f"{name}_at", at(e, p["ins"], e.add(p[f"{name}_q"], 1)))
+                e.var(f"{name}_same", 1)
+                e.for_(f"{name}_k", 0, 32, lambda: e.if_(e.ne(e.rd(e.add(p[f"{name}_at"], p[f"{name}_k"])), at(e, digest, e.add(p[f"{name}_k"], 1))),
+                                                         lambda: e.set(f"{name}_same", 0)))
+                e.if_(e.ne(p[f"{name}_same"], 0), lambda: e.set(name, p[f"{name}_at"]))
+
+            e.for_(f"{name}_q", 0, p["ins_n"], lambda: e.if_(e.eq(p[name], NONE), match))
+            return p[name]
+
+        e.var("jv_rec", 0)
+        e.var("jv_recidx", 0)
+        e.var("jv_meta", 0)
+        e.var("jv_v2", 0)
+
+        def jvm_kid():
+            e.var("jk_h", at(e, p["kids"], e.add(p["jkq"], 1)))
+            e.var("jk_v1", call("an_prefix", p["jk_h"], K(JVM_PREFIX)))
+            e.var("jk_v2", call("an_prefix", p["jk_h"], K(JVM_PREFIX_V2)))
+            e.if_(e.ne(e.or_(p["jk_v1"], p["jk_v2"]), 0), lambda: (e.set("jv_rec", p["jk_h"]), e.set("jv_recidx", at(e, p["kidrecs"], e.add(p["jkq"], 1))),
+                                                                     e.set("jv_v2", p["jk_v2"])),
+                  lambda: e.if_(e.ne(call("an_prefix", p["jk_h"], K(b"libxposed-module-v1")), 0), lambda: e.set("jv_meta", p["jk_h"])))
+
+        e.for_("jkq", 0, e.ld(p["kids"]), jvm_kid)
+        e.if_(e.either(e.eq(p["jv_rec"], 0), e.eq(p["jv_meta"], 0)), lambda: reject(
+            d_lid, "LIBXPOSED-JVM-CARRIERS", text_("one module carrier and libxposed metadata"), text_("missing")))
+        e.var("jv", call("an_jobj", p["jv_rec"], len(JVM_PREFIX)))
+        jget = lambda key: e.call(_FN["an_jget"], p["jv"], K(key.encode()))  # noqa: E731
+        e.var("jv_branding", jget("branding"))
+
+        def branding_rejected():
+            """``LIBXPOSED-JVM-BRANDING``: the record's keys, sorted and once (``sorted(record)``)."""
+            e.var("bk", e.alloc(e.add(at(e, p["jv"], 1), 1)))
+            _ok(e, e.ne(p["bk"], NONE))
+            e.st(p["bk"], 0)
+
+            def key():
+                e.var("bk_k", e.add(at(e, p["jv"], e.add(2, e.mul(p["bkq"], 2))), 1))
+                e.var("bk_new", 1)
+                e.for_("bkj", 0, e.ld(p["bk"]), lambda: e.if_(e.ne(call("an_same", at(e, p["bk"], e.add(p["bkj"], 1)), p["bk_k"]), 0), lambda: e.set("bk_new", 0)))
+
+                def insert():  # in byte order
+                    e.var("bk_at", e.add(e.ld(p["bk"]), 1))
+                    e.while_(lambda: e.both(e.lt(1, p["bk_at"]), e.ne(call("an_less", p["bk_k"], at(e, p["bk"], e.sub(p["bk_at"], 1))), 0)), lambda: (
+                        e.st(e.add(p["bk"], p["bk_at"]), at(e, p["bk"], e.sub(p["bk_at"], 1))), e.set("bk_at", e.sub(p["bk_at"], 1))))
+                    e.st(e.add(p["bk"], p["bk_at"]), p["bk_k"])
+                    e.st(p["bk"], e.add(e.ld(p["bk"]), 1))
+
+                e.if_(e.ne(p["bk_new"], 0), insert)
+
+            e.for_("bkq", 0, at(e, p["jv"], 1), key)
+
+            def keys():
+                D.put(e, D.T_LIST)
+                D.put(e, e.ld(p["bk"]))
+                e.for_("bkd", 0, e.ld(p["bk"]), lambda: d_str(at(e, p["bk"], e.add(p["bkd"], 1))))
+
+            reject(lambda: d_cid_rec(p["jv_recidx"]), "LIBXPOSED-JVM-BRANDING", text_("branding exactly in v2"), keys, code="XAX.ANDROID.LIBXPOSED_JVM")
+
+        e.if_(e.ne(p["jv_v2"], e.flag(e.ne(p["jv_branding"], NONE))), branding_rejected)
+
+        def node(key: str, tag: int):
+            """The record's ``key`` value, a node of ``tag``; missing or another kind declines (a ``KeyError`` or a type
+            the bootstrap's later code fails on)."""
+            e.var(f"jn_{key}", jget(key))
+            _ok(e, e.ne(p[f"jn_{key}"], NONE))
+            _ok(e, e.eq(at(e, p[f"jn_{key}"], 0), tag))
+            return p[f"jn_{key}"]
+
+        e.var("jv_package", e.add(node("package", 1), 1))
+        e.var("jv_class", e.add(node("module_class", 1), 1))
+        e.var("jv_scopes", node("scopes", 3))
+        e.var("jv_vcode", at(e, node("version_code", 2), 1))
+        _ok(e, e.ne(jget("version_name"), NONE))
+        e.var("jv_min", at(e, node("min_sdk", 2), 1))
+        e.var("jv_target", at(e, node("target_sdk", 2), 1))
+        e.var("jv_dex", node("dex", 3))
+        e.var("jv_libs", node("libraries", 3))
+        e.var("jv_natives", node("natives", 3))
+        e.var("jv_fields", jget("fields"))  # ``record.get("fields", ())``
+        e.if_(e.ne(p["jv_fields"], NONE), lambda: _ok(e, e.eq(at(e, p["jv_fields"], 0), 3)))
+
+        def strings(node_, width):
+            """Every item of array node ``node_`` an array of ``width`` strings."""
+            e.for_("sw_q", 0, at(e, node_, 1), lambda: (
+                e.var("sw_i", at(e, node_, e.add(2, p["sw_q"]))),
+                _ok(e, e.both(e.eq(at(e, p["sw_i"], 0), 3), e.eq(at(e, p["sw_i"], 1), width))),
+                e.for_("sw_j", 0, width, lambda: _ok(e, e.eq(at(e, at(e, p["sw_i"], e.add(2, p["sw_j"])), 0), 1)))))
+
+        e.for_("dx_q", 0, at(e, p["jv_dex"], 1), lambda: _ok(e, e.eq(at(e, at(e, p["jv_dex"], e.add(2, p["dx_q"])), 0), 1)))
+        strings(p["jv_libs"], 2)
+        strings(p["jv_natives"], 3)
+        e.if_(e.ne(p["jv_fields"], NONE), lambda: strings(p["jv_fields"], 3))
+        # ``LibxposedJvmModule.__post_init__``: a dotted package of non-empty parts, a binary module class name, at least
+        # one non-empty scope, the version and SDK bounds, 32-byte digests, ``lib/<abi>/<name>.so`` paths, ``L...;``
+        # native classes with method descriptors.  A violation is the bootstrap's ``ValueError``: declined.
+        pk = p["jv_package"]
+        _ok(e, e.lt(0, e.ld(pk)))
+        _ok(e, e.both(e.ne(at(e, pk, 1), ord(".")), e.ne(at(e, pk, e.ld(pk)), ord("."))))
+        e.for_("pkq", 1, e.ld(pk), lambda: _ok(e, e.not_(e.both(e.eq(at(e, pk, p["pkq"]), ord(".")), e.eq(at(e, pk, e.add(p["pkq"], 1)), ord("."))))))
+        _ok(e, e.lt(0, e.ld(p["jv_class"])))
+        _ok(e, e.both(e.eq(call("an_has", p["jv_class"], ord("/")), 0), e.eq(call("an_has", p["jv_class"], ord(";")), 0)))
+        _ok(e, e.lt(0, at(e, p["jv_scopes"], 1)))
+        e.for_("scq", 0, at(e, p["jv_scopes"], 1), lambda: (
+            e.var("sc_i", at(e, p["jv_scopes"], e.add(2, p["scq"]))), _ok(e, e.both(e.eq(at(e, p["sc_i"], 0), 1), e.lt(0, at(e, p["sc_i"], 1))))))
+        _ok(e, e.both(e.le(1, p["jv_vcode"]), e.le(p["jv_vcode"], 0x7FFFFFFF)))
+        _ok(e, e.both(e.le(28, p["jv_min"]), e.le(p["jv_min"], p["jv_target"])))
+        # The digests (``bytes.fromhex``), and ``inputs``: every digest, sorted and once.
+        e.var("jv_ndig", e.add(e.add(at(e, p["jv_dex"], 1), at(e, p["jv_libs"], 1)), e.flag(e.ne(p["jv_branding"], NONE))))
+        e.var("jv_dexd", e.alloc(e.add(at(e, p["jv_dex"], 1), 1)))
+        e.var("jv_libd", e.alloc(e.add(at(e, p["jv_libs"], 1), 1)))
+        e.var("jv_inputs", e.alloc(e.add(p["jv_ndig"], 1)))
+        _ok(e, e.both(e.ne(p["jv_dexd"], NONE), e.ne(p["jv_libd"], NONE), e.ne(p["jv_inputs"], NONE)))
+        e.st(p["jv_inputs"], 0)
+
+        def add_input(digest):
+            e.var("ai_new", 1)
+            e.for_("aij", 0, e.ld(p["jv_inputs"]), lambda: e.if_(e.ne(call("an_same", at(e, p["jv_inputs"], e.add(p["aij"], 1)), digest), 0),
+                                                                    lambda: e.set("ai_new", 0)))
+
+            def insert():
+                e.var("ai_at", e.add(e.ld(p["jv_inputs"]), 1))
+                e.while_(lambda: e.both(e.lt(1, p["ai_at"]), e.ne(call("an_less", digest, at(e, p["jv_inputs"], e.sub(p["ai_at"], 1))), 0)), lambda: (
+                    e.st(e.add(p["jv_inputs"], p["ai_at"]), at(e, p["jv_inputs"], e.sub(p["ai_at"], 1))), e.set("ai_at", e.sub(p["ai_at"], 1))))
+                e.st(e.add(p["jv_inputs"], p["ai_at"]), digest)
+                e.st(p["jv_inputs"], e.add(e.ld(p["jv_inputs"]), 1))
+
+            e.if_(e.ne(p["ai_new"], 0), insert)
+
+        def dex_digest():
+            e.var("dd_h", call("an_jhex", at(e, p["jv_dex"], e.add(2, p["ddq"]))))
+            e.st(e.add(e.add(p["jv_dexd"], 1), p["ddq"]), p["dd_h"])
+            add_input(p["dd_h"])
+
+        e.for_("ddq", 0, at(e, p["jv_dex"], 1), dex_digest)
+
+        def library():
+            e.var("lb_item", at(e, p["jv_libs"], e.add(2, p["lbq"])))
+            e.var("lb_path", e.add(at(e, p["lb_item"], 2), 1))
+            e.var("lb_h", call("an_jhex", at(e, p["lb_item"], 3)))
+            e.st(e.add(e.add(p["jv_libd"], 1), p["lbq"]), p["lb_h"])
+            add_input(p["lb_h"])
+            lp = p["lb_path"]
+            _ok(e, e.ne(call("an_prefix", lp, K(b"lib/")), 0))
+            _ok(e, e.both(e.le(3, e.ld(lp)), e.eq(at(e, lp, e.sub(e.ld(lp), 2)), ord(".")), e.eq(at(e, lp, e.sub(e.ld(lp), 1)), ord("s")),
+                          e.eq(at(e, lp, e.ld(lp)), ord("o"))))
+            _ok(e, e.eq(call("an_has", lp, ord("\\")), 0))
+            e.for_("lbk", 1, e.ld(lp), lambda: _ok(e, e.not_(e.both(e.eq(at(e, lp, p["lbk"]), ord(".")), e.eq(at(e, lp, e.add(p["lbk"], 1)), ord("."))))))
+
+        e.for_("lbq", 0, at(e, p["jv_libs"], 1), library)
+        e.var("jv_brand", 0)
+        e.if_(e.ne(p["jv_branding"], NONE), lambda: (e.set("jv_brand", call("an_jhex", p["jv_branding"])), add_input(p["jv_brand"])))
+
+        def native_rule():
+            e.var("nr_item", at(e, p["jv_natives"], e.add(2, p["nrq"])))
+            e.var("nr_class", e.add(at(e, p["nr_item"], 2), 1))
+            _ok(e, e.both(e.lt(0, e.ld(p["nr_class"])), e.eq(at(e, p["nr_class"], 1), ord("L")), e.eq(at(e, p["nr_class"], e.ld(p["nr_class"])), ord(";"))))
+            _ok(e, e.ne(call("an_has", e.add(at(e, p["nr_item"], 4), 1), ord("(")), 0))
+
+        e.for_("nrq", 0, at(e, p["jv_natives"], 1), native_rule)
+        # ``LIBXPOSED-JVM-INPUTS``: the declared inputs the build was not given.
+        e.var("jv_missing", e.alloc(e.add(e.ld(p["jv_inputs"]), 1)))
+        _ok(e, e.ne(p["jv_missing"], NONE))
+        e.st(p["jv_missing"], 0)
+        e.for_("miq", 0, e.ld(p["jv_inputs"]), lambda: (
+            e.var("mi_d", at(e, p["jv_inputs"], e.add(p["miq"], 1))),
+            e.if_(e.eq(input_of(p["mi_d"], "mi_at"), NONE), lambda: (e.st(e.add(p["jv_missing"], e.add(e.ld(p["jv_missing"]), 1)), p["mi_d"]),
+                                                                    e.st(p["jv_missing"], e.add(e.ld(p["jv_missing"]), 1))))))
+
+        def missing():
+            D.put(e, D.T_LIST)
+            D.put(e, e.ld(p["jv_missing"]))
+            e.for_("msd", 0, e.ld(p["jv_missing"]), lambda: call("an_dtext", at(e, p["jv_missing"], e.add(p["msd"], 1)), D.T_HEX, 0))
+
+        e.if_(e.ne(e.ld(p["jv_missing"]), 0), lambda: reject(d_lid, "LIBXPOSED-JVM-INPUTS", text_("every declared DEX and library"), missing,
+                                                             code="XAX.BUILD.INPUT_CLOSURE"))
+
+        # J2. The JVM program on this input (``compile_jvm_bound_target``: its rejections are the build's), the class
+        # files of its JAR in name order, each lowered by the class-translation program.
+        e = _Slotted((yield), slots)
+        p = e.p
+        e.if_(e.ne(p["managed"], 2), lambda: e.give(1))
+        e.st(G_LAYER, e.add(e.ld(G_LAYER), 1))
+        e.st(G_SAVE, e.hd(H_ARENA))
+        e.st(G_SAVE + 1, e.hd(H_ARENA_END))
+        e.st(0, 0)
+        e.var("jl_r", e.call(layers["jvm"]))
+        _ok(e, e.lt(e.hd(H_ARENA), CO_AT))
+        e.set_hd(H_ARENA, e.ld(G_SAVE))
+        e.set_hd(H_ARENA_END, e.ld(G_SAVE + 1))
+        e.if_(e.eq(e.ld(0), D.REJECT), lambda: e.give(2))  # the JVM program's diagnostic is the output
+        _ok(e, e.both(e.ne(p["jl_r"], NONE), e.eq(e.ld(0), 1)))
+        e.var("jar", call("an_record"))
+        e.var("jar_entries", call("an_zip", p["jar"]))
+        e.var("jar_classes", e.alloc(e.add(e.ld(p["jar_entries"]), 1)))
+        _ok(e, e.ne(p["jar_classes"], NONE))
+        e.st(p["jar_classes"], 0)
+
+        def class_entry():  # the ``.class`` entries, sorted by name
+            e.var("ce_slot", e.add(e.add(p["jar_entries"], 1), e.mul(p["ceq"], ZIP_WORDS)))
+            e.var("ce_name", e.ld(p["ce_slot"]))
+            e.var("ce_n", e.ld(p["ce_name"]))
+            e.var("ce_last", e.sel(e.le(6, p["ce_n"]), p["ce_n"], 6))  # the name's last item (a short name reads its own first items)
+            e.var("ce_cls", e.flag(e.both(e.le(6, p["ce_n"]), *(e.eq(at(e, p["ce_name"], e.sub(p["ce_last"], 5 - k)), c) for k, c in enumerate(b".class")))))
+
+            def insert():
+                e.var("ce_at", e.add(e.ld(p["jar_classes"]), 1))
+                e.while_(lambda: e.both(e.lt(1, p["ce_at"]), e.ne(call("an_less", p["ce_name"], e.ld(at(e, p["jar_classes"], e.sub(p["ce_at"], 1)))), 0)), lambda: (
+                    e.st(e.add(p["jar_classes"], p["ce_at"]), at(e, p["jar_classes"], e.sub(p["ce_at"], 1))), e.set("ce_at", e.sub(p["ce_at"], 1))))
+                e.st(e.add(p["jar_classes"], p["ce_at"]), p["ce_slot"])
+                e.st(p["jar_classes"], e.add(e.ld(p["jar_classes"]), 1))
+
+            e.if_(e.ne(p["ce_cls"], 0), insert)
+
+        e.for_("ceq", 0, e.ld(p["jar_entries"]), class_entry)
+        e.var("lowered", e.alloc(e.add(e.ld(p["jar_classes"]), 1)))
+        _ok(e, e.ne(p["lowered"], NONE))
+        e.st(p["lowered"], e.ld(p["jar_classes"]))
+
+        def lower_class():
+            e.var("lc_slot", at(e, p["jar_classes"], e.add(p["lcq"], 1)))
+            e.var("lc_in", e.ld(G_W))
+            e.var("lc_bytes", call("an_slice_bytes", p["jar"], at(e, p["lc_slot"], 1), at(e, p["lc_slot"], 2)))
+            call("an_packput", e.add(p["lc_bytes"], 1), e.ld(p["lc_bytes"]))
+            put(0)  # no renames
+            layer(layers["dex_jvm"], p["lc_in"])
+            e.var("lc_n", e.ld(DEX_JVM_OUT))
+            e.var("lc_h", e.alloc(e.add(p["lc_n"], 1)))
+            _ok(e, e.ne(p["lc_h"], NONE))
+            e.for_("lck", 0, e.add(p["lc_n"], 1), lambda: e.st(e.add(p["lc_h"], p["lck"]), e.ld(e.add(DEX_JVM_OUT, p["lck"]))))
+            e.st(e.add(e.add(p["lowered"], 1), p["lcq"]), p["lc_h"])
+            e.st(G_W, p["lc_in"])  # the writer region is reused
+
+        e.for_("lcq", 0, e.ld(p["jar_classes"]), lower_class)
+        # ``LIBXPOSED-JVM-ENTRY``: the entry method's descriptor (the class ``xax/P`` + the entry CID's first 16 hex digits).
+        e.var("jv_cname", e.alloc(22))
+        _ok(e, e.ne(p["jv_cname"], NONE))
+        e.st(p["jv_cname"], 0)
+        call("an_cat", p["jv_cname"], K(b"xax/P"))
+        e.var("cn_w", at(e, p["entry"], 1))
+        e.for_("cnq", 0, 16, lambda: (
+            e.var("cn_d", e.and_(e.udiv(p["cn_w"], _shift4(e, e.sub(15, p["cnq"]))), 15)),
+            e.st(e.add(p["jv_cname"], e.add(6, p["cnq"])), e.add(p["cn_d"], e.sel(e.lt(p["cn_d"], 10), ord("0"), ord("a") - 10)))))
+        e.st(p["jv_cname"], 21)
+        e.var("jv_cdesc", e.alloc(24))
+        _ok(e, e.ne(p["jv_cdesc"], NONE))
+        e.st(p["jv_cdesc"], 0)
+        call("an_cat", p["jv_cdesc"], K(b"L"))
+        call("an_cat", p["jv_cdesc"], p["jv_cname"])
+        call("an_cat", p["jv_cdesc"], K(b";"))
+        e.var("jv_desc", e.call(_FN["an_entry_desc"], p["lowered"], p["jv_cdesc"]))
+        _ok(e, e.ne(p["jv_desc"], NONE))
+
+        def entry_rejected():
+            def entity():
+                D.put(e, D.T_CID)
+                for w in range(CID_WORDS):
+                    D.put(e, at(e, p["entry"], 1 + w))
+
+            reject(entity, "LIBXPOSED-JVM-ENTRY", text_(JVM_ENTRY_DESCRIPTOR.decode()), lambda: (D.put(e, D.T_LIST), D.put(e, 1), d_str(p["jv_desc"])))
+
+        e.if_(e.eq(call("an_same", p["jv_desc"], K(JVM_ENTRY_DESCRIPTOR)), 0), entry_rejected)
+
+        # J3. The code DEX (the lowered classes, then the field holders: ``write_dex``), the Module class (``onPackageReady``
+        # forwarding to the entry) and the native classes, each a DEX bridge.
+        e = _Slotted((yield), slots)
+        p = e.p
+        e.if_(e.ne(p["managed"], 2), lambda: e.give(1))
+        text = lambda h: call("an_seqput", h)  # noqa: E731 - a string: its count, then its items
+        # The holders: per class descriptor (sorted, ``holders`` keeps the record's order within one) its fields.
+        e.var("jh", e.alloc(e.add(e.sel(e.ne(p["jv_fields"], NONE), at(e, p["jv_fields"], 1), 0), 1)))  # distinct classes, sorted
+        _ok(e, e.ne(p["jh"], NONE))
+        e.st(p["jh"], 0)
+
+        def holder_class():
+            e.var("hc_c", e.add(at(e, at(e, p["jv_fields"], e.add(2, p["hcq"])), 2), 1))
+            e.var("hc_new", 1)
+            e.for_("hcj", 0, e.ld(p["jh"]), lambda: e.if_(e.ne(call("an_same", at(e, p["jh"], e.add(p["hcj"], 1)), p["hc_c"]), 0), lambda: e.set("hc_new", 0)))
+
+            def insert():
+                e.var("hc_at", e.add(e.ld(p["jh"]), 1))
+                e.while_(lambda: e.both(e.lt(1, p["hc_at"]), e.ne(call("an_less", p["hc_c"], at(e, p["jh"], e.sub(p["hc_at"], 1))), 0)), lambda: (
+                    e.st(e.add(p["jh"], p["hc_at"]), at(e, p["jh"], e.sub(p["hc_at"], 1))), e.set("hc_at", e.sub(p["hc_at"], 1))))
+                e.st(e.add(p["jh"], p["hc_at"]), p["hc_c"])
+                e.st(p["jh"], e.add(e.ld(p["jh"]), 1))
+
+            e.if_(e.ne(p["hc_new"], 0), insert)
+
+        e.if_(e.ne(p["jv_fields"], NONE), lambda: e.for_("hcq", 0, at(e, p["jv_fields"], 1), holder_class))
+        e.var("in_code", e.ld(G_W))
+        put(e.add(e.ld(p["lowered"]), e.ld(p["jh"])))
+        e.for_("cwq", 0, e.ld(p["lowered"]), lambda: (
+            e.var("cw_h", at(e, p["lowered"], e.add(p["cwq"], 1))),
+            e.for_("cwk", 0, e.ld(p["cw_h"]), lambda: put(at(e, p["cw_h"], e.add(p["cwk"], 1))))))
+
+        def holder():
+            e.var("hd_c", at(e, p["jh"], e.add(p["hdq"], 1)))
+            text(p["hd_c"])
+            put(0x0011)  # public final
+            put(1)
+            text(K(b"Ljava/lang/Object;"))
+            put(0)  # interfaces
+            e.var("hd_n", 0)
+            e.for_("hdj", 0, at(e, p["jv_fields"], 1), lambda: e.if_(
+                e.ne(call("an_same", e.add(at(e, at(e, p["jv_fields"], e.add(2, p["hdj"])), 2), 1), p["hd_c"]), 0), lambda: e.set("hd_n", e.add(p["hd_n"], 1))))
+            put(p["hd_n"])
+
+            def field():
+                e.var("fd_item", at(e, p["jv_fields"], e.add(2, p["fdq"])))
+
+                def one():
+                    text(e.add(at(e, p["fd_item"], 3), 1))  # the name
+                    text(e.add(at(e, p["fd_item"], 4), 1))  # the descriptor
+                    put(0x0049)  # public static volatile
+
+                e.if_(e.ne(call("an_same", e.add(at(e, p["fd_item"], 2), 1), p["hd_c"]), 0), one)
+
+            e.for_("fdq", 0, at(e, p["jv_fields"], 1), field)
+            put(0)  # methods
+
+        e.for_("hdq", 0, e.ld(p["jh"]), holder)
+        layer(layers["dex_writer"], p["in_code"])
+        e.var("code_dex", call("an_record"))
+
+        def bridge_head(descriptor, superclass):
+            text(descriptor)
+            text(superclass)
+            put(0x0021)  # public, super
+            for _ in range(3):  # no interfaces, library or deferred load
+                put(0)
+
+        def bridge_tail():
+            for _ in range(8):  # no UI, click text, hook, installation, services, preferences, hot reload or files
+                put(0)
+
+        # The Module class: ``onPackageReady(param)`` is ``invoke-static {this, param}`` of the entry, then ``return-void``.
+        e.var("jv_mdesc", e.alloc(e.add(e.ld(p["jv_class"]), 3)))
+        _ok(e, e.ne(p["jv_mdesc"], NONE))
+        e.st(p["jv_mdesc"], 0)
+        call("an_cat", p["jv_mdesc"], K(b"L"))
+        call("an_cat", p["jv_mdesc"], p["jv_class"])
+        e.for_("mdk", 2, e.add(e.ld(p["jv_mdesc"]), 1), lambda: e.if_(e.eq(at(e, p["jv_mdesc"], p["mdk"]), ord(".")), lambda: e.st(e.add(p["jv_mdesc"], p["mdk"]), ord("/"))))
+        call("an_cat", p["jv_mdesc"], K(b";"))
+        e.var("in_module", e.ld(G_W))
+        bridge_head(p["jv_mdesc"], K(XPOSED_MODULE))
+        for _ in range(5):  # no native methods, forwarding or null-return overrides, constant or echo strings
+            put(0)
+        put(1)
+        text(K(b"onPackageReady"))
+        text(K(b"V"))
+        put(1)
+        text(K(READY_PARAM))
+        put(2)  # registers
+        put(ACC_PUBLIC)
+        put(2)  # instructions
+        put(0x71)  # invoke-static {v0, v1}
+        put(2)
+        put(0)
+        put(1)
+        put(3)  # a method reference
+        text(p["jv_cdesc"])
+        text(K(b"entry"))
+        text(K(b"V"))
+        put(2)
+        text(K(XPOSED_INTERFACE))
+        text(K(READY_PARAM))
+        put(0)
+        put(0x0E)  # return-void
+        put(0)
+        put(0)
+        put(0)
+        bridge_tail()
+        layer(layers["dex"], p["in_module"])
+        e.var("module_dex", call("an_record"))
+        # The native classes, sorted by descriptor: their ``static native`` methods in the record's order.
+        e.var("jn", e.alloc(e.add(at(e, p["jv_natives"], 1), 1)))
+        _ok(e, e.ne(p["jn"], NONE))
+        e.st(p["jn"], 0)
+
+        def native_class():
+            e.var("ncl_c", e.add(at(e, at(e, p["jv_natives"], e.add(2, p["nclq"])), 2), 1))
+            e.var("ncl_new", 1)
+            e.for_("nclj", 0, e.ld(p["jn"]), lambda: e.if_(e.ne(call("an_same", at(e, p["jn"], e.add(p["nclj"], 1)), p["ncl_c"]), 0), lambda: e.set("ncl_new", 0)))
+
+            def insert():
+                e.var("ncl_at", e.add(e.ld(p["jn"]), 1))
+                e.while_(lambda: e.both(e.lt(1, p["ncl_at"]), e.ne(call("an_less", p["ncl_c"], at(e, p["jn"], e.sub(p["ncl_at"], 1))), 0)), lambda: (
+                    e.st(e.add(p["jn"], p["ncl_at"]), at(e, p["jn"], e.sub(p["ncl_at"], 1))), e.set("ncl_at", e.sub(p["ncl_at"], 1))))
+                e.st(e.add(p["jn"], p["ncl_at"]), p["ncl_c"])
+                e.st(p["jn"], e.add(e.ld(p["jn"]), 1))
+
+            e.if_(e.ne(p["ncl_new"], 0), insert)
+
+        e.for_("nclq", 0, at(e, p["jv_natives"], 1), native_class)
+        e.var("native_dex", e.alloc(e.add(e.ld(p["jn"]), 1)))
+        _ok(e, e.ne(p["native_dex"], NONE))
+        e.st(p["native_dex"], e.ld(p["jn"]))
+
+        def native_bridge():
+            e.var("nb_c", at(e, p["jn"], e.add(p["nbq"], 1)))
+            e.var("nb_in", e.ld(G_W))
+            bridge_head(p["nb_c"], K(b"Ljava/lang/Object;"))
+            e.var("nb_n", 0)
+            e.for_("nbj", 0, at(e, p["jv_natives"], 1), lambda: e.if_(
+                e.ne(call("an_same", e.add(at(e, at(e, p["jv_natives"], e.add(2, p["nbj"])), 2), 1), p["nb_c"]), 0), lambda: e.set("nb_n", e.add(p["nb_n"], 1))))
+            put(p["nb_n"])
+
+            def method():
+                e.var("nm_item", at(e, p["jv_natives"], e.add(2, p["nmq"])))
+
+                def one():
+                    text(e.add(at(e, p["nm_item"], 3), 1))  # the name
+                    e.var("nm_d", call("an_jdesc", e.add(at(e, p["nm_item"], 4), 1)))
+                    text(at(e, p["nm_d"], 1))  # the result
+                    put(e.sub(e.ld(p["nm_d"]), 1))
+                    e.for_("nmk", 2, e.add(e.ld(p["nm_d"]), 1), lambda: text(at(e, p["nm_d"], p["nmk"])))
+                    put(ACC_PUBLIC | 0x0008 | 0x0100)  # public static native
+
+                e.if_(e.ne(call("an_same", e.add(at(e, p["nm_item"], 2), 1), p["nb_c"]), 0), one)
+
+            e.for_("nmq", 0, at(e, p["jv_natives"], 1), method)
+            for _ in range(5):  # no forwarding or null-return overrides, constant or echo strings, assembled methods
+                put(0)
+            bridge_tail()
+            layer(layers["dex"], p["nb_in"])
+            e.st(e.add(e.add(p["native_dex"], 1), p["nbq"]), call("an_record"))
+            e.st(G_W, p["nb_in"])
+
+        e.for_("nbq", 0, e.ld(p["jn"]), native_bridge)
+
+        # J4. The manifest (the branding archive's, its versionCode the record's, or the generated one: an application
+        # and no components), the libxposed metadata, and the APK (uncompressed libraries, 16 KiB aligned).
+        e = _Slotted((yield), slots)
+        p = e.p
+        e.if_(e.ne(p["managed"], 2), lambda: e.give(1))
+        text = lambda h: call("an_seqput", h)  # noqa: E731
+        e.var("jv_axml", 0)
+        e.var("jv_brands", 0)  # the branding entries but the manifest: [n, (name, start, size)...] of ``jv_archive``
+        e.var("jv_archive", 0)
+
+        def branding():
+            e.var("br_at", input_of(p["jv_brand"], "br_in"))
+            e.var("br_len", e.rd(e.add(p["br_at"], 32)))
+            _ok(e, e.le(p["br_len"], 2 << 20))  # ``BRANDING_LIMIT``
+            e.var("br_words", e.udiv(e.add(p["br_len"], 7), 8))
+            e.set("jv_archive", e.alloc(e.add(p["br_words"], 1)))
+            _ok(e, e.ne(p["jv_archive"], NONE))
+            e.st(p["jv_archive"], p["br_len"])
+            e.for_("brk", 0, p["br_words"], lambda: e.st(e.add(e.add(p["jv_archive"], 1), p["brk"]), e.rd(e.add(e.add(p["br_at"], 33), p["brk"]))))
+            e.var("br_entries", call("an_zip", p["jv_archive"]))
+            e.var("br_n", e.ld(p["br_entries"]))
+            name = lambda q: e.ld(e.add(e.add(p["br_entries"], 1), e.mul(q, ZIP_WORDS)))  # noqa: E731
+            e.var("br_total", 0)
+            e.var("br_manifest", NONE)
+
+            def check():
+                e.var("bc_name", name(p["bcq"]))
+                e.for_("bcj", 0, p["bcq"], lambda: _ok(e, e.eq(call("an_same", name(p["bcj"]), p["bc_name"]), 0)))  # no duplicates
+                e.set("br_total", e.add(p["br_total"], e.ld(e.add(e.add(p["br_entries"], 3), e.mul(p["bcq"], ZIP_WORDS)))))
+                e.var("bc_manifest", call("an_same", p["bc_name"], K(b"AndroidManifest.xml")))
+                e.var("bc_res", e.flag(e.both(e.ne(call("an_prefix", p["bc_name"], K(b"res/")), 0), e.eq(call("an_has", p["bc_name"], ord("\\")), 0),
+                                              e.ne(at(e, p["bc_name"], e.ld(p["bc_name"])), ord("/")))))
+                e.for_("bck", 1, e.ld(p["bc_name"]), lambda: e.if_(e.both(e.eq(at(e, p["bc_name"], p["bck"]), ord(".")),
+                                                                          e.eq(at(e, p["bc_name"], e.add(p["bck"], 1)), ord("."))), lambda: e.set("bc_res", 0)))
+                _ok(e, e.either(e.ne(p["bc_manifest"], 0), e.ne(call("an_same", p["bc_name"], K(b"resources.arsc")), 0), e.ne(p["bc_res"], 0)))
+                e.if_(e.ne(p["bc_manifest"], 0), lambda: e.set("br_manifest", p["bcq"]))
+
+            e.for_("bcq", 0, p["br_n"], check)
+            _ok(e, e.le(p["br_total"], 2 << 20))
+            _ok(e, e.ne(p["br_manifest"], NONE))
+            e.var("br_m", e.add(e.add(p["br_entries"], 1), e.mul(p["br_manifest"], ZIP_WORDS)))
+            e.var("br_mbytes", call("an_slice_bytes", p["jv_archive"], e.ld(e.add(p["br_m"], 1)), e.ld(e.add(p["br_m"], 2))))
+            e.var("br_patched", call("an_version_code", p["br_mbytes"], p["jv_vcode"]))
+            e.set("jv_axml", p["br_patched"])
+            e.set("jv_brands", p["br_entries"])
+            e.set("jv_bskip", p["br_manifest"])
+
+        e.var("jv_bskip", NONE)
+
+        def generated():
+            e.var("in_manifest", e.ld(G_W))
+            put(0)
+            text(p["jv_package"])
+            put(0)  # no activity
+            put(p["jv_vcode"])
+            put(p["jv_min"])
+            put(p["jv_target"])
+            for _ in range(6):  # not a launcher, not debuggable, no application, receivers, services or declarations
+                put(0)
+            layer(layers["resources"], p["in_manifest"])
+            e.var("gm_record", call("an_record"))
+            e.set("jv_axml", call("an_slice_bytes", p["gm_record"], 0, e.ld(p["gm_record"])))
+
+        e.if_(e.ne(p["jv_brand"], 0), branding, generated)
+        # The metadata (``emit_libxposed_metadata``): the carrier decoded with its rules; anything it rejects declines.
+        e.var("mt", call("an_tail", p["jv_meta"], len(b"libxposed-module-v1")))
+        e.st(G_CUR, 0)
+        e.var("mt_min", _uleb_at(e, p["mt"], "mt"))
+        e.var("mt_target", _uleb_at(e, p["mt"], "mt"))
+        e.var("mt_static", _byte_at(e, p["mt"], "mt"))
+        _ok(e, e.le(p["mt_static"], 1))
+        _ok(e, e.both(e.le(1, p["mt_min"]), e.le(p["mt_min"], p["mt_target"]), e.le(p["mt_target"], 0x7FFFFFFF)))
+        lists = []
+        for kind in ("java", "native", "scope"):
+            e.var(f"mt_{kind}", e.alloc(e.add(e.ld(p["mt"]), 1)))
+            _ok(e, e.ne(p[f"mt_{kind}"], NONE))
+            e.var(f"mt_{kind}_n", _uleb_at(e, p["mt"], "mt"))
+            _ok(e, e.le(p[f"mt_{kind}_n"], e.ld(p["mt"])))
+            e.st(p[f"mt_{kind}"], p[f"mt_{kind}_n"])
+
+            def text_item(kind=kind):
+                e.var("mi_t", _bstr_at(e, p["mt"], "mt"))
+                _ok(e, e.lt(0, e.ld(p["mi_t"])))
+                for c in (0, 10, 13):
+                    _ok(e, e.eq(call("an_has", p["mi_t"], c), 0))
+                e.for_("mik", 1, e.add(e.ld(p["mi_t"]), 1), lambda: _ok(e, e.lt(at(e, p["mi_t"], p["mik"]), 0x80)))  # ASCII text
+                if kind == "native":
+                    _ok(e, e.both(e.eq(call("an_has", p["mi_t"], ord("/")), 0), e.eq(call("an_has", p["mi_t"], ord("\\")), 0)))
+                # Canonical: sorted by bytes and once (``libxposed_module_semantics`` of the description is the carrier).
+                e.if_(e.lt(0, p[f"mtq_{kind}"]), lambda: _ok(e, e.ne(call("an_less", at(e, p[f"mt_{kind}"], p[f"mtq_{kind}"]), p["mi_t"]), 0)))
+                e.st(e.add(e.add(p[f"mt_{kind}"], 1), p[f"mtq_{kind}"]), p["mi_t"])
+
+            e.for_(f"mtq_{kind}", 0, p[f"mt_{kind}_n"], text_item)
+            lists.append(p[f"mt_{kind}"])
+        _ok(e, e.eq(e.ld(G_CUR), e.ld(p["mt"])))
+        _ok(e, e.lt(0, e.ld(p["mt_java"])))
+        # The APK: the manifest, the branding entries, the DEX files, the metadata and the libraries.
+        e.var("in_apk", e.ld(G_W))
+        e.var("jv_ndex", e.add(e.add(2, e.ld(p["native_dex"])), at(e, p["jv_dex"], 1)))
+        e.var("jv_nbrand", e.sel(e.ne(p["jv_brands"], 0), e.sub(e.ld(p["jv_brands"]), 1), 0))
+        e.var("jv_nmeta", e.add(e.add(1, e.flag(e.lt(0, e.ld(p["mt_java"])))), e.add(e.flag(e.lt(0, e.ld(p["mt_native"]))), e.flag(e.lt(0, e.ld(p["mt_scope"]))))))
+        put(e.add(e.add(e.add(1, p["jv_nbrand"]), p["jv_ndex"]), e.add(p["jv_nmeta"], at(e, p["jv_libs"], 1))))
+
+        def entry(name, data, alignment: int):
+            text(name)
+            put(0)
+            put(alignment)
+            call("an_blobput", data)
+
+        def bytes_entry(name, h):
+            text(name)
+            put(0)
+            put(ENTRY_ALIGNMENT)
+            call("an_packput", e.add(h, 1), e.ld(h))
+
+        def entry_input(name, digest, alignment: int):
+            """An entry whose data is an external input (its packed words as given)."""
+            text(name)
+            put(0)
+            put(alignment)
+            e.var("ei_at", input_of(digest, "ei_in"))
+            put(e.rd(e.add(p["ei_at"], 32)))
+            e.for_("eik", 0, e.udiv(e.add(e.rd(e.add(p["ei_at"], 32)), 7), 8), lambda: put(e.rd(e.add(e.add(p["ei_at"], 33), p["eik"]))))
+
+        bytes_entry(K(b"AndroidManifest.xml"), p["jv_axml"])
+
+        def brand_entry():
+            e.var("be_slot", e.add(e.add(p["jv_brands"], 1), e.mul(p["beq"], ZIP_WORDS)))
+            e.var("be_bytes", call("an_slice_bytes", p["jv_archive"], e.ld(e.add(p["be_slot"], 1)), e.ld(e.add(p["be_slot"], 2))))
+            e.if_(e.ne(p["beq"], p["jv_bskip"]), lambda: (text(e.ld(p["be_slot"])), put(0), put(ENTRY_ALIGNMENT), call("an_packput", e.add(p["be_bytes"], 1),
+                                                                                                                       e.ld(p["be_bytes"]))))
+
+        e.if_(e.ne(p["jv_brands"], 0), lambda: e.for_("beq", 0, e.ld(p["jv_brands"]), brand_entry))
+
+        def dex_name(k):
+            """``classes.dex``, then ``classes<k + 1>.dex``."""
+            e.var("dn_h", e.alloc(32))
+            _ok(e, e.ne(p["dn_h"], NONE))
+            e.st(p["dn_h"], 0)
+            call("an_cat", p["dn_h"], K(b"classes"))
+            e.if_(e.lt(0, k), lambda: call("an_dec", p["dn_h"], e.add(k, 1)))
+            call("an_cat", p["dn_h"], K(b".dex"))
+            return p["dn_h"]
+
+        entry(dex_name(e.c(0)), p["module_dex"], ENTRY_ALIGNMENT)
+        entry(dex_name(e.c(1)), p["code_dex"], ENTRY_ALIGNMENT)
+        e.for_("ndq", 0, e.ld(p["native_dex"]), lambda: entry(dex_name(e.add(2, p["ndq"])), at(e, p["native_dex"], e.add(p["ndq"], 1)), ENTRY_ALIGNMENT))
+        e.for_("idq", 0, at(e, p["jv_dex"], 1), lambda: entry_input(dex_name(e.add(e.add(2, e.ld(p["native_dex"])), p["idq"])),
+                                                                     at(e, p["jv_dexd"], e.add(p["idq"], 1)), ENTRY_ALIGNMENT))
+        # module.prop, then the lists.
+        e.var("mp", e.alloc(64))
+        _ok(e, e.ne(p["mp"], NONE))
+        e.st(p["mp"], 0)
+        call("an_cat", p["mp"], K(b"minApiVersion="))
+        call("an_dec", p["mp"], p["mt_min"])
+        call("an_cat", p["mp"], K(b"\ntargetApiVersion="))
+        call("an_dec", p["mp"], p["mt_target"])
+        call("an_cat", p["mp"], K(b"\nstaticScope="))
+        call("an_cat", p["mp"], e.sel(e.ne(p["mt_static"], 0), K(b"true\n"), K(b"false\n")))
+
+        bytes_entry(K(b"META-INF/xposed/module.prop"), p["mp"])
+        for kind, name in (("java", b"META-INF/xposed/java_init.list"), ("native", b"META-INF/xposed/native_init.list"), ("scope", b"META-INF/xposed/scope.list")):
+            def listed(kind=kind, name=name):
+                e.var("ml_n", e.ld(p["mt"]))
+                e.var("ml", e.alloc(e.add(e.add(p["ml_n"], e.ld(p[f"mt_{kind}"])), 1)))
+                _ok(e, e.ne(p["ml"], NONE))
+                e.st(p["ml"], 0)
+                e.for_("mlk", 1, e.add(e.ld(p[f"mt_{kind}"]), 1), lambda: (call("an_cat", p["ml"], at(e, p[f"mt_{kind}"], p["mlk"])), call("an_cat", p["ml"], K(b"\n"))))
+                bytes_entry(K(name), p["ml"])
+
+            e.if_(e.lt(0, e.ld(p[f"mt_{kind}"])), listed)
+        e.for_("lbe", 0, at(e, p["jv_libs"], 1), lambda: entry_input(e.add(at(e, at(e, p["jv_libs"], e.add(2, p["lbe"])), 2), 1),
+                                                                     at(e, p["jv_libd"], e.add(p["lbe"], 1)), NATIVE_ALIGNMENT))
+        layer(layers["apk"], p["in_apk"])
 
     functions, names, generator = [], (), None
     for k in range(PHASES):
@@ -2988,15 +4242,22 @@ def _layers():
     import xax_selfhost_android_rules as RULES
     import xax_selfhost_apk as APK
     import xax_selfhost_dex as DEX
+    import xax_selfhost_dex_jvm as DEX_JVM
+    import xax_selfhost_dex_writer as DEX_WRITER
 
     layers, objects = {}, []
     reader, layers["aarch64"] = A64.load_aarch64_program()
+    objects.extend(reader.objects())
+    import xax_selfhost_jvm as JVM
+
+    reader, layers["jvm"] = JVM.load_jvm_program()  # S15e.6i.2b: it reads this input too
     objects.extend(reader.objects())
     F.INPUT_REDIRECT = G_INBASE
     try:
         for name, build in (("elf", ELF.build_android_elf_program), ("resources", RES.build_resources_program), ("dex", DEX.build_dex_program),
                             ("apk", APK.build_apk_program), ("rules", RULES.build_rules_program),
-                            ("managed_rules", MANAGED_RULES.build_managed_rules_program)):
+                            ("managed_rules", MANAGED_RULES.build_managed_rules_program), ("dex_jvm", DEX_JVM.build_dex_jvm_program),
+                            ("dex_writer", DEX_WRITER.build_dex_writer_program)):
             reader, layers[name] = build()
             objects.extend(reader.objects())
     finally:
@@ -3034,9 +4295,10 @@ write_android_store = _PROGRAM.write
 OPT_OUT = "XAX_ANDROID_PYTHON"
 
 
-def android_with_xax(reader, package_view, target_object, build_entry_function, *, required: bool = False) -> bytes | None:
+def android_with_xax(reader, package_view, target_object, build_entry_function, *, required: bool = False, external_inputs=None) -> bytes | None:
     """The unsigned APK the XAX Android program builds for the package, or None where it cannot run or declines (the
-    bootstrap then decides), unless ``required``."""
+    bootstrap then decides), unless ``required``.  S15e.6i.2b: ``external_inputs`` (digest to bytes) follow the
+    identity, sorted by digest, as the driver gives them."""
     import os
 
     import xax_native
@@ -3052,7 +4314,10 @@ def android_with_xax(reader, package_view, target_object, build_entry_function, 
             words = table[0]
             identity = package_view.logical_identity
             tail = [*_cid_words(build_entry_function), len(package_view.modules), *(w for cid in package_view.modules for w in _cid_words(cid)),
-                    len(identity), *identity]
+                    len(identity), *identity, len(external_inputs or {})]
+            for digest, data in sorted((external_inputs or {}).items()):
+                padded = data + bytes(-len(data) % 8)
+                tail += [*digest, len(data), *(int.from_bytes(padded[k:k + 8], "little") for k in range(0, len(padded), 8))]
 
             def roots(read):
                 (status,) = read(0, 1)

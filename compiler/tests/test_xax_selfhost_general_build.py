@@ -9,10 +9,9 @@ re-derived with the S2 hash).  Differential: the artifact bytes and the provenan
 ``build(..., compiler_identity=XAX_GENERAL_DRIVER_COMPILER_IDENTITY_V1)``'s, and every rejection ``build`` makes on these
 paths is the driver's, with the exact diagnostic.  S15e.1 (ADR-308): a RISC-V raw image target is lowered by the XAX
 RISC-V backend program; S15e.2 (ADR-315): a Linux AArch64 ELF profile by the XAX AArch64 program; S15e.6h.3 (ADR-356): an
-unsigned APK on an Android shared-object target by the XAX Android program.  What ``build`` makes on other paths (signed
-Android packages, Android packages on other targets, Windows DLLs off the PE profile, other targets) the driver
-declines.  The driver is given no external inputs and verifies no signatures, which is
-``build`` called without them.
+unsigned APK on an Android shared-object target by the XAX Android program; S15e.6i.1 (ADR-357): a signed one, through
+``build-signed`` and the XAX APK signer; S15e.6i.2 (ADR-358): a libxposed JVM module (an APK on a JVM target) by the
+Android program's libxposed JVM profile, given its input files.
 """
 
 from __future__ import annotations
@@ -27,7 +26,7 @@ from pathlib import Path
 import xax_compiler as X
 from xax_artifact import XAX_GENERAL_DRIVER_COMPILER_IDENTITY_V1
 from xax_build import (
-    ArtifactKind, BuildCache, BuildForm, DependencyRequirement, _build_form, build, build_profile, build_request, decode_provenance,
+    ArtifactKind, BuildCache, BuildForm, decode_package, DependencyRequirement, _build_form, build, build_profile, build_request, decode_provenance,
     decode_snapshot, package, resolve_packages, snapshot_store, trust_policy,
 )
 from xax_selfhost_diagnostics import decode_record
@@ -581,6 +580,62 @@ class GeneralBuildTests(unittest.TestCase):
         self.assertEqual(outcome[0], "rejected")
         self.assertEqual(outcome[1], _expected(reader, inputs)[1])
         self.assertEqual(outcome[1].rule, "ANDROID-APK-SIGNING-CAPABILITY")
+
+    def test_libxposed_jvm_modules(self):
+        """S15e.6i.2b (ADR-358): an APK on a JVM target is a libxposed JVM module: the driver keeps its input files' bytes
+        and the Android program's libxposed JVM profile builds it; unsigned and signed (``build-signed``), and a declared
+        input left out (``BUILD-EXTERNAL-COMPLETE``), each equal to ``build``'s."""
+        from blake3 import blake3
+
+        from test_xax_build import android_signing_capability
+        from test_xax_selfhost_android_jvm import _archive, _manifest, _module
+        from xax_apk_signing import encode_private_signing_capability, inspect_apk_v2
+        from xax_build import BuildCapability, BuildCapabilityKind, BuildEffect, decode_request, decode_snapshot
+
+        dex = b"dex\n035\x00" + bytes(range(64))
+        library = bytes(range(256)) * 9
+        branding = _archive({"res/values/strings.xml": b"<strings/>", "AndroidManifest.xml": _manifest(), "resources.arsc": b"arsc"})
+        inputs = {blake3(item).digest(): item for item in (dex, library, branding)}
+        signer = android_signing_capability()
+        transport = encode_private_signing_capability(signer)
+
+        def snapshot(signed: bool):
+            android = {"natives": [["Lorg/example/Policy;", "check", "(I)I"]], "fields": [["Lorg/example/State;", "count", "I"]],
+                       "dex": [blake3(dex).hexdigest()], "libraries": {"lib/arm64-v8a/libpolicy.so": blake3(library).hexdigest()},
+                       "branding": blake3(branding).hexdigest()}
+            if signed:
+                android["signer"] = signer.identity_sha256
+            reader = _module(android)
+            root = decode_snapshot(reader.get(reader.root_cid), reader.get)
+            request = reader.get(root.request_root)
+            closure = dict(inputs)
+            if signed:
+                closure[blake3(transport).digest()] = transport
+            objects = tuple(reader.objects())
+            resolution = resolve_packages(request, objects, reader.get(root.trust_policy_root), root.resolver_identity, external_inputs=closure)
+            return snapshot_store(resolution, objects), request, closure
+
+        def expected(reader, request, closure, signed):
+            effects = ()
+            if signed:
+                view = decode_package(reader.get(decode_request(request, reader.get).package_root), reader.get)
+                effects = (BuildEffect(view.logical_identity, BuildCapability(BuildCapabilityKind.SIGN, bytes.fromhex(signer.identity_sha256)), transport),)
+            try:
+                result = build(reader, request.cid, compiler_identity=XAX_GENERAL_DRIVER_COMPILER_IDENTITY_V1, external_inputs=closure, effects=effects)
+            except X.XaxError as error:
+                return "rejected", error.diagnostic
+            return "image", result.artifact, result.provenance.envelope()
+
+        reader, request, closure = snapshot(False)
+        outcome = self.run_build_inputs(reader.data, tuple(closure.values()))
+        self.assertEqual(outcome[0], "image")
+        self.assertEqual(outcome[1], expected(reader, request, closure, False)[1])
+        reader, request, closure = snapshot(True)
+        outcome = self.run_signed(reader.data, transport, tuple(closure.values()))
+        self.assertEqual(outcome, expected(reader, request, closure, True))
+        self.assertTrue(inspect_apk_v2(outcome[1]).signature_valid)
+        missing = {digest: data for digest, data in closure.items() if data != library}
+        self.assertEqual(self.run_signed(reader.data, transport, tuple(missing.values())), expected(reader, request, missing, True))
 
     def run_build_inputs(self, data: bytes, inputs):
         snapshot, artifact, provenance = (os.path.join(self.directory, name) for name in ("snapshot.xax", "artifact.bin", "provenance.bin"))
