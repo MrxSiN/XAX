@@ -85,7 +85,6 @@ class OI20AbiPlatformTests(unittest.TestCase):
     def test_model_token_cost_is_not_fabricated(self):
         evidence = bench.collect_deterministic_evidence()
         self.assertIsNone(evidence["model_tokens"])
-        self.assertIsNone(evidence["ai_payload"]["tokenizer_model_tokens"])
         self.assertGreater(evidence["ai_payload"]["classification_query_bytes"], 0)
 
     def test_committed_evidence_replays_from_raw_samples(self):

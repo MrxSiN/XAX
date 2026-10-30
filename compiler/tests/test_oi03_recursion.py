@@ -46,7 +46,6 @@ def ring(order):
 
 
 class RecursionCarrierEvidenceTests(unittest.TestCase):
-    @unittest.skipUnless(importlib.util.find_spec("tiktoken"), "the evidence counts tokens with tiktoken (the test extra)")
     def test_committed_evidence_reproduces(self):
         self.assertEqual(json.loads(bench.OUTPUT.read_text()), json.loads(json.dumps(bench.run(), sort_keys=True)))
 

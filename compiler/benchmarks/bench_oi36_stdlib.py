@@ -11,12 +11,6 @@ Measures, for ``uniqcount`` (:mod:`benchmarks.uniqcount`) over the packages of
    from the store and the artifact;
 3. compile cost: package construction, store verification, and lowering
    (medians on this host);
-4. AI tokens (offline ``tiktoken``; no model is run): the interface view a
-   model reads to use the packages (query), and the node rendering it emits
-   for the application with package calls versus with the library bodies
-   written inline (mutation).  The rendering is the OI-37 measurement view,
-   not XAX source.
-
 Run: PYTHONPATH=src:. python -m benchmarks.bench_oi36_stdlib
 """
 
@@ -29,10 +23,9 @@ import time
 from pathlib import Path
 
 from benchmarks.uniqcount import build_uniqcount, libraries, reference_uniqcount
-from xax_compiler import Operation, _decode_function_interface, _parse_graph, store_resolver, verify_store
+from xax_compiler import verify_store
 
 OUTPUT = Path(__file__).resolve().parent / "oi36_stdlib_evidence.json"
-ENCODINGS = ("cl100k_base", "o200k_base")
 REPEATS = 5
 
 
@@ -73,20 +66,10 @@ def _function_bytes(ranges, names) -> dict[str, int]:
     return {names[cid]: high - low for cid, (low, high) in sorted(spans.items(), key=lambda pair: names[pair[0]])}
 
 
-def _render(function, resolve) -> list:
-    graph_object, _parameters, _returns = _decode_function_interface(function, resolve)
-    graph = _parse_graph(graph_object, resolve)
-    return [[Operation(node.operation).name, [f"{ref.tag}.{ref.block}.{ref.index}.{ref.result}" for ref in node.operands], list(node.attributes)] for block in graph.blocks for node in block.nodes]
-
-
 def run() -> dict:
-    import tiktoken
-
     from xax_linux import compile_linux_executable, run_linux_executable
     from xax_linux_aarch64 import compile_linux_aarch64_executable, run_linux_aarch64_executable
 
-    tokenizers = {name: tiktoken.get_encoding(name) for name in ENCODINGS}
-    count = lambda text: {name: len(encoder.encode(text)) for name, encoder in tokenizers.items()}  # noqa: E731
     programs = {"x86_64": build_uniqcount("x86_64"), "aarch64": build_uniqcount("aarch64")}
     compilers = {
         "x86_64": lambda p: compile_linux_executable(p.reader, p.entry.cid, p.target.cid),
@@ -107,7 +90,6 @@ def run() -> dict:
         execution[name] = row
 
     program = programs["x86_64"]
-    names = _names(program)
     stored = {item.cid for item in program.reader.objects()}
     packages = {}
     for library in program.libraries:
@@ -124,18 +106,6 @@ def run() -> dict:
         }
     same_cids = all(a.package.cid == b.package.cid for a, b in zip(programs["x86_64"].libraries, programs["aarch64"].libraries))
 
-    resolve = store_resolver(program.reader)
-    entry_nodes = _render(program.entry, resolve)
-    used_functions = sorted({cid for cid in stored if cid in names and cid != program.entry.cid}, key=lambda cid: names[cid])
-    library_nodes = {names[cid]: _render(resolve(cid), resolve) for cid in used_functions}
-    calls = sum(1 for node in entry_nodes if node[0] == "CALL_DIRECT")
-    inline_rendering = json.dumps([entry_nodes, *library_nodes.values()], separators=(",", ":"))
-    interface = {
-        names[cid]: [[item.hex()[:8] for item in parameters], [item.hex()[:8] for item in returns]]
-        for cid in used_functions
-        for _graph, parameters, returns in [_decode_function_interface(resolve(cid), resolve)]
-    }
-
     cost = {
         "build_packages_ms": round(_median(libraries) * 1e3, 2),
         "build_program_ms": round(_median(build_uniqcount) * 1e3, 2),
@@ -146,9 +116,7 @@ def run() -> dict:
     return {
         "issue": "OI-36",
         "adr": "ADR-130",
-        "evidence_label": {"execution": "EXECUTED", "x86_64": "native", "aarch64": "qemu-aarch64 user mode (emulated)", "sizes_tokens_cost": "MEASURED"},
-        "tokenizer": f"tiktoken {tiktoken.__version__}",
-        "model_run": None,
+        "evidence_label": {"execution": "EXECUTED", "x86_64": "native", "aarch64": "qemu-aarch64 user mode (emulated)", "sizes_cost": "MEASURED"},
         "execution": execution,
         "artifact_bytes": {arch: len(executable.data) for arch, executable in executables.items()},
         "function_code_bytes": {arch: _function_bytes(executable.semantic_ranges, _names(programs[arch])) for arch, executable in executables.items()},
@@ -156,19 +124,13 @@ def run() -> dict:
         "package_cids_identical_across_targets": same_cids,
         "app_store": {"objects": len(stored), "bytes": sum(len(item.envelope()) for item in program.reader.objects())},
         "compile_cost": cost,
-        "ai_tokens": {
-            "query_interface_view": {"functions": len(interface), "tokens": count(json.dumps(interface, separators=(",", ":")))},
-            "mutation_with_packages": {"nodes": len(entry_nodes), "library_calls": calls, "tokens": count(json.dumps(entry_nodes, separators=(",", ":")))},
-            "mutation_inline_bodies": {"nodes": len(entry_nodes) + sum(len(nodes) for nodes in library_nodes.values()), "tokens": count(inline_rendering)},
-            "library_nodes_per_function": {name: len(nodes) for name, nodes in library_nodes.items()},
-        },
     }
 
 
 def main() -> None:
     result = run()
     OUTPUT.write_text(json.dumps(result, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-    print(json.dumps({key: result[key] for key in ("artifact_bytes", "function_code_bytes", "compile_cost", "ai_tokens")}, indent=1))
+    print(json.dumps({key: result[key] for key in ("artifact_bytes", "function_code_bytes", "compile_cost")}, indent=1))
 
 
 if __name__ == "__main__":

@@ -124,12 +124,11 @@ class OI14CompileTimePolicyTests(unittest.TestCase):
         self.assertGreaterEqual(host["samples_per_workload"], 7)
         self.assertEqual(len(host["workloads"]), 3)
 
-    def test_capability_packet_cost_is_small_and_token_count_unclaimed(self):
+    def test_capability_packet_cost_is_small(self):
         evidence = deterministic_evidence()["capability_policy"]
         self.assertEqual(evidence["split_packet_bytes"]["compiler-like-body-generation"], 4)
         self.assertEqual(evidence["coarse_packet_bytes_conceptual"]["compiler-like-body-generation"], 3)
         self.assertEqual(evidence["split_packet_bytes"]["target-adapter-interface-generation"], 5)
-        self.assertIsNone(evidence["token_counts"])
 
 
 if __name__ == "__main__":

@@ -92,14 +92,6 @@
       "proof_set_entries": 3,
       "query_request_bytes": 10,
       "query_response_bytes": 14,
-      "query_tokens": {
-        "available": true,
-        "tokenizer": "tiktoken 0.14.0 o200k_base",
-        "tokens": [
-          9,
-          7
-        ]
-      },
       "recursion_bound": 0,
       "retry_bound": 0,
       "timed_path_memory_ops": 2,
@@ -127,14 +119,6 @@
       "proof_set_entries": 3,
       "query_request_bytes": 10,
       "query_response_bytes": 14,
-      "query_tokens": {
-        "available": true,
-        "tokenizer": "tiktoken 0.14.0 o200k_base",
-        "tokens": [
-          9,
-          7
-        ]
-      },
       "recursion_bound": 0,
       "retry_bound": 0,
       "timed_path_memory_ops": 2,
@@ -143,6 +127,5 @@
   },
   "profile_identity": "86a7678ce3a03e2caf2ae3a1fd2c9a9e3d91e2f06cc2d004e241446add61a690",
   "status": "measurement-only-nonsemantic-sidecar",
-  "tokenizer_note": "actual tokenizer tokens are null when tiktoken is unavailable; bytes are not substituted for tokens",
   "version": 1
 }

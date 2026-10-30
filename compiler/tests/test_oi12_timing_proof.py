@@ -153,24 +153,16 @@ class OI12TimingProofTests(unittest.TestCase):
         self.assertEqual(execute(self.fixture.reader, self.fixture.functions["caller"].cid, (1, 9)), before_true)
         self.assertEqual(execute(self.fixture.reader, self.fixture.functions["caller"].cid, (0, 9)), before_false)
 
-    def test_query_payload_is_compact_and_tokens_are_not_fabricated(self):
+    def test_query_payload_is_compact(self):
         proof = self.proof()
         request = bench.timing_query_payload()
         response = bench.timing_query_response(proof.guarantee_cycles)
         self.assertLessEqual(len(request), 16)
         self.assertLessEqual(len(response), 24)
-        tokens = bench.tokenizer_counts((request, response))
-        if not tokens["available"]:
-            self.assertIsNone(tokens["tokens"])
 
     def test_committed_deterministic_evidence(self):
         path = Path(__file__).resolve().parents[1] / "benchmarks" / "oi12_timing_proof_evidence.json"
         committed, replayed = json.loads(path.read_text()), bench.collect_evidence()
-        if not replayed["models"]["fixed-inorder"]["query_tokens"]["available"]:
-            # Token counts need tiktoken; without it they are null, never substituted.
-            for evidence in (committed, replayed):
-                for model in evidence["models"].values():
-                    model.pop("query_tokens")
         self.assertEqual(committed, replayed)
 
     def test_timing_sample_shape(self):

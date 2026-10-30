@@ -10,7 +10,7 @@ requires-python = ">=3.11"
 dependencies = []
 
 [project.optional-dependencies]
-test = ["pytest", "pytest-xdist", "unicorn", "tiktoken"]
+test = ["pytest", "pytest-xdist", "unicorn"]
 
 [project.scripts]
 xaxc = "xax_compiler:main"

@@ -2182,8 +2182,5 @@
     "function": "current canonical store: type/constant/graph_fragment/function/module/root objects",
     "module": "measurement-only packing: one unit per module of exclusively owned fine envelopes, shared objects in one common unit",
     "stable_interface_block": "measurement-only: stable callee declaration -> canonical immutable CallContract summary, module binding -> separately objectized block-skeleton body; reassembly must match canonical graph/function CIDs and stale summary/body pairs reject"
-  },
-  "model_visible_context_tokens": {
-    "status": "unavailable: no tokenizer/model trial is available in this environment; byte counts are not substituted for model tokens"
   }
 }
