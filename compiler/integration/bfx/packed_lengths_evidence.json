@@ -1,0 +1,169 @@
+{
+ "schema": "bbc-packed-lengths-evidence-v1",
+ "date": "2026-10-31",
+ "status": "EXECUTED on Windows 11 x86-64 (native); Android: two programs on a Pixel 8 Pro, full campaign BLOCKED (device went offline)",
+ "parent_commit": "40db64ca742eaf462b894bd3077243f45f4a3087",
+ "host": "Windows-11-10.0.26300-SP0",
+ "python_bootstrap": "3.12.10",
+ "native_driver": {
+  "path": "BBC build/xaxc.exe",
+  "sha256": "110a76a2578f5f55777e6b0438b05642013e9587cae902ef3729229af8e5420e"
+ },
+ "records": [
+  {
+   "record": "1_import_bfx.edit",
+   "sha256": "bceaac726971049d2d16d5a59c87ab5d9697a8addfd318d1aca84de34b82d453",
+   "bytes": 335308,
+   "expected_root": "8f165729063571dc8248a3a2561884d94ccf5729a7a41de95479bdbd1e0f5169",
+   "mutations": 1,
+   "result_store": "import_bfx.xax",
+   "native_replay": "xaxc edit byte-identical to the reference result, xaxc verify 0, replay on the result rejects (exit 1)"
+  },
+  {
+   "record": "2_compile_windows_importer.edit",
+   "sha256": "095482299bdcb3881ee58af2e4f88ebb4636f017388e022cf2a57ad5c5211bd8",
+   "bytes": 335659,
+   "expected_root": "b5e20e08508d630bdaa7650405fc7d07eb69b5ce43bbef9cfb016ce7b475f4b0",
+   "mutations": 1,
+   "result_store": null,
+   "native_replay": "xaxc edit byte-identical to the reference result, xaxc verify 0, replay on the result rejects (exit 1)"
+  },
+  {
+   "record": "3_compile_windows_bind.edit",
+   "sha256": "5eff1682cf7ba659fb021bdb038a16f24884d080124b046e94bf1ab825cf0a15",
+   "bytes": 20094,
+   "expected_root": "bceceb14aba3db67f39108d6de7a55d839265807d37538e2b08cd0ae0483be94",
+   "mutations": 1,
+   "result_store": "compile_windows.xax",
+   "native_replay": "xaxc edit byte-identical to the reference result, xaxc verify 0, replay on the result rejects (exit 1)"
+  },
+  {
+   "record": "4_bbc_importer.edit",
+   "sha256": "da0c197121aa5c09e0d7bbd9ee09bcaf144a1556d912bf49a490c313ee153d32",
+   "bytes": 335756,
+   "expected_root": "f39904ec05cb2d5a30e4a91cda1d0faa11f681df1fe29ddbbeb889a81648c075",
+   "mutations": 2,
+   "result_store": null,
+   "native_replay": "not run: bbc.xax exceeds the driver file capacity"
+  },
+  {
+   "record": "5_bbc_bind.edit",
+   "sha256": "65e1fb12afdd2f465af9d8444f0f03039f49acc8905a923aeda4af5cda7d8e0a",
+   "bytes": 20094,
+   "expected_root": "8962227f5181ec6fbf22d670b7fd9f16d90917d2b100ef902b0d0504f1fb161e",
+   "mutations": 1,
+   "result_store": "bbc.xax",
+   "native_replay": "not run: bbc.xax exceeds the driver file capacity"
+  },
+  {
+   "record": "6_request_windows.edit",
+   "sha256": "575709e9d36f47412cf1d192299998cf6147c842f340bfb2f8c6a3de67812b70",
+   "bytes": 10439,
+   "expected_root": "e172d640fe002b603502634d2066daca87877c70e16fc45c597136b1ef9ba41e",
+   "mutations": 2,
+   "result_store": "bbc-windows-x86_64.xax",
+   "native_replay": "xaxc edit byte-identical to the reference result, xaxc verify 0, replay on the result rejects (exit 1)"
+  },
+  {
+   "record": "7_request_android.edit",
+   "sha256": "4af99f6bd0ce615bd53f46dc2e604e003fa7c41d98d7373be839767c2ebcdcab",
+   "bytes": 8310,
+   "expected_root": "af08f9f00798f4d33ed6abb970aef555765728fc192fa99139b9938d444b0f29",
+   "mutations": 2,
+   "result_store": "bbc-android-arm64.xax",
+   "native_replay": "xaxc edit byte-identical to the reference result, xaxc verify 0, replay on the result rejects (exit 1)"
+  },
+  {
+   "record": "8_standalone_windows.edit",
+   "sha256": "2d164c85f5511eff25283b24f1229e8fccb19f690135893109502220fe8a4997",
+   "bytes": 10342,
+   "expected_root": "97b8811d8903e4133631b44f70555b5f2d1c8fd1e9266cbda082f2e683bba0eb",
+   "mutations": 1,
+   "result_store": "standalone_windows.xax",
+   "native_replay": "xaxc edit byte-identical to the reference result, xaxc verify 0, replay on the result rejects (exit 1)"
+  },
+  {
+   "record": "9_standalone_arm64.edit",
+   "sha256": "7c9e1f57e4a2d2633b6c7adae5f011c0b367cdf991eaf918ddd737ecf3d0db38",
+   "bytes": 8213,
+   "expected_root": "57a96af804c4ce348332ae7713c65c31df87c7b89872f25b0b4048fb7c148915",
+   "mutations": 1,
+   "result_store": "standalone_arm64.xax",
+   "native_replay": "xaxc edit byte-identical to the reference result, xaxc verify 0, replay on the result rejects (exit 1)"
+  }
+ ],
+ "stores": {
+  "import_bfx": {
+   "sha256": "f60ba6386c649003a8a283fa5a24d60ac306da6c8a00f278f5fb892494177cbd",
+   "bytes": 470900,
+   "root": "aaf7a3f88d8eb64902525168d71038fc3f4121d656426dfd307c76f12d11dfd9"
+  },
+  "compile_windows": {
+   "sha256": "127e24ceff1f4bd4f5c285e1c5d6b4a17eb15cf7ac8054e4a489c4045253978f",
+   "bytes": 1501349,
+   "root": "c48c6697a96b78c566b7209514a86e9642709ab3f2f76d0695fb0be637bddf0d"
+  },
+  "bbc": {
+   "sha256": "c4344f9ed1cbb5dc44b7ad555e60c2670d21c9c4614a2341ae4262614848ee1b",
+   "bytes": 39859729,
+   "root": "41df1382ac8008f7ed2403b98b5b76da65f5bb2dcf11c879397d82d156bb0a8c"
+  },
+  "bbc-windows-x86_64": {
+   "sha256": "021d3ead69b68dfd9ac008ffe3ce121fb86ccb7195bbdd802cc5ac9015d2fd9b",
+   "bytes": 24989,
+   "root": "7a8b85da739bcf5c9627f8df9d60ef5e07849987b139dbdb013a548a8cd34ff4"
+  },
+  "bbc-android-arm64": {
+   "sha256": "edebd63e0da60d79f6eaec2fc19155e19a341daaf74cd1761b50b3c278345606",
+   "bytes": 13454,
+   "root": "30ff6355796acd6609f869df701239691c2c69682b9d3018895cc84797aa76d9"
+  },
+  "standalone_windows": {
+   "sha256": "6c131aac3fce67a7be7a505cd40d77372322a894dc3b69bbbccac42d3b2c7424",
+   "bytes": 24683,
+   "root": "fc9262b9a74d1e4432e74f943b8d5f5708cd7113b2e78a20bc2dda125ee38a90"
+  },
+  "standalone_arm64": {
+   "sha256": "85cab0332f1d8667a9db22e2950af7e4e0d3b74dabbba80dc4c566fd52d89bad",
+   "bytes": 13147,
+   "root": "f43dfeeade3cf67e575c873e984fd67a764f4be076406117b1be1928de7fb711"
+  }
+ },
+ "bbc_exe": {
+  "sha256": "de9a2c5f65312a493f615f5c06f90761a5d3bf1971f460fe37113c8a6a71e405",
+  "bytes": 16008704,
+  "bootstrap": "generic SDK recipe (driver recipe for driver.xax functions and large entry variants absent from compile_windows.xax, BBC recipe for the rest), Python 3.12.10, 1,410 s"
+ },
+ "register_path_reference_probe": {
+  "tool": "xax_x86_64_regalloc._eligible / compile_register_resident on the emitted decision",
+  "factor_O1": {
+   "machine_parameters": 4,
+   "eligible": true,
+   "code_bytes": 37141
+  },
+  "mandelbrot_O1": {
+   "machine_parameters": 4,
+   "eligible": true,
+   "code_bytes": 118819
+  }
+ },
+ "reference_executor_equivalence": "packed and unpacked decisions of \",[.,]\" and an offset-instruction record give identical status, output and tape for input \"abc\"",
+ "windows_differential_campaign": {
+  "programs": 85,
+  "cases": 170,
+  "mismatches": 0,
+  "method": "new bbc.exe vs the previous bbc.exe (interpreter-validated): 18 benchmark programs, BBC tests and example, 60 random programs; O0 and O1; output bytes and exit status. 21 pairs where the previous build passed a 10 s timeout were rerun to completion (both exit 1 at the tape edge; new 5-8x faster)."
+ },
+ "android_device": {
+  "device": "Pixel 8 Pro (husky), adb over Wi-Fi",
+  "runs": {
+   "io \",[.,]\" with \"abc\"": "abc, exit 0",
+   "factor O1": "1234567890: 2 3 3 5 3607 3803"
+  },
+  "mandelbrot_O1": "declines at native build (exit 2), as before this change",
+  "campaign": "BLOCKED: the device went offline during the campaign and did not reconnect"
+ },
+ "mandelbrot_O0": "still declines: native xaxc verify declines the 1.39 MB decision store (exit 2) while the reference verifier accepts it (XAX OI-51)",
+ "factor_O0_android": "not rerun (device offline)",
+ "benchmark": "BBC evidence/packed_lengths_benchmark_2026-10-31.json"
+}

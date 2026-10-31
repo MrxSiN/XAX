@@ -21,6 +21,10 @@ only the new magic and identifier; old records reject without fallback.
 [DYNAMIC_TAPE.md](DYNAMIC_TAPE.md) describes the lazily committed 2 GiB decision tape
 (2026-10-29) and its transactions.
 
+[PACKED_LENGTHS.md](PACKED_LENGTHS.md) (2026-10-31): decisions take their input length and
+output capacity as one `bits<64>` argument, so they have four machine arguments and take
+the x86-64 register path; the hosts and `bind` framing changed with them.
+
 [BFX_V2.md](BFX_V2.md) describes BFX id `02` (2026-10-29): no count field, an END byte,
 offset ADD/MUL/CHECK/MOVE instructions emitted by BBC's `fold.bf`, and the importer,
 decoder and `compile_bfx` transactions that implement them. Where older sections of this

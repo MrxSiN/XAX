@@ -757,6 +757,16 @@ bodies decode natively; audited CFG input/output and object-table sizes fit
 their current views. Windows DLL packaging and migration of the common
 Python helper loader remain outside the implemented native route.
 
+**BBC O0 decisions (2026-10-31).** With packed decision lengths
+([PACKED_LENGTHS.md](compiler/integration/bfx/PACKED_LENGTHS.md)) factor's O0
+decision builds and runs on Windows. Mandelbrot's O0 decision (a 1,389,518-byte
+decision store) still declines, and the decline is in native `verify` of the
+decision store alone (exit 2), before resolution or lowering. The reference
+verifier accepts the same store. The facts checker bump-allocates its tables from
+one fixed arena and declines on exhaustion (`xax_selfhost_facts.alloc`), which
+fits edges that no single count explains; this is not yet confirmed with the
+decline-site probe.
+
 **Evidence that closes it.** Canonical graph changes preserving rejection and
 diagnostic ordering, accepting the corrected self-store and replaying the large
 transaction byte for byte. Re-run the corpus without treating declines as
