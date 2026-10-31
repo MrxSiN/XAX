@@ -934,6 +934,13 @@ Step: [S1](#step-s1) · [S4](#step-s4) · [S5](#step-s5) · [S6](#step-s6) · [S
   - The external inputs follow the package identity in the input: digest, length, packed bytes. The driver appends what it kept at `INPUT_BYTES_AT`.
 - `bench_full_selfhost`'s scope has no `outside_scope`. `bootstrap_status` then takes the whole production compiler's levels from the Linux x86-64 compiler's derived ones. Keep its corpus covering every target and artifact `build` makes.
 
+#### S16a native workspace — 2026-10-30 (ADR-360)
+
+- The workspace helpers are `ws_*` in `xax_selfhost_edit.py`; `ws_command` classifies `edit`'s input. Helpers keep their state in workspace words (`WSC` control words, `EIN`/`WS_IN`/`BATCH` regions).
+- E-DSL pitfalls met here: a helper argument or variable must not be named `ip`, `iv`, `im`, `op`, `ov` or `om` (the view triples); a graph over about 4,000 blocks declines in the XAX verifier; inline text output (`_out_text`, `D.text`) multiplies nodes, so tables of packed words and loops keep helpers small.
+- The driver's main function has about 600 values left under `VCAP` (`xax_selfhost_general_view`). Count with the snippet in ADR-360's work (`values = sum(params + node results)` of the entry graph) before adding a driver stage; each `emit` call or new command adds dozens of blocks of about 95 parameters each.
+- Debugging a seed decline: build the committed driver with `XAX_DRIVER_DECLINE_SITES=1`, let the seed build it, and run it (the exit status names the site). Inside the general backend, `_ok` records no reason; instrument it temporarily (`H_REASON`) to find the check.
+
 #### S15e.6i.3 records, compressed branding, large inputs — 2026-10-30 (ADR-359)
 
 - The module record is decoded to code points (`an_jdecode`) and parsed with an explicit stack (`an_jparse`); value nodes are listed above `_jcp` in `xax_selfhost_android.py`. Python's rules over them are the `an_j*` helpers. A check belongs where the bootstrap fails: before `LIBXPOSED-JVM-INPUTS` only what fails before it (J1); the rest in J3/J4.
