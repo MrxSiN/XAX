@@ -26,8 +26,10 @@ validated successful BFX and preserves opaque instructions, including CLEAR;
 its header checks do not replace exact-length/opcode/bracket validation.
 Private BBCS and BBCR packets are not importable BFX modules.
 
-Native decision exports borrow three 65,536-byte views plus logical input/output
-u32 values, reset the full tape on valid calls, and return `(output_bytes << 32)
+Native decision exports borrow three 2,147,246,080-byte views (input, output, tape;
+[DYNAMIC_TAPE.md](DYNAMIC_TAPE.md)) plus one `bits<64>` argument, `input length |
+output capacity << 32` ([PACKED_LENGTHS.md](PACKED_LENGTHS.md); two u32 values before
+2026-10-31), reset the full tape on valid calls, and return `(output_bytes << 32)
 | status`. See BBC's execution profile for statuses and first-crossing semantics.
 The importer still avoids the general ARM64 large-composite return defect by
 using checked scratch outputs and small results.

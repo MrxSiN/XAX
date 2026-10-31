@@ -49,6 +49,8 @@ register path accepts at most four machine arguments, while the decision
 has five, and the fallback cannot handle the returned borrowed views at
 that call. The recorded configuration uses the existing generic graph
 splicing operations to inline the decision into a **derived lowering view**.
+(Since 2026-10-31 decisions have four machine arguments and take the register
+path without inlining; see [PACKED_LENGTHS.md](PACKED_LENGTHS.md).)
 That view is supplied through the existing `views`/`prefetches` lowering
 interface after canonical verification. It is not serialized as authoritative
 source and does not supply a new proof. Its construction, verification and

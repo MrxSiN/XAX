@@ -43,3 +43,9 @@ edits under transactions/unified. The existing source coordinator now binds
 the reproducible native BF chunk core and defers sticky bracket errors until
 instruction capacity has been checked across all chunks. The strict decoder,
 importer, packer and BFX wire identity are unchanged.
+
+## Later migrations
+
+- [transactions/v2/](transactions/v2/): BFX id `02` and `fold.bf` ([BFX_V2.md](BFX_V2.md)).
+- [transactions/dynamic_tape/](transactions/dynamic_tape/): the 2 GiB lazily committed tape ([DYNAMIC_TAPE.md](DYNAMIC_TAPE.md)).
+- [transactions/packed/](transactions/packed/): packed decision lengths ([PACKED_LENGTHS.md](PACKED_LENGTHS.md)).
