@@ -13,7 +13,7 @@ For XAX programming tasks:
 7. Use structured diagnostics and the supplied repair neighborhood for rejected mutations; do not request unrelated context.
 8. Verify required invariants and commit only through the XAX transaction/workspace interface.
 
-If the XAX workspace/compiler interface is available, use it instead of producing a source-like textual substitute. Human-readable protocol examples and diagnostic notation are tooling views, not XAX source.
+If the XAX workspace/compiler interface is available, use it instead of producing a source-like textual substitute. The native one is `xaxc edit <store> <input> <output>` (views, batches and rejection text; `docs/09_AI_PROTOCOL.md` §16). Human-readable protocol examples and diagnostic notation are tooling views, not XAX source.
 
 For repository maintenance (compiler, evidence, documentation):
 

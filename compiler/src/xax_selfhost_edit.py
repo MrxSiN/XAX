@@ -1840,6 +1840,9 @@ def _begin(tables):
     stages = [_function((), stage, tables) for stage in (parse, locate, affected_stage, check_stage)]
 
     def build(e: E):
+        # S16a (ADR-360): after ``ws_command``, a view's or an explanation's text (``W_TEXT`` 1) or the workspace's
+        # rejection (2) is the outcome; an applied batch is an edit record like any other.
+        e.if_(e.ne(_wctrl(e, W_TEXT), 0), lambda: e.give(_ctrl(e, E_STATUS)))
         _set(e, E_STATUS, OK)
         for function, _items in stages:
             e.if_(e.eq(_ctrl(e, E_STATUS), OK), lambda function=function: e.call(function))
@@ -1894,6 +1897,7 @@ def _pre_cid(e: E, words):
 def _next(tables):
     def build(e: E):
         p = e.p
+        e.if_(e.eq(_wctrl(e, W_TEXT), 1), lambda: e.give(DONE))  # S16a: a view or an explanation edits nothing
         e.var("objects", _ctrl(e, E_OBJECTS))
         e.var("pre_start", _ctrl(e, E_PRE_END))
         e.var("pre", p["pre_start"])
@@ -2334,6 +2338,1640 @@ def _batch(tables):
     return _function((), build, tables)
 
 
+# -- S16a (ADR-360): the native workspace: ``view`` and ``apply`` ------------------------------------------------------
+#
+# ``view <store> <selector> <output>`` writes, as text, the store's functions (an empty selector) or one function
+# (``F<n>``) with workspace-local handles: ``N<i>`` its nodes in block order, ``P<i>`` its block parameters in block
+# order, ``T<i>`` its types in order of first appearance (signature, then block parameters and node results).  The
+# first line is the root CID, the freshness token.  ``apply <store> <batch> <output>`` reads a batch in those handles
+# (``R <root CID>``, ``F<n>``, then edits) and translates it into this module's edit record, which ``edit``'s engine
+# applies: every old value a mutation's preconditions need is read from the store, as ``LocalMutationSession`` does.
+# Both read the store through the verifier's object table; nothing here is program source.
+WSC = EB + 192  # 64 control words (past the operation flags at ``OPF``)
+(W_LEN, W_OUT, W_FN, W_GRAPH, W_SELECT, W_NBLOCKS, W_ENTRY, W_NODES, W_PARAMS, W_TYPES, W_TCUR, W_RCUR, W_TOK_AT, W_TOK_LEN,
+ W_SEEK_B, W_SEEK_N, W_S_OP, W_S_ENTITY, W_S_NO, W_S_NR, W_S_FOUND, W_H_KIND, W_H_NUM, W_H_RES, W_INT, W_COUNT, W_MBLOCK,
+ W_MNODE, W_FUNCTIONS, W_S_EDGES, W_MEMBER) = range(31)
+WS_IN, WS_IN_LIMIT = EIN + (8 << 20), 8 << 20  # the selector or batch text, one byte per word
+WS_TMP = EIN + (4 << 20)  # ``apply``: the mutations, before their count is known
+TALIAS = STATE  # per object: its type handle + 1 (0: none yet)
+FORD = ALIAS  # per object: its function handle + 1 (0: not a function)
+TLIST = NEWCID  # per type handle: its object
+NSTART, PSTART = RSTART, RCOUNT  # per block: its first node's and first parameter's handle number
+SEEKV, SEEKR, SEEKE = SRS, STACK, SR  # the sought node's operand values (4 words each), result types; its block's edges
+EDGE_ARGUMENTS = 1 << 14  # per edge, at ``SEEKE``: count, then 4 words per argument
+OPERATION_ENUM = D.ENUM_NAMES.index("Operation")
+WS_LIMIT = 1 << 16  # objects, blocks (the per-object and per-block tables)
+SPACE = (32, 9, 10, 13)
+VIEW_VERBS = {"const": "set-constant", "op": "set-op", "operand": "replace-operand", "edge": "set-edge", "type": "set-type"}
+
+
+def _wctrl(e: E, field: int):
+    return e.ld(WSC + field)
+
+
+def _wset(e: E, field: int, value):
+    e.st(WSC + field, value)
+
+
+def _out(e: E, value):
+    _call(e, "ws_out", value)
+
+
+def _out_text(e: E, text: str):
+    for byte in text.encode("ascii"):
+        _out(e, byte)
+
+
+def _ws_reject(e: E, rule: str, expected: str):
+    """A batch or selector the workspace does not accept: the offset of the token it stopped at."""
+    _reject(e, "XAX.WORKSPACE.BATCH", lambda: D.text(e, "batch"), rule, lambda: D.text(e, expected),
+            lambda: D.integer(e, _wctrl(e, W_TOK_AT)))
+
+
+def _ws_running(e: E):
+    return e.eq(_ctrl(e, E_STATUS), OK)
+
+
+def _ws_out_function():
+    """One output byte at ``BATCH`` (``view``'s text, one byte per word); past ``BATCH_LIMIT`` the view rejects."""
+    def build(e: E):
+        p = e.p
+        e.var("wo", _wctrl(e, W_OUT))
+        e.if_(e.lt(p["wo"], BATCH_LIMIT), lambda: (e.st(e.add(BATCH, p["wo"]), p["value"]), _wset(e, W_OUT, e.add(p["wo"], 1))),
+              lambda: e.if_(_ws_running(e), lambda: _reject(e, "XAX.DRIVER.CAPACITY", lambda: D.text(e, "view"), "DRIVER-VIEW-CAPACITY",
+                                                             lambda: D.integer(e, BATCH_LIMIT), lambda: D.text(e, "larger"))))
+        e.give(0)
+    return _function(("value",), build, None)
+
+
+def _ws_decimal_function():
+    """``value`` in decimal."""
+    def build(e: E):
+        p = e.p
+        e.var("dv", p["value"])
+        e.var("dn", 0)
+
+        def digit():
+            e.st(e.add(WSC + 40, p["dn"]), e.add(48, e.urem(p["dv"], 10)))
+            e.set("dv", e.udiv(p["dv"], 10))
+            e.set("dn", e.add(p["dn"], 1))
+
+        digit()
+        e.while_(lambda: e.ne(p["dv"], 0), digit)
+        e.while_(lambda: e.ne(p["dn"], 0), lambda: (e.set("dn", e.sub(p["dn"], 1)), _out(e, e.ld(e.add(WSC + 40, p["dn"])))))
+        e.give(0)
+    return _function(("value",), build, None)
+
+
+def _ws_hex_function():
+    """The 16 hexadecimal digits of ``value``, most significant first."""
+    def build(e: E):
+        p = e.p
+        e.var("hx", p["value"])
+        for k in range(16):
+            e.var("hd", e.and_(e.udiv(p["hx"], 1 << (4 * (15 - k))) if k < 15 else p["hx"], 15))
+            _out(e, e.add(p["hd"], e.sel(e.lt(p["hd"], 10), 48, 87)))
+        e.give(0)
+    return _function(("value",), build, None)
+
+
+def _ws_cid_function():
+    """Object ``o``'s CID, 64 hexadecimal digits."""
+    def build(e: E):
+        p = e.p
+        for k in range(4):
+            _call(e, "ws_hex", _cid_word(e, p["o"], k))
+        e.give(0)
+    return _function(("o",), build, None)
+
+
+def _ws_operation_function():
+    """Operation ``code``'s name (``op<n>`` for a code with none), from the enumeration table (``ws_enum_names``)."""
+    def build(e: E):
+        p = e.p
+        e.var("oslot", e.add(OPERATION_ENUM * 128, e.sel(e.lt(p["code"], 128), p["code"], 0)))
+        e.var("on", e.sel(e.lt(p["code"], 128), e.ld(e.add(ENUM_LENGTH, p["oslot"])), 0))
+        e.var("oat", e.ld(e.add(ENUM_AT, p["oslot"])))
+
+        def lowered():
+            """The member name in lower case, ``_`` as ``.``."""
+            def byte():
+                e.var("ob", _call(e, "ws_byte_of", e.ld(e.add(ENUM_NAMES_AT, e.udiv(e.add(p["oat"], p["ok"]), 8))), e.urem(e.add(p["oat"], p["ok"]), 8)))
+                _out(e, e.sel(e.eq(p["ob"], 95), 46, e.sel(e.both(e.le(65, p["ob"]), e.le(p["ob"], 90)), e.add(p["ob"], 32), p["ob"])))
+
+            e.for_("ok", 0, p["on"], byte)
+
+        e.if_(e.eq(p["on"], 0), lambda: (_out_text(e, "op"), _call(e, "ws_decimal", p["code"])), lowered)
+        e.give(0)
+    return _function(("code",), build, None)
+
+
+def _ws_type_function():
+    """Type object ``t``'s handle number, assigned on first appearance when ``assign`` is set."""
+    def build(e: E):
+        p = e.p
+        e.var("ta", e.ld(e.add(TALIAS, p["t"])))
+
+        def assign():
+            e.var("tn", _wctrl(e, W_TYPES))
+            e.st(e.add(TLIST, p["tn"]), p["t"])
+            e.st(e.add(TALIAS, p["t"]), e.add(p["tn"], 1))
+            _wset(e, W_TYPES, e.add(p["tn"], 1))
+            e.set("ta", e.add(p["tn"], 1))
+
+        e.if_(e.both(e.eq(p["ta"], 0), e.ne(p["assign"], 0)), assign)
+        e.give(e.sub(p["ta"], 1))
+    return _function(("t", "assign"), build, None)
+
+
+def _ws_type_out_function():
+    """``T<n>`` for type object ``t``."""
+    def build(e: E):
+        p = e.p
+        _out(e, 84)
+        _call(e, "ws_decimal", e.sub(e.ld(e.add(TALIAS, p["t"])), 1))
+        e.give(0)
+    return _function(("t",), build, None)
+
+
+def _ws_value_function():
+    """The value in ``V_TAG``.. as a handle: ``P<i>``, ``N<i>`` or ``N<i>.R<k>``."""
+    def build(e: E):
+        p = e.p
+        e.var("vt", _ctrl(e, V_TAG))
+        e.if_(e.eq(p["vt"], 0), lambda: (_out(e, 80), _call(e, "ws_decimal", e.add(e.ld(e.add(PSTART, _ctrl(e, V_A))), _ctrl(e, V_B)))),
+              lambda: e.if_(e.eq(p["vt"], 1), lambda: (
+                  _out(e, 78), _call(e, "ws_decimal", e.add(e.ld(e.add(NSTART, _ctrl(e, V_A))), _ctrl(e, V_B))),
+                  e.if_(e.ne(_ctrl(e, V_C), 0), lambda: (_out_text(e, ".R"), _call(e, "ws_decimal", _ctrl(e, V_C))))),
+                  lambda: _out(e, 63)))
+        e.give(0)
+    return _function((), build, None)
+
+
+def _ws_constant_function():
+    """Constant object ``c``'s value: decimal up to 8 bytes, else ``0x`` and its bytes, most significant first; with
+    ``print`` unset only the low 64 bits are given."""
+    def build(e: E):
+        p = e.p
+        length, at = _plain_body(e, p["c"])
+        e.var("ca", at)
+        e.var("ce", e.add(at, length))
+        e.while_(lambda: e.le(128, e.rd(p["ca"])), lambda: e.set("ca", e.add(p["ca"], 1)))  # the type reference
+        e.set("ca", e.add(p["ca"], 1))
+        e.var("cn", 0)
+        e.var("cs", 1)
+        e.var("cm", 1)
+
+        def size():
+            e.var("cb", e.rd(p["ca"]))
+            e.set("cn", e.add(p["cn"], e.mul(e.and_(p["cb"], 127), p["cs"])))
+            e.set("cs", e.mul(p["cs"], 128))
+            e.set("ca", e.add(p["ca"], 1))
+            e.set("cm", e.flag(e.le(128, p["cb"])))
+
+        e.while_(lambda: e.ne(p["cm"], 0), size)
+        e.var("cv", 0)
+        e.for_("ck", 0, e.sel(e.lt(p["cn"], 8), p["cn"], 8), lambda: e.set(
+            "cv", e.add(p["cv"], e.mul(e.rd(e.add(p["ca"], p["ck"])), _call(e, "ws_pow256", p["ck"])))))
+
+        def wide():
+            _out_text(e, "0x")
+            e.var("cw", p["cn"])
+
+            def byte():
+                e.set("cw", e.sub(p["cw"], 1))
+                e.var("cbyte", e.rd(e.add(p["ca"], p["cw"])))
+                for shift in (16, 1):
+                    e.var("cnib", e.and_(e.udiv(p["cbyte"], shift), 15))
+                    _out(e, e.add(p["cnib"], e.sel(e.lt(p["cnib"], 10), 48, 87)))
+
+            e.while_(lambda: e.ne(p["cw"], 0), byte)
+
+        e.if_(e.ne(p["print"], 0), lambda: e.if_(e.lt(8, p["cn"]), wide, lambda: _call(e, "ws_decimal", p["cv"])))
+        e.give(p["cv"])
+    return _function(("c", "print"), build, None)
+
+
+def _ws_pow256_function():
+    def build(e: E):
+        p = e.p
+        e.var("pw", 1)
+        e.for_("pk", 0, p["k"], lambda: e.set("pw", e.mul(p["pw"], 256)))
+        e.give(p["pw"])
+    return _function(("k",), build, None)
+
+
+def _ws_type_text_function():
+    """Type object ``t``: ``bits<w>``, or ``form<f>`` and its CID."""
+    def build(e: E):
+        p = e.p
+        length, at = _plain_body(e, p["t"])
+        e.var("tf", e.rd(at))
+        e.if_(e.both(e.eq(p["tf"], 1), e.lt(e.rd(e.add(at, 1)), 128)), lambda: (_out_text(e, "bits"), _call(e, "ws_decimal", e.rd(e.add(at, 1)))),
+              lambda: e.if_(e.both(e.eq(p["tf"], 1), e.eq(length, 3)), lambda: (
+                  _out_text(e, "bits"), _call(e, "ws_decimal", e.add(e.and_(e.rd(e.add(at, 1)), 127), e.mul(e.rd(e.add(at, 2)), 128)))),
+                  lambda: (_out_text(e, "form"), _call(e, "ws_decimal", e.and_(p["tf"], 127)), _out(e, 32), _call(e, "ws_cid", p["t"]))))
+        e.give(0)
+    return _function(("t",), build, None)
+
+
+def _ws_interface_function():
+    """Function ``W_FN``'s graph into ``W_GRAPH`` and its signature's types; printed (``(T..)->(T..)``) with ``print``.
+    A recursion group's member is not a graph of its own: NONE."""
+    def build(e: E):
+        p = e.p
+        e.var("io", _wctrl(e, W_FN))
+        length, at = _plain_body(e, p["io"])
+        _set(e, CUR, at)
+        e.var("ig", _ref(e, p["io"], _call(e, "uleb_read")))
+        _wset(e, W_GRAPH, p["ig"])
+        e.if_(e.ne(_kind(e, p["ig"]), int(Kind.GRAPH_FRAGMENT)), lambda: e.give(NONE))
+        for close in (False, True):
+            e.if_(e.ne(p["print"], 0), lambda: _out(e, 40))
+            e.var("icount", _call(e, "uleb_read"))
+
+            def each():
+                e.var("it", _ref(e, p["io"], _call(e, "uleb_read")))
+                _call(e, "ws_type", p["it"], e.flag(e.eq(p["print"], 0)))
+                e.if_(e.ne(p["print"], 0), lambda: (e.if_(e.ne(p["ik"], 0), lambda: _out(e, 44)), _call(e, "ws_type_out", p["it"])))
+
+            e.for_("ik", 0, p["icount"], each)
+            e.if_(e.ne(p["print"], 0), lambda close=close: _out_text(e, ")\n" if close else ")->"))
+        e.give(p["ig"])
+    return _function(("print",), build, None)
+
+
+def _ws_edge_function():
+    """A terminator edge at ``CUR``: ``B<t>(..)`` printed with ``print``; with ``seek`` its arguments at ``SEEKE``."""
+    def build(e: E):
+        p = e.p
+        e.var("et", _call(e, "uleb_read"))
+        e.var("en", _call(e, "uleb_read"))
+        e.var("eslot", e.add(SEEKE, e.mul(p["slot"], EDGE_ARGUMENTS)))
+        e.if_(e.ne(p["seek"], 0), lambda: e.st(p["eslot"], p["en"]))
+        e.if_(e.ne(p["print"], 0), lambda: (_out(e, 66), _call(e, "ws_decimal", p["et"]), _out(e, 40)))
+
+        def argument():
+            _call(e, "read_value")
+            e.if_(e.ne(p["print"], 0), lambda: (e.if_(e.ne(p["ea"], 0), lambda: _out(e, 44)), _call(e, "ws_value")))
+            e.if_(e.both(e.ne(p["seek"], 0), e.lt(e.mul(e.add(p["ea"], 1), 4), EDGE_ARGUMENTS)), lambda: [
+                e.st(e.add(e.add(p["eslot"], e.add(1, e.mul(p["ea"], 4))), k), _ctrl(e, field)) for k, field in enumerate((V_TAG, V_A, V_B, V_C))])
+
+        e.for_("ea", 0, p["en"], argument)
+        e.if_(e.ne(p["print"], 0), lambda: _out(e, 41))
+        e.give(0)
+    return _function(("print", "seek", "slot"), build, None)
+
+
+def _ws_walk_function():
+    """Graph ``W_GRAPH``'s body: ``mode`` 0 numbers its blocks' nodes and parameters (``NSTART``, ``PSTART``) and its
+    types; 1 prints it; 2 records node ``W_SEEK_N`` of block ``W_SEEK_B`` (``W_S_*``, ``SEEKV``, ``SEEKR``) and the
+    block's edges (``SEEKE``)."""
+    def build(e: E):
+        p = e.p
+        e.var("wm", p["mode"])
+        e.var("wpr", e.flag(e.eq(p["wm"], 1)))
+        e.var("wg", _wctrl(e, W_GRAPH))
+        _length, at = _graph_body(e, p["wg"])
+        _set(e, CUR, at)
+        e.var("wnb", _call(e, "uleb_read"))
+        e.var("wentry", _call(e, "uleb_read"))
+        _wset(e, W_NBLOCKS, p["wnb"])
+        _wset(e, W_ENTRY, p["wentry"])
+        e.if_(e.both(e.eq(p["wm"], 0), e.lt(WS_LIMIT - 2, p["wnb"])), lambda: _reject(
+            e, "XAX.DRIVER.CAPACITY", lambda: D.text(e, "view"), "DRIVER-VIEW-CAPACITY", lambda: D.integer(e, WS_LIMIT - 2),
+            lambda: D.integer(e, p["wnb"])))
+        e.if_(e.both(e.ne(p["wpr"], 0), e.ne(p["wentry"], 0)), lambda: (_out_text(e, "entry B"), _call(e, "ws_decimal", p["wentry"]), _out(e, 10)))
+        e.var("wni", 0)
+        e.var("wpi", 0)
+        e.var("wb", 0)
+
+        def block():
+            e.var("wblock_seek", e.flag(e.both(e.eq(p["wm"], 2), e.eq(p["wb"], _wctrl(e, W_SEEK_B)))))
+            e.if_(e.eq(p["wm"], 0), lambda: (e.st(e.add(NSTART, p["wb"]), p["wni"]), e.st(e.add(PSTART, p["wb"]), p["wpi"])))
+            e.var("wnp", _call(e, "uleb_read"))
+            e.if_(e.ne(p["wpr"], 0), lambda: (_out(e, 66), _call(e, "ws_decimal", p["wb"]), _out(e, 40)))
+
+            def parameter():
+                e.var("wpt", _ref(e, p["wg"], _call(e, "uleb_read")))
+                _call(e, "ws_type", p["wpt"], e.flag(e.eq(p["wm"], 0)))
+                e.if_(e.ne(p["wpr"], 0), lambda: (e.if_(e.ne(p["wk"], 0), lambda: _out(e, 44)), _out(e, 80), _call(e, "ws_decimal", p["wpi"]),
+                                                  _out(e, 58), _call(e, "ws_type_out", p["wpt"])))
+                e.set("wpi", e.add(p["wpi"], 1))
+
+            e.for_("wk", 0, p["wnp"], parameter)
+            e.if_(e.ne(p["wpr"], 0), lambda: _out_text(e, ")\n"))
+            e.var("wnn", _call(e, "uleb_read"))
+
+            def node():
+                e.var("wop", _call(e, "uleb_read"))
+                e.var("wmember", 0)
+                e.if_(e.eq(p["wop"], int(Operation.CALL_GROUP_MEMBER)), lambda: e.set("wmember", _call(e, "uleb_read")))
+                e.var("wflags", e.ld(e.add(OPF, e.sel(e.lt(p["wop"], 128), p["wop"], 0))))
+                e.var("wseek", e.flag(e.both(e.ne(p["wblock_seek"], 0), e.eq(p["wn"], _wctrl(e, W_SEEK_N)))))
+                e.if_(e.ne(p["wpr"], 0), lambda: (_out(e, 78), _call(e, "ws_decimal", p["wni"]), _out(e, 32), _call(e, "ws_operation", p["wop"])))
+                e.var("went", NONE)
+
+                def entity():
+                    e.set("went", _ref(e, p["wg"], _call(e, "uleb_read")))
+
+                    def shown():
+                        e.var("wford", e.ld(e.add(FORD, p["went"])))
+                        e.if_(e.eq(p["wop"], int(Operation.CONSTANT)), lambda: (_out(e, 32), _call(e, "ws_constant", p["went"], 1)),
+                              lambda: e.if_(e.ne(p["wford"], 0), lambda: (_out_text(e, " entity=F"), _call(e, "ws_decimal", e.sub(p["wford"], 1))),
+                                            lambda: (_out_text(e, " entity="), _call(e, "ws_cid", p["went"]))))
+
+                    e.if_(e.ne(p["wpr"], 0), shown)
+
+                e.if_(e.ne(e.and_(p["wflags"], 1), 0), entity)
+                e.if_(e.both(e.ne(p["wpr"], 0), e.eq(p["wop"], int(Operation.CALL_GROUP_MEMBER))), lambda: (
+                    _out_text(e, " member="), _call(e, "ws_decimal", p["wmember"])))
+                e.var("wno", _call(e, "uleb_read"))
+
+                def operand():
+                    _call(e, "read_value")
+                    e.if_(e.ne(p["wpr"], 0), lambda: (_out(e, 32), _call(e, "ws_value")))
+                    e.if_(e.both(e.ne(p["wseek"], 0), e.lt(p["wo"], RC_LIMIT // 4)), lambda: [
+                        e.st(e.add(e.add(SEEKV, e.mul(p["wo"], 4)), k), _ctrl(e, field)) for k, field in enumerate((V_TAG, V_A, V_B, V_C))])
+
+                e.for_("wo", 0, p["wno"], operand)
+                e.var("wnr", _call(e, "uleb_read"))
+                e.if_(e.both(e.ne(p["wpr"], 0), e.ne(p["wnr"], 0)), lambda: _out_text(e, " ->"))
+
+                def result():
+                    e.var("wrt", _ref(e, p["wg"], _call(e, "uleb_read")))
+                    _call(e, "ws_type", p["wrt"], e.flag(e.eq(p["wm"], 0)))
+                    e.if_(e.ne(p["wpr"], 0), lambda: (_out(e, e.sel(e.eq(p["wr"], 0), 32, 44)), _call(e, "ws_type_out", p["wrt"])))
+                    e.if_(e.both(e.ne(p["wseek"], 0), e.lt(p["wr"], 1 << 16)), lambda: e.st(e.add(SEEKR, p["wr"]), p["wrt"]))
+
+                e.for_("wr", 0, p["wnr"], result)
+
+                def attributes():
+                    e.var("wna", _call(e, "uleb_read"))
+                    e.if_(e.both(e.ne(p["wpr"], 0), e.ne(p["wna"], 0)), lambda: _out_text(e, " ["))
+
+                    def attribute():
+                        e.var("wav", _call(e, "uleb_read"))
+                        e.if_(e.ne(p["wpr"], 0), lambda: (e.if_(e.ne(p["wak"], 0), lambda: _out(e, 44)), _call(e, "ws_decimal", p["wav"])))
+
+                    e.for_("wak", 0, p["wna"], attribute)
+                    e.if_(e.both(e.ne(p["wpr"], 0), e.ne(p["wna"], 0)), lambda: _out(e, 93))
+
+                e.if_(e.ne(e.and_(p["wflags"], 2), 0), attributes)
+                e.if_(e.ne(p["wpr"], 0), lambda: _out(e, 10))
+                e.if_(e.ne(p["wseek"], 0), lambda: (_wset(e, W_S_OP, p["wop"]), _wset(e, W_S_ENTITY, p["went"]), _wset(e, W_S_NO, p["wno"]),
+                                                     _wset(e, W_S_NR, p["wnr"]), _wset(e, W_S_FOUND, 1)))
+                e.set("wni", e.add(p["wni"], 1))
+
+            e.for_("wn", 0, p["wnn"], node)
+            e.var("wtk", _call(e, "uleb_read"))
+            e.if_(e.ne(p["wblock_seek"], 0), lambda: _wset(e, W_S_EDGES, e.sel(e.eq(p["wtk"], 1), 1, e.sel(e.eq(p["wtk"], 2), 2, 0))))
+            e.if_(e.eq(p["wtk"], 1), lambda: (e.if_(e.ne(p["wpr"], 0), lambda: _out_text(e, "br ")),
+                                              _call(e, "ws_edge", p["wpr"], p["wblock_seek"], 0)))
+
+            def conditional():
+                _call(e, "read_value")
+                e.if_(e.ne(p["wpr"], 0), lambda: (_out_text(e, "cbr "), _call(e, "ws_value"), _out(e, 32)))
+                _call(e, "ws_edge", p["wpr"], p["wblock_seek"], 0)
+                e.if_(e.ne(p["wpr"], 0), lambda: _out(e, 32))
+                _call(e, "ws_edge", p["wpr"], p["wblock_seek"], 1)
+
+            e.if_(e.eq(p["wtk"], 2), conditional)
+
+            def returned():
+                e.if_(e.ne(p["wpr"], 0), lambda: _out_text(e, "ret"))
+                e.for_("wv", 0, _call(e, "uleb_read"), lambda: (_call(e, "read_value"), e.if_(e.ne(p["wpr"], 0), lambda: (_out(e, 32), _call(e, "ws_value")))))
+
+            e.if_(e.eq(p["wtk"], 3), returned)
+
+            def trap():
+                e.if_(e.ne(p["wpr"], 0), lambda: _out_text(e, "trap"))
+                e.var("wtn", _call(e, "uleb_read"))
+                _set(e, CUR, e.add(_ctrl(e, CUR), p["wtn"]))
+
+            e.if_(e.eq(p["wtk"], 4), trap)
+            e.if_(e.ne(p["wpr"], 0), lambda: _out(e, 10))
+            e.set("wb", e.add(p["wb"], 1))
+
+        e.while_(lambda: e.both(e.lt(p["wb"], p["wnb"]), _ws_running(e)), block)
+
+        def totals():
+            e.st(e.add(NSTART, p["wnb"]), p["wni"])
+            e.st(e.add(PSTART, p["wnb"]), p["wpi"])
+            _wset(e, W_NODES, p["wni"])
+            _wset(e, W_PARAMS, p["wpi"])
+
+        e.if_(e.eq(p["wm"], 0), totals)
+        e.give(0)
+    return _function(("mode",), build, None)
+
+
+def _ws_prepare_function():
+    """The tables every view needs: operation flags and names, no type handles yet, each function's handle; the
+    count of functions in ``W_FUNCTIONS``.  More objects than ``WS_LIMIT`` reject."""
+    def build(e: E):
+        p = e.p
+        _set(e, E_STATUS, OK)
+        _set(e, MODE, LOCATE)
+        # The operation flags (``OPF``, as ``edit_begin`` sets them) from two 128-bit masks.
+        for mask, (low, high) in enumerate(((sum(1 << op for op in ENTITY if op < 64), sum(1 << (op - 64) for op in ENTITY if 64 <= op < 128)),
+                                            (sum(1 << op for op in ATTRIBUTE if op < 64), sum(1 << (op - 64) for op in ATTRIBUTE if 64 <= op < 128)))):
+            e.st(WSC + 48 + 2 * mask, low)
+            e.st(WSC + 49 + 2 * mask, high)
+
+        def flags():
+            e.var("pf_bits", 0)
+            for mask in (0, 1):
+                e.var("pf_word", e.ld(e.add(WSC + 48 + 2 * mask, e.udiv(p["pfo"], 64))))
+                e.for_("pf_k", 0, e.urem(p["pfo"], 64), lambda: e.set("pf_word", e.udiv(p["pf_word"], 2)))
+                e.set("pf_bits", e.add(p["pf_bits"], e.mul(e.and_(p["pf_word"], 1), mask + 1)))
+            e.st(e.add(OPF, p["pfo"]), p["pf_bits"])
+
+        e.for_("pfo", 0, 128, flags)
+        _call(e, "ws_enum_names")
+        e.var("po", e.rd(0))
+        e.if_(e.lt(WS_LIMIT, p["po"]), lambda: _reject(e, "XAX.DRIVER.CAPACITY", lambda: D.text(e, "view"), "DRIVER-VIEW-CAPACITY",
+                                                        lambda: D.integer(e, WS_LIMIT), lambda: D.integer(e, p["po"])))
+        e.var("pf", 0)
+
+        def each():
+            e.st(e.add(TALIAS, p["pz"]), 0)
+            e.var("pfun", e.flag(e.eq(_kind(e, p["pz"]), int(Kind.FUNCTION))))
+            e.set("pf", e.add(p["pf"], p["pfun"]))
+            e.st(e.add(FORD, p["pz"]), e.mul(p["pfun"], p["pf"]))
+
+        e.for_("pz", 0, e.sel(_ws_running(e), p["po"], 0), each)
+        _wset(e, W_FUNCTIONS, p["pf"])
+        _wset(e, W_TYPES, 0)
+        _wset(e, W_OUT, 0)
+        e.give(0)
+    return _function((), build, None)
+
+
+def _ws_function_function():
+    """Function handle ``n``'s object (NONE when there is none)."""
+    def build(e: E):
+        p = e.p
+        e.var("fo", NONE)
+        e.for_("fz", 0, e.rd(0), lambda: e.if_(e.eq(e.ld(e.add(FORD, p["fz"])), e.add(p["n"], 1)), lambda: e.set("fo", p["fz"])))
+        e.give(p["fo"])
+    return _function(("n",), build, None)
+
+
+def _ws_token_function():
+    """The next token of the request text from ``W_TCUR``: 0 at its end, 2 for ``;``, else 1 with ``W_TOK_AT``/``W_TOK_LEN``."""
+    def build(e: E):
+        p = e.p
+        e.var("ta", _wctrl(e, W_TCUR))
+        e.var("te", _wctrl(e, W_LEN))
+
+        def space(at):
+            byte = e.ld(e.add(WS_IN, at))
+            return e.either(*(e.eq(byte, value) for value in SPACE))
+
+        e.while_(lambda: e.both(e.lt(p["ta"], p["te"]), space(p["ta"])), lambda: e.set("ta", e.add(p["ta"], 1)))
+        e.var("tkind", 0)
+        _wset(e, W_TOK_AT, p["ta"])
+
+        def semicolon():
+            e.set("tkind", 2)
+            e.set("ta", e.add(p["ta"], 1))
+
+        def word():
+            e.set("tkind", 1)
+            e.var("ts", p["ta"])
+            e.while_(lambda: e.both(e.lt(p["ta"], p["te"]), e.not_(space(p["ta"])), e.ne(e.ld(e.add(WS_IN, p["ta"])), 59)),
+                     lambda: e.set("ta", e.add(p["ta"], 1)))
+            _wset(e, W_TOK_LEN, e.sub(p["ta"], p["ts"]))
+
+        e.if_(e.lt(p["ta"], p["te"]), lambda: e.if_(e.eq(e.ld(e.add(WS_IN, p["ta"])), 59), semicolon, word))
+        _wset(e, W_TCUR, p["ta"])
+        e.give(p["tkind"])
+    return _function((), build, None)
+
+
+def _ws_is(e: E, text: str):
+    """The current token is ``text``."""
+    at = _wctrl(e, W_TOK_AT)
+    return e.both(e.eq(_wctrl(e, W_TOK_LEN), len(text)),
+                  *(e.eq(e.ld(e.add(WS_IN, e.add(at, k))), byte) for k, byte in enumerate(text.encode("ascii"))))
+
+
+def _ws_number_function():
+    """The token's characters from ``from`` as a number (decimal, or hexadecimal after ``0x``) into ``W_INT``: 1, or 0
+    when they are not one (or there are none)."""
+    def build(e: E):
+        p = e.p
+        e.var("na", e.add(_wctrl(e, W_TOK_AT), p["from"]))
+        e.var("ne", e.add(_wctrl(e, W_TOK_AT), _wctrl(e, W_TOK_LEN)))
+        e.var("nv", 0)
+        e.var("nok", e.flag(e.lt(p["na"], p["ne"])))
+        e.var("nbase", 10)
+        e.if_(e.both(e.lt(e.add(p["na"], 2), p["ne"]), e.eq(e.ld(e.add(WS_IN, p["na"])), 48), e.eq(e.ld(e.add(WS_IN, e.add(p["na"], 1))), 120)),
+              lambda: (e.set("nbase", 16), e.set("na", e.add(p["na"], 2))))
+        e.var("ndigits", 0)
+
+        def digit():
+            e.var("nc", e.ld(e.add(WS_IN, p["na"])))
+            e.var("nd", e.sel(e.both(e.le(48, p["nc"]), e.le(p["nc"], 57)), e.sub(p["nc"], 48),
+                              e.sel(e.both(e.eq(p["nbase"], 16), e.le(97, p["nc"]), e.le(p["nc"], 102)), e.sub(p["nc"], 87), 99)))
+            e.if_(e.lt(p["nd"], p["nbase"]), lambda: e.set("nv", e.add(e.mul(p["nv"], p["nbase"]), p["nd"])), lambda: e.set("nok", 0))
+            e.set("ndigits", e.add(p["ndigits"], 1))
+            e.set("na", e.add(p["na"], 1))
+
+        e.while_(lambda: e.both(e.lt(p["na"], p["ne"]), e.ne(p["nok"], 0)), digit)
+        e.if_(e.lt(e.sel(e.eq(p["nbase"], 16), 16, 19), p["ndigits"]), lambda: e.set("nok", 0))
+        _wset(e, W_INT, p["nv"])
+        e.give(p["nok"])
+    return _function(("from",), build, None)
+
+
+def _ws_handle_function():
+    """The token as a handle: its letter (``W_H_KIND``), number (``W_H_NUM``) and result (``.R<k>``, ``W_H_RES``); 1, or
+    0 when it is not one."""
+    def build(e: E):
+        p = e.p
+        e.var("ha", _wctrl(e, W_TOK_AT))
+        e.var("hn", _wctrl(e, W_TOK_LEN))
+        _wset(e, W_H_KIND, e.ld(e.add(WS_IN, p["ha"])))
+        _wset(e, W_H_RES, 0)
+        e.var("hdot", p["hn"])
+        e.for_("hk", 1, p["hn"], lambda: e.if_(e.both(e.eq(p["hdot"], p["hn"]), e.eq(e.ld(e.add(WS_IN, e.add(p["ha"], p["hk"]))), 46)),
+                                                lambda: e.set("hdot", p["hk"])))
+        e.var("hok", 0)
+
+        def parse():
+            # The number is the characters before the dot: parse them as a token of their own.
+            _wset(e, W_TOK_LEN, p["hdot"])
+            e.set("hok", _call(e, "ws_number", 1))
+            _wset(e, W_H_NUM, _wctrl(e, W_INT))
+
+            def result():
+                _wset(e, W_TOK_LEN, p["hn"])
+                e.var("hr_ok", e.flag(e.both(e.lt(e.add(p["hdot"], 2), p["hn"]), e.eq(e.ld(e.add(WS_IN, e.add(p["ha"], e.add(p["hdot"], 1)))), 82))))
+                e.if_(e.ne(p["hr_ok"], 0), lambda: (e.set("hok", e.and_(p["hok"], _call(e, "ws_number", e.add(p["hdot"], 2)))),
+                                                    _wset(e, W_H_RES, _wctrl(e, W_INT))), lambda: e.set("hok", 0))
+
+            e.if_(e.lt(p["hdot"], p["hn"]), result)
+            _wset(e, W_TOK_LEN, p["hn"])
+
+        e.if_(e.lt(1, p["hn"]), parse)
+        e.give(p["hok"])
+    return _function((), build, None)
+
+
+def _ws_locate_function():
+    """Node handle ``n``'s block and position (``W_MBLOCK``, ``W_MNODE``); 0 when the function has no such node."""
+    def build(e: E):
+        p = e.p
+        e.var("lb", 0)
+        e.var("lfound", 0)
+        e.while_(lambda: e.both(e.lt(p["lb"], _wctrl(e, W_NBLOCKS)), e.eq(p["lfound"], 0)), lambda: e.if_(
+            e.lt(p["n"], e.ld(e.add(NSTART, e.add(p["lb"], 1)))),
+            lambda: (e.set("lfound", e.flag(e.le(e.ld(e.add(NSTART, p["lb"])), p["n"]))),
+                     _wset(e, W_MBLOCK, p["lb"]), _wset(e, W_MNODE, e.sub(p["n"], e.ld(e.add(NSTART, p["lb"]))))),
+            lambda: e.set("lb", e.add(p["lb"], 1))))
+        e.give(p["lfound"])
+    return _function(("n",), build, None)
+
+
+def _ws_parameter_function():
+    """Parameter handle ``n``'s block (``W_MBLOCK``) and index (``W_MNODE``); 0 when there is none."""
+    def build(e: E):
+        p = e.p
+        e.var("qb", 0)
+        e.var("qfound", 0)
+        e.while_(lambda: e.both(e.lt(p["qb"], _wctrl(e, W_NBLOCKS)), e.eq(p["qfound"], 0)), lambda: e.if_(
+            e.lt(p["n"], e.ld(e.add(PSTART, e.add(p["qb"], 1)))),
+            lambda: (e.set("qfound", 1), _wset(e, W_MBLOCK, p["qb"]), _wset(e, W_MNODE, e.sub(p["n"], e.ld(e.add(PSTART, p["qb"]))))),
+            lambda: e.set("qb", e.add(p["qb"], 1))))
+        e.give(p["qfound"])
+    return _function(("n",), build, None)
+
+
+def _ws_seek_function():
+    """Node ``n`` of block ``b``, read (``ws_walk``'s mode 2)."""
+    def build(e: E):
+        p = e.p
+        _wset(e, W_SEEK_B, p["b"])
+        _wset(e, W_SEEK_N, p["n"])
+        _wset(e, W_S_FOUND, 0)
+        _wset(e, W_S_EDGES, 0)
+        _call(e, "ws_walk", 2)
+        e.give(_wctrl(e, W_S_FOUND))
+    return _function(("b", "n"), build, None)
+
+
+def _ws_record_byte_function():
+    def build(e: E):
+        p = e.p
+        e.var("rb", _wctrl(e, W_RCUR))
+        e.if_(e.lt(p["rb"], 4 << 20), lambda: (e.st(e.add(WS_TMP, p["rb"]), p["value"]), _wset(e, W_RCUR, e.add(p["rb"], 1))),
+              lambda: e.if_(_ws_running(e), lambda: _reject(e, "XAX.DRIVER.CAPACITY", lambda: D.text(e, "apply"), "DRIVER-FILE-CAPACITY",
+                                                             lambda: D.integer(e, 4 << 20), lambda: D.text(e, "larger"))))
+        e.give(0)
+    return _function(("value",), build, None)
+
+
+def _ws_record_uleb_function():
+    def build(e: E):
+        p = e.p
+        e.var("ru", p["value"])
+        e.var("ru_more", 1)
+
+        def step():
+            e.var("ru_low", e.and_(p["ru"], 127))
+            e.set("ru", e.udiv(p["ru"], 128))
+            _call(e, "ws_record_byte", e.add(p["ru_low"], e.mul(e.flag(e.ne(p["ru"], 0)), 128)))
+            e.set("ru_more", e.flag(e.ne(p["ru"], 0)))
+
+        e.while_(lambda: e.ne(p["ru_more"], 0), step)
+        e.give(0)
+    return _function(("value",), build, None)
+
+
+def _ws_record_cid_function():
+    """Object ``o``'s CID, 32 bytes (each word most significant byte first)."""
+    def build(e: E):
+        p = e.p
+        for k in range(4):
+            e.var("rcw", _cid_word(e, p["o"], k))
+            for j in range(8):
+                _call(e, "ws_record_byte", e.and_(e.udiv(p["rcw"], 1 << (8 * (7 - j))), 255) if j < 7 else e.and_(p["rcw"], 255))
+        e.give(0)
+    return _function(("o",), build, None)
+
+
+def _ws_record_value_function():
+    """A record value (``_record_value``): tag, then block and index (and result), or local id and result."""
+    def build(e: E):
+        p = e.p
+        _call(e, "ws_record_uleb", p["tag"])
+        _call(e, "ws_record_uleb", p["a"])
+        _call(e, "ws_record_uleb", p["b"])
+        e.if_(e.eq(p["tag"], VALUE_RESULT), lambda: _call(e, "ws_record_uleb", p["c"]))
+        e.give(0)
+    return _function(("tag", "a", "b", "c"), build, None)
+
+
+def _ws_operand_value_function():
+    """The token as a value handle into ``V_TAG``..: ``P<i>``, ``N<i>``/``N<i>.R<k>``, ``@<id>``/``@<id>.R<k>``; 0 when
+    it names none of the function's."""
+    def build(e: E):
+        p = e.p
+        e.var("vok", _call(e, "ws_handle"))
+        e.var("vkind", _wctrl(e, W_H_KIND))
+        e.var("vnum", _wctrl(e, W_H_NUM))
+
+        def parameter():
+            e.set("vok", e.and_(e.flag(e.eq(_wctrl(e, W_H_RES), 0)), _call(e, "ws_parameter", p["vnum"])))
+            _set(e, V_TAG, VALUE_PARAMETER)
+            _set(e, V_A, _wctrl(e, W_MBLOCK))
+            _set(e, V_B, _wctrl(e, W_MNODE))
+            _set(e, V_C, 0)
+
+        def node():
+            e.set("vok", _call(e, "ws_locate", p["vnum"]))
+            _set(e, V_TAG, VALUE_RESULT)
+            _set(e, V_A, _wctrl(e, W_MBLOCK))
+            _set(e, V_B, _wctrl(e, W_MNODE))
+            _set(e, V_C, _wctrl(e, W_H_RES))
+
+        def inserted():
+            _set(e, V_TAG, VALUE_INSERTED)
+            _set(e, V_A, p["vnum"])
+            _set(e, V_B, _wctrl(e, W_H_RES))
+            _set(e, V_C, 0)
+
+        e.if_(e.ne(p["vok"], 0), lambda: e.if_(e.eq(p["vkind"], 80), parameter, lambda: e.if_(
+            e.eq(p["vkind"], 78), node, lambda: e.if_(e.eq(p["vkind"], 64), inserted, lambda: e.set("vok", 0)))))
+        e.give(p["vok"])
+    return _function((), build, None)
+
+
+def _ws_view_function():
+    """``view``: the selector text at ``WS_IN`` (``W_LEN`` bytes) to the view at ``BATCH`` (``W_OUT`` bytes)."""
+    def build(e: E):
+        p = e.p
+        _call(e, "ws_prepare")
+        _wset(e, W_TCUR, 0)
+        e.var("vroot", e.rd(1))
+        e.var("vkind", e.sel(_ws_running(e), _call(e, "ws_token"), 0))
+        _out_text(e, "R ")
+        _call(e, "ws_cid", p["vroot"])
+        _out(e, 10)
+
+        def listing():
+            def each():
+                e.var("lf", e.sub(e.ld(e.add(FORD, p["lz"])), 1))
+                _out(e, 70)
+                _call(e, "ws_decimal", p["lf"])
+                _out(e, 32)
+                _call(e, "ws_cid", p["lz"])
+                _wset(e, W_FN, p["lz"])
+                e.var("lg", _call(e, "ws_interface", 0))
+                e.if_(e.eq(p["lg"], NONE), lambda: _out_text(e, " group-member"))
+                _out(e, 10)
+
+            e.for_("lz", 0, e.rd(0), lambda: e.if_(e.ne(e.ld(e.add(FORD, p["lz"])), 0), each))
+
+        def one():
+            e.var("vok", e.flag(e.both(e.ne(_call(e, "ws_handle"), 0), e.eq(_wctrl(e, W_H_KIND), 70), e.eq(_wctrl(e, W_H_RES), 0))))
+            e.if_(e.eq(p["vok"], 0), lambda: _ws_reject(e, "WORKSPACE-VIEW-SELECTOR", "F<n>"))
+
+            def shown():
+                e.var("vf", _call(e, "ws_function", _wctrl(e, W_H_NUM)))
+                e.if_(e.eq(p["vf"], NONE), lambda: _reject(
+                    e, "XAX.WORKSPACE.HANDLE", lambda: D.text(e, "F"), "WORKSPACE-VIEW-FUNCTION",
+                    lambda: _at_most(e, "< {}", _wctrl(e, W_FUNCTIONS)), lambda: D.integer(e, _wctrl(e, W_H_NUM))))
+
+                def view():
+                    _wset(e, W_FN, p["vf"])
+                    e.var("vg", _call(e, "ws_interface", 0))
+                    e.if_(e.eq(p["vg"], NONE), lambda: _reject(
+                        e, "XAX.WORKSPACE.UNSUPPORTED", lambda: _cid_of(e, p["vf"]), "WORKSPACE-VIEW-GROUP-MEMBER",
+                        lambda: D.text(e, "a function with a graph of its own"), lambda: D.text(e, "a recursion group's member")))
+
+                    def walked():
+                        _call(e, "ws_walk", 0)
+
+                        def printed():
+                            _out(e, 70)
+                            _call(e, "ws_decimal", _wctrl(e, W_H_NUM))
+                            _out(e, 32)
+                            _call(e, "ws_cid", p["vf"])
+                            _out(e, 10)
+                            _call(e, "ws_interface", 1)
+                            _call(e, "ws_walk", 1)
+
+                            def type_line():
+                                e.var("vt", e.ld(e.add(TLIST, p["vk"])))
+                                _call(e, "ws_type_out", p["vt"])
+                                _out(e, 32)
+                                _call(e, "ws_type_text", p["vt"])
+                                _out(e, 10)
+
+                            e.for_("vk", 0, _wctrl(e, W_TYPES), type_line)
+
+                        e.if_(_ws_running(e), printed)
+
+                    e.if_(_ws_running(e), walked)
+
+                e.if_(_ws_running(e), view)
+
+            e.if_(_ws_running(e), shown)
+
+        e.if_(_ws_running(e), lambda: e.if_(e.eq(p["vkind"], 0), listing, lambda: e.if_(e.eq(p["vkind"], 1), one, lambda: _ws_reject(
+            e, "WORKSPACE-VIEW-SELECTOR", "F<n>"))))
+        e.if_(_ws_running(e), lambda: e.if_(e.ne(_call(e, "ws_token"), 0), lambda: _ws_reject(e, "WORKSPACE-VIEW-SELECTOR", "one handle")))
+        e.give(_ctrl(e, E_STATUS))
+    return _function((), build, None)
+
+
+BATCH_REJECTS = (("ROOT", "R"), ("ROOT", "64 hexadecimal digits"), ("FUNCTION", "F<n>"), ("FUNCTION", "F<n> of a function with a graph"),
+                 ("HANDLE", "N<i>"), ("HANDLE", "N<i> of the function"), ("INTEGER", "an integer"), ("VALUE", "P<i>, N<i>, N<i>.R<k> or @<id>"),
+                 ("VALUE", "a value of the function"), ("NODE", "a constant node"), ("OPERATION", "an operation"),
+                 ("OPERATION", "add.wrap, sub.wrap or mul.wrap"), ("OPERAND", "an operand of the node"), ("NODE", "a single-result anchor"),
+                 ("EDGE", "an edge argument of the anchor's block"), ("TYPE", "T<i> or a result index"), ("TYPE", "T<i>"),
+                 ("TYPE", "a result index for a node without one result"), ("TYPE", "a result of the node"), ("TYPE", "T<i> of the function's view"),
+                 ("FORM", "const, op, operand, delete, insert-constant, edge or type"), ("COUNT", f"at most {MUT_LIMIT} mutations"))
+(R_ROOT, R_ROOT_HEX, R_FUNCTION, R_FUNCTION_GRAPH, R_HANDLE, R_HANDLE_NODE, R_INTEGER, R_VALUE, R_VALUE_OF, R_CONSTANT, R_OPERATION,
+ R_OPERATION_WRAP, R_OPERAND, R_ANCHOR, R_EDGE, R_TYPE_OR_INDEX, R_TYPE, R_TYPE_INDEX, R_TYPE_RESULT, R_TYPE_VIEW, R_FORM, R_COUNT) = range(len(BATCH_REJECTS))
+W_SAVE_B, W_SAVE_N, W_S_TYPE = 35, 36, 37  # ``apply``'s node across a value handle; a parsed type's object
+
+
+BR_AT, BR_WORDS = REFL + (1 << 18), 24  # per batch rejection: rule length, 7 rule words, expected length, 15 expected words
+
+
+def _ws_batch_reject_function():
+    """Batch rejection ``index`` of ``BATCH_REJECTS`` (once: the first decides): code ``XAX.WORKSPACE.BATCH``, entity
+    ``batch``, the rule and expected text from a table, and the offset of the token it stopped at."""
+    def packed(text: str):
+        data = text.encode("ascii")
+        return len(data), [int.from_bytes(data[k:k + 8].ljust(8, b"\0"), "little") for k in range(0, len(data), 8)]
+
+    def build(e: E):
+        p = e.p
+
+        def reject():
+            for index, (rule, expected) in enumerate(BATCH_REJECTS):
+                at = BR_AT + index * BR_WORDS
+                for offset, text, room in ((0, "WORKSPACE-BATCH-" + rule, 7), (8, expected, 15)):
+                    length, words = packed(text)
+                    assert len(words) <= room
+                    e.st(at + offset, length)
+                    for k, word in enumerate(words):
+                        e.st(at + offset + 1 + k, word)
+            D.begin(e)
+            D.text(e, "XAX.WORKSPACE.BATCH")
+            D.text(e, "batch")
+            e.var("br_at", e.add(BR_AT, e.mul(p["index"], BR_WORDS)))
+            for offset in (0, 8):
+                e.var("br_n", e.ld(e.add(p["br_at"], offset)))
+                D.put(e, D.T_STR)
+                D.put(e, p["br_n"])
+                e.for_("br_k", 0, e.udiv(e.add(p["br_n"], 7), 8), lambda offset=offset: D.put(e, e.ld(e.add(p["br_at"], e.add(offset + 1, p["br_k"])))))
+            D.integer(e, _wctrl(e, W_TOK_AT))
+            _set(e, E_STATUS, REJECT)
+
+        e.if_(_ws_running(e), reject)
+        e.give(0)
+    return _function(("index",), build, None)
+
+
+def _batch_reject(e: E, index: int):
+    _call(e, "ws_batch_reject", index)
+
+
+def _ws_expect_function():
+    """The next token, which must be a word (else rejection ``index``): 1 when it is."""
+    def build(e: E):
+        p = e.p
+        e.var("xk", 0)
+        e.if_(_ws_running(e), lambda: e.set("xk", e.flag(e.eq(_call(e, "ws_token"), 1))))
+        e.if_(e.both(_ws_running(e), e.eq(p["xk"], 0)), lambda: _call(e, "ws_batch_reject", p["index"]))
+        e.give(p["xk"])
+    return _function(("index",), build, None)
+
+
+def _ws_node_token_function():
+    """The next token, a node handle of the function, located (``W_MBLOCK``, ``W_MNODE``) and read (``ws_seek``)."""
+    def build(e: E):
+        p = e.p
+        _call(e, "ws_expect", R_HANDLE)
+        e.var("nh_ok", 0)
+        e.if_(_ws_running(e), lambda: e.if_(e.ne(_call(e, "ws_handle"), 0), lambda: e.if_(
+            e.both(e.eq(_wctrl(e, W_H_KIND), 78), e.eq(_wctrl(e, W_H_RES), 0)), lambda: e.set("nh_ok", _call(e, "ws_locate", _wctrl(e, W_H_NUM))))))
+        e.if_(e.both(_ws_running(e), e.eq(p["nh_ok"], 0)), lambda: _batch_reject(e, R_HANDLE_NODE))
+
+        def seek():
+            e.var("nh_b", _wctrl(e, W_MBLOCK))
+            e.var("nh_n", _wctrl(e, W_MNODE))
+            _call(e, "ws_seek", p["nh_b"], p["nh_n"])
+            _wset(e, W_MBLOCK, p["nh_b"])
+            _wset(e, W_MNODE, p["nh_n"])
+
+        e.if_(_ws_running(e), seek)
+        e.give(0)
+    return _function((), build, None)
+
+
+def _ws_number_token_function():
+    """The next token, an integer, into ``W_INT`` (rejection ``R_INTEGER``)."""
+    def build(e: E):
+        _call(e, "ws_expect", R_INTEGER)
+        e.if_(e.both(_ws_running(e), e.eq(_call(e, "ws_number", 0), 0)), lambda: _batch_reject(e, R_INTEGER))
+        e.give(_wctrl(e, W_INT))
+    return _function((), build, None)
+
+
+def _ws_value_token_function():
+    """The next token, a value handle, into ``V_TAG``..; the located node (``W_MBLOCK``/``W_MNODE``) is kept."""
+    def build(e: E):
+        _wset(e, W_SAVE_B, _wctrl(e, W_MBLOCK))
+        _wset(e, W_SAVE_N, _wctrl(e, W_MNODE))
+        _call(e, "ws_expect", R_VALUE)
+        e.if_(e.both(_ws_running(e), e.eq(_call(e, "ws_operand_value"), 0)), lambda: _batch_reject(e, R_VALUE_OF))
+        _wset(e, W_MBLOCK, _wctrl(e, W_SAVE_B))
+        _wset(e, W_MNODE, _wctrl(e, W_SAVE_N))
+        e.give(0)
+    return _function((), build, None)
+
+
+def _ws_type_current_function():
+    """The current token, a type handle of the view: its object into ``W_S_TYPE`` (rejection ``R_TYPE_VIEW``)."""
+    def build(e: E):
+        p = e.p
+        e.var("tc_ok", 0)
+        e.if_(e.ne(_call(e, "ws_handle"), 0), lambda: e.set("tc_ok", e.flag(e.both(
+            e.eq(_wctrl(e, W_H_KIND), 84), e.eq(_wctrl(e, W_H_RES), 0), e.lt(_wctrl(e, W_H_NUM), _wctrl(e, W_TYPES))))))
+        e.if_(e.eq(p["tc_ok"], 0), lambda: _batch_reject(e, R_TYPE_VIEW),
+              lambda: _wset(e, W_S_TYPE, e.ld(e.add(TLIST, _wctrl(e, W_H_NUM)))))
+        e.give(0)
+    return _function((), build, None)
+
+
+def _ws_head_function():
+    """A mutation's kind, function, block and node (``W_MBLOCK``/``W_MNODE``), counted."""
+    def build(e: E):
+        p = e.p
+        _call(e, "ws_record_uleb", p["kind"])
+        _call(e, "ws_record_cid", _wctrl(e, W_FN))
+        _call(e, "ws_record_uleb", _wctrl(e, W_MBLOCK))
+        _call(e, "ws_record_uleb", _wctrl(e, W_MNODE))
+        _wset(e, W_COUNT, e.add(_wctrl(e, W_COUNT), 1))
+        e.give(0)
+    return _function(("kind",), build, None)
+
+
+def _stored_value(e: E, at):
+    """A value ``ws_walk`` stored (4 words at ``at``), as the record writes it."""
+    e.var("sv_at", at)
+    _call(e, "ws_record_value", e.ld(e.p["sv_at"]), e.ld(e.add(e.p["sv_at"], 1)), e.ld(e.add(e.p["sv_at"], 2)), e.ld(e.add(e.p["sv_at"], 3)))
+
+
+def _new_value(e: E):
+    _call(e, "ws_record_value", _ctrl(e, V_TAG), _ctrl(e, V_A), _ctrl(e, V_B), _ctrl(e, V_C))
+
+
+def _ws_tr_constant_function():
+    """``const N V``: SET_CONSTANT with the node's value."""
+    def build(e: E):
+        p = e.p
+        running = lambda: _ws_running(e)  # noqa: E731
+        _call(e, "ws_node_token")
+        e.if_(e.both(running(), e.ne(_wctrl(e, W_S_OP), int(Operation.CONSTANT))), lambda: _batch_reject(e, R_CONSTANT))
+        e.var("kc_old", 0)
+        e.if_(running(), lambda: e.set("kc_old", _call(e, "ws_constant", _wctrl(e, W_S_ENTITY), 0)))
+        e.var("kc_new", _call(e, "ws_number_token"))
+        e.if_(running(), lambda: (_call(e, "ws_head", SET_CONSTANT), _call(e, "ws_record_uleb", p["kc_old"]), _call(e, "ws_record_uleb", p["kc_new"])))
+        e.give(0)
+    return _function((), build, None)
+
+
+def _ws_tr_operation_function():
+    """``op N OP``: SET_OPERATION with the node's operation (the wrapping three)."""
+    def build(e: E):
+        p = e.p
+        running = lambda: _ws_running(e)  # noqa: E731
+        _call(e, "ws_node_token")
+        _call(e, "ws_expect", R_OPERATION)
+        e.var("ko_new", NONE)
+
+        def find():
+            for name in ("add.wrap", "sub.wrap", "mul.wrap"):
+                e.if_(_ws_is(e, name), lambda name=name: e.set("ko_new", int(Operation[name.upper().replace(".", "_")])))
+            e.if_(e.eq(p["ko_new"], NONE), lambda: _batch_reject(e, R_OPERATION_WRAP))
+
+        e.if_(running(), find)
+        e.if_(running(), lambda: (_call(e, "ws_head", SET_OPERATION), _call(e, "ws_record_uleb", _wctrl(e, W_S_OP)), _call(e, "ws_record_uleb", p["ko_new"])))
+        e.give(0)
+    return _function((), build, None)
+
+
+def _ws_tr_operand_function():
+    """``operand N K VALUE``: REPLACE_USE with the operand's value."""
+    def build(e: E):
+        p = e.p
+        running = lambda: _ws_running(e)  # noqa: E731
+        _call(e, "ws_node_token")
+        e.var("ku_k", _call(e, "ws_number_token"))
+        e.if_(e.both(running(), e.le(_wctrl(e, W_S_NO), p["ku_k"])), lambda: _batch_reject(e, R_OPERAND))
+        _call(e, "ws_value_token")
+
+        def write():
+            _call(e, "ws_head", REPLACE_USE)
+            _call(e, "ws_record_uleb", p["ku_k"])
+            _stored_value(e, e.add(SEEKV, e.mul(p["ku_k"], 4)))
+            _new_value(e)
+
+        e.if_(running(), write)
+        e.give(0)
+    return _function((), build, None)
+
+
+def _ws_tr_delete_function():
+    """``delete N``: DELETE_NODE."""
+    def build(e: E):
+        _call(e, "ws_node_token")
+        e.if_(_ws_running(e), lambda: _call(e, "ws_head", DELETE_NODE))
+        e.give(0)
+    return _function((), build, None)
+
+
+def _ws_tr_insert_function():
+    """``insert-constant N ID V``: INSERT_NODE, a constant of N's single result type before N."""
+    def build(e: E):
+        p = e.p
+        running = lambda: _ws_running(e)  # noqa: E731
+        _call(e, "ws_node_token")
+        e.var("ki_type", NONE)
+        e.if_(running(), lambda: e.if_(e.eq(_wctrl(e, W_S_NR), 1), lambda: e.set("ki_type", e.ld(SEEKR)), lambda: _batch_reject(e, R_ANCHOR)))
+        e.var("ki_id", _call(e, "ws_number_token"))
+        e.var("ki_value", _call(e, "ws_number_token"))
+
+        def write():
+            _call(e, "ws_head", INSERT_NODE)
+            for value in (p["ki_id"], int(Operation.CONSTANT), 0):
+                _call(e, "ws_record_uleb", value)
+            _call(e, "ws_record_cid", p["ki_type"])
+            for value in (1, p["ki_value"], 0):
+                _call(e, "ws_record_uleb", value)
+
+        e.if_(running(), write)
+        e.give(0)
+    return _function((), build, None)
+
+
+def _ws_tr_edge_function():
+    """``edge N E A VALUE``: DISCONNECT_EDGE (the argument's value) then CONNECT_EDGE, on N's block."""
+    def build(e: E):
+        p = e.p
+        running = lambda: _ws_running(e)  # noqa: E731
+        _call(e, "ws_node_token")
+        e.var("ke_mb", _wctrl(e, W_MBLOCK))
+        e.var("ke_edge", _call(e, "ws_number_token"))
+        e.var("ke_arg", _call(e, "ws_number_token"))
+        e.if_(e.both(running(), e.either(e.le(_wctrl(e, W_S_EDGES), p["ke_edge"]), e.le(
+            e.ld(e.add(SEEKE, e.mul(e.sel(e.lt(p["ke_edge"], 2), p["ke_edge"], 0), EDGE_ARGUMENTS))), p["ke_arg"]))),
+            lambda: _batch_reject(e, R_EDGE))
+        _call(e, "ws_value_token")
+
+        def write():
+            for kind in (DISCONNECT_EDGE, CONNECT_EDGE):
+                for value in (kind,):
+                    _call(e, "ws_record_uleb", value)
+                _call(e, "ws_record_cid", _wctrl(e, W_FN))
+                for value in (p["ke_mb"], p["ke_edge"], p["ke_arg"]):
+                    _call(e, "ws_record_uleb", value)
+                if kind == DISCONNECT_EDGE:
+                    _stored_value(e, e.add(e.add(SEEKE, e.mul(p["ke_edge"], EDGE_ARGUMENTS)), e.add(1, e.mul(p["ke_arg"], 4))))
+                else:
+                    _new_value(e)
+                _wset(e, W_COUNT, e.add(_wctrl(e, W_COUNT), 1))
+
+        e.if_(running(), write)
+        e.give(0)
+    return _function((), build, None)
+
+
+def _ws_tr_type_function():
+    """``type N T`` or ``type N K T``: SET_RESULT_TYPE with the result's type."""
+    def build(e: E):
+        p = e.p
+        running = lambda: _ws_running(e)  # noqa: E731
+        _call(e, "ws_node_token")
+        _call(e, "ws_expect", R_TYPE_OR_INDEX)
+        e.var("kt_result", 0)
+        e.var("kt_indexed", e.flag(e.both(running(), e.ne(e.ld(e.add(WS_IN, _wctrl(e, W_TOK_AT))), 84))))
+
+        def indexed():
+            e.if_(e.eq(_call(e, "ws_number", 0), 0), lambda: _batch_reject(e, R_TYPE_OR_INDEX))
+            e.set("kt_result", _wctrl(e, W_INT))
+            _call(e, "ws_expect", R_TYPE)
+
+        e.if_(e.ne(p["kt_indexed"], 0), indexed)
+        e.if_(e.both(running(), e.eq(p["kt_indexed"], 0), e.ne(_wctrl(e, W_S_NR), 1)), lambda: _batch_reject(e, R_TYPE_INDEX))
+        e.if_(e.both(running(), e.le(_wctrl(e, W_S_NR), p["kt_result"])), lambda: _batch_reject(e, R_TYPE_RESULT))
+        e.if_(running(), lambda: _call(e, "ws_type_current"))
+
+        def write():
+            _call(e, "ws_head", SET_RESULT_TYPE)
+            _call(e, "ws_record_uleb", p["kt_result"])
+            _call(e, "ws_record_cid", e.ld(e.add(SEEKR, p["kt_result"])))
+            _call(e, "ws_record_cid", _wctrl(e, W_S_TYPE))
+
+        e.if_(running(), write)
+        e.give(0)
+    return _function((), build, None)
+
+
+def _ws_translate_function():
+    """``apply``: the batch text at ``WS_IN`` (``W_LEN`` bytes) to an edit record at ``EIN`` (``E_LENGTH``), or a
+    rejection.  Header ``R <root CID>`` (the expected root) and ``F<n>`` (the function the handles name), then edits,
+    ``;`` or white space between them:
+
+        const N V | op N OP | operand N K VALUE | delete N | insert-constant ANCHOR ID V | edge ANCHOR E A VALUE
+        | type N T | type N K T
+
+    (``set-constant``, ``set-op``, ``replace-operand``, ``set-edge`` and ``set-type`` too).  A value is ``P<i>``,
+    ``N<i>``, ``N<i>.R<k>``, or ``@<id>`` (``.R<k>``) for an insertion's result; ``T<i>`` a type of the function's
+    view.  Each mutation's old operation, value, operand, edge argument or type comes from the store."""
+    verbs = (("const", "ws_tr_constant"), ("set-constant", "ws_tr_constant"), ("op", "ws_tr_operation"), ("set-op", "ws_tr_operation"),
+             ("operand", "ws_tr_operand"), ("replace-operand", "ws_tr_operand"), ("delete", "ws_tr_delete"), ("insert-constant", "ws_tr_insert"),
+             ("edge", "ws_tr_edge"), ("set-edge", "ws_tr_edge"), ("type", "ws_tr_type"), ("set-type", "ws_tr_type"))
+
+    def build(e: E):
+        p = e.p
+        _call(e, "ws_prepare")
+        _wset(e, W_TCUR, 0)
+        _wset(e, W_RCUR, 0)
+        _wset(e, W_COUNT, 0)
+        running = lambda: _ws_running(e)  # noqa: E731
+        for k, byte in enumerate(RECORD_MAGIC):
+            e.st(EIN + k, byte)
+        # The header: the expected root, 64 hexadecimal digits, into the record after its magic.
+        _call(e, "ws_expect", R_ROOT)
+        e.if_(e.both(running(), e.not_(_ws_is(e, "R"))), lambda: _batch_reject(e, R_ROOT))
+        _call(e, "ws_expect", R_ROOT_HEX)
+
+        def root():
+            e.if_(e.ne(_wctrl(e, W_TOK_LEN), 64), lambda: _batch_reject(e, R_ROOT_HEX))
+            e.var("rta", _wctrl(e, W_TOK_AT))
+
+            def byte():
+                for half in (0, 1):
+                    e.var(f"rc{half}", e.ld(e.add(WS_IN, e.add(p["rta"], e.add(e.mul(p["rk"], 2), half)))))
+                    e.var(f"rd{half}", e.sel(e.both(e.le(48, p[f"rc{half}"]), e.le(p[f"rc{half}"], 57)), e.sub(p[f"rc{half}"], 48),
+                                             e.sel(e.both(e.le(97, p[f"rc{half}"]), e.le(p[f"rc{half}"], 102)), e.sub(p[f"rc{half}"], 87), 99)))
+                e.if_(e.either(e.lt(15, p["rd0"]), e.lt(15, p["rd1"])), lambda: _batch_reject(e, R_ROOT_HEX))
+                e.st(e.add(EIN + len(RECORD_MAGIC), p["rk"]), e.add(e.mul(p["rd0"], 16), p["rd1"]))
+
+            e.for_("rk", 0, e.sel(running(), 32, 0), byte)
+
+        e.if_(running(), root)
+
+        def fresh():
+            """The expected root is checked before any handle: a stale batch is stale, whatever its handles name."""
+            e.var("tr_root", e.rd(1))
+            e.var("tr_same", 1)
+            for k in range(4):
+                e.var("tr_word", 0)
+                for j in range(8):
+                    e.set("tr_word", e.add(e.mul(p["tr_word"], 256), e.ld(EIN + len(RECORD_MAGIC) + 8 * k + j)))
+                e.set("tr_same", e.and_(p["tr_same"], e.flag(e.eq(p["tr_word"], _cid_word(e, p["tr_root"], k)))))
+            e.if_(e.eq(p["tr_same"], 0), lambda: _reject(
+                e, "XAX.WORKSPACE.STALE_ROOT", lambda: D.text(e, "R0"), "WORKSPACE-EXPECTED-ROOT",
+                lambda: _record_cid(e, EIN + len(RECORD_MAGIC)), lambda: _cid_of(e, p["tr_root"])))
+
+        e.if_(running(), fresh)
+        _call(e, "ws_expect", R_FUNCTION)
+
+        def function():
+            e.var("tfn", NONE)
+            e.if_(e.ne(_call(e, "ws_handle"), 0), lambda: e.if_(e.both(e.eq(_wctrl(e, W_H_KIND), 70), e.eq(_wctrl(e, W_H_RES), 0)),
+                                                                lambda: e.set("tfn", _call(e, "ws_function", _wctrl(e, W_H_NUM)))))
+            e.if_(e.eq(p["tfn"], NONE), lambda: _batch_reject(e, R_FUNCTION_GRAPH), lambda: _wset(e, W_FN, p["tfn"]))
+            e.if_(e.both(running(), e.eq(_call(e, "ws_interface", 0), NONE)), lambda: _batch_reject(e, R_FUNCTION_GRAPH))
+            e.if_(running(), lambda: _call(e, "ws_walk", 0))
+
+        e.if_(running(), function)
+        e.var("tgo", e.flag(running()))
+
+        def mutation():
+            e.var("tk", _call(e, "ws_token"))
+            e.if_(e.eq(p["tk"], 0), lambda: e.set("tgo", 0))
+
+            def verb():
+                e.var("tverb", 0)
+                for index, (word, _handler) in enumerate(verbs):
+                    e.if_(_ws_is(e, word), lambda index=index: e.set("tverb", index + 1))
+                e.if_(e.eq(p["tverb"], 0), lambda: _batch_reject(e, R_FORM))
+                for index, (_word, handler) in enumerate(verbs):
+                    e.if_(e.both(running(), e.eq(p["tverb"], index + 1)), lambda handler=handler: _call(e, handler))
+                e.if_(e.both(running(), e.lt(MUT_LIMIT, _wctrl(e, W_COUNT))), lambda: _batch_reject(e, R_COUNT))
+
+            e.if_(e.eq(p["tk"], 1), verb)
+            e.if_(e.ne(_ctrl(e, E_STATUS), OK), lambda: e.set("tgo", 0))
+
+        e.while_(lambda: e.ne(p["tgo"], 0), mutation)
+
+        def assemble():
+            # The count after the header, then the mutations.
+            e.var("ta", EIN + len(RECORD_MAGIC) + 32)
+            e.var("tcount", _wctrl(e, W_COUNT))
+            e.var("tmore", 1)
+
+            def count_byte():
+                e.var("tlow", e.and_(p["tcount"], 127))
+                e.set("tcount", e.udiv(p["tcount"], 128))
+                e.st(p["ta"], e.add(p["tlow"], e.mul(e.flag(e.ne(p["tcount"], 0)), 128)))
+                e.set("ta", e.add(p["ta"], 1))
+                e.set("tmore", e.flag(e.ne(p["tcount"], 0)))
+
+            e.while_(lambda: e.ne(p["tmore"], 0), count_byte)
+            e.for_("tq", 0, _wctrl(e, W_RCUR), lambda: e.st(e.add(p["ta"], p["tq"]), e.ld(e.add(WS_TMP, p["tq"]))))
+            _set(e, E_LENGTH, e.sub(e.add(p["ta"], _wctrl(e, W_RCUR)), EIN))
+
+        e.if_(running(), assemble)
+        e.give(_ctrl(e, E_STATUS))
+    return _function((), build, None)
+
+
+# -- S16a (ADR-360): ``explain <record> <output>``: a diagnostic record as text -----------------------------------------
+# Every command that rejects writes ``xax_selfhost_diagnostics``' record (tagged words); ``explain`` renders it as
+# ``code``, ``entity``, ``rule``, ``expected`` and ``actual`` lines (then ``dependencies`` and ``repair`` when the record
+# has them), each value as ``decode_record`` reads it: lists ``[..]``, tuples ``(..)``, dicts ``{k: v}``, an enumeration
+# member ``Enum.NAME`` and a name ``NAME``, a value class ``Name(..)``, a template with its ``{}`` filled.
+XREC = WS_IN  # the record's words (``ws_command`` packs them from ``edit``'s record area)
+XSTACK = EIN + (12 << 20)  # per open value: kind, remaining items, items done, template word, template length, template byte
+XFRAME = 6
+X_LIST, X_TUPLE, X_DICT, X_OBJECT, X_FORMAT = range(5)
+ENUM_AT = REFL + (1 << 19) + 4096  # per enumeration and member (128 each): its name's first byte in the name blob
+ENUM_LENGTH = ENUM_AT + 32 * 128
+OBJECT_ENUM = len(D.ENUM_NAMES)  # the value classes' names, as members 1.. of one more enumeration
+ENUM_NAMES_AT = REFL + (1 << 16)  # the names, NUL after each, eight bytes per word
+
+
+def _enum_tables():
+    """``(member counts per enumeration, the name blob)``: every enumeration a record can name, members 1.. dense."""
+    counts, blob = [], bytearray()
+    groups = [[member.name for member in sorted(D._registered(name), key=int)] for name in D.ENUM_NAMES] + [list(D.OBJECT_NAMES)]
+    for index, names in enumerate(groups):
+        if index < len(D.ENUM_NAMES):
+            assert [int(member) for member in sorted(D._registered(D.ENUM_NAMES[index]), key=int)] == list(range(1, len(names) + 1))
+        counts.append(len(names))
+        for name in names:
+            blob += name.encode("ascii") + b"\0"
+    return counts, bytes(blob)
+
+
+def _ws_enum_names_function():
+    """Every enumeration member's name a record can name (``xax_selfhost_diagnostics.ENUM_NAMES``), the value classes'
+    (``OBJECT_NAMES``, enumeration ``OBJECT_ENUM``), and the operations': ``ENUM_AT``/``ENUM_LENGTH`` per member."""
+    counts, blob = _enum_tables()
+
+    def build(e: E):
+        p = e.p
+        for k in range(0, len(blob), 8):
+            e.st(ENUM_NAMES_AT + k // 8, int.from_bytes(blob[k:k + 8].ljust(8, b"\0"), "little"))
+        for index, count in enumerate(counts):  # past every member slot (enumerations 0..30)
+            e.st(ENUM_LENGTH + 31 * 128 + index, count)
+        e.for_("en_z", 0, 31 * 128, lambda: e.st(e.add(ENUM_LENGTH, p["en_z"]), 0))
+        e.var("en_at", 0)
+
+        def enumeration():
+            e.var("en_count", e.ld(e.add(ENUM_LENGTH + 31 * 128, p["en_e"])))
+
+            def member():
+                e.var("en_start", p["en_at"])
+                e.while_(lambda: e.ne(_call(e, "ws_byte_of", e.ld(e.add(ENUM_NAMES_AT, e.udiv(p["en_at"], 8))), e.urem(p["en_at"], 8)), 0),
+                         lambda: e.set("en_at", e.add(p["en_at"], 1)))
+                e.var("en_slot", e.add(e.mul(p["en_e"], 128), e.add(p["en_m"], 1)))
+                e.st(e.add(ENUM_AT, p["en_slot"]), p["en_start"])
+                e.st(e.add(ENUM_LENGTH, p["en_slot"]), e.sub(p["en_at"], p["en_start"]))
+                e.set("en_at", e.add(p["en_at"], 1))
+
+            e.for_("en_m", 0, p["en_count"], member)
+
+        e.for_("en_e", 0, len(counts), enumeration)
+        e.give(0)
+    return _function((), build, None)
+
+
+def _ws_byte_of_function():
+    """Byte ``k`` (0 the least significant) of ``word``; every division is by a constant."""
+    def build(e: E):
+        p = e.p
+        e.var("bo", p["word"])
+        e.for_("bk", 0, p["k"], lambda: e.set("bo", e.udiv(p["bo"], 256)))
+        e.give(e.and_(p["bo"], 255))
+    return _function(("word", "k"), build, None)
+
+
+def _ws_name_out_function():
+    """The name at byte ``at`` of the name blob (``length`` bytes)."""
+    def build(e: E):
+        p = e.p
+        e.for_("nk", 0, p["length"], lambda: (e.var("nb", e.add(p["at"], p["nk"])),
+                                                _out(e, _call(e, "ws_byte_of", e.ld(e.add(ENUM_NAMES_AT, e.udiv(p["nb"], 8))), e.urem(p["nb"], 8)))))
+        e.give(0)
+    return _function(("at", "length"), build, None)
+
+
+X_P, X_END, X_DEPTH, X_BAD = 31, 32, 33, 34  # ``explain``'s control words (``WSC``): the next record word, its end, open values, malformed
+
+
+def _x(e: E, field: int):
+    return _wctrl(e, field)
+
+
+def _x_frame(e: E, field: int):
+    return e.add(XSTACK, e.add(e.mul(e.sub(_x(e, X_DEPTH), 1), XFRAME), field))
+
+
+def _ws_x_word_function():
+    """The record's next word (past its end the record is malformed)."""
+    def build(e: E):
+        p = e.p
+        e.var("xw", 0)
+        e.var("xw_at", _x(e, X_P))
+        e.if_(e.lt(p["xw_at"], _x(e, X_END)), lambda: (e.set("xw", e.ld(p["xw_at"])), _wset(e, X_P, e.add(p["xw_at"], 1))),
+              lambda: _wset(e, X_BAD, 1))
+        e.give(p["xw"])
+    return _function((), build, None)
+
+
+def _ws_x_template_function():
+    """The innermost open template's bytes up to its next ``{..}`` (past it), or to its end."""
+    def build(e: E):
+        p = e.p
+        e.var("xt_at", e.ld(_x_frame(e, 3)))
+        e.var("xt_n", e.ld(_x_frame(e, 4)))
+        e.var("xt_k", e.ld(_x_frame(e, 5)))
+        e.var("xt_go", 1)
+
+        def byte():
+            e.var("xt_byte", _call(e, "ws_byte_of", e.ld(e.add(p["xt_at"], e.udiv(p["xt_k"], 8))), e.urem(p["xt_k"], 8)))
+            e.set("xt_k", e.add(p["xt_k"], 1))
+
+            def placeholder():
+                e.set("xt_go", 0)
+                e.var("xt_close", 0)
+
+                def skip():
+                    e.var("xt_b2", _call(e, "ws_byte_of", e.ld(e.add(p["xt_at"], e.udiv(p["xt_k"], 8))), e.urem(p["xt_k"], 8)))
+                    e.set("xt_k", e.add(p["xt_k"], 1))
+                    e.set("xt_close", e.flag(e.eq(p["xt_b2"], 125)))
+
+                e.while_(lambda: e.both(e.eq(p["xt_close"], 0), e.lt(p["xt_k"], p["xt_n"])), skip)
+
+            e.if_(e.eq(p["xt_byte"], 123), placeholder, lambda: _out(e, p["xt_byte"]))
+
+        e.while_(lambda: e.both(e.ne(p["xt_go"], 0), e.lt(p["xt_k"], p["xt_n"])), byte)
+        e.st(_x_frame(e, 5), p["xt_k"])
+        e.give(0)
+    return _function((), build, None)
+
+
+def _ws_x_packed_function():
+    """``count`` packed bytes of the record: themselves, or (``hexadecimal``) two hexadecimal digits each."""
+    def build(e: E):
+        p = e.p
+        e.var("xb_k", 0)
+        e.var("xb_word", 0)
+
+        def each():
+            e.if_(e.eq(e.urem(p["xb_k"], 8), 0), lambda: e.set("xb_word", _call(e, "ws_x_word")))
+            e.var("xb_byte", _call(e, "ws_byte_of", p["xb_word"], e.urem(p["xb_k"], 8)))
+
+            def hexed():
+                for shift in (16, 1):
+                    e.var("xb_nib", e.and_(e.udiv(p["xb_byte"], shift), 15))
+                    _out(e, e.add(p["xb_nib"], e.sel(e.lt(p["xb_nib"], 10), 48, 87)))
+
+            e.if_(e.ne(p["hexadecimal"], 0), hexed, lambda: _out(e, p["xb_byte"]))
+            e.set("xb_k", e.add(p["xb_k"], 1))
+
+        e.while_(lambda: e.both(e.lt(p["xb_k"], p["count"]), e.eq(_x(e, X_BAD), 0)), each)
+        e.give(0)
+    return _function(("count", "hexadecimal"), build, None)
+
+
+def _ws_x_enum_function():
+    """Member ``member`` of enumeration ``enum``: its name, ``Enum.`` first when ``qualified``."""
+    def build(e: E):
+        p = e.p
+
+        def qualify():
+            for index, name in enumerate(D.ENUM_NAMES):
+                e.if_(e.eq(p["enum"], index), lambda name=name: _out_text(e, name + "."))
+
+        e.if_(e.ne(p["qualified"], 0), qualify)
+        e.var("xe_slot", e.add(e.mul(e.sel(e.lt(p["enum"], 32), p["enum"], 0), 128), e.sel(e.lt(p["member"], 128), p["member"], 0)))
+        e.var("xe_len", e.sel(e.both(e.le(p["enum"], OBJECT_ENUM), e.lt(p["member"], 128)), e.ld(e.add(ENUM_LENGTH, p["xe_slot"])), 0))
+        e.if_(e.eq(p["xe_len"], 0), lambda: _call(e, "ws_decimal", p["member"]),
+              lambda: _call(e, "ws_name_out", e.ld(e.add(ENUM_AT, p["xe_slot"])), p["xe_len"]))
+        e.give(0)
+    return _function(("enum", "member", "qualified"), build, None)
+
+
+def _ws_x_open_function():
+    """A value of ``count`` items opens (``kind``, ``X_LIST``..)."""
+    def build(e: E):
+        p = e.p
+        e.var("xo_depth", _x(e, X_DEPTH))
+        e.if_(e.le(64, p["xo_depth"]), lambda: _wset(e, X_BAD, 1), lambda: (
+            e.st(e.add(XSTACK, e.mul(p["xo_depth"], XFRAME)), p["kind"]),
+            e.st(e.add(XSTACK, e.add(e.mul(p["xo_depth"], XFRAME), 1)), p["count"]),
+            e.st(e.add(XSTACK, e.add(e.mul(p["xo_depth"], XFRAME), 2)), 0),
+            _wset(e, X_DEPTH, e.add(p["xo_depth"], 1))))
+        e.give(0)
+    return _function(("kind", "count"), build, None)
+
+
+def _ws_x_item_function():
+    """One tagged value of the record: an atom is written; a list, tuple, dict, value class or template opens."""
+    def build(e: E):
+        p = e.p
+        e.var("xtag", _call(e, "ws_x_word"))
+        tag = p["xtag"]
+        word = lambda: _call(e, "ws_x_word")  # noqa: E731
+
+        def case(value: int, body):
+            e.if_(e.eq(tag, value), body)
+
+        case(D.T_INT, lambda: _call(e, "ws_decimal", word()))
+        case(D.T_SINT, lambda: (e.var("xs", word()), e.if_(e.le(1 << 63, p["xs"]), lambda: (_out(e, 45), _call(e, "ws_decimal", e.sub(0, p["xs"]))),
+                                                          lambda: _call(e, "ws_decimal", p["xs"]))))
+        case(D.T_BOOL, lambda: e.if_(e.ne(word(), 0), lambda: _out_text(e, "True"), lambda: _out_text(e, "False")))
+        case(D.T_NONE, lambda: _out_text(e, "None"))
+        case(D.T_CID, lambda: [_call(e, "ws_hex", word()) for _ in range(4)])
+        case(D.T_STR, lambda: _call(e, "ws_x_packed", word(), 0))
+        case(D.T_HEX, lambda: _call(e, "ws_x_packed", word(), 1))
+        case(D.T_BYTES, lambda: _call(e, "ws_x_packed", word(), 1))
+        case(D.T_WIDE, lambda: (e.var("xlow", word()), _out_text(e, "0x"), _call(e, "ws_hex", word()), _call(e, "ws_hex", p["xlow"])))
+        case(D.T_KIND, lambda: (_out_text(e, "Kind."), _call(e, "ws_x_enum", D.ENUM_NAMES.index("Kind"), word(), 0)))
+        case(D.T_TERMINATOR, lambda: (_out_text(e, "TerminatorKind."), _call(e, "ws_x_enum", D.ENUM_NAMES.index("TerminatorKind"), word(), 0)))
+        for tag_value, qualified in ((D.T_ENUM, 1), (D.T_NAME, 0)):
+            case(tag_value, lambda qualified=qualified: (e.var("xenum", word()), _call(e, "ws_x_enum", p["xenum"], word(), qualified)))
+        case(D.T_LIST, lambda: (_call(e, "ws_x_open", X_LIST, word()), _out(e, 91)))
+        case(D.T_TUPLE, lambda: (_call(e, "ws_x_open", X_TUPLE, word()), _out(e, 40)))
+        case(D.T_DICT, lambda: (_call(e, "ws_x_open", X_DICT, e.mul(word(), 2)), _out(e, 123)))
+
+        def object_():
+            e.var("xclass", word())
+            _call(e, "ws_x_enum", OBJECT_ENUM, e.add(p["xclass"], 1), 0)
+            _call(e, "ws_x_open", X_OBJECT, word())
+            _out(e, 40)
+
+        case(D.T_OBJECT, object_)
+
+        def format_():
+            # The template is a string value: its words are kept in place and filled as the values come.
+            e.if_(e.ne(word(), D.T_STR), lambda: _wset(e, X_BAD, 1))
+            e.var("xf_n", word())
+            e.var("xf_at", _x(e, X_P))
+            _wset(e, X_P, e.add(p["xf_at"], e.udiv(e.add(p["xf_n"], 7), 8)))
+            _call(e, "ws_x_open", X_FORMAT, word())
+
+            def opened():
+                e.st(_x_frame(e, 3), p["xf_at"])
+                e.st(_x_frame(e, 4), p["xf_n"])
+                e.st(_x_frame(e, 5), 0)
+                _call(e, "ws_x_template")
+
+            e.if_(e.eq(_x(e, X_BAD), 0), opened)
+
+        case(D.T_FORMAT, format_)
+        e.if_(e.lt(D.T_SINT, tag), lambda: _wset(e, X_BAD, 1))
+        e.give(0)
+    return _function((), build, None)
+
+
+def _ws_x_value_function():
+    """One value of the record, with every value it contains."""
+    def build(e: E):
+        p = e.p
+        e.var("xv_go", 1)
+        running = lambda: e.both(e.ne(p["xv_go"], 0), e.eq(_x(e, X_BAD), 0))  # noqa: E731
+
+        def step():
+            def in_frame():
+                e.var("xf_kind", e.ld(_x_frame(e, 0)))
+                e.var("xf_left", e.ld(_x_frame(e, 1)))
+                e.var("xf_done", e.ld(_x_frame(e, 2)))
+
+                def close():
+                    for kind, closer in ((X_LIST, 93), (X_TUPLE, 41), (X_DICT, 125), (X_OBJECT, 41)):
+                        e.if_(e.eq(p["xf_kind"], kind), lambda closer=closer: _out(e, closer))
+                    e.if_(e.eq(p["xf_kind"], X_FORMAT), lambda: _call(e, "ws_x_template"))
+                    _wset(e, X_DEPTH, e.sub(_x(e, X_DEPTH), 1))
+                    e.if_(e.eq(_x(e, X_DEPTH), 0), lambda: e.set("xv_go", 0))
+
+                def next_item():
+                    def separator():
+                        e.if_(e.eq(p["xf_kind"], X_FORMAT), lambda: _call(e, "ws_x_template"),
+                              lambda: e.if_(e.both(e.eq(p["xf_kind"], X_DICT), e.eq(e.urem(p["xf_done"], 2), 1)), lambda: _out_text(e, ": "),
+                                            lambda: _out_text(e, ", ")))
+
+                    e.if_(e.ne(p["xf_done"], 0), separator)
+                    e.st(_x_frame(e, 1), e.sub(p["xf_left"], 1))
+                    e.st(_x_frame(e, 2), e.add(p["xf_done"], 1))
+                    _call(e, "ws_x_item")
+
+                e.if_(e.eq(p["xf_left"], 0), close, next_item)
+
+            e.if_(e.eq(_x(e, X_DEPTH), 0), lambda: (_call(e, "ws_x_item"), e.if_(e.eq(_x(e, X_DEPTH), 0), lambda: e.set("xv_go", 0))), in_frame)
+
+        e.while_(running, step)
+        e.give(0)
+    return _function((), build, None)
+
+
+def _ws_explain_function():
+    """``explain``: the record's words at ``XREC`` (``W_LEN`` of them) to text at ``BATCH`` (``W_OUT`` bytes)."""
+    labels = ("code", "entity", "rule", "expected", "actual", "dependencies", "repair")
+
+    def build(e: E):
+        p = e.p
+        _set(e, E_STATUS, OK)
+        _wset(e, W_OUT, 0)
+        _call(e, "ws_enum_names")
+        _wset(e, X_P, XREC)
+        _wset(e, X_END, e.add(XREC, _wctrl(e, W_LEN)))
+        _wset(e, X_DEPTH, 0)
+        _wset(e, X_BAD, 0)
+        for index, label in enumerate(labels):
+            def line(label=label):
+                _out_text(e, label + " ")
+                _call(e, "ws_x_value")
+                _out(e, 10)
+
+            if index < 5:
+                e.if_(e.eq(_x(e, X_BAD), 0), line)
+            else:
+                e.if_(e.both(e.eq(_x(e, X_BAD), 0), e.lt(_x(e, X_P), _x(e, X_END))), line)
+        e.if_(e.either(e.ne(_x(e, X_BAD), 0), e.lt(_x(e, X_P), _x(e, X_END))), lambda: _reject(
+            e, "XAX.WORKSPACE.RECORD", lambda: D.text(e, "explain"), "WORKSPACE-EXPLAIN-RECORD", lambda: D.text(e, "a diagnostic record"),
+            lambda: D.integer(e, e.sub(_x(e, X_P), XREC))))
+        e.give(_ctrl(e, E_STATUS))
+    return _function((), build, None)
+
+
+W_MODE, W_TEXT = 38, 39  # ``ws_command``: what ``edit``'s input was (``WS_EDIT``..); 1 text written, 2 rejected, else 0
+WS_EDIT, WS_VIEW, WS_APPLY, WS_EXPLAIN = 0, 1, 2, 3
+
+
+def _ws_pack(e: E, source, count, target):
+    """``count`` bytes (one per word from ``source``) as little-endian words from ``target`` (``target <= source``)."""
+    p = e.p
+    e.var("pk_q", 0)
+
+    def word():
+        e.var("pk_word", 0)
+        e.var("pk_scale", 1)
+        e.var("pk_k", 0)
+        e.while_(lambda: e.both(e.lt(p["pk_k"], 8), e.lt(e.add(e.mul(p["pk_q"], 8), p["pk_k"]), count)), lambda: (
+            e.set("pk_word", e.add(p["pk_word"], e.mul(e.ld(e.add(source, e.add(e.mul(p["pk_q"], 8), p["pk_k"]))), p["pk_scale"]))),
+            e.set("pk_scale", e.mul(p["pk_scale"], 256)), e.set("pk_k", e.add(p["pk_k"], 1))))
+        e.st(e.add(target, p["pk_q"]), p["pk_word"])
+        e.set("pk_q", e.add(p["pk_q"], 1))
+
+    e.while_(lambda: e.lt(e.mul(p["pk_q"], 8), count), word)
+
+
+def _ws_command_function():
+    """S16a (ADR-360): what ``edit``'s input (one byte per word from ``EIN``, ``E_LENGTH`` of them) is, and the
+    workspace's part of it.  An edit record (``RECORD_MAGIC``) is ``edit``'s; a diagnostic record (its first word a
+    string tag) is explained; a text whose first word is ``R`` is a batch, translated into an edit record in place;
+    any other text is a view selector.  ``view``'s and ``explain``'s text leaves packed eight bytes a word from
+    ``BATCH`` (``W_OUT`` bytes) with ``W_TEXT`` 1; a rejection leaves ``W_TEXT`` 2 (``edit_begin`` passes both on)."""
+    def build(e: E):
+        p = e.p
+        e.var("cm_n", _ctrl(e, E_LENGTH))
+        _set(e, E_STATUS, OK)
+        _wset(e, W_TEXT, 0)
+        e.var("cm_magic", e.flag(e.le(len(RECORD_MAGIC), p["cm_n"])))
+        for k, byte in enumerate(RECORD_MAGIC):
+            e.set("cm_magic", e.and_(p["cm_magic"], e.flag(e.eq(e.ld(EIN + k), byte))))
+        e.var("cm_record", e.flag(e.both(e.le(8, p["cm_n"]), e.eq(e.urem(p["cm_n"], 8), 0), e.eq(e.ld(EIN), D.T_STR))))
+        for k in range(1, 8):
+            e.set("cm_record", e.and_(p["cm_record"], e.flag(e.eq(e.ld(EIN + k), 0))))
+        e.var("cm_at", 0)
+        e.while_(lambda: e.both(e.lt(p["cm_at"], p["cm_n"]), e.either(*(e.eq(e.ld(e.add(EIN, p["cm_at"])), byte) for byte in SPACE))),
+                 lambda: e.set("cm_at", e.add(p["cm_at"], 1)))
+        e.var("cm_batch", e.flag(e.both(e.lt(p["cm_at"], p["cm_n"]), e.eq(e.ld(e.add(EIN, e.sel(e.lt(p["cm_at"], p["cm_n"]), p["cm_at"], 0))), 82))))
+        e.var("cm_mode", e.sel(e.ne(p["cm_magic"], 0), WS_EDIT, e.sel(e.ne(p["cm_record"], 0), WS_EXPLAIN, e.sel(e.ne(p["cm_batch"], 0), WS_APPLY, WS_VIEW))))
+        _wset(e, W_MODE, p["cm_mode"])
+
+        def workspace():
+            e.if_(e.lt(WS_IN_LIMIT, p["cm_n"]), lambda: _reject(e, "XAX.DRIVER.CAPACITY", lambda: D.text(e, "workspace-text"), "DRIVER-FILE-CAPACITY",
+                                                                lambda: D.integer(e, WS_IN_LIMIT), lambda: D.text(e, "larger")))
+
+            def text():
+                e.for_("cm_k", 0, p["cm_n"], lambda: e.st(e.add(WS_IN, p["cm_k"]), e.ld(e.add(EIN, p["cm_k"]))))
+                _wset(e, W_LEN, p["cm_n"])
+
+            def record():
+                _ws_pack(e, EIN, p["cm_n"], XREC)
+                _wset(e, W_LEN, e.udiv(p["cm_n"], 8))
+
+            e.if_(_ws_running(e), lambda: e.if_(e.eq(p["cm_mode"], WS_EXPLAIN), record, text))
+            for mode, name in ((WS_VIEW, "ws_view"), (WS_APPLY, "ws_translate"), (WS_EXPLAIN, "ws_explain")):
+                e.if_(e.both(_ws_running(e), e.eq(p["cm_mode"], mode)), lambda name=name: _call(e, name))
+            e.if_(e.both(_ws_running(e), e.ne(p["cm_mode"], WS_APPLY)), lambda: (_ws_pack(e, BATCH, _wctrl(e, W_OUT), BATCH), _wset(e, W_TEXT, 1)))
+            e.if_(e.not_(_ws_running(e)), lambda: _wset(e, W_TEXT, 2))
+
+        e.if_(e.ne(p["cm_mode"], WS_EDIT), workspace)
+        e.give(_ctrl(e, E_STATUS))
+    return _function((), build, None)
+
+
+WS_HELPERS = (("ws_out", _ws_out_function),
+              ("ws_decimal", _ws_decimal_function),
+              ("ws_byte_of", _ws_byte_of_function),
+              ("ws_name_out", _ws_name_out_function),
+              ("ws_enum_names", _ws_enum_names_function),
+              ("ws_hex", _ws_hex_function),
+              ("ws_cid", _ws_cid_function),
+              ("ws_operation", _ws_operation_function),
+              ("ws_type", _ws_type_function),
+              ("ws_type_out", _ws_type_out_function),
+              ("ws_value", _ws_value_function),
+              ("ws_pow256", _ws_pow256_function),
+              ("ws_constant", _ws_constant_function),
+              ("ws_type_text", _ws_type_text_function),
+              ("ws_interface", _ws_interface_function),
+              ("ws_edge", _ws_edge_function),
+              ("ws_walk", _ws_walk_function),
+              ("ws_prepare", _ws_prepare_function),
+              ("ws_function", _ws_function_function),
+              ("ws_token", _ws_token_function),
+              ("ws_number", _ws_number_function),
+              ("ws_handle", _ws_handle_function),
+              ("ws_locate", _ws_locate_function),
+              ("ws_parameter", _ws_parameter_function),
+              ("ws_seek", _ws_seek_function),
+              ("ws_record_byte", _ws_record_byte_function),
+              ("ws_record_uleb", _ws_record_uleb_function),
+              ("ws_record_cid", _ws_record_cid_function),
+              ("ws_record_value", _ws_record_value_function),
+              ("ws_operand_value", _ws_operand_value_function),
+              ("ws_batch_reject", _ws_batch_reject_function), ("ws_expect", _ws_expect_function), ("ws_node_token", _ws_node_token_function),
+              ("ws_number_token", _ws_number_token_function), ("ws_value_token", _ws_value_token_function),
+              ("ws_type_current", _ws_type_current_function), ("ws_head", _ws_head_function), ("ws_tr_constant", _ws_tr_constant_function),
+              ("ws_tr_operation", _ws_tr_operation_function), ("ws_tr_operand", _ws_tr_operand_function), ("ws_tr_delete", _ws_tr_delete_function),
+              ("ws_tr_insert", _ws_tr_insert_function), ("ws_tr_edge", _ws_tr_edge_function), ("ws_tr_type", _ws_tr_type_function),
+              ("ws_x_word", _ws_x_word_function),
+              ("ws_x_template", _ws_x_template_function),
+              ("ws_x_packed", _ws_x_packed_function),
+              ("ws_x_enum", _ws_x_enum_function),
+              ("ws_x_open", _ws_x_open_function),
+              ("ws_x_item", _ws_x_item_function),
+              ("ws_x_value", _ws_x_value_function))
+
+
 def build_functions():
     """``{name: function}`` and the objects they need."""
     functions, objects = {}, []
@@ -2354,6 +3992,15 @@ def build_functions():
     for name, builder in (("edit_begin", _begin), ("edit_next", _next), ("edit_place", _place), ("edit_reach", _reach), ("edit_batch", _batch)):
         function, items = builder(None)
         functions[name] = function
+        objects.extend(items)
+    # S16a (ADR-360): the native workspace's ``view`` and ``apply``.
+    for name, builder in WS_HELPERS:
+        _F[name], items = builder()
+        objects.extend(items)
+    for name, builder in (("ws_view", _ws_view_function), ("ws_translate", _ws_translate_function), ("ws_explain", _ws_explain_function),
+                          ("ws_command", _ws_command_function)):
+        functions[name], items = builder()
+        _F[name] = functions[name]
         objects.extend(items)
     return functions, tuple(objects)
 

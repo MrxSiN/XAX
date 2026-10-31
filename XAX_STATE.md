@@ -951,6 +951,13 @@ The XAX JVM program now builds callbacks: JDK streams and comparators that call 
 - The driver's function takes 2,078,110 of the pinned seed's 2,097,152 CFG input words; its graph is 2.02 MB of the graph decoder's 2 MiB.
 - The stores were regenerated and the ledger rebased. The seed was rotated to `c25276ad…` (seed = C1 = C2).
 
+#### S16a the native AI workspace — 2026-10-30 (ADR-360)
+
+- `xaxc edit <store> <input> <output>` is the workspace: an empty file or `F<n>` writes a view (root CID, then the functions, or one function with `N`/`P`/`T` handles); text starting with `R` is a batch of edits in those handles; a rejection record is written as text; an `XAXEDIT1` record is applied as before. No Python runs.
+- Batches become the edit engine's records with every old value read from the store, so their stores equal `LocalMutationSession.commit`'s (differential, `NativeWorkspaceTests`).
+- The driver's function is at the general backend's 2^18 values per function (261,518 values); the workspace added no command for that reason.
+- Seed rotated (seed = C1 = C2). Evidence re-run with `XAX_REQUIRE_NATIVE=1`; B levels unchanged.
+
 #### S15e.6i.3 the libxposed JVM path's last declines — 2026-10-30 (ADR-359)
 
 - Module records are read as `json.loads` reads them (every encoding, value kind and Python rule; floats correctly rounded); branding entries may be stored, deflated, bzip2 or LZMA; layer inputs and records share the 256 MB image buffer (was about 20 MB).
