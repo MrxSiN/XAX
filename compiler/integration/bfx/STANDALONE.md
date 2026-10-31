@@ -23,7 +23,10 @@ The source has 12,828 bytes; its empty executable has 1,436 bytes.
 
 The host reads raw stdin to EOF, accepting at most 65,536 bytes. It then calls
 the existing decision with three distinct initialized 65,536-byte input,
-output and tape views, the input length and output capacity 65,536. The core
+output and tape views, the input length and output capacity 65,536 (since
+2026-10-31 packed into one `bits<64>` argument, and the views are 2 GiB lazily
+committed reservations: [PACKED_LENGTHS.md](PACKED_LENGTHS.md),
+[DYNAMIC_TAPE.md](DYNAMIC_TAPE.md)). The core
 still performs its full tape reset and every original bounds/I/O check.
 Input above the transport limit rejects before the decision executes.
 This is a buffered process interface; interactive input requires EOF.
