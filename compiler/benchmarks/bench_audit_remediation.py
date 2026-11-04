@@ -1,6 +1,6 @@
 """Evidence for the evidence-and-canonical-state integrity milestone (ADR-177).
 
-Every field is computed by this run: stores are rebuilt, the M14 status is re-derived, the seed is re-packed, the
+Every field is computed by this run: stores are rebuilt, the B status is re-derived from the executed records, the native seed's pin is checked, the
 wheel is built twice and inspected, the matrix is re-validated, the status blocks are re-checked, and (unless
 ``--skip-tests``) the test suite is run and its outcomes counted, with skips split into unavailable environments and
 other skips.  Run from ``compiler``:
@@ -60,45 +60,34 @@ def canonical_state() -> dict:
 
 
 def selfhost_claims() -> dict:
-    from xax_compiler import StoreReader
-    from xax_selfhost import bootstrap_status, execute_m14_recursive_evidence
+    """W3 (ADR-362): B levels are derived from the executed records alone (no M14 evidence file exists to compare)."""
+    from xax_selfhost import FULL_SELFHOST_EVIDENCE, SEED_EVIDENCE, bootstrap_status
 
-    program = (COMPILER / "bootstrap" / "m14_selfhost_compiler.xax").read_bytes()
-    status = bootstrap_status(execute_m14_recursive_evidence(StoreReader(program)))
-    committed = json.loads((COMPILER / "bootstrap" / "m14_selfhost_evidence.json").read_text(encoding="utf-8"))
+    status = bootstrap_status()
+    records = [json.loads(path.read_text(encoding="utf-8")) for path in (FULL_SELFHOST_EVIDENCE, SEED_EVIDENCE)]
     return {
         "derivation_source": status["derivation_source"],
+        "records": status["records"],
         "full_production_compiler": {f"B{n}": status["full_production_compiler"][f"B{n}"] for n in range(7)},
-        "m14_semantic_image_wrapper": {level: status["m14_semantic_image_wrapper"][level] for level in ("B2", "B3", "B4", "B5", "B6")},
-        "committed_evidence_matches_derivation": committed["bootstrap_status"] == status,
-        "hand_asserted_b_fields_in_committed_evidence": sorted(k for k in committed if re.fullmatch(r"b\d_.*", k)),
+        "hand_asserted_b_fields_in_records": sorted(k for record in records for k in record if re.fullmatch(r"[bB]\d(_.*)?", k)),
     }
 
 
 def seed() -> dict:
-    spec = importlib.util.spec_from_file_location("xax_generate_m14_evidence", COMPILER / "bootstrap" / "generate_m14.py")
-    generator = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(generator)
-    data = (COMPILER / "bootstrap" / generator.SEED_FILENAME).read_bytes()
-    with tempfile.TemporaryDirectory() as directory:
-        root = Path(directory)
-        for part in ("src", "bootstrap"):
-            subprocess.run([sys.executable, "-c", f"import shutil; shutil.copytree(r'{COMPILER / part}', r'{root / part}', "
-                            "ignore=shutil.ignore_patterns('__pycache__'))"], check=True)
-        env = {**{k: v for k, v in os.environ.items() if k != "PYTHONPATH"}, "PYTHONPATH": str(root / "src"), "PYTHONDONTWRITEBYTECODE": "1"}
-        generated = subprocess.run([sys.executable, str(root / "bootstrap" / "generate_m14.py")], cwd=root, env=env, capture_output=True, text=True)
-        mutated = (root / "bootstrap" / generator.SEED_FILENAME).read_bytes() != data
+    """W3 (ADR-362): the bootstrap seed is the pinned native compiler (ADR-286); the M14 Python zipapp is retired."""
+    from xax_selfhost import bootstrap_status
+    from xax_selfhost_seed import SEED_PATH, SEED_SHA256, SEED_SIZE
+
+    data = SEED_PATH.read_bytes()
+    status = bootstrap_status()["bootstrap_seed"]
     return {
-        "kind": generator.SEED_KIND,
+        "kind": status["kind"],
+        "path": status["path"],
         "digest_sha256": hashlib.sha256(data).hexdigest(),
         "size": len(data),
-        "pinned": hashlib.sha256(data).hexdigest() == generator.SEED_SHA256 and len(data) == generator.SEED_SIZE,
-        "contents_manifest": generator.seed_manifest(data),
-        "deterministic": generator.pack_seed(generator.seed_entries(data)) == data and generator.rotation_seed() == generator.rotation_seed(),
-        "routine_generation_succeeded": generated.returncode == 0,
-        "routine_generation_mutates_seed": mutated,
-        "requires_python": True,  # a zipapp of Python modules: fact of the kind, not a measurement
-        "seed_builder_revision": hashlib.sha256((COMPILER / "bootstrap" / "generate_m14.py").read_bytes()).hexdigest(),
+        "pinned": hashlib.sha256(data).hexdigest() == SEED_SHA256 and len(data) == SEED_SIZE,
+        "requires_python": status["requires_python"],
+        "python_seeds_in_bootstrap": sorted(path.name for path in (COMPILER / "bootstrap").rglob("*.pyz")),
     }
 
 

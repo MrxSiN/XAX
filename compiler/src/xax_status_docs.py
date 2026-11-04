@@ -5,13 +5,12 @@ from the matrix, so the matrix stays the single source of those facts:
 
     <!-- xax-status:levels -->...<!-- /xax-status:levels -->     one-line summary
     <!-- xax-status:targets -->...<!-- /xax-status:targets -->   per-platform table
-    <!-- xax-status:bootstrap -->...<!-- /xax-status:bootstrap --> B0-B6 status, from the derived M14 evidence
+    <!-- xax-status:bootstrap -->...<!-- /xax-status:bootstrap --> B0-B6 status, derived from the executed records
 
 ``python -m xax_status_docs`` checks every block; ``--write`` regenerates them.
 """
 from __future__ import annotations
 
-import json
 import re
 import sys
 from pathlib import Path
@@ -20,7 +19,6 @@ from xax_replacement import LEVELS, load
 
 REPO = Path(__file__).resolve().parents[2]
 MATRIX = REPO / "XAX_REPLACEMENT_MATRIX.json"
-BOOTSTRAP_EVIDENCE = Path("compiler/bootstrap/m14_selfhost_evidence.json")
 BLOCK = re.compile(r"(<!-- xax-status:(levels|targets|bootstrap) -->)(.*?)(<!-- /xax-status:\2 -->)", re.S)
 
 
@@ -59,29 +57,26 @@ def linux_text(linux: dict | None) -> str:
             f"{', '.join(missing) or 'none'} do not; its seed requires Python: {'yes' if linux['seed_requires_python'] else 'no'}; ")
 
 
-def bootstrap_summary(evidence: dict) -> str:
-    """One line from ``bootstrap_status`` (``xax_selfhost``) as recorded in the M14 evidence: no hand-written B level."""
-    status, seed = evidence["bootstrap_status"], evidence["seed_runtime"]
-    full, wrapper = status["full_production_compiler"], status["m14_semantic_image_wrapper"]
-    held = [level for level in ("B2", "B3", "B4", "B5", "B6") if wrapper[level]]
-    missing = [level for level in ("B2", "B3", "B4", "B5", "B6") if not wrapper[level]]
+def bootstrap_summary(status: dict) -> str:
+    """One line from ``bootstrap_status`` (``xax_selfhost``), computed from the executed records: no hand-written B level
+    (W3, ADR-362: until then it was read from the M14 evidence)."""
+    full, seed = status["full_production_compiler"], status["bootstrap_seed"]
     established = [f"B{n}" for n in range(7) if full[f"B{n}"]]
     full_text = f"{', '.join(established)} established" if established else "none of B0-B6 is established"
+    records = " and ".join(f"`{item}`" for item in status["records"])
     return (
-        f"Bootstrap status (generated from `{BOOTSTRAP_EVIDENCE.as_posix()}`, derived by `{status['derivation_source']}`): "
+        f"Bootstrap status (derived by `{status['derivation_source']}` from {records}): "
         f"whole production compiler: {full_text} ({full['blocker']}); "
         f"{linux_text(status.get('linux_x86_64_production_compiler'))}"
-        f"M14 semantic-image META wrapper: {', '.join(held) or 'none'} hold, {', '.join(missing) or 'none'} do not "
-        f"(host-executed {', '.join(wrapper['host_substrate_operations']) or 'nothing'}). "
         "S-step component fixed points are not B milestones (`XAX_SPEC.md` §16.5). "
-        f"Bootstrap seed: {seed['seed_kind']}, {seed['size']:,} bytes, requires Python: {'yes' if seed['requires_python'] else 'no'}."
+        f"Bootstrap seed: {seed['kind']} `{seed['path']}`, {seed['bytes']:,} bytes, requires Python: {'yes' if seed['requires_python'] else 'no'}."
     )
 
 
 GENERATORS = {
     "levels": lambda repo: levels_summary(load(repo / MATRIX.name)),
     "targets": lambda repo: targets_table(load(repo / MATRIX.name)),
-    "bootstrap": lambda repo: bootstrap_summary(json.loads((repo / BOOTSTRAP_EVIDENCE).read_text(encoding="utf-8"))),
+    "bootstrap": lambda repo: bootstrap_summary(__import__("xax_selfhost").bootstrap_status()),
 }
 
 

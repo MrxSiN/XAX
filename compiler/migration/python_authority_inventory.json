@@ -263,8 +263,8 @@
       "note": "Bootstrap reference for the S5 XAX RISC-V backend. Since S7b.2, _object_table and image_record only copy words: the XAX programs resolve references, pick the target and entry, and produce the image record."
     },
     "xax_selfhost.py": {
-      "class": "F",
-      "note": "M14 semantic-image wrapper and bootstrap_status derivation."
+      "class": "D",
+      "note": "bootstrap_status: B levels derived from the native compiler's executed records (the M14 Python bootstrap was retired, ADR-362)."
     },
     "xax_selfhost_blake3.py": {
       "class": "G",
