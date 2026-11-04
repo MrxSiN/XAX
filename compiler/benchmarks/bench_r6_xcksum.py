@@ -21,7 +21,7 @@ What is XAX here, and what is not:
   phones' Linux kernels.  None holds application logic.  The ``test`` build request is derived mechanically from
   the package's declared entry (``bench_r6_xb64._builds``).
 
-Run ``PYTHONPATH=src:.:.. python -m benchmarks.bench_r6_xcksum [--write]`` from ``compiler/`` with the AArch64
+Run ``PYTHONPATH=src:reference:.:.. python -m benchmarks.bench_r6_xcksum [--write]`` from ``compiler/`` with the AArch64
 Android devices on ``adb`` (``XAX_R6_SERIALS``: comma-separated serials; default every attached device whose
 kernel reports ``aarch64``).
 """

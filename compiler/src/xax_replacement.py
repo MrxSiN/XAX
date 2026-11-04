@@ -56,7 +56,7 @@ NOT_APPLICABLE_SATISFIES = frozenset({"dynamic_linking"})
 
 # Files that can document or reproduce evidence but cannot by themselves show that something ran or was measured.
 SUPPORTING_SUFFIXES = frozenset({".md", ".png", ".jpg", ".svg", ".sh"})
-SUPPORTING_PREFIXES = ("compiler/src/", "compiler/integration/", "compiler/benchmarks/bench_", "XAX_")
+SUPPORTING_PREFIXES = ("compiler/src/", "compiler/reference/", "compiler/integration/", "compiler/benchmarks/bench_", "XAX_")
 RECORDED_SUFFIXES = frozenset({".json", ".csv"})
 MIN_SAMPLES = 5
 # R4 (ADR-207): XAX median / fastest non-XAX median, compared without rounding.

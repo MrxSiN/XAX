@@ -11,7 +11,7 @@ which executable produced which, the provenance envelopes, the bootstrap referen
 the bootstrap's own compile of the compiler), a positive and negative corpus run by every generation (C0 to C3, with
 the bootstrap's outcome where one is defined), a run of C1 with an empty environment, timings and peak RSS.  B levels
 are not written here: ``xax_selfhost.bootstrap_status`` derives them from this record.  Runs with
-``XAX_REQUIRE_NATIVE=1``.  Run: ``PYTHONPATH=src:tests:.:.. python benchmarks/bench_full_selfhost.py [--write]``.
+``XAX_REQUIRE_NATIVE=1``.  Run: ``PYTHONPATH=src:reference:tests:.:.. python benchmarks/bench_full_selfhost.py [--write]``.
 """
 
 from __future__ import annotations

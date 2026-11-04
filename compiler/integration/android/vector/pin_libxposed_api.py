@@ -32,7 +32,7 @@ import zipfile
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
-sys.path.insert(0, str(HERE.parents[2] / "src"))
+sys.path[:0] = [str(HERE.parents[2] / "src"), str(HERE.parents[2] / "reference")]
 
 from xax_android_sdk import parse_classfile  # noqa: E402
 

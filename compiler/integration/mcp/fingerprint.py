@@ -2,8 +2,9 @@
 
     python compiler/integration/mcp/fingerprint.py <XAX checkout>
 
-The fingerprint is sha256 over (file name, sha256(content)) of every ``xax_*.py`` module in ``compiler/src`` (plus
-``blake3.py``) and every ``compiler/bootstrap/*.xax`` store, sorted by (suffix, name).  Python modules are hashed with
+The fingerprint is sha256 over (file name, sha256(content)) of every ``xax_*.py`` module in ``compiler/src`` and
+``compiler/reference`` (W4, ADR-363: the Python reference compiler moved there; file names, not directories, are hashed)
+(plus ``blake3.py``) and every ``compiler/bootstrap/*.xax`` store, sorted by (suffix, name).  Python modules are hashed with
 LF line endings so a CRLF checkout does not change the value; ``.xax`` stores are hashed as they are.  This is the
 definition the retired Python adapter used, and it reproduces the values recorded in ``docs/COMPATIBILITY.md``.
 """
@@ -15,9 +16,9 @@ import sys
 
 
 def toolchain_files(root: pathlib.Path) -> list[pathlib.Path]:
-    src = root / "compiler" / "src"
+    sources = [root / "compiler" / "src", root / "compiler" / "reference"]
     bootstrap = root / "compiler" / "bootstrap"
-    files = [p for p in src.iterdir() if p.suffix == ".py" and (p.name.startswith("xax_") or p.name == "blake3.py")]
+    files = [p for src in sources if src.is_dir() for p in src.iterdir() if p.suffix == ".py" and (p.name.startswith("xax_") or p.name == "blake3.py")]
     files += sorted(bootstrap.glob("*.xax"))
     return sorted(files, key=lambda p: (p.suffix, p.name))
 

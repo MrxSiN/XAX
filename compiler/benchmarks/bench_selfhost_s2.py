@@ -3,7 +3,7 @@
 Compares the XAX hash (one native call per object) with the bootstrap driver
 (Python chunking/tree plus the S0 native compression leaf) on object-sized
 inputs and on verifying a large canonical store.  Host timings are
-non-semantic.  Run: ``PYTHONPATH=src python benchmarks/bench_selfhost_s2.py [--write]``.
+non-semantic.  Run: ``PYTHONPATH=src:reference python benchmarks/bench_selfhost_s2.py [--write]``.
 """
 
 from __future__ import annotations

@@ -36,7 +36,7 @@ Each store is canonical XAX semantic state for one compiler component on the pro
 
 | Store | Component | Module |
 |---|---|---|
-| `xax_blake3_compress.xax` | BLAKE3 compression (S0) | `src/xax_native_blake3.py` |
+| `xax_blake3_compress.xax` | BLAKE3 compression (S0) | `reference/xax_native_blake3.py` |
 | `xax_blake3_hash.xax` | Whole BLAKE3-256 hash over lent views (S2) | `src/xax_selfhost_blake3.py` |
 | `xax_riscv64_encoder.xax` | RISC-V instruction encoder and `li` planner (S1) | `src/xax_selfhost_riscv64.py` |
 | `xax_store_decoder.xax` | Store container and object envelopes (S3, S3b) | `src/xax_selfhost_store.py` |

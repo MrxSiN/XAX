@@ -118,7 +118,7 @@ Python 3.11+. No third-party runtime dependencies.
 cd compiler
 pip install -e '.[test]'
 xaxc --help
-PYTHONPATH=src:.:.. python -m pytest -n auto tests
+PYTHONPATH=src:reference:.:.. python -m pytest -n auto tests
 ```
 
 Tests that need a missing host tool (QEMU, Wine, JDK, Android tools, …) are skipped; skipped is not passed. Full host
@@ -133,7 +133,8 @@ Read [`docs/09_AI_PROTOCOL.md`](docs/09_AI_PROTOCOL.md) and [`CLAUDE.md`](CLAUDE
 | Path | Contents |
 |---|---|
 | [`docs/`](docs/) | The normative documentation (index: [`docs/README.md`](docs/README.md)) |
-| [`compiler/src/`](compiler/src/) | The bootstrap compiler (`xaxc`) and the runners and Python references of the frozen XAX self-hosting programs (`xax_selfhost_*`) |
+| [`compiler/src/`](compiler/src/) | The native compiler's Python-side runners and tooling: in-process native images (`xax_native`), the frozen self-hosting programs' runners (`xax_selfhost_*`), the evolution ledger and seed tools, status derivation |
+| [`compiler/reference/`](compiler/reference/) | The Python reference compiler (`xaxc`, `xax_compiler`, backends, workspace): the bootstrap implementation tests compare the native compiler against |
 | [`compiler/bootstrap/`](compiler/bootstrap/) | The committed XAX program stores, the seeds, the evolution ledger and the bootstrap evidence |
 | [`compiler/tests/`](compiler/tests/) | The test suite |
 | [`compiler/benchmarks/`](compiler/benchmarks/) | Benchmarks, evidence runners and their recorded results |

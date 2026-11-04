@@ -22,7 +22,7 @@ BENCHMARKS = COMPILER / "benchmarks"
 
 
 def _environment(src: Path) -> dict:
-    return {**{k: v for k, v in os.environ.items() if k not in ("PYTHONPATH", "XAX_REQUIRE_NATIVE")}, "PYTHONPATH": str(src),
+    return {**{k: v for k, v in os.environ.items() if k not in ("PYTHONPATH", "XAX_REQUIRE_NATIVE")}, "PYTHONPATH": os.pathsep.join((str(src), str(src.parent / "reference"))),
             "PYTHONDONTWRITEBYTECODE": "1"}
 
 

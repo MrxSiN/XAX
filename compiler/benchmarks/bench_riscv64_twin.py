@@ -7,7 +7,7 @@ the metric is the *emulated instruction count* (deterministic, counted per
 executed basic block) and the code bytes.  This is not hardware time: there
 is no RISC-V hardware on the measuring host.
 
-Run: ``PYTHONPATH=src python benchmarks/bench_riscv64_twin.py [--write]``.
+Run: ``PYTHONPATH=src:reference python benchmarks/bench_riscv64_twin.py [--write]``.
 """
 
 from __future__ import annotations

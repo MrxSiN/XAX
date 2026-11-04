@@ -13,7 +13,8 @@ from pathlib import Path
 
 
 def _xax(xax_src: Path):
-    sys.path.insert(0, str(xax_src))
+    # W4 (ADR-363): a checkout's Python reference compiler sits beside src/ in reference/
+    sys.path[:0] = [str(xax_src)] + ([str(xax_src.parent / "reference")] if (xax_src.parent / "reference").is_dir() else [])
     from xax_compiler import (Kind, Operation, _decode_constant, _decode_function_interface, _parse_graph,
                               store_resolver)
     from xax_selfhost_edit import SET_CONSTANT, edit_record

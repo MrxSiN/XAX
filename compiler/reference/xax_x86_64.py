@@ -7,6 +7,7 @@ import json
 import platform
 import struct
 import subprocess
+import os
 import sys
 from dataclasses import dataclass
 from typing import Callable, Sequence
@@ -2613,7 +2614,9 @@ def run_native_isolated(image: NativeImage, arguments: Sequence[object]) -> tupl
         "arguments": [{"hex": bytes(item).hex()} if isinstance(item, (bytes, bytearray)) else item for item in arguments],
     }
     command = [sys.executable, "-m", "xax_x86_64", "--json", json.dumps(payload)]
-    completed = subprocess.run(command, check=False, capture_output=True, text=True)
+    # W4 (ADR-363): the child imports what this process imports (src/ and reference/), however the path was set
+    environment = {**os.environ, "PYTHONPATH": os.pathsep.join(item for item in sys.path if item)}
+    completed = subprocess.run(command, check=False, capture_output=True, text=True, env=environment)
     if completed.returncode:
         raise RuntimeError(completed.stderr.strip() or f"native child exited {completed.returncode}")
     return tuple(bytes.fromhex(item["hex"]) if isinstance(item, dict) else item for item in json.loads(completed.stdout))

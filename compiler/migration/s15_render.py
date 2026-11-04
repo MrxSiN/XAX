@@ -2,7 +2,7 @@
 
 Run as a pytest plugin::
 
-    PYTHONPATH=src:tests:migration python -m pytest -s -p s15_render tests/...
+    PYTHONPATH=src:reference:tests:migration python -m pytest -s -p s15_render tests/...
 
 After each XAX store verification the bank the verifier wrote (``xax_selfhost_render``) is decoded and compared with
 the host's rendering of the same records (``object_diagnostic``, ``object_entity``, ``_xax_verify_store``'s store and

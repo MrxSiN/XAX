@@ -304,7 +304,7 @@ class BuildApiFloorTests(unittest.TestCase):
 class LegacyIsolationTests(unittest.TestCase):
     def test_compiler_sources_name_no_legacy_or_framework_implementation_api(self):
         offenders = []
-        for path in sorted((COMPILER / "src").glob("*.py")):
+        for path in sorted([*(COMPILER / "src").glob("*.py"), *(COMPILER / "reference").glob("*.py")]):
             if path.name == "xax_vector.py":  # the checker names them to reject them
                 continue
             text = path.read_text(encoding="utf-8")

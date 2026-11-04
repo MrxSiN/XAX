@@ -16,7 +16,7 @@ from pathlib import Path
 from _wheel_host import SKIP_REASON, host_builds_wheels
 
 PROJECT = Path(__file__).resolve().parents[1]
-MODULES = sorted(path.stem for path in (PROJECT / "src").glob("*.py"))
+MODULES = sorted(path.stem for directory in ("src", "reference") for path in (PROJECT / directory).glob("*.py"))  # W4 (ADR-363)
 STORES = sorted(path.name for path in (PROJECT / "bootstrap").glob("*.xax"))
 
 PROBE = """

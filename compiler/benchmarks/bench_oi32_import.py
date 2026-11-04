@@ -20,7 +20,7 @@ Measures:
      error in the hand-built declaration.
    - The C importer's hand-built reproductions (``test_xax_c_import.py``) are
      counted the same way.
-Run: ``PYTHONPATH=src:.:.. python -m benchmarks.bench_oi32_import [--write]`` from ``compiler/``.
+Run: ``PYTHONPATH=src:reference:.:.. python -m benchmarks.bench_oi32_import [--write]`` from ``compiler/``.
 """
 
 from __future__ import annotations

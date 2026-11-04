@@ -11,7 +11,7 @@ The Java twin is the baseline written the way a Java programmer would: a
 ``long`` loop with ``x & 1`` and ``x >>> 1``.  Its source lives only in this
 benchmark; it is not part of any XAX artifact.
 
-Run: ``PYTHONPATH=src python benchmarks/bench_jvm_twin.py [--write]``.
+Run: ``PYTHONPATH=src:reference python benchmarks/bench_jvm_twin.py [--write]``.
 """
 
 from __future__ import annotations

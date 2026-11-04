@@ -951,6 +951,12 @@ The XAX JVM program now builds callbacks: JDK streams and comparators that call 
 - The driver's function takes 2,078,110 of the pinned seed's 2,097,152 CFG input words; its graph is 2.02 MB of the graph decoder's 2 MiB.
 - The stores were regenerated and the ledger rebased. The seed was rotated to `c25276ad…` (seed = C1 = C2).
 
+#### W4 the Python compiler in `compiler/reference/` — 2026-11-04 (ADR-363)
+
+- 56 Python compiler modules (inventory classes A, B, C and `xax_bootstrap`) moved to `compiler/reference/`. `compiler/src/` keeps 72 modules: the native runners and tooling.
+- Both directories are on the import path (`src` first). pytest sets it from `pyproject.toml`. `setup.py` packages every module of both directories.
+- Fixed in passing: the wheel's hand-kept module list had drifted and left out 15 modules. A wheel built with isolation now installs all 128 modules and runs `xaxc`.
+
 #### W3 the M14 Python bootstrap retired — 2026-11-04 (ADR-362)
 
 - Deleted: the M14 Python zipapp seed, the three OI-26 candidates, `generate_m14.py`, `m14_selfhost_evidence.json`, and the Python code that ran the M14 wrapper's generations. The OI-25 and OI-26 benchmarks and tests were deleted with them.

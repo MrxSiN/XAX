@@ -4,7 +4,7 @@
 store changes (ADR-249: the BLAKE3 hash's lent input view), this re-runs exactly that program's B1 entries and the
 B3 rows for its store with the same per-entry procedure, leaving every other entry (whose store is unchanged) as
 recorded.  It runs with ``XAX_REQUIRE_NATIVE=1`` and records ``xax_native.AUTHORITY`` under ``refreshed``.
-Run: ``PYTHONPATH=src python benchmarks/refresh_selfhost_store.py xax_selfhost_blake3 [--write]``.  A committed store that
+Run: ``PYTHONPATH=src:reference python benchmarks/refresh_selfhost_store.py xax_selfhost_blake3 [--write]``.  A committed store that
 is no helper program (ADR-281: the general driver's) has no B1 entry; ``--store xax_compiler_driver_general.xax``
 re-runs only its B3 rows and its emulated BLAKE3 row.
 """

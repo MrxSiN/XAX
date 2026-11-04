@@ -14,7 +14,7 @@
 
 Timings are medians of repeated
 runs on this host and are host-dependent.
-Run: PYTHONPATH=src:. python -m benchmarks.bench_oi37_closure
+Run: PYTHONPATH=src:reference:. python -m benchmarks.bench_oi37_closure
 """
 
 from __future__ import annotations

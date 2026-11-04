@@ -2,7 +2,7 @@
 
 Run as a pytest plugin beside ``s8_rejection_trace``::
 
-    PYTHONPATH=src:tests:migration python -m pytest -s -p s8_differential tests
+    PYTHONPATH=src:reference:tests:migration python -m pytest -s -p s8_differential tests
 
 Each ``verify_store`` that raises with the typing program live is verified again with it off (the bootstrap's
 typing, facts, and memory checks) and the two diagnostics are compared field by field.  A difference prints a
