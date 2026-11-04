@@ -1,0 +1,111 @@
+{
+ "format": "xax-compiler-cost-v1",
+ "label": "MEASURED",
+ "date": "2026-11-05",
+ "plan_step": "P0 (optimization plan baseline)",
+ "host": "Linux x86-64, Intel Xeon @ 2.10GHz, 4 vCPU, 16 GB, otherwise idle",
+ "measurement": "GNU time: wall seconds and peak RSS per process",
+ "compiler": {
+  "seed_sha256": "850d476b2bb9ce0f6784a4c2b6deae2a52cb4963d0a10e32289c83006f57b8b1",
+  "seed_bytes": 32699483,
+  "seed_zlib6_bytes": 6010000,
+  "driver_store_bytes": 61677768,
+  "request_store_bytes": 61678088
+ },
+ "samples": {
+  "verify": [
+   {
+    "step": "verify",
+    "exit": 0,
+    "wall_s": 54.09,
+    "peak_rss_kb": 1592256
+   },
+   {
+    "step": "verify",
+    "exit": 0,
+    "wall_s": 54.74,
+    "peak_rss_kb": 1592396
+   },
+   {
+    "step": "verify",
+    "exit": 0,
+    "wall_s": 54.42,
+    "peak_rss_kb": 1592396
+   }
+  ],
+  "edit": [
+   {
+    "step": "edit",
+    "exit": 0,
+    "wall_s": 54.66,
+    "peak_rss_kb": 2227860
+   },
+   {
+    "step": "edit",
+    "exit": 0,
+    "wall_s": 55.87,
+    "peak_rss_kb": 2227860
+   },
+   {
+    "step": "edit",
+    "exit": 0,
+    "wall_s": 54.12,
+    "peak_rss_kb": 2227732
+   }
+  ],
+  "resolve": [
+   {
+    "step": "resolve",
+    "exit": 0,
+    "wall_s": 53.35,
+    "peak_rss_kb": 1714092
+   },
+   {
+    "step": "resolve",
+    "exit": 0,
+    "wall_s": 53.89,
+    "peak_rss_kb": 1714092
+   },
+   {
+    "step": "resolve",
+    "exit": 0,
+    "wall_s": 53.49,
+    "peak_rss_kb": 1714092
+   }
+  ],
+  "build": [
+   {
+    "step": "build",
+    "exit": 0,
+    "wall_s": 271.02,
+    "peak_rss_kb": 2930064
+   },
+   {
+    "step": "build",
+    "exit": 0,
+    "wall_s": 259.93,
+    "peak_rss_kb": 2930204
+   }
+  ]
+ },
+ "build_output_equals_seed": true,
+ "store_shape": {
+  "graph_bytes_share": 0.987,
+  "functions": 977,
+  "blocks": 127760,
+  "block_parameters": 3849780,
+  "edge_arguments": 4490380,
+  "nodes": 3056658,
+  "single_source_parameters": 3201077,
+  "main_function": {
+   "blocks": 2329,
+   "parameters": 217383,
+   "edge_arguments": 289812,
+   "nodes": 41077
+  }
+ },
+ "findings": [
+  "83% of block parameters are single-source (every incoming edge passes one value): the builders' DSL threaded every live variable through every block.",
+  "P1 attempt: replacing graphs through xaxc edit is refused with XAX.DRIVER.CAPACITY / DRIVER-EDIT-CAPACITY (PRE_LIMIT 2^24). The edit engine reserves BODY_LIMIT (4 MiB) + 32 x RC_LIMIT (2 MiB) of preimage room per new object in a fixed 16 MiB region, and replacing any function cascades through every caller up to the 2 MB driver main graph, so a single transaction can rebuild only about 10 MB of objects. Even 73 functions (3.3 MB record) exceed it."
+ ]
+}
