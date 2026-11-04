@@ -17,7 +17,7 @@ compiler adds that is not compiled from the program: for ``direct``, the
 launcher (``main``, ``run``, ``<init>``), the memory initializer (``<clinit>``), and the memory package members
 (``xax$alloc/free/read/write``) as ``method_info`` bytes; for
 ``native-bridge``, the native entry adapter plus the bridge class.  Every
-output must equal :func:`reference_jsonmin`.  Run ``PYTHONPATH=src:.:..
+output must equal :func:`reference_jsonmin`.  Run ``PYTHONPATH=src:reference:.:..
 python -m benchmarks.bench_jvm_strategies [--write]`` from ``compiler/``.
 """
 

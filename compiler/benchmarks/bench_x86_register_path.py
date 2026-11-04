@@ -3,7 +3,7 @@
 Same verified `sum_to` graph compiled for `x86_64-windows-load-image-v5` (frame path)
 and `x86_64-windows-pe-v1` (register path, U1.2b).  Intra-XAX comparison only; no
 external baseline toolchain is available on the measuring host.
-Run: PYTHONPATH=src:.:tests python -m benchmarks.bench_x86_register_path
+Run: PYTHONPATH=src:reference:.:tests python -m benchmarks.bench_x86_register_path
 """
 from __future__ import annotations
 

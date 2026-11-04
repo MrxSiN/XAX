@@ -2,7 +2,7 @@
 
 Run as a pytest plugin::
 
-    PYTHONPATH=src:tests:migration python -m pytest -s -p s15_graph tests/...
+    PYTHONPATH=src:reference:tests:migration python -m pytest -s -p s15_graph tests/...
 
 For every graph the host parses whose uses are valid and whose typing run accepted, the typing program's outcome
 (``xax_selfhost_render_graph``) must be the host's: accepted when the parse returns, the same diagnostic when it raises;

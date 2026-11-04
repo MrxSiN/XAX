@@ -4,7 +4,7 @@
 ``SELFBUILD_TOOLS`` (no ``python``, no ``python3``, no ``PYTHONPATH``).  Recorded, raw: the seed's and request store's
 digests, whether the seed has an ELF interpreter, the tools, whether a Python resolves on that ``PATH``, the script's
 exit status, and the digests of the two compilers it builds.  ``xax_selfhost.bootstrap_status`` decides from this
-record whether the Linux x86-64 seed requires Python.  Run: ``PYTHONPATH=src python benchmarks/bench_python_free_seed.py
+record whether the Linux x86-64 seed requires Python.  Run: ``PYTHONPATH=src:reference python benchmarks/bench_python_free_seed.py
 [--write]``.
 """
 

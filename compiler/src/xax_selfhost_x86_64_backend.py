@@ -729,10 +729,11 @@ def host_image(reader, function, cache_name: str | None = None) -> tuple[bytes, 
     path = key = None
     directory = xax_native.cache_dir() if cache_name is not None else None
     if directory is not None:
-        sources = Path(__file__).resolve().parent
+        import importlib
+
         digest = hashlib.sha256(xax_native.CACHE_MAGIC + reader.data + function.cid + target.cid)
-        for name in _SOURCES:
-            digest.update((sources / name).read_bytes())
+        for name in _SOURCES:  # W4 (ADR-363): the lowering's Python sources are in reference/ (in a checkout)
+            digest.update(Path(importlib.import_module(name[:-3]).__file__).read_bytes())
         digest.update(STORE_PATH.read_bytes() if STORE_PATH.exists() else b"")
         key = digest.digest()
         path = directory / f"{cache_name}-{key.hex()}.bin"

@@ -934,12 +934,19 @@ Step: [S1](#step-s1) · [S4](#step-s4) · [S5](#step-s5) · [S6](#step-s6) · [S
   - The external inputs follow the package identity in the input: digest, length, packed bytes. The driver appends what it kept at `INPUT_BYTES_AT`.
 - `bench_full_selfhost`'s scope has no `outside_scope`. `bootstrap_status` then takes the whole production compiler's levels from the Linux x86-64 compiler's derived ones. Keep its corpus covering every target and artifact `build` makes.
 
+#### W4 reference layout — 2026-11-04 (ADR-363)
+
+- Python compiler code (`xax_compiler`, backends, workspace, references) is in `compiler/reference/`. Native runners and tooling stay in `compiler/src/`. New compiler logic goes in `reference/`; `test_python_authority_inventory` checks the split by class.
+- Run from `compiler` with `PYTHONPATH=src:reference:.`, or use plain `pytest`. A subprocess that sets `PYTHONPATH` must name both directories.
+- The wheel tests skip on hosts whose setuptools cannot build without isolation. Check packaging with `pip wheel . --no-deps`, then install the wheel into a fresh venv.
+- What remains for Python independence: in-process runners still lower and verify with `reference/`. The M11 bootstrap and the Python `xaxc` CLI are reference tooling.
+
 #### W3 M14 bootstrap retired — 2026-11-04 (ADR-362)
 
 - Regenerate the status blocks with `python -m xax_status_docs --write` from `compiler/src`. They call `xax_selfhost.bootstrap_status()`, which reads `full_selfhost_evidence.json` and `python_free_seed_evidence.json`; re-run those benches to change a level.
 - Do not add a Python seed. `test_audit_remediation.SeedTests` fails on any `.pyz` in `bootstrap/`.
 - OI-27's experiment no longer has a primary-seed arm; its committed evidence is the pre-W3 record. Regenerate it with `python -m benchmarks.bench_oi27_bootstrap_diversity --write` (needs Go) only for a new dated record.
-- Next, W4: move the independent checks and Python references into `reference/`.
+- Next, W4: move the independent checks and Python references into `reference/`. *(Done: the W4 section above, ADR-363.)*
 
 #### W2 frozen stores and the ledger — 2026-11-04 (ADR-361)
 

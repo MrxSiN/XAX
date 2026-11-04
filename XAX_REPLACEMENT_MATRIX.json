@@ -23,7 +23,7 @@
         ],
         "artifact_format": [
           "EXECUTED",
-          "compiler/src/xax_pe.py",
+          "compiler/reference/xax_pe.py",
           "compiler/benchmarks/windows_pe_hosted_evidence.json"
         ],
         "platform_apis": [
@@ -263,7 +263,7 @@
         ],
         "abi": [
           "PROTOTYPE",
-          "compiler/src/xax_wasm.py"
+          "compiler/reference/xax_wasm.py"
         ],
         "artifact_format": [
           "EXECUTED",
@@ -304,7 +304,7 @@
         ],
         "platform_apis": [
           "PROTOTYPE",
-          "compiler/src/xax_platform.py"
+          "compiler/reference/xax_platform.py"
         ],
         "ffi": [
           "PROTOTYPE",
@@ -373,7 +373,7 @@
         ],
         "artifact_format": [
           "EXECUTED",
-          "compiler/src/xax_linux.py",
+          "compiler/reference/xax_linux.py",
           "compiler/tests/test_xax_linux.py",
           "compiler/benchmarks/u1_linux_filestat_evidence.json"
         ],
@@ -481,7 +481,7 @@
         ],
         "artifact_format": [
           "EXECUTED",
-          "compiler/src/xax_linux_aarch64.py",
+          "compiler/reference/xax_linux_aarch64.py",
           "compiler/tests/test_xax_linux_aarch64.py",
           "compiler/benchmarks/linux_aarch64_filestat_evidence.json"
         ],
@@ -501,7 +501,7 @@
         ],
         "debugging": [
           "STRUCTURAL",
-          "compiler/src/xax_linux_aarch64.py"
+          "compiler/reference/xax_linux_aarch64.py"
         ],
         "optimization": [
           "MEASURED",
@@ -595,7 +595,7 @@
         ],
         "artifact_format": [
           "EXECUTED",
-          "compiler/src/xax_riscv64.py",
+          "compiler/reference/xax_riscv64.py",
           "compiler/tests/test_xax_riscv64.py"
         ],
         "debugging": [
@@ -604,7 +604,7 @@
         ],
         "optimization": [
           "PROTOTYPE",
-          "compiler/src/xax_riscv64.py",
+          "compiler/reference/xax_riscv64.py",
           "compiler/benchmarks/riscv64_twin_evidence.json"
         ],
         "real_execution": [
@@ -647,7 +647,7 @@
         ],
         "artifact_format": [
           "EXECUTED",
-          "compiler/src/xax_jvm.py",
+          "compiler/reference/xax_jvm.py",
           "compiler/tests/test_xax_jvm.py"
         ],
         "platform_apis": [
@@ -674,7 +674,7 @@
         ],
         "optimization": [
           "MEASURED",
-          "compiler/src/xax_jvm.py",
+          "compiler/reference/xax_jvm.py",
           "compiler/tests/test_xax_jvm.py",
           "compiler/benchmarks/jvm_jsonmin_evidence.json",
           "compiler/benchmarks/jvm_twin_evidence.json"
@@ -765,12 +765,12 @@
         ],
         "artifact_format": [
           "EXECUTED",
-          "compiler/src/xax_web.py",
+          "compiler/reference/xax_web.py",
           "compiler/benchmarks/browser_fib_evidence.json"
         ],
         "platform_apis": [
           "EXECUTED",
-          "compiler/src/xax_web.py",
+          "compiler/reference/xax_web.py",
           "compiler/benchmarks/browser_fib_evidence.json"
         ],
         "ffi": [
@@ -813,7 +813,7 @@
         ],
         "artifact_format": [
           "EXECUTED",
-          "compiler/src/xax_spirv.py",
+          "compiler/reference/xax_spirv.py",
           "compiler/tests/test_xax_spirv.py",
           "compiler/benchmarks/spirv_compute_evidence.json"
         ],

@@ -633,7 +633,7 @@ requests cause more repairs, clients SHOULD retain the ordinary movement batch
 rather than requiring redundant format repair. No parser may guess a different
 mutation kind, target or replacement value to make a response pass.
 
-`compiler/src/xax_local_protocol.py` supplies `LocalMutationSession` for ordinary
+`compiler/reference/xax_local_protocol.py` supplies `LocalMutationSession` for ordinary
 workspaces. A session MUST be constructed from the same queried generation as
 the supplied model view. It retains that snapshot and expands omitted old
 operation, constant, operand, and containment preconditions from it. Submission

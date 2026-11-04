@@ -2,7 +2,7 @@
 
 XAX semantics -> verifier -> direct wasm32 module (imports wasi_snapshot_preview1,
 exports _start/memory) -> Node.js WASI host.  No wasm toolchain, JS glue, or libc.
-Run: PYTHONPATH=src:.:tests python -m benchmarks.bench_wasi_command
+Run: PYTHONPATH=src:reference:.:tests python -m benchmarks.bench_wasi_command
 """
 from __future__ import annotations
 

@@ -16,7 +16,7 @@ What is XAX here, and what is not:
   the deployed executable with coreutils ``base64``, an external oracle), and the Linux kernel.  None holds
   application logic.  The ``test`` build request is derived mechanically from the package's declared entry.
 
-Run ``PYTHONPATH=src:.:.. python -m benchmarks.bench_r6_xb64 [--write]`` from ``compiler/`` on Linux x86-64.
+Run ``PYTHONPATH=src:reference:.:.. python -m benchmarks.bench_r6_xb64 [--write]`` from ``compiler/`` on Linux x86-64.
 """
 
 from __future__ import annotations

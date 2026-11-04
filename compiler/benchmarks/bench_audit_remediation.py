@@ -5,7 +5,7 @@ wheel is built twice and inspected, the matrix is re-validated, the status block
 ``--skip-tests``) the test suite is run and its outcomes counted, with skips split into unavailable environments and
 other skips.  Run from ``compiler``:
 
-    PYTHONPATH=src:.:.. python -m benchmarks.bench_audit_remediation [--skip-tests] [--write]
+    PYTHONPATH=src:reference:.:.. python -m benchmarks.bench_audit_remediation [--skip-tests] [--write]
 """
 
 from __future__ import annotations

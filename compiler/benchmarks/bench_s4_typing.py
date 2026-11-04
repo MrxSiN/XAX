@@ -5,7 +5,7 @@ function proves, and ``verify_store`` wall time with the XAX path and with
 ``XAX_TYPING_PYTHON=1`` (bootstrap only), each in a fresh process so no parse
 cache is shared.  Medians on this host; host-dependent.
 
-Run: PYTHONPATH=src:. python -m benchmarks.bench_s4_typing
+Run: PYTHONPATH=src:reference:. python -m benchmarks.bench_s4_typing
 """
 
 from __future__ import annotations
@@ -68,7 +68,7 @@ print(json.dumps({{"verify_ms": round(statistics.median(samples) * 1e3, 2), "cov
 
 
 def _probe(load: str, python_only: bool, repeats: int = 7) -> dict:
-    env = dict(os.environ, PYTHONPATH=os.pathsep.join(("src", ".", "..")))
+    env = dict(os.environ, PYTHONPATH=os.pathsep.join(("src", "reference", ".", "..")))
     if python_only:
         env["XAX_TYPING_PYTHON"] = "1"
     completed = subprocess.run([sys.executable, "-c", PROBE.format(load=load, repeats=repeats)], capture_output=True, text=True, check=True, env=env, cwd=Path(__file__).resolve().parents[1])

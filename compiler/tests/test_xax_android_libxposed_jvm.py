@@ -8,7 +8,7 @@ import zipfile
 from io import BytesIO
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
+sys.path[:0] = [str(Path(__file__).resolve().parents[1] / "src"), str(Path(__file__).resolve().parents[1] / "reference")]
 from xax_android_libxposed_jvm import (  # noqa: E402
     PREFIX, PREFIX_V2, LibxposedJvmModule, branding_entries, decode_libxposed_jvm_module, libxposed_jvm_module_semantics)
 from xax_compiler import Cursor  # noqa: E402

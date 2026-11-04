@@ -752,7 +752,7 @@ class BuildTests(unittest.TestCase):
         self.assertEqual(wheels[0], wheels[1])
         with zipfile.ZipFile(io.BytesIO(wheels[0])) as archive:
             for module in ("xax_artifact", "xax_aarch64", "xax_build", "xax_compiler", "xax_platform", "xax_strings", "xax_wasm", "xax_wasm_legacy", "xax_workspace", "xax_x86_64"):
-                self.assertEqual(archive.read(f"{module}.py"), (project / "src" / f"{module}.py").read_bytes())
+                self.assertEqual(archive.read(f"{module}.py"), (project / "reference" / f"{module}.py").read_bytes())
 
 
 class StoreTests(unittest.TestCase):

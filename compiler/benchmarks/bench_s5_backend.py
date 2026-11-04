@@ -4,7 +4,7 @@ For each case: image bytes, byte identity, and median ``compile_riscv64`` wall
 time (store verification and marshalling included) with ``backend="xax"`` and
 ``backend="python"``.  Medians on this host; host-dependent.
 
-Run: PYTHONPATH=src:tests python benchmarks/bench_s5_backend.py
+Run: PYTHONPATH=src:reference:tests python benchmarks/bench_s5_backend.py
 """
 
 from __future__ import annotations
@@ -16,7 +16,7 @@ import sys
 import time
 from pathlib import Path
 
-sys.path[:0] = [str(Path(__file__).resolve().parents[1] / "src"), str(Path(__file__).resolve().parents[1] / "tests")]
+sys.path[:0] = [str(Path(__file__).resolve().parents[1] / "src"), str(Path(__file__).resolve().parents[1] / "reference"), str(Path(__file__).resolve().parents[1] / "tests")]
 
 OUTPUT = Path(__file__).resolve().parent / "s5_backend_evidence.json"
 

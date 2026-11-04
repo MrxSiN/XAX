@@ -70,7 +70,7 @@ cd compiler
 adb devices                                   # one device, or export ANDROID_SERIAL
 integration/android/vector/validate_vector_runtime.sh --vector-zip Vector-v2.2-<build>-Release.zip
 # or keep the signed inputs:
-PYTHONPATH=src:.:.. python -m benchmarks.bench_android_vector_profiles --out /tmp/xax-vector
+PYTHONPATH=src:reference:.:.. python -m benchmarks.bench_android_vector_profiles --out /tmp/xax-vector
 integration/android/vector/validate_vector_runtime.sh --apks /tmp/xax-vector
 ```
 

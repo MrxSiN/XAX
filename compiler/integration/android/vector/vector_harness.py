@@ -45,7 +45,7 @@ import time
 
 HERE = Path(__file__).resolve().parent
 COMPILER = HERE.parents[2]
-for path in (COMPILER / "src", COMPILER, HERE):
+for path in (COMPILER / "src", COMPILER / "reference", COMPILER, HERE):
     if str(path) not in sys.path:
         sys.path.insert(0, str(path))
 

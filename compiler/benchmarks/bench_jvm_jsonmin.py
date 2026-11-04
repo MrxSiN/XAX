@@ -14,7 +14,7 @@ arm), in interleaved rounds whose arm order rotates by one (as
 ``linux_harness.py``), after ``WARMUP`` untimed rounds.  Every output must
 equal :func:`reference_jsonmin`.  Peak RSS is the maximum ``wait4`` ``ru_maxrss``
 over the timed runs.  Ratios follow XAX_BENCHMARKS.md section 15.0 with the JVM
-baselines of section 15.0a.  Run ``PYTHONPATH=src:.:.. python -m
+baselines of section 15.0a.  Run ``PYTHONPATH=src:reference:.:.. python -m
 benchmarks.bench_jvm_jsonmin [--write]`` from ``compiler/``.
 """
 

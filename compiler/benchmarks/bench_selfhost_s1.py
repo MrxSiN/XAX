@@ -3,7 +3,7 @@
 Records the canonical store identity, the encoder image size on each target,
 agreement counts, the self-compilation fixed point, and the host cost of the
 native leaf against the bootstrap Python encoders (per call and per RISC-V
-compilation).  Run: ``PYTHONPATH=src python benchmarks/bench_selfhost_s1.py [--write]``.
+compilation).  Run: ``PYTHONPATH=src:reference python benchmarks/bench_selfhost_s1.py [--write]``.
 """
 
 from __future__ import annotations
