@@ -34,14 +34,6 @@ HELPERS = (
 )
 
 
-class X86BackendStoreTests(unittest.TestCase):
-    def test_committed_store_is_the_built_program(self):
-        from xax_selfhost_x86_64_backend import STORE_PATH, build_backend_program
-
-        reader, _function = build_backend_program()
-        self.assertEqual(STORE_PATH.read_bytes(), reader.data)
-
-
 @unittest.skipUnless(LINUX_X86_64, "requires a Linux x86-64 host")
 class X86BackendTests(unittest.TestCase):
     target = x86_64_views_target()

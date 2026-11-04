@@ -1,19 +1,21 @@
-"""S15d.2-S15d.3 (ADR-305, ADR-306): the compiler evolves by its own transactions; the evolution ledger.
+"""W2 (ADR-361): the frozen compiler evolves by its own transactions; the evolution ledger on the committed stores.
 
-The general driver's committed store is its builder's baseline with the ledger's transactions applied in order
-(``test_store_regeneration`` checks that with the Python reference).  Here:
+``test_store_regeneration`` checks the ledger's chains and replays its transactions with the Python reference.  Here,
+on Linux x86-64, with the pinned seed compiler (no Python runs inside it):
 
-* every ledger record is well formed and is what its query derives from the baseline (``rebase`` is a no-op);
-* on Linux x86-64 the production compiler's own ``edit`` applies the ledger to the baseline driver store and to the
-  baseline request store and makes exactly the committed stores, which its ``verify`` accepts; the request store is
-  the one derived from the committed driver store;
-* the first transaction raised the external input bound from 64 to 100: the committed compiler resolves 100 inputs to
-  the bootstrap's snapshot and refuses 101.
+* every ledger transaction is replayed with ``xaxc edit`` from the store it started at and makes the store it recorded,
+  which ``xaxc verify`` accepts;
+* ``python -m xax_selfhost_evolution apply`` adds a transaction to the committed general driver store directly: the
+  store ``xaxc edit`` makes equals the Python reference's, verifies, and the appended ledger line chains from the
+  frozen baseline to it (on a copy of ``bootstrap/``);
+* the raised external-input bound the frozen driver holds (ADR-306): it resolves 100 inputs to the bootstrap's
+  snapshot and refuses 101.
 """
 
 from __future__ import annotations
 
 import platform
+import shutil
 import sys
 import tempfile
 import unittest
@@ -27,74 +29,79 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 LINUX_X86_64 = sys.platform.startswith("linux") and platform.machine().lower() in ("x86_64", "amd64")
 
 
-def _baseline():
-    from xax_selfhost_driver import build_general_driver_program
+def bound_record(reader, old: int, new: int) -> bytes:
+    """An edit record that changes the driver's external-input bound (the constant compared, unsigned, below the
+    count of extra arguments) from ``old`` to ``new``."""
+    from xax_selfhost_edit import SET_CONSTANT, edit_record
 
-    building = X._TYPING_BUILDING
-    X._TYPING_BUILDING = True
-    try:
-        return build_general_driver_program()[0]
-    finally:
-        X._TYPING_BUILDING = building
-
-
-class LedgerTests(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        cls.baseline = _baseline()
-
-    def test_records_are_their_queries(self):
-        from xax_selfhost_edit import apply_reference, edit_record, parse_record
-        from xax_selfhost_evolution import QUERIES, entries
-
-        reader = self.baseline
-        self.assertTrue(entries())
-        for record, query in entries():
-            data = record.read_bytes()
-            parse_record(data)
-            self.assertEqual(data, edit_record(QUERIES[query](reader)), record.name)
-            reader = apply_reference(reader, data)
-
-    def test_the_request_store_is_derived_from_the_driver_store(self):
-        from xax_selfhost_compiler import compiler_request
-        from xax_selfhost_seed import REQUEST_PATH
-
-        self.assertEqual(compiler_request()[0].data, REQUEST_PATH.read_bytes())
+    module = next(item for item in reader.objects() if item.kind == X.Kind.MODULE)
+    main = next(reader.get(cid) for cid in module.references if reader.get(cid).kind == X.Kind.FUNCTION)
+    graph = X._parse_graph(reader.get(main.references[X.Cursor(main.body, "").uleb()]), reader.get)
+    found = []
+    for block in graph.blocks:
+        for node in block.nodes:
+            if node.operation == X.Operation.INT_COMPARE and node.attributes == (int(X.IntCompare.ULT),) and node.operands[0].tag == 1:
+                source = node.operands[0]
+                constant = graph.blocks[source.block].nodes[source.index]
+                if constant.operation == X.Operation.CONSTANT and int.from_bytes(constant.entity.body[2:], "little") == old:
+                    found.append((SET_CONSTANT, main.cid, source.block, source.index, old, new))
+    assert len(found) == 1, found
+    return edit_record(found)
 
 
-@unittest.skipUnless(LINUX_X86_64, "UNAVAILABLE: the driver image runs on Linux x86-64 only")
+@unittest.skipUnless(LINUX_X86_64, "UNAVAILABLE: the compiler runs on Linux x86-64 only")
 class EvolutionTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        from xax_selfhost_driver import NativeGeneralDriver
-
-        cls.driver = NativeGeneralDriver()
-        cls.driver.timeout = 1800
         cls.directory = Path(tempfile.mkdtemp())
 
-    def test_the_compiler_makes_the_committed_stores(self):
-        from xax_selfhost_compiler import compiler_request
-        from xax_selfhost_evolution import GENERAL_STORE_PATH, entries
-        from xax_selfhost_seed import REQUEST_PATH
+    def test_the_compiler_replays_the_ledger(self):
+        import xax_selfhost_evolution as EV
 
-        baseline = _baseline()
-        stores = {"driver": baseline.data, "request": compiler_request(baseline)[0].data}
-        committed = {"driver": GENERAL_STORE_PATH.read_bytes(), "request": REQUEST_PATH.read_bytes()}
-        for name, data in stores.items():
-            path = self.directory / f"{name}.xax"
-            path.write_bytes(data)
-            for record, _query in entries():
-                output = self.directory / f"{name}-next.xax"
-                self.assertEqual(self.driver._process("edit", path, record, output), 0, (name, record.name))
-                output.replace(path)
-            with self.subTest(name):
-                self.assertEqual(path.read_bytes(), committed[name])
-                self.assertEqual(self.driver.verify(path, self.directory / "verified.bin"), 0)
+        for record, store, before, after in EV.ledger().transactions:
+            data = EV.before_store(store, before)
+            if data is None:
+                continue  # test_store_regeneration reports the unavailable store
+            with self.subTest(record=record.name, store=store):
+                path, output = self.directory / "before.xax", self.directory / "after.xax"
+                path.write_bytes(data)
+                self.assertEqual(EV.run_compiler(EV.SEED_COMPILER, "edit", path, record, output), 0)
+                self.assertEqual(EV.blob_id(output.read_bytes()), after)
+                self.assertEqual(EV.run_compiler(EV.SEED_COMPILER, "verify", output, self.directory / "verified.bin"), 0)
+
+    def test_apply_adds_a_transaction_to_the_committed_driver_store(self):
+        import xax_selfhost_evolution as EV
+
+        bootstrap = self.directory / "bootstrap"
+        (bootstrap / "evolution").mkdir(parents=True)
+        shutil.copyfile(EV.GENERAL_STORE_PATH, bootstrap / EV.DRIVER_STORE)
+        baseline = EV.ledger().heads()[EV.DRIVER_STORE]
+        (bootstrap / "evolution" / "LEDGER").write_text(EV.HEADER + f"baseline {EV.DRIVER_STORE} {baseline}\n", encoding="ascii")
+        reader = X.StoreReader(EV.GENERAL_STORE_PATH.read_bytes())
+        record = self.directory / "0001-inputs-99.edit"
+        record.write_bytes(bound_record(reader, EV.INPUTS_LIMIT, EV.INPUTS_LIMIT - 1))
+        saved = EV.BOOTSTRAP, EV.EVOLUTION_DIRECTORY, EV.LEDGER_PATH
+        EV.BOOTSTRAP, EV.EVOLUTION_DIRECTORY, EV.LEDGER_PATH = bootstrap, bootstrap / "evolution", bootstrap / "evolution" / "LEDGER"
+        try:
+            lines = EV.apply(record, [EV.DRIVER_STORE])
+            ledger = EV.ledger()
+            heads = EV.check()
+        finally:
+            EV.BOOTSTRAP, EV.EVOLUTION_DIRECTORY, EV.LEDGER_PATH = saved
+        made = (bootstrap / EV.DRIVER_STORE).read_bytes()
+        self.assertEqual(made, EV.replay_reference(record, reader.data))
+        self.assertEqual(lines, [f"{record.name} {EV.DRIVER_STORE} {baseline} {EV.blob_id(made)}"])
+        self.assertEqual(len(ledger.transactions), 1)
+        self.assertEqual(heads[EV.DRIVER_STORE], EV.blob_id(made))
+        self.assertEqual((bootstrap / "evolution" / record.name).read_bytes(), record.read_bytes())
 
     def test_the_raised_input_bound(self):
         from test_xax_selfhost_s15c import _Fixture, resolve_expected
+        from xax_selfhost_driver import NativeGeneralDriver
         from xax_selfhost_evolution import INPUTS_LIMIT
 
+        driver = NativeGeneralDriver()
+        driver.timeout = 1800
         fixture = _Fixture()
         request = self.directory / "request.xax"
         request.write_bytes(fixture.request_store().data)
@@ -105,9 +112,9 @@ class EvolutionTests(unittest.TestCase):
             paths[-1].write_bytes(value)
         output = self.directory / "snapshot.xax"
         output.unlink(missing_ok=True)
-        self.assertEqual(self.driver.resolve(request, output, *paths[:INPUTS_LIMIT]), 0)
+        self.assertEqual(driver.resolve(request, output, *paths[:INPUTS_LIMIT]), 0)
         self.assertEqual(("store", output.read_bytes()), resolve_expected(fixture.request_store(), values[:INPUTS_LIMIT]))
-        self.assertEqual(self.driver.resolve(request, output, *paths), 3)
+        self.assertEqual(driver.resolve(request, output, *paths), 3)
 
 
 if __name__ == "__main__":

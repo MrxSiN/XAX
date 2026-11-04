@@ -176,12 +176,5 @@ class SelfhostRiscv64BackendTests(unittest.TestCase):
         self.assertEqual(compile_riscv64_bound_target(reader, function.cid, target, backend="python"),
                          compile_riscv64_bound_target(reader, function.cid, target, backend="xax"))
 
-    def test_committed_store_is_the_built_program(self):
-        from xax_selfhost_riscv64_backend import STORE_PATH, build_backend_program
-
-        reader, _function = build_backend_program()
-        self.assertEqual(STORE_PATH.read_bytes(), reader.data)
-
-
 if __name__ == "__main__":
     unittest.main()

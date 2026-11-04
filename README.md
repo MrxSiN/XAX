@@ -133,7 +133,7 @@ Read [`docs/09_AI_PROTOCOL.md`](docs/09_AI_PROTOCOL.md) and [`CLAUDE.md`](CLAUDE
 | Path | Contents |
 |---|---|
 | [`docs/`](docs/) | The normative documentation (index: [`docs/README.md`](docs/README.md)) |
-| [`compiler/src/`](compiler/src/) | The bootstrap compiler (`xaxc`) and the builders of the XAX self-hosting programs (`xax_selfhost_*`) |
+| [`compiler/src/`](compiler/src/) | The bootstrap compiler (`xaxc`) and the runners and Python references of the frozen XAX self-hosting programs (`xax_selfhost_*`) |
 | [`compiler/bootstrap/`](compiler/bootstrap/) | The committed XAX program stores, the seeds, the evolution ledger and the bootstrap evidence |
 | [`compiler/tests/`](compiler/tests/) | The test suite |
 | [`compiler/benchmarks/`](compiler/benchmarks/) | Benchmarks, evidence runners and their recorded results |

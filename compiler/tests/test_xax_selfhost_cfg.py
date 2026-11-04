@@ -8,7 +8,7 @@ import sys
 import unittest
 
 import xax_compiler as compiler
-from xax_selfhost_cfg import DEFER, REJECT, STORE_PATH, NativeCfg, build_cfg_program
+from xax_selfhost_cfg import DEFER, REJECT, NativeCfg
 
 NATIVE = sys.platform.startswith("linux") and platform.machine().lower() in ("x86_64", "amd64")
 
@@ -51,17 +51,6 @@ def _bootstrap(entry, successors):
     order.reverse()
     order.extend(index for index in range(n) if index not in visited)
     return order, dominators
-
-
-class CfgStoreTests(unittest.TestCase):
-    def test_committed_store_regenerates(self):
-        building = compiler._CFG_BUILDING
-        compiler._CFG_BUILDING = True
-        try:
-            reader, _function = build_cfg_program()
-        finally:
-            compiler._CFG_BUILDING = building
-        self.assertEqual(reader.data, STORE_PATH.read_bytes())
 
 
 @unittest.skipUnless(NATIVE, "the native leaf runs on Linux x86-64")

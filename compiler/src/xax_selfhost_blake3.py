@@ -27,27 +27,11 @@ extent costs resident memory only for the bytes a hash copies in.
 from __future__ import annotations
 
 import ctypes
-import mmap
-import os
-import platform
-import sys
 import threading
-from pathlib import Path
 
 from xax_compiler import (
-    IntCompare,
-    Kind,
-    Operation,
-    Permission,
-    SemanticObject,
-    StoreReader,
-    bits_type,
-    heap_view_type,
-    memory_effect_type,
-    pointer_type,
-    x86_64_linux_exec_target,
-)
-from xax_graph_builder import BlockBuilder, GraphBuilder, program_store
+    IntCompare, Kind, Operation, Permission, SemanticObject, StoreReader, bits_type, heap_view_type, memory_effect_type, pointer_type)
+from xax_graph_builder import BlockBuilder, GraphBuilder
 
 from xax_native import bootstrap_dir  # noqa: E402
 
@@ -61,8 +45,6 @@ CHUNK_START, CHUNK_END, PARENT, ROOT = 1, 2, 4, 8
 
 B1, B8, B32, B64 = bits_type(1), bits_type(8), bits_type(32), bits_type(64)
 MEM = memory_effect_type()
-# Word views: checked accesses are element-sized (the caller lends 4-aligned buffers).
-INPUT_POINTER = pointer_type(B32, Permission.READ, 4, space=2)
 SCRATCH_POINTER = pointer_type(B32, Permission.READ_WRITE, 4, space=2)
 INPUT_VIEW, SCRATCH_VIEW = heap_view_type(INPUT_EXTENT), heap_view_type(SCRATCH_EXTENT)
 
@@ -131,131 +113,6 @@ class _Ops:
         for index, word in enumerate(words):
             memory = self.store32(pointer, self.add(offset, self.c64(4 * index)), word, memory)
         return memory
-
-
-def hash_function(input_pointer=INPUT_POINTER, input_view=INPUT_VIEW, based: bool = False) -> tuple[SemanticObject, tuple[SemanticObject, ...]]:
-    """The hash function over an input view of ``input_pointer``/``input_view`` and the objects it needs.
-
-    The committed hash (``build_hash_program``) reads a word view from offset 0.  ``based`` adds a ``base: bits<64>``
-    parameter before ``length`` and hashes ``input[base : base + length]``, so another XAX program (the S9 store
-    writer, ADR-262) can hash a span of its own byte view (``bits<8>`` elements, read four bytes at a time by
-    byte-view widening) with the same graph."""
-    from xax_native_blake3 import load_blake3_compress_program
-
-    compress_program = load_blake3_compress_program()
-    compress = compress_program.function
-    resolve = compress_program.reader.get
-    ctx = {"compress": compress, "tuple": next(resolve(cid) for cid in compress.references if resolve(cid).kind == Kind.TYPE and resolve(cid).body[:1] == b"\x08")}
-    graph = GraphBuilder()
-    entry = graph.block(input_pointer, input_view, MEM, SCRATCH_POINTER, SCRATCH_VIEW, MEM, *((B64,) if based else ()), B64)
-    inp, in_view, mi, scr, scr_view, ms, *base, length = entry.params
-    # Both views travel as (token, memory) pairs through every block, so their
-    # ownership and effect facts follow the control flow (ADR-099).
-    views = (input_view, MEM, SCRATCH_VIEW, MEM)
-    cv8 = (B32,) * 8
-    chunk = graph.block(B64, B64, *views)                    # ci, stack length
-    block = graph.block(B64, *cv8, *views)                   # bi, cv
-    compress_block = graph.block(*(B32,) * 16, *views)
-    chunk_done = graph.block(*cv8, *views)
-    after_last = graph.block(*cv8, *views)
-    push = graph.block(*cv8, B64, B64, *views)               # cv, total, stack length
-    pop = graph.block(*cv8, B64, B64, *views)
-    push_store = graph.block(*cv8, B64, *views)
-    finalize = graph.block(*cv8, B64, *views)                # cv, entries left to merge
-    digest = graph.block(*cv8, *views)
-
-    # entry: chunks = max(1, ceil(length / 1024))
-    ops = _Ops(entry, ctx)
-    count = ops.op(Operation.UDIV, ops.add(length, ops.c64(1023)), ops.c64(1024))
-    chunks = ops.add(count, ops.flag64(IntCompare.EQ, count, ops.c64(0)))
-    entry.br(chunk, ops.c64(0), ops.c64(0), in_view, mi, scr_view, ms)
-
-    # chunk(ci, sl): this chunk's start, length, and block count.
-    ci, sl, *state = chunk.params
-    ops = _Ops(chunk, ctx)
-    chunk_start = ops.mul(ci, ops.c64(1024))
-    chunk_len = ops.min(ops.sub(length, chunk_start), ops.c64(1024))
-    raw_blocks = ops.op(Operation.UDIV, ops.add(chunk_len, ops.c64(63)), ops.c64(64))
-    blocks = ops.add(raw_blocks, ops.flag64(IntCompare.EQ, raw_blocks, ops.c64(0)))
-    last_chunk = ops.cmp(IntCompare.EQ, ops.add(ci, ops.c64(1)), chunks)
-    chunk.br(block, ops.c64(0), *[ops.c32(word) for word in IV], *state)
-
-    # block(bi, cv): load the block's 16 words.  Word k keeps only the bytes
-    # before the block's length; bytes past it (inside the lent view) are masked
-    # to zero, which is BLAKE3's padding.
-    bi, *rest = block.params
-    cv, (iv, mi, sv, ms) = rest[:8], rest[8:]
-    ops = _Ops(block, ctx)
-    block_offset = ops.add(chunk_start, ops.mul(bi, ops.c64(64)))
-    if based:
-        block_offset = ops.add(base[0], block_offset)
-    block_len = ops.min(ops.sub(chunk_len, ops.mul(bi, ops.c64(64))), ops.c64(64))
-    words = []
-    for index in range(16):
-        word, mi = ops.load32(inp, ops.add(block_offset, ops.c64(4 * index)), mi)
-        mask = ops.c64(0)
-        for byte in range(4):
-            present = ops.flag64(IntCompare.UGT, block_len, ops.c64(4 * index + byte))
-            mask = ops.add(mask, ops.mul(present, ops.c64(0xFF << (8 * byte))))
-        words.append(ops.b.op1(Operation.BIT_AND, (word, ops.to32(mask)), B32))
-    block.br(compress_block, *words, iv, mi, sv, ms)
-
-    # compress: flags from the block's position; a single chunk's last block is the root.
-    *words, iv, mi, sv, ms = compress_block.params
-    ops = _Ops(compress_block, ctx)
-    last_block = ops.cmp(IntCompare.EQ, ops.add(bi, ops.c64(1)), blocks)
-    first = ops.flag64(IntCompare.EQ, bi, ops.c64(0))
-    last = ops.b.op1(Operation.INT_ZERO_EXTEND, (last_block,), B64)
-    single = ops.flag64(IntCompare.EQ, chunks, ops.c64(1))
-    root = ops.mul(ops.mul(last, single), ops.c64(ROOT))
-    flags = ops.add(ops.add(first, ops.mul(last, ops.c64(CHUNK_END))), root)
-    out = ops.compress(cv, words, ci, ops.to32(block_len), ops.to32(flags))
-    compress_block.cbr(last_block, chunk_done, (*out, iv, mi, sv, ms), block, (ops.add(bi, ops.c64(1)), *out, iv, mi, sv, ms))
-
-    # A finished chunk: the last one merges down the stack (or is the root);
-    # others push their chaining value, merging completed subtrees first.
-    *out, iv, mi, sv, ms = chunk_done.params
-    ops = _Ops(chunk_done, ctx)
-    chunk_done.cbr(last_chunk, after_last, (*out, iv, mi, sv, ms), push, (*out, ops.add(ci, ops.c64(1)), sl, iv, mi, sv, ms))
-    *out, iv, mi, sv, ms = after_last.params
-    ops = _Ops(after_last, ctx)
-    after_last.cbr(ops.cmp(IntCompare.EQ, sl, ops.c64(0)), digest, (*out, iv, mi, sv, ms), finalize, (*out, sl, iv, mi, sv, ms))
-
-    # push(cv, total, stack length): while total is even, merge with the top entry.
-    *cv_push, total, stack, iv, mi, sv, ms = push.params
-    ops = _Ops(push, ctx)
-    even = ops.cmp(IntCompare.EQ, ops.op(Operation.BIT_AND, total, ops.c64(1)), ops.c64(0))
-    push.cbr(even, pop, (*cv_push, total, stack, iv, mi, sv, ms), push_store, (*cv_push, stack, iv, mi, sv, ms))
-    *cv_pop, total, stack, iv, mi, sv, ms = pop.params
-    ops = _Ops(pop, ctx)
-    top = ops.sub(stack, ops.c64(1))
-    left, ms = ops.load_cv(scr, ops.mul(top, ops.c64(32)), ms)
-    merged = ops.parent(left, cv_pop, ops.c32(0))
-    pop.br(push, *merged, ops.op(Operation.UDIV, total, ops.c64(2)), top, iv, mi, sv, ms)
-    *cv_store, stack, iv, mi, sv, ms = push_store.params
-    ops = _Ops(push_store, ctx)
-    ms = ops.store_words(scr, ops.mul(stack, ops.c64(32)), cv_store, ms)
-    push_store.br(chunk, ops.add(ci, ops.c64(1)), ops.add(stack, ops.c64(1)), iv, mi, sv, ms)
-
-    # finalize(cv, n): merge with entry n - 1; the bottom merge is the root.
-    *cv_final, remaining, iv, mi, sv, ms = finalize.params
-    ops = _Ops(finalize, ctx)
-    below = ops.sub(remaining, ops.c64(1))
-    left, ms = ops.load_cv(scr, ops.mul(below, ops.c64(32)), ms)
-    is_root = ops.cmp(IntCompare.EQ, below, ops.c64(0))
-    root_flag = ops.to32(ops.mul(ops.b.op1(Operation.INT_ZERO_EXTEND, (is_root,), B64), ops.c64(ROOT)))
-    merged = ops.parent(left, cv_final, root_flag)
-    finalize.cbr(is_root, digest, (*merged, iv, mi, sv, ms), finalize, (*merged, below, iv, mi, sv, ms))
-
-    *result, iv, mi, sv, ms = digest.params
-    ops = _Ops(digest, ctx)
-    ms = ops.store_words(scr, ops.c64(DIGEST_OFFSET), result, ms)
-    digest.ret(inp, iv, mi, scr, sv, ms)
-
-    triples = (input_pointer, input_view, MEM, SCRATCH_POINTER, SCRATCH_VIEW, MEM)
-    function = graph.function((*triples, *((B64,) if based else ()), B64), triples)
-    objects = (*graph.objects.values(), *compress_program.reader.objects())
-    return function, tuple(item for item in objects if item.kind not in (Kind.MODULE, Kind.PROGRAM_ROOT, Kind.TARGET))
 
 
 SCRATCH_POINTER_BYTE = pointer_type(B8, Permission.READ_WRITE, 4, space=2)
@@ -397,11 +254,6 @@ def hash_span_function(input_pointer=None, input_view=INPUT_VIEW,
     return function, tuple(item for item in objects if item.kind not in (Kind.MODULE, Kind.PROGRAM_ROOT, Kind.TARGET))
 
 
-def build_hash_program() -> tuple[StoreReader, SemanticObject]:
-    function, objects = hash_function()
-    return program_store(function, x86_64_linux_exec_target(), objects), function
-
-
 def load_hash_program() -> tuple[StoreReader, SemanticObject]:
     from xax_native import verify_component_store
 
@@ -410,12 +262,6 @@ def load_hash_program() -> tuple[StoreReader, SemanticObject]:
     module = next(item for item in reader.objects() if item.kind == Kind.MODULE)
     function = next(reader.get(cid) for cid in module.references if reader.get(cid).kind == Kind.FUNCTION)
     return reader, function
-
-
-def write_hash_store() -> bytes:
-    reader, _function = build_hash_program()
-    STORE_PATH.write_bytes(reader.data)
-    return reader.data
 
 
 def riscv64_hash_image(backend: str = "auto"):
@@ -448,7 +294,7 @@ class NativeHasher:
 
         reader, function = load_hash_program()
         if INPUT_VIEW.cid not in function.references:  # a store built for another extent would trap past its view
-            raise RuntimeError("committed hash store does not lend the INPUT_EXTENT view; regenerate it with write_hash_store")
+            raise RuntimeError("committed hash store does not lend the INPUT_EXTENT view; the frozen store is wrong (ADR-361)")
         machine_code, entry_offset = host_image(reader, function, "blake3-hash")
         thunk = _SYSV_TO_WIN64_THUNK + bytes(-len(_SYSV_TO_WIN64_THUNK) % 16)
         code = thunk + machine_code

@@ -16,22 +16,13 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from xax_compiler import IntCompare, Operation, RESOURCE_EFFECT_OPERATIONS, TerminatorKind, x86_64_linux_exec_target
-from xax_graph_builder import program_store
+from xax_compiler import IntCompare, Operation, RESOURCE_EFFECT_OPERATIONS, TerminatorKind
 from xax_selfhost_facts import E, HEADER, NONE, _function
 from xax_selfhost_views_backend import (
-    _FN, A_AREAS, A_BASE, A_OUT, A_POINTER, S_AGG, S_BASE, S_BLOCK_AT, S_BLOCK_LABELS,
-    S_COUNT, S_FALSE_LABELS, S_FN, S_FRAME, S_JUMPS, S_OFFSETS, S_POW, S_RANGES, S_REG, S_SAVED, S_SLOT, S_TRAP, S_TRAP_USED, S_WIDTH, WORDS_AT,
-    NativeProgram, _aggregate, _borrowed, _call, _compile_function, _diagnostic, _find, _copy_edge, _erased, _field, _frontend, _interface,
-    SYSCALL_HEADER, _node_info, _ok, _payload_uleb, _program, _result_fields, _syscall, _target, _term_end, _translate, _value,
-    collect_program_output, G_PROCESS, GLOBALS, _g,
-)
+    _FN, A_AREAS, A_BASE, A_OUT, A_POINTER, S_AGG, S_BASE, S_BLOCK_AT, S_BLOCK_LABELS, S_COUNT, S_FALSE_LABELS, S_FN, S_FRAME, S_OFFSETS, S_POW, S_RANGES, S_REG, S_SAVED, S_SLOT, S_TRAP, S_TRAP_USED, S_WIDTH, WORDS_AT, NativeProgram, _call, SYSCALL_HEADER, _ok, _target, _value, collect_program_output, G_PROCESS, GLOBALS, _g)
 
 from xax_native import bootstrap_dir  # noqa: E402
-from xax_x86_64_views import (  # noqa: E402
-    ARG_COPY_LOOP, EXEC_IDENTITY, ISA, NULL_ON_ERROR, STARTUP_ARG_COPY, STARTUP_ARGC, STARTUP_EXPECTED, SYSCALL_ARGUMENT_REGISTERS, SYSCALL_EXPECTED,
-    X86_LOWERED_OPERATIONS,
-)
+from xax_x86_64_views import ARG_COPY_LOOP, NULL_ON_ERROR, STARTUP_ARGC, SYSCALL_ARGUMENT_REGISTERS
 
 STORE_PATH = bootstrap_dir() / "xax_x86_64_backend.xax"
 RAX, RCX, RDX, RSP = 0, 1, 2, 4
@@ -39,7 +30,6 @@ T0, T1 = 10, 11
 ARGUMENTS = (RCX, RDX, 8, 9)
 SHADOW = 32
 ALLOCATABLE = (3, 5, 6, 7, 12, 13, 14, 15)
-PAD = 0xCC
 ALU = {Operation.ADD_WRAP: 0x01, Operation.SUB_WRAP: 0x29, Operation.BIT_XOR: 0x31, Operation.BIT_OR: 0x09, Operation.BIT_AND: 0x21}
 SETCC = {IntCompare.EQ: 0x94, IntCompare.NE: 0x95, IntCompare.ULT: 0x92, IntCompare.ULE: 0x96, IntCompare.UGT: 0x97,
          IntCompare.UGE: 0x93, IntCompare.SLT: 0x9C, IntCompare.SLE: 0x9E, IntCompare.SGT: 0x9F, IntCompare.SGE: 0x9D}
@@ -69,9 +59,7 @@ X86_CODE_AT = HEADER - 1 - X86_WORDS_LIMIT
 X86_STREAM_AT = X86_CODE_AT - X86_STREAM_LIMIT
 X86_ARENA_END = X86_STREAM_AT
 assert X86_RANGES_AT + X86_RANGES_LIMIT <= GLOBALS and X86_ARENA_END > (160 << 20)  # replaces the shared layout
-CODE_BYTES = X86_WORDS_LIMIT * 8
 RANGE_WORDS = 2
-JUMP_WORDS = 2
 
 
 def _byte_weight(e: E, position):
@@ -85,23 +73,6 @@ def _emit(e: E, byte):
     first = e.eq(e.and_(count, 7), 0)
     e.st(word, e.add(e.mul(e.sel(first, 0, 1), e.ld(word)), e.mul(byte, _byte_weight(e, count))))  # a new word starts clear
     e.set_hd(S_COUNT, e.add(count, 1))
-
-
-def _patch_byte(e: E, position, byte):
-    word = e.add(X86_CODE_AT, e.udiv(position, 8))
-    weight = _byte_weight(e, position)
-    old = e.and_(e.udiv(e.ld(word), weight), 0xFF)
-    e.st(word, e.add(e.sub(e.ld(word), e.mul(old, weight)), e.mul(byte, weight)))
-
-
-def _emit_n(tables):
-    """The ``n`` low bytes of ``value``, least significant first."""
-    def build(e: E):
-        p = e.p
-        e.var("ev", p["value"])
-        e.for_("k", 0, p["n"], lambda: (_emit(e, e.and_(p["ev"], 0xFF)), e.set("ev", e.udiv(p["ev"], 256))))
-        e.give(1)
-    return _function(("value", "n"), build, tables)
 
 
 def _bytes(e: E, value, n):
@@ -120,81 +91,12 @@ def _modrm(e: E, mod: int, reg, rm):
     return e.add(e.add(mod << 6, e.mul(e.and_(reg, 7), 8)), e.and_(rm, 7))
 
 
-def _reg_reg(tables):
-    """``opcode`` (``oplen`` bytes) with a register ModRM: ``reg`` field, ``rm`` operand."""
-    def build(e: E):
-        p = e.p
-        _rex(e, p["w"], p["reg"], 0, p["rm"])
-        _bytes(e, p["opcode"], p["oplen"])
-        _emit(e, _modrm(e, 3, p["reg"], p["rm"]))
-        e.give(1)
-    return _function(("reg", "rm", "opcode", "oplen", "w"), build, tables)
-
-
 def _rr(e: E, opcode: int, oplen: int, reg, rm, w=1):
     _call(e, "rr", reg, rm, opcode, oplen, w)
 
 
-def _stack(tables):
-    """``opcode`` on ``[rsp + offset]`` (disp8 below 128, else disp32)."""
-    def build(e: E):
-        p = e.p
-        _rex(e, p["w"], p["reg"], 0, RSP)
-        _bytes(e, p["opcode"], p["oplen"])
-
-        def near():
-            _emit(e, _modrm(e, 1, p["reg"], RSP))
-            _emit(e, 0x24)
-            _emit(e, p["offset"])
-
-        def far():
-            _emit(e, _modrm(e, 2, p["reg"], RSP))
-            _emit(e, 0x24)
-            _bytes(e, p["offset"], 4)
-
-        e.if_(e.lt(p["offset"], 128), near, far)
-        e.give(1)
-    return _function(("reg", "offset", "opcode", "oplen", "w"), build, tables)
-
-
 def _st(e: E, opcode: int, reg, offset, w=1, oplen=1):
     _call(e, "stack", reg, offset, opcode, oplen, w)
-
-
-def _indexed(tables):
-    """``opcode`` on ``[base + index]`` after an optional 0x66 ``prefix``; rbp/r13 bases take a zero disp8."""
-    def build(e: E):
-        p = e.p
-        e.if_(e.ne(p["prefix"], 0), lambda: _emit(e, p["prefix"]))
-        _rex(e, p["w"], p["reg"], p["index"], p["base"], p["force"])
-        _bytes(e, p["opcode"], p["oplen"])
-        sib = e.add(e.mul(e.and_(p["index"], 7), 8), e.and_(p["base"], 7))
-        e.var("sib", sib)
-
-        def rbp():
-            _emit(e, _modrm(e, 1, p["reg"], 4))
-            _emit(e, p["sib"])
-            _emit(e, 0)
-
-        def plain():
-            _emit(e, _modrm(e, 0, p["reg"], 4))
-            _emit(e, p["sib"])
-
-        e.if_(e.eq(e.and_(p["base"], 7), 5), rbp, plain)
-        e.give(1)
-    return _function(("reg", "base", "index", "prefix", "opcode", "oplen", "w", "force"), build, tables)
-
-
-def _shift_fn(tables):
-    """``shl``/``shr``/``sar``/``ror`` (ModRM extension 4/5/7/1) by an immediate."""
-    def build(e: E):
-        p = e.p
-        _rex(e, p["w"], 0, 0, p["reg"])
-        _emit(e, 0xC1)
-        _emit(e, _modrm(e, 3, p["ext"], p["reg"]))
-        _emit(e, p["amount"])
-        e.give(1)
-    return _function(("reg", "amount", "ext", "w"), build, tables)
 
 
 def _shift(e: E, extension: int, reg, amount, w=1):
@@ -276,34 +178,8 @@ def _sign_extend(e: E, register, width):
     e.if_(e.lt(width, 64), narrow)
 
 
-def _jump_fn(tables):
-    """``jmp``/``jcc``/``call`` rel32 to the label whose position ``label_slot`` will hold (patched at the end)."""
-    def build(e: E):
-        p = e.p
-        _bytes(e, p["opcode"], p["oplen"])
-        count = e.hd(S_JUMPS)
-        # ADR-313: two words per jump (its position and its label's slot), so the general driver's 175k jumps fit.
-        _ok(e, e.lt(count, X86_JUMPS_LIMIT // JUMP_WORDS))
-        at = e.add(X86_JUMPS_AT, e.mul(count, JUMP_WORDS))
-        e.st(at, e.hd(S_COUNT))
-        e.st(e.add(at, 1), p["slot"])
-        e.set_hd(S_JUMPS, e.add(count, 1))
-        _bytes(e, 0, 4)
-        e.give(1)
-    return _function(("slot", "opcode", "oplen"), build, tables)
-
-
 def _jump(e: E, kind: tuple[int, int], label_slot):
     _call(e, "jump", label_slot, kind[0], kind[1])
-
-
-def _frame_access(tables):
-    """``mov [rsp + offset], register`` or ``mov register, [rsp + offset]`` (the shared code's ``frame``)."""
-    def build(e: E):
-        p = e.p
-        e.if_(e.ne(p["store"], 0), lambda: _st(e, 0x89, p["register"], p["offset"]), lambda: _st(e, 0x8B, p["register"], p["offset"]))
-        e.give(1)
-    return _function(("store", "register", "offset"), build, tables)
 
 
 def _read(tables):
@@ -315,16 +191,6 @@ def _read(tables):
         _st(e, 0x8B, scratch, _value(e, S_SLOT, value))
         e.give(scratch)
     return _function(("value", "scratch"), build, tables)
-
-
-def _write(tables):
-    def build(e: E):
-        p = e.p
-        value, register = p["value"], p["register"]
-        allocated = _value(e, S_REG, value)
-        e.if_(e.ne(allocated, 0), lambda: _move(e, allocated, register), lambda: _st(e, 0x89, register, _value(e, S_SLOT, value)))
-        e.give(1)
-    return _function(("value", "register"), build, tables)
 
 
 def _read_into(e: E, value, register):
@@ -370,103 +236,6 @@ def _epilogue(tables):
 
 
 # -- the x86-64 hooks of the shared generator ------------------------------------------------------
-
-class X86_64:
-    """x86-64 views profile: Win64 registers, ``[shadow][outgoing][saved]...``, byte-sized code.
-
-    On this ISA the frame record's first field (``A_OUT``) holds where the saved registers start."""
-
-    ARCHITECTURE = 1
-    DIAGNOSTICS = ISA  # S7b (ADR-179): this program decides target legality and writes the rejection diagnostics
-    SYSCALLS = True  # S10a (ADR-264): Linux syscalls (``x86_64-linux-views-v2``)
-    EXTRA_RULES = (("SYSCALL", "FOREIGN_ABI"), ("STARTUP", "FOREIGN_ABI"), ("PROCESS-ENTRY", "ABI"))
-    PROCESS = EXEC_IDENTITY  # S11 (ADR-267): the exec profile's identity
-    STARTUP_ARGC, STARTUP_ARG_COPY, STARTUP_EXPECTED = STARTUP_ARGC, STARTUP_ARG_COPY, STARTUP_EXPECTED
-    SYSCALL_EXPECTED = SYSCALL_EXPECTED
-    LOWERED = X86_LOWERED_OPERATIONS
-    LOWERED_NAME = "x86-64 views subset"
-    ALLOCATABLE = ALLOCATABLE
-    ARGUMENT_REGISTERS = len(ARGUMENTS)
-    T0 = T0
-    CODE_LIMIT = CODE_BYTES
-    ARENA_END = X86_ARENA_END
-    STREAM_AT, STREAM_END = X86_STREAM_AT, X86_STREAM_AT + X86_STREAM_LIMIT
-
-    @staticmethod
-    def declare(e: E, p) -> None:
-        e.var("calls", 0)
-
-    @staticmethod
-    def on_call(e: E, p) -> None:
-        e.set("calls", 1)
-
-    @staticmethod
-    def saved_end(e: E, p):
-        e.set("out", e.add(e.mul(SHADOW, p["calls"]), p["out"]))  # from here on: where the saved registers start
-        return e.add(p["out"], e.mul(8, p["nsaved"]))
-
-    @staticmethod
-    def frame_size(e: E, cursor):
-        """rsp is 8 mod 16 on entry, or 0 for the process entry (no return address)."""
-        return e.sel(_process(e), e.and_(e.add(cursor, 15), (1 << 64) - 16), e.sub(e.and_(e.add(cursor, 8 + 15), (1 << 64) - 16), 8))
-
-    @staticmethod
-    def prologue(e: E, p, index, saved, entry_base, entry) -> None:
-        e.while_(lambda: e.ne(e.and_(e.hd(S_COUNT), 15), 0), lambda: _emit(e, PAD))
-        e.st(e.add(e.hd(S_OFFSETS), index), e.hd(S_COUNT))
-        _adjust(e, 5, p["frame"])
-        e.for_("q", 0, p["nsaved"], lambda: _st(e, 0x89, e.ld(e.add(saved, p["q"])), e.add(p["out"], e.mul(8, p["q"]))))
-        e.if_(e.ne(p["sret"], 0), lambda: _st(e, 0x89, RCX, p["pointer_slot"]))
-        e.var("arg", p["sret"])
-
-        def parameter():
-            value = e.add(entry_base, p["q"])
-            e.var("pv", value)
-
-            def stacked():
-                _st(e, 0x8B, T0, e.add(e.add(p["frame"], 8 + SHADOW), e.mul(8, e.sub(p["arg"], len(ARGUMENTS)))))  # the caller's stack argument
-                _call(e, "write", p["pv"], T0)
-
-            e.if_(e.lt(p["arg"], len(ARGUMENTS)), lambda: _call(e, "write", p["pv"], _argument_register(e, p["arg"])), stacked)
-            e.set("arg", e.add(p["arg"], 1))
-
-        e.for_("q", 0, e.ld(e.add(p["params"], entry)), lambda: e.if_(e.ne(e.ld(e.add(p["width"], e.add(entry_base, p["q"]))), 0), parameter))
-
-    @staticmethod
-    def trap(e: E) -> None:
-        e.st(e.hd(S_TRAP), e.hd(S_COUNT))
-        _bytes(e, 0x0B0F, 2)  # ud2
-
-    @staticmethod
-    def jump(e: E, label_slot) -> None:
-        _jump(e, JMP, label_slot)
-
-    @staticmethod
-    def skip_target_machine(e: E) -> None:
-        """Stack alignment, shadow space, argument registers, result register, scratch registers."""
-        p = e.p
-        _payload_uleb(e, "ta")
-        _payload_uleb(e, "ta")
-        e.var("tlist", _payload_uleb(e, "ta"))
-        e.for_("q", 0, p["tlist"], lambda: _payload_uleb(e, "ta"))
-        _payload_uleb(e, "ta")
-        e.set("tlist", _payload_uleb(e, "ta"))
-        e.for_("q", 0, p["tlist"], lambda: _payload_uleb(e, "ta"))
-
-    @staticmethod
-    def patch(e: E) -> None:
-        p = e.p
-
-        def patch():
-            at = e.add(X86_JUMPS_AT, e.mul(p["j"], JUMP_WORDS))
-            position, label = e.ld(at), e.ld(e.ld(e.add(at, 1)))
-            _ok(e, e.ne(label, NONE))
-            e.var("delta", e.and_(e.sub(label, e.add(position, 4)), 0xFFFFFFFF))
-            e.var("rel_at", position)
-            for k in range(4):
-                _patch_byte(e, e.add(p["rel_at"], k), _field(e, p["delta"], 8 * k, 8))
-
-        e.for_("j", 0, e.hd(S_JUMPS), patch)
 
 
 # -- one block -------------------------------------------------------------------------------------
@@ -865,52 +634,9 @@ def _block(tables):
 
 # -- the program -----------------------------------------------------------------------------------
 
-def build_backend_program():
-    """``(reader, function)``: the backend program's store and its entry."""
-    tables = None
-    objects: list = []
-    _FN.clear()
 
-    def add(name, made):
-        function, items = made
-        objects.extend(items)
-        _FN[name] = function
-        return function
-
-    add("find", _find(tables))
-    add("diagnostic", _diagnostic(tables, X86_64))
-    add("emit", _emit_n(tables))
-    add("rr", _reg_reg(tables))
-    add("stack", _stack(tables))
-    add("indexed", _indexed(tables))
-    add("shift", _shift_fn(tables))
-    add("constant", _constant(tables))
-    add("mask", _mask(tables))
-    add("jump", _jump_fn(tables))
-    add("frame", _frame_access(tables))
-    add("read", _read(tables))
-    add("write", _write(tables))
-    add("epilogue", _epilogue(tables))
-    add("edge", _copy_edge(tables, X86_64))
-    add("block", _block(tables))
-    add("node_info", _node_info(tables))
-    add("term_end", _term_end(tables))
-    add("interface", _interface(tables))
-    add("erased", _erased(tables))
-    add("borrowed", _borrowed(tables))
-    add("aggregate", _aggregate(tables))
-    add("result_fields", _result_fields(tables, X86_64))
-    add("syscall", _syscall(tables))
-    add("translate", _translate(tables, X86_64))
-    add("frontend", _frontend(tables, X86_64))
-    compile_function = add("function", _compile_function(tables, X86_64))
-    program = add("program", _program(tables, compile_function, X86_64))
-    return program_store(program, x86_64_linux_exec_target(), tuple(objects)), program
-
-
-_PROGRAM = NativeProgram(STORE_PATH, build_backend_program, "x86-64-views-backend")
+_PROGRAM = NativeProgram(STORE_PATH, "x86-64-views-backend")
 load_backend_program = _PROGRAM.load
-write_backend_store = _PROGRAM.write
 
 
 def collect_output(read):

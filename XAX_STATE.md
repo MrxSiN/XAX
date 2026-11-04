@@ -951,6 +951,13 @@ The XAX JVM program now builds callbacks: JDK streams and comparators that call 
 - The driver's function takes 2,078,110 of the pinned seed's 2,097,152 CFG input words; its graph is 2.02 MB of the graph decoder's 2 MiB.
 - The stores were regenerated and the ledger rebased. The seed was rotated to `c25276ad…` (seed = C1 = C2).
 
+#### W2 frozen self-hosting stores — 2026-11-04 (ADR-361)
+
+- Every committed self-hosting store is frozen: 25 stores (the general and views drivers and the 23 components they embed) plus the ledger-tracked request store. The file is the source; no Python builder makes it.
+- The evolution ledger (`bootstrap/evolution/LEDGER`, v2) starts at the W2 baselines and records each `xaxc edit` application as `<record> <store> <before blob> <after blob>`. `python -m xax_selfhost_evolution apply` runs `edit` and `verify` and appends the lines. No transaction has been recorded since the freeze; `rebase` and the queries are gone.
+- About 50,300 of 84,080 lines in `xax_selfhost_*.py` were deleted: every builder and everything only builders reached. Kept: the runners, the Python references, and the edit, semantic and Ed25519 helper generators (pinned to the frozen driver by a test).
+- The seed's `edit` on the committed driver store matched the Python reference and its `verify` accepted the result. B levels and the committed evidence are unchanged.
+
 #### S16a the native AI workspace — 2026-10-30 (ADR-360)
 
 - `xaxc edit <store> <input> <output>` is the workspace: an empty file or `F<n>` writes a view (root CID, then the functions, or one function with `N`/`P`/`T` handles); text starting with `R` is a batch of edits in those handles; a rejection record is written as text; an `XAXEDIT1` record is applied as before. No Python runs.

@@ -41,17 +41,11 @@ raises the exact diagnostic.
 
 from __future__ import annotations
 
-from pathlib import Path
 
-from xax_compiler import IntCompare, Operation, RESOURCE_EFFECT_OPERATIONS, RISCV64_ARCHITECTURE, TerminatorKind, x86_64_linux_exec_target
-from xax_graph_builder import program_store
+from xax_compiler import IntCompare, Operation, RESOURCE_EFFECT_OPERATIONS, RISCV64_ARCHITECTURE, TerminatorKind
 from xax_selfhost_facts import E, NONE, _function
 from xax_selfhost_views_backend import (
-    _FN, A_AREAS, A_BASE, A_OUT, A_POINTER, G_FAR, JUMPS_AT, JUMPS_LIMIT, RANGES_AT, RANGES_LIMIT, S_AGG, S_BASE, S_BLOCK_AT,
-    S_BLOCK_LABELS, S_COUNT, S_FALSE_LABELS, S_FN, S_FRAME, S_JUMPS, S_LEVELS, S_OFFSETS, S_POW, S_RANGES, S_REG, S_SAVED, S_SLOT, S_TRAP,
-    S_TRAP_USED, S_WIDTH, WORDS_AT, WORDS_LIMIT, _aggregate, _borrowed, _call, _compile_function, _copy_edge, _erased,
-    NativeProgram, _diagnostic, _field, _find, _frontend, _g, _interface, _node_info, _ok, _ors, _program, _result_fields, _sar, _shl, _term_end, _translate, _value, _xor, collect_program_output,
-)
+    _FN, A_AREAS, A_BASE, A_OUT, A_POINTER, G_FAR, JUMPS_AT, JUMPS_LIMIT, RANGES_AT, RANGES_LIMIT, S_AGG, S_BASE, S_BLOCK_AT, S_BLOCK_LABELS, S_COUNT, S_FALSE_LABELS, S_FN, S_FRAME, S_JUMPS, S_OFFSETS, S_POW, S_RANGES, S_REG, S_SAVED, S_SLOT, S_TRAP, S_TRAP_USED, S_WIDTH, WORDS_AT, WORDS_LIMIT, _call, NativeProgram, _field, _g, _ok, _ors, _sar, _shl, _value, _xor, collect_program_output)
 from xax_selfhost_views_backend import _target as _views_target
 from xax_views_lowering import LOWERED_OPERATIONS
 
@@ -64,7 +58,6 @@ ALLOCATABLE = (9, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27)
 ARGUMENT_REGISTERS = 8
 SIMPLE = {Operation.ADD_WRAP: (0, 0), Operation.SUB_WRAP: (0x20, 0), Operation.MUL_WRAP: (1, 0),
           Operation.BIT_XOR: (0, 4), Operation.BIT_OR: (0, 6), Operation.BIT_AND: (0, 7)}
-
 
 
 # -- encoders (constant shifts become multiplies and unsigned divides) --------------------------
@@ -103,80 +96,6 @@ def _emit(e: E, word):
 
 # -- helper functions -----------------------------------------------------------------------------
 
-def _li(tables):
-    """``li rd, value`` (bootstrap ``_li_words``): lui/addiw or addi, then slli/addi levels."""
-    def build(e: E):
-        p = e.p
-        rd = p["rd"]
-        levels = e.hd(S_LEVELS)
-        e.var("v", p["value"])
-        e.var("depth", 0)
-        e.var("done", 0)
-
-        def level():
-            v = p["v"]
-            small = e.lt(e.add(v, 2048), 4096)
-            word32 = e.lt(e.add(v, 1 << 31), 1 << 32)
-
-            def split():
-                low = e.sub(_xor(e, e.and_(v, 0xFFF), 0x800), 0x800)
-                # (v - low) >> 12 without the 64-bit overflow at v near 2^63: low is v's sign-extended low 12 bits.
-                e.var("high", e.add(_sar(e, v, 12), _field(e, v, 11, 1)))
-                e.var("shift", 12)
-                e.while_(lambda: e.eq(e.and_(p["high"], 1), 0), lambda: (e.set("high", _sar(e, p["high"], 1)), e.set("shift", e.add(p["shift"], 1))))
-                e.st(e.add(levels, e.mul(p["depth"], 2)), p["shift"])
-                e.st(e.add(levels, e.add(e.mul(p["depth"], 2), 1)), low)
-                e.set("depth", e.add(p["depth"], 1))
-                _ok(e, e.lt(p["depth"], 16))
-                e.set("v", p["high"])
-
-            e.if_(e.either(small, word32), lambda: e.set("done", 1), split)
-
-        e.while_(lambda: e.eq(p["done"], 0), level)
-        v = p["v"]
-
-        def base_small():
-            _emit(e, enc_i(e, v, ZERO, 0, rd))
-
-        def base_32():
-            high = e.and_(e.udiv(e.add(v, 0x800), 1 << 12), 0xFFFFF)
-            upper = _shl(e, high, 12)
-            low = e.sub(v, e.sub(_xor(e, upper, 0x80000000), 0x80000000))
-            _emit(e, _ors(e, upper, _shl(e, rd, 7), e.v(0x37)))
-            e.if_(e.ne(low, 0), lambda: _emit(e, enc_i(e, low, rd, 0, rd, 0x1B)))
-
-        e.if_(e.lt(e.add(v, 2048), 4096), base_small, base_32)
-
-        def unwind():
-            e.set("depth", e.sub(p["depth"], 1))
-            shift = e.ld(e.add(levels, e.mul(p["depth"], 2)))
-            low = e.ld(e.add(levels, e.add(e.mul(p["depth"], 2), 1)))
-            _emit(e, enc_i(e, shift, rd, 1, rd))
-            e.if_(e.ne(low, 0), lambda: _emit(e, enc_i(e, low, rd, 0, rd)))
-
-        e.while_(lambda: e.ne(p["depth"], 0), unwind)
-        e.give(1)
-    return _function(("rd", "value"), build, tables)
-
-
-def _frame_access(tables):
-    """Load or store ``register`` at frame ``offset`` (through t2 past the 12-bit range)."""
-    def build(e: E):
-        p = e.p
-        store, register, offset = p["store"], p["register"], p["offset"]
-
-        def near():
-            e.if_(e.ne(store, 0), lambda: _emit(e, enc_s(e, offset, register, SP)), lambda: _emit(e, enc_i(e, offset, SP, 3, register, 0x03)))
-
-        def far():
-            _call(e, "li", T2, offset)
-            _emit(e, enc_r(e, 0, SP, T2, 0, T2))
-            e.if_(e.ne(store, 0), lambda: _emit(e, enc_s(e, 0, register, T2)), lambda: _emit(e, enc_i(e, 0, T2, 3, register, 0x03)))
-
-        e.if_(e.lt(offset, 2048), near, far)
-        e.give(1)
-    return _function(("store", "register", "offset"), build, tables)
-
 
 def _read(tables):
     """The register holding a value: its allocation, or ``scratch`` after a reload."""
@@ -192,16 +111,6 @@ def _read(tables):
 
 def _move(e: E, destination, source):
     e.if_(e.ne(destination, source), lambda: _emit(e, enc_i(e, 0, source, 0, destination)))
-
-
-def _write(tables):
-    def build(e: E):
-        p = e.p
-        value, register = p["value"], p["register"]
-        allocated = _value(e, S_REG, value)
-        e.if_(e.ne(allocated, 0), lambda: _move(e, allocated, register), lambda: _call(e, "frame", 1, register, _value(e, S_SLOT, value)))
-        e.give(1)
-    return _function(("value", "register"), build, tables)
 
 
 def _read_into(e: E, value, register):
@@ -561,10 +470,6 @@ def _block(tables):
     return _function(("b", "vbase"), build, tables)
 
 
-
-
-
-
 # -- the RISC-V hooks of the shared generator (``xax_selfhost_views_backend``) ------------------------
 
 class RISCV64:
@@ -670,44 +575,9 @@ class RISCV64:
 
 # -- the program -----------------------------------------------------------------------------------
 
-def build_backend_program():
-    """``(reader, function)``: the backend program's store and its entry."""
-    tables = None
-    objects: list = []
 
-    def add(name, made):
-        function, items = made
-        objects.extend(items)
-        _FN[name] = function
-        return function
-
-    add("find", _find(tables))
-    add("diagnostic", _diagnostic(tables, RISCV64))
-    add("li", _li(tables))
-    add("frame", _frame_access(tables))
-    add("read", _read(tables))
-    add("write", _write(tables))
-    add("mask", _mask(tables))
-    add("epilogue", _epilogue(tables))
-    add("edge", _copy_edge(tables, RISCV64))
-    add("block", _block(tables))
-    add("node_info", _node_info(tables))
-    add("term_end", _term_end(tables))
-    add("interface", _interface(tables))
-    add("erased", _erased(tables))
-    add("borrowed", _borrowed(tables))
-    add("aggregate", _aggregate(tables))
-    add("result_fields", _result_fields(tables, RISCV64))
-    add("translate", _translate(tables, RISCV64))
-    add("frontend", _frontend(tables, RISCV64))
-    compile_function = add("function", _compile_function(tables, RISCV64))
-    program = add("program", _program(tables, compile_function, RISCV64))
-    return program_store(program, x86_64_linux_exec_target(), tuple(objects)), program
-
-
-_PROGRAM = NativeProgram(STORE_PATH, build_backend_program, "riscv64-backend")
+_PROGRAM = NativeProgram(STORE_PATH, "riscv64-backend")
 load_backend_program = _PROGRAM.load
-write_backend_store = _PROGRAM.write
 
 
 class NativeBackend:
