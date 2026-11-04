@@ -20,7 +20,7 @@ from pathlib import Path
 import xax_compiler
 from blake3 import blake3
 from xax_compiler import CONTAINER_MAJOR, HASH_SUITE, MAGIC, TRAILER_MAGIC, NonsemanticRecord, StoreReader, XaxError, uleb, write_store
-from xax_selfhost_store import ACCEPT, DEFER, REJECT, STORE_PATH, NativeDecoder, build_decoder_program
+from xax_selfhost_store import ACCEPT, DEFER, REJECT, NativeDecoder
 
 NATIVE = sys.platform.startswith("linux") and platform.machine().lower() in ("x86_64", "amd64")
 BOOTSTRAP = Path(__file__).resolve().parents[1] / "bootstrap"
@@ -156,17 +156,6 @@ def _object_cases() -> dict[str, tuple[bytes, bytes]]:
         "cid": envelope(),
     }
     return {name: (store(payload), payload[:32]) for name, payload in payloads.items()}
-
-
-class DecoderStoreTests(unittest.TestCase):
-    def test_committed_store_regenerates_and_verifies(self):
-        building = xax_compiler._DECODER_BUILDING
-        xax_compiler._DECODER_BUILDING = True
-        try:
-            reader, _function = build_decoder_program()
-        finally:
-            xax_compiler._DECODER_BUILDING = building
-        self.assertEqual(reader.data, STORE_PATH.read_bytes())
 
 
 @unittest.skipUnless(NATIVE, "the native leaf runs on Linux x86-64")

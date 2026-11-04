@@ -67,7 +67,7 @@ class OI27BootstrapDiversityTests(unittest.TestCase):
     def test_deterministic_experiment_without_timings(self):
         a,_=experiment(measure=False);b,_=experiment(measure=False)
         self.assertEqual(a,b)
-        self.assertTrue(a["comparison"]["b2_b4_reconstruction_byte_identical"])
+        self.assertTrue(a["comparison"]["independent_rewrite_byte_identical"])
         self.assertTrue(all(v.get("detected",v.get("detected_by_pinned_release_root",v.get("detected_by_independent_semantics",False))) for v in a["fault_injection"].values()))
 
     def test_committed_evidence_shape(self):

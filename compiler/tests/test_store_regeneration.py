@@ -1,59 +1,71 @@
-"""STORE_REGENERATION: every committed self-hosting store is exactly what its builder makes, on every host (the general
-driver: its builder's baseline with the evolution ledger applied, S15d.2).
+"""STORE_REGENERATION (W2, ADR-361): every committed self-hosting store is frozen and is exactly its evolution ledger's
+chain end: its baseline with the ledger's transactions applied, store + transaction = next store, byte for byte.
 
-Building a store is deterministic Python; only *running* the native image needs Linux x86-64 (NATIVE_EXECUTION,
-tested elsewhere).  Each store is built twice in one process, so state leaking between builds (decline-site codes
-numbered per process rather than per build) also fails here.
+No Python builder makes these stores any more (``xax_selfhost_evolution``).  On every host: each store's ledger chain is
+well formed and ends at the committed bytes; each transaction replayed with the Python reference engine
+(``apply_reference``, equal to the production compiler's ``edit``) from the store it started at makes the store it
+recorded, where the repository still holds that earlier store; each frozen store verifies.  The request store is still
+derived from the driver store, and the helper generators that unit tests compile make the very functions the frozen
+driver holds.  On Linux x86-64 ``test_xax_selfhost_evolution`` replays the ledger with ``xaxc edit`` itself.
 """
-import importlib
-
 import pytest
 
 import xax_compiler
+import xax_selfhost_evolution as EV
 
-BUILDERS = (
-    ("xax_selfhost_cfg", "build_cfg_program"),
-    ("xax_selfhost_graph", "build_graph_decoder_program"),
-    ("xax_selfhost_riscv64", "build_encoder_program"),
-    ("xax_selfhost_store", "build_decoder_program"),
-    ("xax_selfhost_writer", "build_writer_program"),
-    ("xax_selfhost_driver", "build_driver_program"),
-    ("xax_selfhost_blake3", "build_hash_program"),
-    ("xax_selfhost_typing", "build_typing_program"),
-    ("xax_selfhost_verify", "build_verifier_program"),
-    ("xax_selfhost_riscv64_backend", "build_backend_program"),
-    ("xax_selfhost_x86_64_backend", "build_backend_program"),
-    ("xax_selfhost_x86_64_general", "build_general_program"),
-    ("xax_selfhost_aarch64_general", "build_aarch64_program"),  # S15e.2 (ADR-315)
-    ("xax_selfhost_jvm", "build_jvm_program"),  # S15e.5 (ADR-327)
-    ("xax_selfhost_apk", "build_apk_program"),  # S15e.6a (ADR-340)
-    ("xax_selfhost_apk_signing", "build_signer_program"),  # S15e.6b (ADR-341)
-    ("xax_selfhost_android_resources", "build_resources_program"),  # S15e.6c (ADR-342)
-    ("xax_selfhost_dex", "build_dex_program"),  # S15e.6d (ADR-343, ADR-344, ADR-345)
-    ("xax_selfhost_android_elf", "build_android_elf_program"),  # S15e.6e (ADR-346)
-    ("xax_selfhost_android_rules", "build_rules_program"),  # S15e.6f.1 (ADR-347)
-    ("xax_selfhost_android_managed_rules", "build_managed_rules_program"),  # S15e.6f.2 (ADR-348)
-    ("xax_selfhost_dex_writer", "build_dex_writer_program"),  # S15e.6g.1 (ADR-349)
-    ("xax_selfhost_dex_jvm", "build_dex_jvm_program"),  # S15e.6g.2 (ADR-350)
-    ("xax_selfhost_android", "build_android_program"),  # S15e.6h.2 (ADR-355)
-    # S15d.2 (ADR-305): the general driver's committed store is its builder's baseline with the evolution ledger applied.
-    ("xax_selfhost_evolution", "build_evolved_general", "GENERAL_STORE_PATH"),
-)
+FROZEN = EV.frozen_stores()
+TRANSACTIONS = EV.ledger().transactions
 
 
-def _build(module, builder) -> bytes:
+def test_every_committed_self_hosting_store_is_frozen():
+    stores = {path.relative_to(EV.BOOTSTRAP).as_posix() for path in EV.BOOTSTRAP.glob("xax_*.xax")}
+    stores.discard("xax_blake3_compress.xax")  # a corpus program (``xax_native_blake3``), not a compiler component
+    # W3 (ADR-362): the retired M14 bootstrap's META-wrapper store is a frozen corpus program
+    assert stores | {EV.REQUEST_STORE, "m14_selfhost_compiler.xax"} == set(FROZEN)
+
+
+def test_ledger_chains_end_at_the_committed_stores():
+    heads = EV.check()
+    assert set(heads) == set(FROZEN)
+    for record, store, _before, _after in TRANSACTIONS:
+        assert record.is_file(), f"{record.name} ({store}) is missing from bootstrap/evolution"
+
+
+@pytest.mark.parametrize("index", range(len(TRANSACTIONS)), ids=[f"{t[0].name}:{t[1]}" for t in TRANSACTIONS])
+def test_transaction_makes_the_next_store(index):
+    record, store, before, after = TRANSACTIONS[index]
+    data = EV.before_store(store, before)
+    if data is None:
+        pytest.skip(f"UNAVAILABLE: the repository does not hold {store}'s earlier store {before}")
+    made = EV.replay_reference(record, data)
+    assert EV.blob_id(made) == after, f"{record.name} on {store} makes {EV.blob_id(made)}, the ledger records {after}"
+    if after == EV.ledger().heads()[store]:
+        assert made == EV.store_path(store).read_bytes()
+
+
+@pytest.mark.parametrize("store", FROZEN)
+def test_frozen_store_verifies(store):
+    xax_compiler.verify_store(xax_compiler.StoreReader(EV.store_path(store).read_bytes()))
+
+
+def test_the_request_store_is_derived_from_the_driver_store():
+    from xax_selfhost_compiler import compiler_request
+
+    assert compiler_request()[0].data == EV.store_path(EV.REQUEST_STORE).read_bytes()
+
+
+@pytest.mark.parametrize("module", ["xax_selfhost_edit", "xax_selfhost_semantic", "xax_selfhost_ed25519"])
+def test_kept_helper_generators_make_the_frozen_functions(module):
+    """The edit engine's, the semantic index's and Ed25519's generators stay for their helper-level tests (ADR-361); a
+    transaction that changes one of their functions in the driver store fails this until the generator follows it or
+    those tests move to the store."""
+    import importlib
+
     building = xax_compiler._TYPING_BUILDING
-    xax_compiler._TYPING_BUILDING = True  # the helper graphs are verified by the bootstrap while they are built
+    xax_compiler._TYPING_BUILDING = True
     try:
-        return getattr(module, builder)()[0].data
+        functions, _objects = importlib.import_module(module).build_functions()
     finally:
         xax_compiler._TYPING_BUILDING = building
-
-
-@pytest.mark.parametrize("name,builder,path", [(item + ("STORE_PATH",))[:3] for item in BUILDERS], ids=[item[1] if len(item) > 2 else item[0] for item in BUILDERS])
-def test_committed_store_regenerates_byte_identically(name, builder, path):
-    module = importlib.import_module(name)
-    first, second = _build(module, builder), _build(module, builder)
-    assert first == second, f"{name}: two builds in one process differ"
-    assert first == getattr(module, path).read_bytes(), f"{name}: committed store is stale; regenerate it with its write_* function"
-    xax_compiler.verify_store(xax_compiler.StoreReader(first))
+    driver = {item.cid for item in xax_compiler.StoreReader(EV.GENERAL_STORE_PATH.read_bytes()).objects()}
+    assert {name for name, function in functions.items() if function.cid not in driver} == set()

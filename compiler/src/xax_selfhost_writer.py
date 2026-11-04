@@ -32,29 +32,11 @@ from __future__ import annotations
 
 import ctypes
 import threading
-from pathlib import Path
 
 from xax_compiler import (
-    CID_SIZE,
-    CONTAINER_MAJOR,
-    HASH_SUITE,
-    MAGIC,
-    SEMANTIC_DOMAIN,
-    TRAILER_MAGIC,
-    IntCompare,
-    Kind,
-    Operation,
-    Permission,
-    SemanticObject,
-    StoreReader,
-    bits_type,
-    heap_view_type,
-    pointer_type,
-    x86_64_linux_exec_target,
-)
-from xax_graph_builder import program_store
+    CID_SIZE, Kind, Operation, Permission, SemanticObject, StoreReader, bits_type, heap_view_type, pointer_type)
 from xax_native import bootstrap_dir
-from xax_selfhost_blake3 import DIGEST_OFFSET, MEM, SCRATCH_EXTENT, SCRATCH_POINTER, SCRATCH_VIEW, hash_function
+from xax_selfhost_blake3 import MEM, SCRATCH_EXTENT, SCRATCH_POINTER, SCRATCH_VIEW
 from xax_selfhost_facts import E
 from xax_structured import B64, Proc
 
@@ -89,7 +71,6 @@ REASONS = {
     4: "root CID missing from store",
     5: "duplicate non-semantic record",
 }
-NOT_CANONICAL, REFERENCES_UNSORTED, DUPLICATE_OBJECT, ROOT_MISSING, DUPLICATE_RECORD = REASONS
 ORDER_EQUAL, ORDER_GREATER, ORDER_LESS = 0, 1, 2
 
 BATCH_POINTER = pointer_type(bits_type(8), Permission.READ, 1, space=2)
@@ -258,251 +239,6 @@ def _object_field(w: _W, at, field: int):
     return w.word(BATCH, w.add(at, 8 * field))
 
 
-def build_writer_program() -> tuple[StoreReader, SemanticObject]:
-    hash_at, hash_objects = hash_function(BUF_POINTER, BUF_VIEW, based=True)
-    proc = Proc((*VIEWS, ("mode", B64)))
-    w = _W(proc, hash_at)
-    mode = proc["mode"]
-    status, reason, culprit, length = w.let("status", RUNNING), w.let("reason", 0), w.let("culprit", 0), w.let("length", 0)
-    objects, records, batch_length = (w.let(name, w.word(BATCH, 8 * field)) for field, name in enumerate(("objects", "records", "batch")))
-
-    def decline_unless(condition):
-        w.if_(w.not_(condition), lambda: w.set(status, DECLINE))
-
-    def running():
-        return w.eq(w[status], RUNNING)
-
-    def when_running(body):
-        w.if_(running(), body)
-
-    # Phase 0: the batch's structure (a host marshal; anything it cannot hold declines), each object's payload length,
-    # and each record's canonical envelope.  ``bound`` over-approximates the store's length.
-    decline_unless(w.both(w.le(w[objects], MAX_OBJECTS), w.le(w[records], MAX_RECORDS), w.le(BATCH_HEADER, w[batch_length]),
-                          w.le(w[batch_length], IN_EXTENT)))
-    at, bound = w.let("at", BATCH_HEADER), w.let("bound", 64)
-
-    def scan_object():
-        index = w.let("object", 0)
-
-        def each():
-            decline_unless(w.le(w.add(w[at], OBJECT_HEADER), w[batch_length]))
-
-            def fits():
-                refs, body = w.let("refs", _object_field(w, w[at], 2)), w.let("body", _object_field(w, w[at], 3))
-                decline_unless(w.both(w.le(w[refs], IN_EXTENT // CID_SIZE), w.le(w[body], IN_EXTENT)))
-
-                def sized():
-                    size = w.let("size", w.add(w.add(OBJECT_HEADER, w.mul(w[refs], CID_SIZE)), w[body]))
-                    decline_unless(w.le(w.add(w[at], w[size]), w[batch_length]))
-
-                    def table():
-                        tail = w.add(w.add(w.uleb_size(_object_field(w, w[at], 0)), w.uleb_size(_object_field(w, w[at], 1))),
-                                     w.add(w.uleb_size(w[refs]), w.uleb_size(w[body])))
-                        tail = w.let("tail", w.add(tail, w.sub(w[size], OBJECT_HEADER)))
-                        entry = w.add(OBJECTS_AT, w.mul(w[index], 16))
-                        w.set_word(entry, w[at])
-                        w.set_word(w.add(entry, 8), w[tail])
-                        w.set(bound, w.add(w[bound], w.add(w[tail], 10 + CID_SIZE + CID_SIZE + 20)))
-                        w.set(at, w.add(w[at], w[size]))
-                        w.set(index, w.add(w[index], 1))
-                    when_running(table)
-                when_running(sized)
-            when_running(fits)
-        w.while_(lambda: w.both(w.lt(w[index], w[objects]), running()), each)
-
-    def scan_records():
-        index, staged = w.let("record", 0), w.let("staged", ENVELOPES_AT)
-
-        def each():
-            decline_unless(w.le(w.add(w[at], RECORD_HEADER), w[batch_length]))
-
-            def fits():
-                schema, payload = w.let("schema", w.word(BATCH, w[at])), w.let("payload", w.word(BATCH, w.add(w[at], 8)))
-                decline_unless(w.both(w.le(w[payload], IN_EXTENT), w.le(w.add(w.add(w[at], RECORD_HEADER), w[payload]), w[batch_length])))
-
-                def sized():
-                    content = w.let("content", w.add(w.add(w.uleb_size(w[schema]), w.uleb_size(w[payload])), w[payload]))
-                    envelope = w.let("envelope", w.add(w.uleb_size(w[content]), w[content]))
-                    decline_unless(w.le(w.add(w[staged], w[envelope]), ENVELOPES_LIMIT))
-
-                    def stage():
-                        entry = w.add(RECORDS_AT, w.mul(w[index], 16))
-                        w.set_word(entry, w[staged])
-                        w.set_word(w.add(entry, 8), w[envelope])
-                        w.put_uleb(staged, w[content])
-                        w.put_uleb(staged, w[schema])
-                        w.put_uleb(staged, w[payload])
-                        w.copy(BATCH, w.add(w[at], RECORD_HEADER), staged, w[payload])
-                        w.set(bound, w.add(w[bound], w[envelope]))
-                        w.set(at, w.add(w.add(w[at], RECORD_HEADER), w[payload]))
-                        w.set(index, w.add(w[index], 1))
-                    when_running(stage)
-                when_running(sized)
-            when_running(fits)
-        w.while_(lambda: w.both(w.lt(w[index], w[records]), running()), each)
-
-    when_running(scan_object)
-    when_running(scan_records)
-    when_running(lambda: decline_unless(w.both(w.eq(w[at], w[batch_length]), w.le(w.add(w[bound], 20 + CID_SIZE + 4 + HASH_SLACK), OUT_LIMIT))))
-
-    def entry_word(table: int, index, field: int):
-        return w.word(BUF, w.add(table, w.add(w.mul(index, 16), 8 * field)))
-
-    def encode_payload(at_name: str, record):
-        """The record payload after its CID: kind, schema version, reference table, body length, body."""
-        for field in (0, 1, 2):
-            w.put_uleb(at_name, _object_field(w, record, field))
-        w.copy(BATCH, w.add(record, OBJECT_HEADER), at_name, w.mul(_object_field(w, record, 2), CID_SIZE))
-        w.put_uleb(at_name, _object_field(w, record, 3))
-        w.copy(BATCH, w.add(w.add(record, OBJECT_HEADER), w.mul(_object_field(w, record, 2), CID_SIZE)), at_name, _object_field(w, record, 3))
-
-    # Phase 1: each object in input order until the first that is not canonical (``first``).
-    first, index = w.let("first", 0), w.let("checked", 0)
-    w.set(first, w[objects])
-
-    def check_object():
-        record = w.let("at_object", entry_word(OBJECTS_AT, w[index], 0))
-
-        def references():
-            sorted_, k = w.let("sorted", 1), w.let("k", 1)
-            refs = _object_field(w, w[record], 2)
-
-            def step():
-                at_ref = w.add(w.add(w[record], OBJECT_HEADER), w.mul(w[k], CID_SIZE))
-                ordered = w[w.order(BATCH, w.sub(at_ref, CID_SIZE), CID_SIZE, BATCH, at_ref, CID_SIZE)]
-                w.set(sorted_, w.flag(w.eq(ordered, ORDER_LESS)))
-                w.set(k, w.add(w[k], 1))
-            w.while_(lambda: w.both(w.lt(w[k], refs), w.ne(w[sorted_], 0)), step)
-            w.if_(w.eq(w[sorted_], 0), lambda: (w.set(first, w[index]), w.set(reason, REFERENCES_UNSORTED)), identity)
-
-        def identity():
-            staged = w.let("preimage", 0)
-            w.put_bytes(staged, SEMANTIC_DOMAIN)
-            encode_payload(staged, w[record])
-            w.hash(0, w[staged])
-            same = w.let("same", 1)
-            for word in range(CID_SIZE // 4):
-                claimed = w.load(BATCH, w.add(w[record], 32 + 4 * word), 4)
-                w.set(same, w.and_(w[same], w.flag(w.eq(claimed, w.load(SCRATCH, DIGEST_OFFSET + 4 * word, 4)))))
-            w.if_(w.eq(w[same], 0), lambda: (w.set(first, w[index]), w.set(reason, NOT_CANONICAL)))
-
-        w.if_(w.ne(_object_field(w, w[record], 1), 1), lambda: (w.set(first, w[index]), w.set(reason, NOT_CANONICAL)), references)
-        w.set(index, w.add(w[index], 1))
-
-    def cid_at(position):
-        return w.add(entry_word(OBJECTS_AT, position, 0), 32)
-
-    def cid_greater(i, j):
-        return w.let("greater", w.flag(w.eq(w[w.order(BATCH, cid_at(i), CID_SIZE, BATCH, cid_at(j), CID_SIZE)], ORDER_GREATER)))
-
-    def record_greater(i, j):
-        return w.let("greater", w.flag(w.eq(w[w.order(BUF, entry_word(RECORDS_AT, i, 0), entry_word(RECORDS_AT, i, 1),
-                                                       BUF, entry_word(RECORDS_AT, j, 0), entry_word(RECORDS_AT, j, 1))], ORDER_GREATER)))
-
-    sorted_objects = w.let("sorted_objects", OBJECT_SORT_A)
-
-    def identities():
-        w.while_(lambda: w.both(w.lt(w[index], w[objects]), w.eq(w[first], w[objects])), check_object)
-        # Phase 2: a duplicate CID among the canonical prefix; the bootstrap meets the one at the smallest index first.
-        w.set(sorted_objects, w[w.merge_sort(w[first], OBJECT_SORT_A, OBJECT_SORT_B, cid_greater)])
-        duplicate, k = w.let("duplicate", w[objects]), w.let("pair", 1)
-
-        def pair():
-            earlier = w.word(BUF, w.add(w[sorted_objects], w.mul(w.sub(w[k], 1), 8)))
-            later = w.let("later", w.word(BUF, w.add(w[sorted_objects], w.mul(w[k], 8))))
-            same = w.eq(w[w.order(BATCH, cid_at(earlier), CID_SIZE, BATCH, cid_at(w[later]), CID_SIZE)], ORDER_EQUAL)
-            w.if_(w.both(same, w.lt(w[later], w[duplicate])), lambda: w.set(duplicate, w[later]))
-            w.set(k, w.add(w[k], 1))
-        w.while_(lambda: w.lt(w[k], w[first]), pair)
-        w.if_(w.lt(w[duplicate], w[objects]), lambda: (w.set(status, REJECT), w.set(reason, DUPLICATE_OBJECT), w.set(culprit, w[duplicate])),
-              lambda: w.if_(w.lt(w[first], w[objects]), lambda: (w.set(status, REJECT), w.set(culprit, w[first]))))
-
-    when_running(identities)
-
-    def root():
-        found, k = w.let("found", 0), w.let("candidate", 0)
-
-        def step():
-            w.if_(w.eq(w[w.order(BATCH, 24, CID_SIZE, BATCH, cid_at(w[k]), CID_SIZE)], ORDER_EQUAL), lambda: w.set(found, 1))
-            w.set(k, w.add(w[k], 1))
-        w.while_(lambda: w.both(w.lt(w[k], w[objects]), w.eq(w[found], 0)), step)
-        w.if_(w.eq(w[found], 0), lambda: (w.set(status, REJECT), w.set(reason, ROOT_MISSING)))
-
-    when_running(root)
-    sorted_records = w.let("sorted_records", RECORD_SORT_A)
-
-    def metadata():
-        w.set(sorted_records, w[w.merge_sort(w[records], RECORD_SORT_A, RECORD_SORT_B, record_greater)])
-        k = w.let("pair", 1)
-
-        def pair():
-            earlier = w.word(BUF, w.add(w[sorted_records], w.mul(w.sub(w[k], 1), 8)))
-            later = w.word(BUF, w.add(w[sorted_records], w.mul(w[k], 8)))
-            same = w.eq(w[w.order(BUF, entry_word(RECORDS_AT, earlier, 0), entry_word(RECORDS_AT, earlier, 1),
-                                  BUF, entry_word(RECORDS_AT, later, 0), entry_word(RECORDS_AT, later, 1))], ORDER_EQUAL)
-            w.if_(same, lambda: (w.set(status, REJECT), w.set(reason, DUPLICATE_RECORD)))
-            w.set(k, w.add(w[k], 1))
-        w.while_(lambda: w.both(w.lt(w[k], w[records]), running()), pair)
-
-    when_running(metadata)
-
-    def emit():
-        out = w.let("out", 0)
-        w.put_bytes(out, MAGIC)
-        for value in (CONTAINER_MAJOR, 0, HASH_SUITE):
-            w.put_uleb(out, value)
-        w.copy(BATCH, 24, out, CID_SIZE)
-        w.put_uleb(out, w[objects])
-        w.put_uleb(out, w[records])
-        w.put_uleb(out, 0)
-        # Records in CID order; the index needs each record's offset.
-        index_length, k = w.let("index_length", 0), w.let("emitted", 0)
-
-        def record():
-            position = w.word(BUF, w.add(w[sorted_objects], w.mul(w[k], 8)))
-            at_record = w.let("at_record", entry_word(OBJECTS_AT, position, 0))
-            payload = w.let("payload", w.add(entry_word(OBJECTS_AT, position, 1), CID_SIZE))
-            w.set_word(w.add(OFFSETS_AT, w.mul(w[k], 8)), w[out])
-            w.set(index_length, w.add(w[index_length], w.add(CID_SIZE, w.add(w.uleb_size(w[out]), w.uleb_size(w[payload])))))
-            w.put_uleb(out, w[payload])
-            w.copy(BATCH, w.add(w[at_record], 32), out, CID_SIZE)
-            encode_payload(out, w[at_record])
-            w.set(k, w.add(w[k], 1))
-        w.while_(lambda: w.lt(w[k], w[objects]), record)
-        w.set(k, 0)
-
-        def envelope():
-            position = w.word(BUF, w.add(w[sorted_records], w.mul(w[k], 8)))
-            w.copy(BUF, entry_word(RECORDS_AT, position, 0), out, entry_word(RECORDS_AT, position, 1))
-            w.set(k, w.add(w[k], 1))
-        w.while_(lambda: w.lt(w[k], w[records]), envelope)
-        w.put_uleb(out, w[index_length])
-        w.set(k, 0)
-
-        def index_entry():
-            position = w.word(BUF, w.add(w[sorted_objects], w.mul(w[k], 8)))
-            w.copy(BATCH, cid_at(position), out, CID_SIZE)
-            w.put_uleb(out, w.word(BUF, w.add(OFFSETS_AT, w.mul(w[k], 8))))
-            w.put_uleb(out, w.add(entry_word(OBJECTS_AT, position, 1), CID_SIZE))
-            w.set(k, w.add(w[k], 1))
-        w.while_(lambda: w.lt(w[k], w[objects]), index_entry)
-        w.hash(0, w[out])
-        for word in range(CID_SIZE // 4):
-            w.store(BUF, w.add(w[out], 4 * word), w.load(SCRATCH, DIGEST_OFFSET + 4 * word, 4), 4)
-        w.set(out, w.add(w[out], CID_SIZE))
-        w.put_bytes(out, TRAILER_MAGIC)
-        w.set(length, w[out])
-
-    w.if_(w.both(running(), w.eq(mode, MODE_WRITE)), emit)
-    w.if_(running(), lambda: w.set(status, ACCEPT))
-    for field, name in enumerate((status, reason, culprit, length)):
-        w.set_word(STATUS_AT + 8 * field, w[name])
-    proc.ret(*w.views())
-    function = proc.function(tuple(type_ for _name, type_ in VIEWS))
-    objects_ = (*proc.graph.objects.values(), *hash_objects)
-    return program_store(function, x86_64_linux_exec_target(), objects_), function
-
-
 def load_writer_program() -> tuple[StoreReader, SemanticObject]:
     from xax_native import verify_component_store
 
@@ -511,12 +247,6 @@ def load_writer_program() -> tuple[StoreReader, SemanticObject]:
     module = next(item for item in reader.objects() if item.kind == Kind.MODULE)
     function = next(reader.get(cid) for cid in module.references if reader.get(cid).kind == Kind.FUNCTION)
     return reader, function
-
-
-def write_writer_store() -> bytes:
-    reader, _function = build_writer_program()
-    STORE_PATH.write_bytes(reader.data)
-    return reader.data
 
 
 def marshal(root_cid: bytes, objects, records) -> bytes | None:

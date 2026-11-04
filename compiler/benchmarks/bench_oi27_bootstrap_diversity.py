@@ -1,16 +1,19 @@
 """OI-27 release-only bootstrap trust diversity experiment.
 
-The primary path is the selected OI-26 Python seed.  The independent path is a
-small Go checker that separately implements suite-1 BLAKE3, canonical-store
-parsing/re-emission, and the exact M11/M14 semantic subset.  It is a release
-checker, not a second production compiler.
+The independent path is a small Go checker that separately implements suite-1
+BLAKE3, canonical-store parsing/re-emission, and the exact M11/M14 semantic
+subset.  It is a release checker, not a second production compiler.
+
+W3 (ADR-362): the primary path was the selected OI-26 Python seed rebuilding the
+M14 store (B2-B4-style reconstruction).  The M14 Python bootstrap is retired: the
+M14 store is a frozen corpus program, and the checker verifies it and re-emits it
+byte for byte.  The committed evidence predates W3 and records the retired arm.
 """
 from __future__ import annotations
 
 import argparse
 import hashlib
 import json
-import os
 from pathlib import Path
 import platform
 import statistics
@@ -30,8 +33,6 @@ BOOTSTRAP = COMPILER / "bootstrap"
 GO_SOURCE = BOOTSTRAP / "oi27_independent_checker.go"
 M14 = BOOTSTRAP / "m14_selfhost_compiler.xax"
 M11 = BOOTSTRAP / "m11_compiler_subset.xax"
-PRIMARY_SEED = BOOTSTRAP / "m14_seed_reachable.pyz"
-HISTORICAL_SEED = BOOTSTRAP / "m14_seed_runtime.pyz"
 EVIDENCE = HERE / "oi27_bootstrap_diversity_evidence.json"
 TIMING = HERE / "oi27_bootstrap_diversity_timing.json"
 EXPECTED_M14_ROOT = "097da62f7ba9832620f5d202297fc522783ed5b4c9e68f8da6b77515b185164d"
@@ -63,12 +64,6 @@ def checker(binary: Path, mode: str, path: Path, expected: str | None = None, ou
     elif expected is not None:
         args.append(expected)
     return _run(args)
-
-
-def _primary_rebuild(seed: Path, source: Path, output: Path) -> subprocess.CompletedProcess:
-    env = dict(os.environ)
-    env.pop("PYTHONPATH", None)
-    return _run([sys.executable, str(seed), "rebuild", str(source), str(output)], cwd=output.parent, env=env)
 
 
 def _valid_semantic_divergence() -> bytes:
@@ -169,21 +164,15 @@ def experiment(*, measure: bool = True) -> tuple[dict, dict]:
         if abc_hash != "6437b3ac38465133ffb63b75273a8db548c558465d79db03fd359c6cd5bd9d85":
             raise AssertionError("independent BLAKE3 abc vector mismatch")
 
-        # B2-B4-style reconstruction using exact selected primary seed, followed
-        # by independently implemented parse/verify/re-emission.
-        b2 = tmp / "b2.xax"; b3 = tmp / "b3.xax"; independent = tmp / "independent.xax"
-        p2 = _primary_rebuild(PRIMARY_SEED, M14, b2)
-        p3 = _primary_rebuild(PRIMARY_SEED, b2, b3)
-        if p2.returncode or p3.returncode:
-            raise AssertionError(p2.stderr or p3.stderr)
+        # The frozen M14 store, independently parsed, verified under its pinned root and re-emitted (W3, ADR-362: the
+        # Python seed's reconstruction of it is retired).
+        independent = tmp / "independent.xax"
         v0 = checker(binary, "verify", M14, EXPECTED_M14_ROOT)
-        v2 = checker(binary, "verify", b2, EXPECTED_M14_ROOT)
-        v3 = checker(binary, "verify", b3, EXPECTED_M14_ROOT)
-        rw = checker(binary, "rewrite", b3, output=independent)
-        if any(p.returncode for p in (v0,v2,v3,rw)):
+        rw = checker(binary, "rewrite", M14, output=independent)
+        if any(p.returncode for p in (v0, rw)):
             raise AssertionError("independent verification/rewrite failed")
         m14_bytes = M14.read_bytes()
-        reconstruction_equal = m14_bytes == b2.read_bytes() == b3.read_bytes() == independent.read_bytes()
+        reconstruction_equal = m14_bytes == independent.read_bytes()
 
         # Also verify the B0/B1 arithmetic subset independently.
         m11_verify = checker(binary, "verify", M11, EXPECTED_M11_ROOT)
@@ -222,13 +211,6 @@ def experiment(*, measure: bool = True) -> tuple[dict, dict]:
                     if p.returncode or out.read_bytes()!=m14_bytes: raise AssertionError("rewrite measurement failed")
                     outs.append(elapsed)
                 timings["samples"]["verify_and_rewrite_m14"]=_summary(outs)
-            # Primary reconstruction is expensive enough that five repeats are sufficient.
-            ps=[]
-            for i in range(5):
-                out=tmp/f"primary-{i}.xax"; start=time.perf_counter_ns(); p=_primary_rebuild(PRIMARY_SEED,M14,out); elapsed=time.perf_counter_ns()-start
-                if p.returncode or out.read_bytes()!=m14_bytes: raise AssertionError("primary timing rebuild failed")
-                ps.append(elapsed)
-            timings["samples"]["primary_seed_rebuild_m14"]=_summary(ps)
 
         src = GO_SOURCE.read_bytes()
         line_count = src.count(b"\n")
@@ -238,22 +220,16 @@ def experiment(*, measure: bool = True) -> tuple[dict, dict]:
             "selected_threshold": "release-only independent verifier+canonical-serializer/hash checker; no permanent second compiler",
             "threat_model": {
                 "seed_or_compiler_compromise": "Detects any divergent reconstructed semantic image under the pinned authoritative root; does not prove a pinned authoritative compiler graph benign.",
-                "runtime_or_interpreter_compromise": "Different Go runtime/checker detects corrupt or divergent Python-seed output; common kernel/hardware remain residual dependencies.",
+                "runtime_or_interpreter_compromise": "Different Go runtime/checker detects corrupt or divergent store bytes; common kernel/hardware remain residual dependencies.",
                 "common_source_bug": "Independent Go semantic checks catch injected verifier omission; shared specification/test misunderstandings remain common-mode risk.",
                 "hash_or_serializer_bug": "Independent Go BLAKE3 and canonical-container implementation catches rehashed inner-record corruption and layout/index errors.",
             },
             "primary": {
-                "selected_seed": PRIMARY_SEED.name,
-                "selected_seed_bytes": PRIMARY_SEED.stat().st_size,
-                "selected_seed_sha256": sha256(PRIMARY_SEED.read_bytes()),
-                "historical_seed": HISTORICAL_SEED.name,
-                "historical_seed_sha256": sha256(HISTORICAL_SEED.read_bytes()),
-                "runtime": f"CPython {sys.version.split()[0]}",
+                "retired": "W3 (ADR-362): the M14 Python zipapp seed and its reconstruction arm are retired; the M14 store is frozen",
                 "closure_target": M14_CLOSURE_TARGET.decode("ascii"),
                 "compiler_identity": M14_COMPILER_IDENTITY.decode("ascii"),
                 "evaluator_identity": M14_EVALUATOR_IDENTITY.decode("ascii"),
                 "verifier_identity": M14_VERIFIER_IDENTITY.decode("ascii"),
-                "build_policy": "M14 fixed semantic-image recursive-build policy",
                 "comparison_projection": "raw-byte-identity",
                 "authoritative_root": EXPECTED_M14_ROOT,
                 "authoritative_bytes_sha256": sha256(m14_bytes),
@@ -273,8 +249,8 @@ def experiment(*, measure: bool = True) -> tuple[dict, dict]:
                 "known_answer_blake3": {"empty": empty_hash, "abc": abc_hash},
             },
             "comparison": {
-                "b2_b4_reconstruction_byte_identical": reconstruction_equal,
-                "generation_sha256": [sha256(m14_bytes), sha256(b2.read_bytes()), sha256(b3.read_bytes()), sha256(independent.read_bytes())],
+                "independent_rewrite_byte_identical": reconstruction_equal,
+                "store_sha256": [sha256(m14_bytes), sha256(independent.read_bytes())],
                 "generation_root": EXPECTED_M14_ROOT,
                 "m11_root_verified": EXPECTED_M11_ROOT,
             },

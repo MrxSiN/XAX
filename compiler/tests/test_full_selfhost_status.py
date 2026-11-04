@@ -66,6 +66,20 @@ class FullSelfhostStatusTests(unittest.TestCase):
         stated = copy.deepcopy(closed)
         stated["evolution"] = None
         self.assertNotIn("B6", self.levels(stated))
+        # W2 (ADR-361): the frozen stores' replay record (``xax-evolution-replay-v2``): every ledger transaction replayed
+        # to its recorded store and verified, and the structural probe on the committed driver store.
+        probe = {"kinds": ["InsertPureNode"], "edit": {"status": "image"}, "equals_reference": True, "verify": "image"}
+        frozen = copy.deepcopy(closed)
+        frozen["evolution"] = {"format": "xax-evolution-replay-v2", "replayed_by": "C1", "ledger_heads_equal_committed": True,
+                               "transactions": [], "probe": probe, "structural": True}
+        self.assertIn("B6", self.levels(frozen))
+        for change in (lambda e: e["probe"].update(equals_reference=False), lambda e: e["probe"].update(verify="rejected"),
+                       lambda e: e.update(ledger_heads_equal_committed=False), lambda e: e.update(structural=False),
+                       lambda e: e["transactions"].append({"kinds": ["SetConstant"], "edit": {"status": "image"}, "equals_ledger": False,
+                                                           "verify": "image"})):
+            unevolved = copy.deepcopy(frozen)
+            change(unevolved["evolution"])
+            self.assertEqual(self.levels(unevolved) & {"B5", "B6"}, {"B5"})
         # S15b (ADR-288): a verification rejection that is not the bootstrap's keeps B1; another diagnostic is a
         # disagreement (B3); a decline or the driver's own record is no claim.
         self.assertTrue(rejecting)

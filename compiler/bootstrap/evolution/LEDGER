@@ -1,4 +1,32 @@
-# xax-evolution-ledger-v1 (ADR-305): edit records applied in order to the general driver's baseline
-# <record> <query> -- the record is a transaction of ``xaxc edit``; the query (xax_selfhost_evolution.QUERIES) located its nodes.
-0001-inputs-limit.edit inputs_limit
-0002-dead-constants.edit dead_constants
+# xax-evolution-ledger-v2 (ADR-361): the frozen self-hosting stores and the transactions applied to them, in order.
+# baseline <store> <blob>  |  <record> <store> <before blob> <after blob>   (blob: the git object id of the store's bytes)
+# The baselines are the stores as frozen at W2.  The general driver's baseline already holds the two ADR-305 transactions
+# (0001 inputs-limit, ADR-306; 0002 dead-constants, ADR-314); their records are in git history.
+# m14_selfhost_compiler.xax was frozen at W3 (ADR-362), when the M14 Python bootstrap that generated it was retired.
+baseline xax_aarch64_general.xax 73fc380368db232a9c37e4cdf4d691b5111a630a
+baseline xax_android.xax 3d4ff5cd5c1268b433b333d009e5e9ac45707897
+baseline xax_android_elf.xax fcfd8dcbd3333be55e4852f6d0f79ff8b52168f7
+baseline xax_android_managed_rules.xax b2767eac3b2d3542d7c00589b0bc476f9b900416
+baseline xax_android_resources.xax 09932d290ba54534f37ac618ed42b8309f2f719a
+baseline xax_android_rules.xax f12eb413ce3e4615df3daae998f323372fde6511
+baseline xax_apk_container.xax 306a885b2731a58aa78a8e9afdd3e747aee849c2
+baseline xax_apk_signer.xax 6764efd317b48aa16b22a31a5ddd9e8221a9ee29
+baseline xax_blake3_hash.xax 2759f8ab9d99fbd6eed976dc4496a5299b6cb91c
+baseline xax_cfg_analysis.xax 59085f20aaf4d27f65d9ab031339ea0e1fe5fbf9
+baseline xax_compiler_driver.xax aaa7eaf1335c09c4765ac088cd509a16f9fc23b7
+baseline xax_compiler_driver_general.xax c7774c0edca2c17cbcb22886f89410f55636f281
+baseline xax_dex_bridge.xax ba3896e8336126ede154b12a69cfe5cbb46d374c
+baseline xax_dex_jvm.xax 4cd7f2fd79a150a8df984b1d798c838636fc6b2d
+baseline xax_dex_writer.xax ab1aaf250535f35d6c36708a1362cbdfc7e2ac11
+baseline xax_graph_decoder.xax 4ef7d299f4782c00bde9667aa6d4032333ed675e
+baseline xax_jvm_general.xax fc5409b9df3ed56b6e3e7619d8991047c2ef17f6
+baseline xax_op_typing.xax a72d2b5a0317dee6bac23d8bc059a08934192c3f
+baseline xax_riscv64_backend.xax 781520bb365079b6fde36a107b57354e6f4d4dcf
+baseline xax_riscv64_encoder.xax 31a9b2320750c983aa8ef28ca20eb661945c81af
+baseline xax_store_decoder.xax 52429246953d80407466b485e629f1d1e163e20a
+baseline xax_store_verifier.xax 92d7edd1e39e5628fcca3c6d0477284e39b6e525
+baseline xax_store_writer.xax 113ef9aa5c3398d835543dc1c9de8b0cd22d21f8
+baseline xax_x86_64_backend.xax 4fe55c7dbd9d11ff9b4c790585e5d8f5a0805743
+baseline xax_x86_64_general.xax 87cff584024e05738f9fcf2a89ca988aa3a69992
+baseline m14_selfhost_compiler.xax ba131affdf32d6e6b6408e9a6682a219c3d38250
+baseline seed/xax_compiler_request.xax 57fa5a649a6268c6d39eed71e8700b1954dc8e03

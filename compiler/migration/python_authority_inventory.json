@@ -263,8 +263,8 @@
       "note": "Bootstrap reference for the S5 XAX RISC-V backend. Since S7b.2, _object_table and image_record only copy words: the XAX programs resolve references, pick the target and entry, and produce the image record."
     },
     "xax_selfhost.py": {
-      "class": "F",
-      "note": "M14 semantic-image wrapper and bootstrap_status derivation."
+      "class": "D",
+      "note": "bootstrap_status: B levels derived from the native compiler's executed records (the M14 Python bootstrap was retired, ADR-362)."
     },
     "xax_selfhost_blake3.py": {
       "class": "G",
@@ -559,10 +559,6 @@
       "class": "G",
       "note": "Builder of the canonical S15e.5 JVM program store; front end, class file and JAR (ADR-327-ADR-331)."
     },
-    "xax_selfhost_jvm_aggregate.py": {
-      "class": "G",
-      "note": "Builder of the S15e.5f aggregates and sums in the JVM program store (ADR-332)."
-    },
     "xax_selfhost_jvm_callback.py": {
       "class": "G",
       "note": "Builder of the S15e.5e callbacks in the JVM program store (ADR-331)."
@@ -607,9 +603,9 @@
       "class": "G",
       "note": "Builder of the S15e.5g-S15e.5i memory and general profiles and the threaded launcher in the JVM program store (ADR-337, ADR-338)."
     },
-    "xax_selfhost_jvm_indirect.py": {
+    "xax_selfhost_android.py": {
       "class": "G",
-      "note": "Builder of the S15e.5h indirect-call dispatchers in the JVM program store (ADR-338)."
+      "note": "Runner and Python references of the frozen S15e.6h Android program store (ADR-355, ADR-361); its builder was deleted at W2."
     },
     "xax_selfhost_apk.py": {
       "class": "G",

@@ -631,18 +631,6 @@ class SelfhostTypingTests(unittest.TestCase):
         self.assertEqual((status, verdicts), (0, [PROVEN] * (len(keys) + len(parsed.blocks)) + [1]))
         self.assertEqual(parsed.returns, ((B32.cid,),))
 
-    def test_committed_store_is_the_built_program(self):
-        import xax_compiler
-        from xax_selfhost_typing import STORE_PATH, build_typing_program
-
-        building = xax_compiler._TYPING_BUILDING
-        xax_compiler._TYPING_BUILDING = True
-        try:
-            reader, _function = build_typing_program()
-        finally:
-            xax_compiler._TYPING_BUILDING = building
-        self.assertEqual(reader.data, STORE_PATH.read_bytes())
-
     def test_production_path_gives_identical_results(self):
         """With the native path on, every store verifies or rejects with exactly the bootstrap's diagnostic."""
         samples = _samples(400, seed=7)

@@ -28,53 +28,30 @@ Later S12 steps add the lowering view (inlining), the register-resident lowering
 
 from __future__ import annotations
 
-from xax_compiler import Kind, Operation, TerminatorKind, x86_64_linux_exec_target
-from xax_graph_builder import program_store
+from xax_compiler import Kind, Operation, TerminatorKind
 from xax_native import bootstrap_dir
-from xax_selfhost_facts import E, H_ARENA, H_ARENA_END, NONE, _function
+from xax_selfhost_facts import E, NONE, _function
 import xax_selfhost_diagnostics as D
-import xax_selfhost_general_dll as DLL
-from xax_selfhost_general_accel import add_accelerator_functions
-from xax_selfhost_general_spirv import add_spirv_functions
-from xax_selfhost_general_wasm import W_ON, add_wasm_functions
-from xax_selfhost_general_view import add_view_functions, views_prologue
 from xax_selfhost_views_backend import (
-    _FN, ARENA_END, CID_WORDS, G_ERASED, G_IFACE, G_NI, G_O, G_ORDER, G_PAY, G_REC, G_REFS, G_S, G_SUP, G_SUP_AT,
-    G_SUPT, G_SUPT_AT, G_TW, GLOBALS, NI_ATTRIBUTES, NI_ENTITY, NI_OP, NI_RESULTS, NativeProgram, _at, _borrowed, _call,
-    _cid_at, _cid_words, _erased, _find, _g, _interface, _kind, _node_info, _ok, _payload_uleb, _reference,
-    _target_list, _term_end, _type_form, _type_width,
-)
+    _FN, CID_WORDS, G_NI, G_O, G_PAY, G_SUP, G_SUP_AT, G_TW, NI_ENTITY, NI_OP, NI_RESULTS, NativeProgram, _at, _call, _cid_words, _g, _kind, _ok, _payload_uleb, _reference, _target_list, _type_form, _type_width)
 
 STORE_PATH = bootstrap_dir() / "xax_x86_64_general.xax"
 OK = 1
-# S14a (ADR-284): the general program's arena starts after the views region (``xax_selfhost_general_view.VIEW_END``);
-# the front end's globals stay at the views backends' ``GLOBALS``.
-GENERAL_ARENA_AT = 120 << 20  # S15e.4 (ADR-322): was 68M; S15f (ADR-323): 120M, below the image buffer
-GENERAL_ARENA_END = 200 << 20  # ``xax_selfhost_general_image.IMAGE_BUFFER_AT``
 COUNT_AT, ORDER_AT = 1, 16  # output words: the closure's size, then each function's four CID words in image order
 # Front-end state beyond the views backends' globals (``GLOBALS + slot``).
 (G_LSIZE, G_LALIGN, G_LSTACK, G_TABI, G_TFMT, G_NARGS, G_GENERAL, G_EA_AT, G_EA_N, G_FRAMES, G_TARGET, G_ENTRY,
  G_MEMBERS, G_MTAB, G_GROUPOF) = range(21, 36)
-# S12f.3 (ADR-279): the target's profile, and where its atomic widths, scopes, and families start (profiles 2 and 5).
-G_TPROFILE, G_TATOMIC = 61, 62
 # S15e.3 (ADR-317): 1 for the Windows PE32+ profile (``_hosted_container``'s ``x86_64-windows-pe-v1``), 0 for Linux.
 G_WINDOWS = 63
 # S15f.2 (ADR-324): 1 for a Windows load image (architecture 1, ABI 1, format 1, not the PE profile): the Win64 frame path
 # without the register-resident lowering, the hosted register path or a container; the image is the code alone.
 G_RAWWIN = 190
 LINUX_REQUEST = 2  # the audit word's Linux-executable bit (``general_object_table(linux=True)``)
-PE_IDENTITY = b"x86_64-windows-pe-v1"
-FRAME = 5  # a closure frame: function, graph, stream cursor, blocks left, nodes left in the current block
-F_FN, F_GRAPH, F_AT, F_BLOCKS, F_NODES = range(FRAME)
 
 LINUX_ABI = 5
-ELF_FORMATS = (5, 6)  # X86_64_LINUX_ELF_EXEC_FORMAT, X86_64_LINUX_ELF_DYNAMIC_FORMAT
-REGISTER_ARCHITECTURES = (1, 3)
-OTHER_ARCHITECTURES = (2, 4, 5, 6, 7)  # AArch64, Wasm, JVM, RISC-V 64, SPIR-V: no register fields
 LAYOUT_FORMS = (1, 2, 7, 8, 9, 10)
 AGGREGATE_FORMS = (8, 9, 10)
 LINK_BYTES, SUM_TAG_BYTES = 8, 4
-CODE_ENTRY = b"code-entry:"
 SYSV_C, LEND, WIN64_C = b"sysv-x86_64-c", b"sysv-x86_64-c-lend", b"win64-c"
 # Foreign entry classes of a code-address type.
 EA_NONE, EA_SYSV, EA_LEND, EA_WIN64, EA_OTHER = range(5)
@@ -97,7 +74,6 @@ SITE = {rule: site for site, (_code, rule) in enumerate(RULES)}
 ABI_ARITY_EXPECTED = "Win64 stack arguments"
 ABI_VALUE_EXPECTED = "scalar <=64 bits or aggregate with a target ABI layout"
 LAYOUT_EXPECTED = "bits, pointer, float, tuple, array, or sum"
-ENTRY_CONTRACT_EXPECTED = "fn(proof...) -> (bits<N>?, proof...)"
 
 
 # -- record writers ---------------------------------------------------------------------------------
@@ -124,43 +100,10 @@ def _reject(e: E, condition, rule: str, entity, expected, actual):
     D.reject_unless(e, condition, write)
 
 
-def _text_at(tables):
-    """A STR value of the ``n`` input bytes (one per word) at ``at``, packed eight to a word."""
-    def build(e: E):
-        p = e.p
-        D.put(e, D.T_STR)
-        D.put(e, p["n"])
-
-        def word():
-            e.var("tw_word", 0)
-            e.var("tw_weight", 1)
-
-            def byte():
-                index = e.add(e.mul(p["tw_k"], 8), p["tw_j"])
-                e.if_(e.lt(index, p["n"]), lambda: e.set("tw_word", e.add(p["tw_word"], e.mul(e.rd(e.add(p["at"], index)), p["tw_weight"]))))
-                e.set("tw_weight", e.mul(p["tw_weight"], 256))
-
-            e.for_("tw_j", 0, 8, byte)
-            D.put(e, p["tw_word"])
-
-        e.for_("tw_k", 0, e.udiv(e.add(p["n"], 7), 8), word)
-        e.give(1)
-    return _function(("at", "n"), build, tables)
-
-
 def _ascii(e: E, at, n, name: str):
     """Set ``name`` to 0 unless every byte of the ``n`` at input word ``at`` is ASCII."""
     e.var(name, 1)
     e.for_(f"{name}_k", 0, n, lambda: e.if_(e.le(128, e.rd(e.add(at, e.p[f"{name}_k"]))), lambda: e.set(name, 0)))
-
-
-def _bytes_equal(e: E, at, n, data: bytes):
-    """The ``n`` input bytes at ``at`` are ``data``."""
-    return e.both(e.eq(n, len(data)), *(e.eq(e.rd(e.add(at, k)), byte) for k, byte in enumerate(data)))
-
-
-def _starts_with(e: E, at, n, data: bytes):
-    return e.both(e.le(len(data), n), *(e.eq(e.rd(e.add(at, k)), byte) for k, byte in enumerate(data)))
 
 
 # -- ABI layouts ------------------------------------------------------------------------------------
@@ -290,60 +233,6 @@ def _layout(tables, wasm: bool = False):
 
 # -- function interfaces, recursion groups included ------------------------------------------------------
 
-def _group_interface(tables):
-    """``_decode_function_interface`` of a verified function (ADR-125 group members included):
-    ``[graph, P, types, R, types]`` (cached); a member function's record is its group member's, and its group goes
-    to ``G_GROUPOF``.  NONE for an unlisted object."""
-    def build(e: E):
-        p = e.p
-        f = p["f"]
-        cached = _at(e, G_IFACE, f)
-        e.if_(e.ne(cached, NONE), lambda: e.give(cached))
-        _ok(e, e.eq(_kind(e, f), int(Kind.FUNCTION)))
-        e.var("ia", _at(e, G_PAY, f))
-        carrier = _reference(e, f, _payload_uleb(e, "ia"))
-        e.var("carrier", carrier)
-        _ok(e, e.ne(p["carrier"], NONE))
-        e.var("source", f)  # the object whose references the interface names
-
-        def member():
-            e.var("imember", _payload_uleb(e, "ia"))
-            e.st(e.add(_g(e, G_GROUPOF), f), p["carrier"])
-            e.set("source", p["carrier"])
-            e.set("ia", _at(e, G_PAY, p["carrier"]))
-            e.var("icount", _payload_uleb(e, "ia"))
-            _ok(e, e.lt(p["imember"], p["icount"]))
-
-            def skip():
-                _payload_uleb(e, "ia")
-                e.var("iskip", _payload_uleb(e, "ia"))
-                e.for_("iq", 0, p["iskip"], lambda: _payload_uleb(e, "ia"))
-                e.set("iskip", _payload_uleb(e, "ia"))
-                e.for_("iq", 0, p["iskip"], lambda: _payload_uleb(e, "ia"))
-
-            e.for_("ik", 0, p["imember"], skip)
-            e.set("carrier", _reference(e, p["carrier"], _payload_uleb(e, "ia")))
-            _ok(e, e.ne(p["carrier"], NONE))
-
-        e.if_(e.eq(_kind(e, p["carrier"]), int(Kind.RECURSION_GROUP)), member)
-        _ok(e, e.eq(_kind(e, p["carrier"]), int(Kind.GRAPH_FRAGMENT)))
-        params = _payload_uleb(e, "ia")
-        e.var("np", params)
-        e.var("record", e.alloc(e.add(p["np"], 2)))
-        _ok(e, e.ne(p["record"], NONE))
-        e.st(p["record"], p["carrier"])
-        e.st(e.add(p["record"], 1), p["np"])
-        e.for_("q", 0, p["np"], lambda: e.st(e.add(e.add(p["record"], 2), p["q"]), _reference(e, p["source"], _payload_uleb(e, "ia"))))
-        returns = _payload_uleb(e, "ia")
-        e.var("nr", returns)
-        e.var("rec2", e.alloc(e.add(p["nr"], 1)))
-        _ok(e, e.both(e.ne(p["rec2"], NONE), e.eq(p["rec2"], e.add(e.add(p["record"], 2), p["np"]))))  # contiguous
-        e.st(p["rec2"], p["nr"])
-        e.for_("q", 0, p["nr"], lambda: e.st(e.add(e.add(p["rec2"], 1), p["q"]), _reference(e, p["source"], _payload_uleb(e, "ia"))))
-        e.st(e.add(_g(e, G_IFACE), f), p["record"])
-        e.give(p["record"])
-    return _function(("f",), build, tables)
-
 
 # -- per function -------------------------------------------------------------------------------------
 
@@ -438,68 +327,6 @@ def _prologue(tables):
     return _function(("f",), build, tables)
 
 
-def _entry_abi(tables):
-    """``foreign_entry_abi`` of TYPE ``t``: a pointer whose element is an identity-qualified opaque type naming a code
-    entry gives its class (``EA_*``; for ``EA_OTHER`` the ABI's input position and length go to ``G_EA_AT``/``G_EA_N``);
-    any other type gives ``EA_NONE``."""
-    def build(e: E):
-        p = e.p
-        e.if_(e.ne(_type_form(e, p["t"]), 2), lambda: e.give(EA_NONE))
-        e.var("ea", e.add(_at(e, G_PAY, p["t"]), 1))
-        _payload_uleb(e, "ea")  # address space
-        e.var("eel", _reference(e, p["t"], _payload_uleb(e, "ea")))
-        _ok(e, e.ne(p["eel"], NONE))
-        e.if_(e.ne(_type_form(e, p["eel"]), 6), lambda: e.give(EA_NONE))
-        e.var("ea", e.add(_at(e, G_PAY, p["eel"]), 1))
-        e.var("en", _payload_uleb(e, "ea"))
-        at, n = p["ea"], p["en"]
-        lend = CODE_ENTRY + LEND + b":"
-        e.if_(_starts_with(e, at, n, lend), lambda: e.give(EA_LEND))
-        e.if_(e.not_(_starts_with(e, at, n, CODE_ENTRY)), lambda: e.give(EA_NONE))
-        e.var("ea_at", e.add(at, len(CODE_ENTRY)))
-        e.var("ea_n", e.sub(n, len(CODE_ENTRY)))
-        e.if_(_bytes_equal(e, p["ea_at"], p["ea_n"], SYSV_C), lambda: e.give(EA_SYSV))
-        e.if_(_bytes_equal(e, p["ea_at"], p["ea_n"], WIN64_C), lambda: e.give(EA_WIN64))
-        e.st(GLOBALS + G_EA_AT, p["ea_at"])
-        e.st(GLOBALS + G_EA_N, p["ea_n"])
-        e.give(EA_OTHER)
-    return _function(("t",), build, tables)
-
-
-def group_member_tables(e: E, O):
-    """Group member functions by (group, member) (ADR-125): ``[count, member function...]`` per recursion group in
-    ``G_MTAB``, over the ``O`` listed objects (shared by the S15e.2 AArch64 front end)."""
-    p = e.p
-
-    def member_function():
-        o = p["o"]
-        e.var("mg", _reference(e, o, 0))
-
-        def listed():
-            e.var("ma", _at(e, G_PAY, o))
-            _ok(e, e.eq(_payload_uleb(e, "ma"), 0))
-            e.var("mk", _payload_uleb(e, "ma"))
-            e.var("mtable", e.ld(e.add(_g(e, G_MTAB), p["mg"])))
-
-            def create():
-                e.var("mga", _at(e, G_PAY, p["mg"]))
-                e.var("mcount", _payload_uleb(e, "mga"))
-                e.set("mtable", e.alloc(e.add(p["mcount"], 1)))
-                _ok(e, e.ne(p["mtable"], NONE))
-                e.st(p["mtable"], p["mcount"])
-                e.for_("mq", 0, p["mcount"], lambda: e.st(e.add(e.add(p["mtable"], 1), p["mq"]), NONE))
-                e.st(e.add(_g(e, G_MTAB), p["mg"]), p["mtable"])
-
-            e.if_(e.eq(p["mtable"], NONE), create)
-            e.if_(e.lt(p["mk"], e.ld(p["mtable"])), lambda: e.st(e.add(e.add(p["mtable"], 1), p["mk"]), o))
-
-        one = e.eq(e.rd(e.add(_at(e, G_REC, o), 1)), 1)
-        e.if_(e.both(e.eq(_kind(e, o), int(Kind.FUNCTION)), one, e.ne(p["mg"], NONE)), lambda: e.if_(
-            e.eq(_kind(e, p["mg"]), int(Kind.RECURSION_GROUP)), listed))
-
-    e.for_("o", 0, O, lambda: e.if_(e.ne(e.rd(e.add(_at(e, G_REC, p["o"]), 1)), 0), member_function))
-
-
 def _node(tables):
     """``_function_closure``'s checks of the node just read (``G_NI``) in graph ``g`` of function ``f``: the target's
     operation list and a code address's foreign entry ABI.  In a group member's graph ``call.group_member`` is a
@@ -589,367 +416,9 @@ def _node(tables):
 
 # -- the program --------------------------------------------------------------------------------------
 
-def _push(e: E, f):
-    """Visit function ``f``: mark it, record it, run its prologue checks, and open a frame at its first block."""
-    p = e.p
-    e.var("vf", f)
-    e.st(e.add(_g(e, G_TW), p["vf"]), 1)
-    e.st(e.add(_g(e, G_ORDER), _g(e, G_MEMBERS)), p["vf"])
-    e.st(GLOBALS + G_MEMBERS, e.add(_g(e, G_MEMBERS), 1))
-    _call(e, "prologue", p["vf"])
-    e.var("vg", e.ld(_call(e, "interface", p["vf"])))
-    stream = _at(e, G_PAY, p["vg"])
-    e.var("vs", stream)
-    e.var("vframe", e.add(_g(e, G_FRAMES), e.mul(p["depth"], FRAME)))
-    blocks = e.rd(p["vs"])
-    _ok(e, e.ne(blocks, 0))
-    first = e.add(p["vs"], 2)
-    nodes_at = e.add(e.add(first, 1), e.rd(first))  # past the first block's parameters
-    for field, value in ((F_FN, p["vf"]), (F_GRAPH, p["vg"]), (F_BLOCKS, blocks), (F_NODES, e.rd(nodes_at)), (F_AT, e.add(nodes_at, 1))):
-        e.st(e.add(p["vframe"], field), value)
-    e.set("depth", e.add(p["depth"], 1))
 
-
-def _frontend(tables):
-    def build(e: E):
-        p = e.p
-        e.st(0, 0)
-        e.set_hd(H_ARENA, GENERAL_ARENA_AT)
-        e.set_hd(H_ARENA_END, GENERAL_ARENA_END)
-        S = e.rd(0)
-        e.st(GLOBALS + G_S, S)
-        # The store's objects, the bound target, then the count and records of the group member functions the store
-        # does not hold (``general_object_table``).
-        e.var("ra", 1 + CID_WORDS)
-
-        def skip():
-            references = e.rd(e.add(p["ra"], 1))
-            payload_at = e.add(e.add(e.add(p["ra"], 2), e.mul(references, CID_WORDS)), CID_WORDS)
-            e.set("ra", e.add(e.add(payload_at, 1), e.rd(payload_at)))
-
-        e.for_("o", 0, e.add(S, 1), skip)
-        e.var("extras_at", p["ra"])
-        e.var("total", e.add(e.add(S, 1), e.rd(p["extras_at"])))
-        total = p["total"]
-        for slot in (G_REC, G_PAY, G_TW, G_ERASED, G_IFACE, G_ORDER, G_REFS, G_LSIZE, G_LALIGN, G_LSTACK, G_MTAB, G_GROUPOF):
-            table = e.alloc(e.add(total, 2))
-            _ok(e, e.ne(table, NONE))
-            e.st(GLOBALS + slot, table)
-        frames = e.alloc(e.mul(e.add(total, 2), FRAME))
-        _ok(e, e.ne(frames, NONE))
-        e.st(GLOBALS + G_FRAMES, frames)
-        for slot, size in ((G_SUP, 256), (G_SUPT, 8), (G_NI, 8)):
-            table = e.alloc(size)
-            _ok(e, e.ne(table, NONE))
-            e.st(GLOBALS + slot, table)
-            e.for_("q", 0, size, lambda table=table: e.st(e.add(table, p["q"]), 0))
-        e.var("ra", 1 + CID_WORDS)
-
-        def record():
-            o = p["o"]
-            e.st(e.add(_g(e, G_REC), o), p["ra"])
-            references = e.rd(e.add(p["ra"], 1))
-            payload_at = e.add(e.add(e.add(p["ra"], 2), e.mul(references, CID_WORDS)), CID_WORDS)
-            e.st(e.add(_g(e, G_PAY), o), e.add(payload_at, 1))
-            for slot in (G_ERASED, G_IFACE, G_MTAB, G_GROUPOF):
-                e.st(e.add(_g(e, slot), o), NONE)
-            for slot in (G_TW, G_LSIZE, G_LALIGN):
-                e.st(e.add(_g(e, slot), o), 0)
-            e.set("ra", e.add(e.add(payload_at, 1), e.rd(payload_at)))
-            e.if_(e.eq(o, S), lambda: e.set("ra", e.add(p["ra"], 1)))  # past the extras count
-
-        e.set("ra", 1 + CID_WORDS)
-        e.for_("o", 0, total, record)
-        e.var("ext_at", p["ra"])  # S12b: the verifier's pointer extents per graph follow the object records
-        from xax_selfhost_typing import IN_WORDS
-
-        _ok(e, e.le(p["ra"], IN_WORDS))
-        e.st(GLOBALS + G_O, S)
-        e.var("target", e.call(_FN["find"], _cid_at(e, S)))
-        e.if_(e.eq(p["target"], NONE), lambda: e.set("target", S))
-        e.st(GLOBALS + G_TARGET, p["target"])
-        # Every listed object, the appended target and member functions included (the target's duplicate record at S,
-        # when the store holds the target, is never named: ``find`` locates the stored one first).
-        e.st(GLOBALS + G_O, total)
-        O = _g(e, G_O)
-
-        def resolve():
-            o = p["o"]
-            count = e.rd(e.add(_at(e, G_REC, o), 1))
-            e.var("refs", e.alloc(e.add(count, 1)))
-            _ok(e, e.ne(p["refs"], NONE))
-            e.st(e.add(_g(e, G_REFS), o), p["refs"])
-            first = e.add(_at(e, G_REC, o), 2)
-            e.for_("k", 0, count, lambda: e.st(e.add(p["refs"], p["k"]), e.call(_FN["find"], e.add(first, e.mul(p["k"], CID_WORDS)))))
-
-        e.for_("o", 0, O, resolve)
-
-        group_member_tables(e, O)
-
-        e.st(W_ON, 0)  # S15e.4 (ADR-322): 8-byte pointers in ``abi_layout`` until the browser Wasm path sets it
-        # The audit word after the extents: bit 2 is a Linux executable request (``compile_linux_executable``,
-        # ``closure_with_xax``): any other target is then ``LINUX-ELF-EXEC-TARGET``'s, as the bootstrap's first check
-        # decides, instead of the path its own profile would take.
-        e.var("lx_at", p["ext_at"])
-        e.var("lx_n", e.rd(p["lx_at"]))
-        e.set("lx_at", e.add(p["lx_at"], 1))
-        e.for_("lx_k", 0, p["lx_n"], lambda: e.set("lx_at", e.add(e.add(e.add(p["lx_at"], CID_WORDS), 1), e.mul(e.rd(e.add(p["lx_at"], CID_WORDS)), 5))))
-        e.var("linux_request", e.flag(e.ne(e.and_(e.rd(p["lx_at"]), LINUX_REQUEST), 0)))
-        # 1. The target (``decode_native_target``'s fields up to the terminator list, of a verified target object).
-        target = p["target"]
-        _ok(e, e.eq(_kind(e, target), int(Kind.TARGET)))
-        e.var("ta", _at(e, G_PAY, target))
-        e.var("t_idn", _payload_uleb(e, "ta"))
-        # S15e.3 (ADR-317): the Windows PE32+ profile is ``_hosted_container``'s by identity (on architecture 1).
-        e.var("t_windows", e.flag(e.eq(p["t_idn"], len(PE_IDENTITY))))
-        e.if_(e.ne(p["t_windows"], 0), lambda: [e.if_(e.ne(e.rd(e.add(p["ta"], k)), byte), lambda: e.set("t_windows", 0))
-                                               for k, byte in enumerate(PE_IDENTITY)])
-        e.set("ta", e.add(p["ta"], p["t_idn"]))  # past the identity bytes
-        fields = [_payload_uleb(e, "ta") for _ in range(6)]  # profile, architecture, abi, format, word, pointer bits
-        e.var("t_profile", fields[0])
-        e.var("t_arch", fields[1])
-        e.var("t_abi", fields[2])
-        e.var("t_fmt", fields[3])
-        e.st(GLOBALS + G_TABI, p["t_abi"])
-        e.st(GLOBALS + G_TFMT, p["t_fmt"])
-        e.st(GLOBALS + G_NARGS, 0)
-
-        def registers():
-            _payload_uleb(e, "ta")  # stack alignment
-            _payload_uleb(e, "ta")  # shadow space
-            e.var("t_nargs", _payload_uleb(e, "ta"))
-            e.st(GLOBALS + G_NARGS, p["t_nargs"])
-            e.for_("q", 0, p["t_nargs"], lambda: _payload_uleb(e, "ta"))
-            _payload_uleb(e, "ta")  # result register
-            e.var("t_nscratch", _payload_uleb(e, "ta"))
-            e.for_("q", 0, p["t_nscratch"], lambda: _payload_uleb(e, "ta"))
-
-        arch = p["t_arch"]
-        _ok(e, e.either(*(e.eq(arch, a) for a in (*REGISTER_ARCHITECTURES, *OTHER_ARCHITECTURES))))
-        e.if_(e.either(*(e.eq(arch, a) for a in REGISTER_ARCHITECTURES)), registers)
-        for table, slot, limit in ((G_SUP, G_SUP_AT, 256), (G_SUPT, G_SUPT_AT, 8)):
-            e.st(GLOBALS + slot, p["ta"])
-            e.var("tcount", _payload_uleb(e, "ta"))
-            e.for_("q", 0, p["tcount"], lambda table=table, limit=limit: (lambda value: (_ok(e, e.lt(value, limit)), e.st(e.add(_g(e, table), value), 1)))(
-                _payload_uleb(e, "ta")))
-        e.st(GLOBALS + G_TPROFILE, p["t_profile"])
-        e.st(GLOBALS + G_TATOMIC, p["ta"])
-        sup = _g(e, G_SUP)
-        e.st(GLOBALS + G_GENERAL, e.flag(e.either(*(e.ne(e.ld(e.add(sup, int(op))), 0) for op in (Operation.FLOAT_ADD, Operation.AGGREGATE_MAKE, Operation.SUM_MAKE)))))
-
-        def target_expected():
-            D.put(e, D.T_LIST)
-            D.put(e, 2)
-            D.integer(e, LINUX_ABI)
-            D.put(e, D.T_LIST)
-            D.put(e, len(ELF_FORMATS))
-            for value in ELF_FORMATS:
-                D.integer(e, value)
-
-        def target_actual():
-            D.put(e, D.T_LIST)
-            D.put(e, 2)
-            D.integer(e, p["t_abi"])
-            D.integer(e, p["t_fmt"])
-
-        def accelerator():
-            """S15e.7a (ADR-321): an accelerator target's deployment packet (``xax_selfhost_general_accel``)."""
-            e.var("acc_entry", e.call(_FN["find"], 1))
-            _ok(e, e.ne(p["acc_entry"], NONE))
-            _call(e, "accelerator", p["acc_entry"], target)
-            e.st(0, OK)
-            e.give(1)
-
-        e.if_(e.both(e.eq(p["linux_request"], 0), e.eq(p["t_arch"], 4)), accelerator)
-
-        def spirv():
-            """S15e.7b (ADR-321): a SPIR-V compute module (``xax_selfhost_general_spirv``)."""
-            e.var("spv_entry", e.call(_FN["find"], 1))
-            _ok(e, e.ne(p["spv_entry"], NONE))
-            _call(e, "spirv", p["spv_entry"])
-            e.st(0, OK)
-            e.give(1)
-
-        e.if_(e.both(e.eq(p["linux_request"], 0), e.eq(p["t_arch"], 7)), spirv)
-
-        def wasm():
-            """S15e.4 (ADR-322): a browser page (``xax_selfhost_general_wasm``)."""
-            e.var("wasm_entry", e.call(_FN["find"], 1))
-            _ok(e, e.ne(p["wasm_entry"], NONE))
-            _call(e, "wasm", p["wasm_entry"])
-            e.st(0, OK)
-            e.give(1)
-
-        e.if_(e.both(e.eq(p["linux_request"], 0), e.eq(p["t_arch"], 2)), wasm)
-        e.st(GLOBALS + G_RAWWIN, e.flag(e.both(e.eq(p["linux_request"], 0), e.eq(p["t_windows"], 0), e.eq(p["t_arch"], 1), e.eq(p["t_abi"], 1),
-                                               e.eq(p["t_fmt"], 1))))
-        e.st(GLOBALS + G_WINDOWS, e.flag(e.both(e.eq(p["linux_request"], 0), e.either(e.both(e.ne(p["t_windows"], 0), e.eq(p["t_arch"], 1)),
-                                                                                     e.ne(_g(e, G_RAWWIN), 0)))))
-        linux = e.both(e.eq(p["t_abi"], LINUX_ABI), e.either(*(e.eq(p["t_fmt"], f) for f in ELF_FORMATS)))
-        e.if_(e.eq(_g(e, G_WINDOWS), 0), lambda: _reject(e, linux, "LINUX-ELF-EXEC-TARGET", target, target_expected, target_actual))
-
-        # 2. The process entry (``validate_process_entry``).
-        e.var("entry", e.call(_FN["find"], 1))
-        _ok(e, e.ne(p["entry"], NONE))
-        # S15e.3b (ADR-320): on the PE profile the driver names a DLL's build request instead of its entry; the plan
-        # (``xax_selfhost_general_dll``) gives the entry and the further roots.
-        e.st(DLL.D_ON, 0)
-        e.st(DLL.D_NROOTS, 0)
-        e.if_(e.both(e.ne(_g(e, G_WINDOWS), 0), e.eq(_g(e, G_RAWWIN), 0), e.eq(_kind(e, p["entry"]), int(Kind.BUILD))), lambda: e.set("entry", _call(e, "dll_plan", p["entry"])))
-        entry = p["entry"]
-        e.st(GLOBALS + G_ENTRY, entry)
-
-        def kind_name():
-            for kind in Kind:
-                e.if_(e.eq(_kind(e, entry), int(kind)), lambda kind=kind: D.text(e, kind.name))
-
-        _ok(e, e.either(*(e.eq(_kind(e, entry), int(kind)) for kind in Kind)))
-        e.if_(e.ne(_g(e, G_WINDOWS), 0), lambda: _reject(e, e.eq(_kind(e, entry), int(Kind.FUNCTION)), "NATIVE-ENTRY-FUNCTION", entry,
-                                                        lambda: D.text(e, Kind.FUNCTION.name), kind_name))
-        _reject(e, e.eq(_kind(e, entry), int(Kind.FUNCTION)), "LINUX-ENTRY-FUNCTION", entry, lambda: D.text(e, Kind.FUNCTION.name), kind_name)
-        e.var("ei", _call(e, "interface", entry))
-        e.var("enp", e.ld(e.add(p["ei"], 1)))
-        e.var("ert", e.add(e.add(p["ei"], 2), p["enp"]))
-        e.var("emp", 0)
-        e.for_("q", 0, p["enp"], lambda: e.if_(e.not_(_proof(e, e.ld(e.add(e.add(p["ei"], 2), p["q"])))), lambda: e.set("emp", e.add(p["emp"], 1))))
-        e.var("emr", 0)
-        e.var("einteger", 1)
-
-        def entry_return():
-            t = e.ld(e.add(e.add(p["ert"], 1), p["q"]))
-            e.var("et", t)
-
-            def machine():
-                e.set("emr", e.add(p["emr"], 1))
-                e.if_(e.ne(_type_form(e, p["et"]), 1), lambda: e.set("einteger", 0))
-
-            e.if_(e.not_(_proof(e, p["et"])), machine)
-
-        e.for_("q", 0, e.ld(p["ert"]), entry_return)
-
-        def contract_actual():
-            D.put(e, D.T_LIST)
-            D.put(e, 2)
-            D.integer(e, p["emp"])
-            D.put(e, D.T_LIST)
-            D.put(e, p["emr"])
-
-            def each():
-                t = e.ld(e.add(e.add(p["ert"], 1), p["q"]))
-                e.var("et", t)
-                e.if_(e.not_(_proof(e, p["et"])), lambda: D.cid(e, _cid_words(e, p["et"])))
-
-            e.for_("q", 0, e.ld(p["ert"]), each)
-
-        contract = e.either(e.ne(_g(e, G_WINDOWS), 0), e.both(e.eq(p["emp"], 0), e.le(p["emr"], 1), e.ne(p["einteger"], 0)))
-        _reject(e, contract, "LINUX-PROCESS-ENTRY-CONTRACT", entry, lambda: D.text(e, ENTRY_CONTRACT_EXPECTED), contract_actual)
-
-        # 3. The closure, depth first in the bootstrap's order; (S15e.3b) then each further root's.
-        e.st(GLOBALS + G_MEMBERS, 0)
-        e.var("depth", 0)
-
-        def step():
-            e.var("fr", e.add(_g(e, G_FRAMES), e.mul(e.sub(p["depth"], 1), FRAME)))
-            fr = p["fr"]
-
-            def node():
-                e.st(e.add(fr, F_NODES), e.sub(e.ld(e.add(fr, F_NODES)), 1))
-                e.var("nat0", e.ld(e.add(fr, F_AT)))
-                e.var("nmember", e.rd(e.add(p["nat0"], 1)))  # ``call.group_member``'s member index (else unused)
-                e.st(e.add(fr, F_AT), _call(e, "node_info", p["nat0"]))
-                e.var("visit", _call(e, "node", e.ld(e.add(fr, F_GRAPH)), e.ld(e.add(fr, F_FN)), p["nmember"]))
-                e.if_(e.ne(p["visit"], NONE - 1), lambda: _push(e, p["visit"]))
-
-            def terminator():
-                e.var("tat", e.ld(e.add(fr, F_AT)))
-                kind = e.rd(p["tat"])
-                e.var("tkind", kind)
-                supported = e.both(e.lt(p["tkind"], 8), e.ne(_at(e, G_SUPT, e.sel(e.lt(p["tkind"], 8), p["tkind"], 0)), 0))
-                _reject(e, supported, "NATIVE-TERMINATOR-TARGET-SUPPORTED", e.ld(e.add(fr, F_GRAPH)), lambda: _target_list(e, G_SUPT_AT),
-                        lambda: D.tagged(e, D.T_TERMINATOR, p["tkind"]))
-                e.set("tat", _call(e, "term_end", p["tat"]))
-                e.st(e.add(fr, F_BLOCKS), e.sub(e.ld(e.add(fr, F_BLOCKS)), 1))
-
-                def next_block():
-                    nodes_at = e.add(e.add(p["tat"], 1), e.rd(p["tat"]))
-                    e.var("tnodes", nodes_at)
-                    e.st(e.add(fr, F_NODES), e.rd(p["tnodes"]))
-                    e.st(e.add(fr, F_AT), e.add(p["tnodes"], 1))
-
-                e.if_(e.ne(e.ld(e.add(fr, F_BLOCKS)), 0), next_block, lambda: e.set("depth", e.sub(p["depth"], 1)))
-
-            e.if_(e.ne(e.ld(e.add(fr, F_NODES)), 0), node, terminator)
-
-        # 4. The image order: each root's new functions by CID (``_function_closure``'s ``sorted(functions)``).
-        e.var("rk", 0)
-        e.var("rseg", 0)
-
-        def root():
-            e.var("rt", e.sel(e.eq(p["rk"], 0), entry, e.ld(e.add(e.ld(DLL.D_ROOTS), e.sub(p["rk"], 1)))))
-            e.if_(e.ne(p["rk"], 0), lambda: _call(e, "dll_root", p["rt"]))
-            e.if_(e.eq(e.ld(e.add(_g(e, G_TW), p["rt"])), 0), lambda: (_push(e, p["rt"]), e.while_(lambda: e.ne(p["depth"], 0), step)))
-            _call(e, "dll_sort", p["rseg"], _g(e, G_MEMBERS))
-            e.set("rseg", _g(e, G_MEMBERS))
-            e.set("rk", e.add(p["rk"], 1))
-
-        e.while_(lambda: e.lt(p["rk"], e.add(1, e.ld(DLL.D_NROOTS))), root)
-        order = _g(e, G_ORDER)
-        members = _g(e, G_MEMBERS)
-        e.var("members", members)
-        _ok(e, e.lt(e.add(ORDER_AT, e.mul(p["members"], CID_WORDS)), D.DIAG_AT))
-        e.st(COUNT_AT, p["members"])
-
-        def out():
-            for k, word in enumerate(_cid_words(e, e.ld(e.add(order, p["q"])))):
-                e.st(e.add(e.add(ORDER_AT, e.mul(p["q"], CID_WORDS)), k), word)
-
-        e.for_("q", 0, p["members"], out)
-        # S12b: the lowering view of every closure function, in image order.
-        views_prologue(e, total, order, p["members"])
-        from xax_selfhost_general_emit import E_FAIL
-        from xax_selfhost_general_regalloc import _ra
-
-        e.st(0, e.sel(e.ne(_ra(e, E_FAIL), 0), D.REJECT, OK))  # S12f.2 (ADR-278): a code generation rejection
-        e.give(1)
-    return _function((), build, tables)
-
-
-def build_general_program():
-    """``(reader, function)``: the general backend program's store and its entry."""
-    tables = None
-    objects: list = []
-    _FN.clear()
-
-    def add(name, made):
-        function, items = made
-        objects.extend(items)
-        _FN[name] = function
-        return function
-
-    add("find", _find(tables))
-    add("diagnostic", _diagnostic(tables))
-    add("text_at", _text_at(tables))
-    add("node_info", _node_info(tables))
-    add("term_end", _term_end(tables))
-    add("interface", _group_interface(tables))
-    add("erased", _erased(tables))
-    add("borrowed", _borrowed(tables))
-    add("layout", _layout(tables))
-    add("entry_abi", _entry_abi(tables))
-    add("prologue", _prologue(tables))
-    add("node", _node(tables))
-    DLL.add_dll_functions(add, tables)  # S15e.3b (ADR-320)
-    add_accelerator_functions(add, tables)  # S15e.7a (ADR-321)
-    add_spirv_functions(add, tables)  # S15e.7b (ADR-321)
-    add_view_functions(add, tables)
-    add_wasm_functions(add, tables)  # S15e.4 (ADR-322): after the views' ``abi_layout``
-    program = add("frontend", _frontend(tables))
-    return program_store(program, x86_64_linux_exec_target(), tuple(objects)), program
-
-
-_PROGRAM = NativeProgram(STORE_PATH, build_general_program, "x86-64-general-frontend")
+_PROGRAM = NativeProgram(STORE_PATH, "x86-64-general-frontend")
 load_general_program = _PROGRAM.load
-write_general_store = _PROGRAM.write
 OPT_OUT = "XAX_GENERAL_FRONTEND_PYTHON"
 
 
@@ -1316,7 +785,7 @@ def rebuild_views(words, closure, resolve, audit: bool = False):
     return views, prefetches, code, (bounds, analyses) if audit else bounds
 
 
-__all__ = ["RULES", "build_general_program", "closure_with_xax", "general_with_xax", "rebuild_views", "load_general_program", "native_general", "write_general_store"]
+__all__ = ["RULES", "closure_with_xax", "general_with_xax", "rebuild_views", "load_general_program", "native_general"]
 
 
 def x86_64_raw_image(reader, function_cid: bytes, target_object, *, frontend: str = "auto") -> bytes:

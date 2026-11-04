@@ -9,7 +9,7 @@ import sys
 import unittest
 
 import blake3
-from xax_selfhost_blake3 import INPUT_EXTENT, STORE_PATH, NativeHasher, build_hash_program, load_hash_program, riscv64_hash_image, run_riscv64_hash
+from xax_selfhost_blake3 import INPUT_EXTENT, NativeHasher, riscv64_hash_image, run_riscv64_hash
 
 try:
     import unicorn  # noqa: F401
@@ -25,13 +25,6 @@ VECTORS = {
     b"abc": "6437b3ac38465133ffb63b75273a8db548c558465d79db03fd359c6cd5bd9d85",
 }
 BOUNDARIES = (0, 1, 3, 4, 5, 63, 64, 65, 127, 128, 1023, 1024, 1025, 2047, 2048, 2049, 3072, 4096, 5121, 8192, 8193, 16385, 31744, 65536, 100003)
-
-
-class HashStoreTests(unittest.TestCase):
-    def test_committed_store_regenerates_and_verifies(self):
-        reader, function = build_hash_program()
-        self.assertEqual(reader.data, STORE_PATH.read_bytes())
-        self.assertEqual(load_hash_program()[1].cid, function.cid)
 
 
 @unittest.skipUnless(NATIVE, "the native leaf runs on Linux x86-64")
@@ -77,7 +70,6 @@ class NativeHashTests(unittest.TestCase):
         self.assertEqual(blake3.blake3(b"x").digest(64), blake3._Blake3(b"x").digest(64))  # other lengths use the driver
         big = os.urandom(INPUT_EXTENT + 5)
         self.assertEqual(blake3.blake3(big).digest(), blake3._Blake3(big).digest())  # over the lent view
-
 
 
 @unittest.skipUnless(EMULATOR, "requires the unicorn RV64 emulator")

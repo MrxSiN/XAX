@@ -18,12 +18,9 @@ Output: the status (1) and at ``OUT_AT`` the class in ``xax_selfhost_dex_writer`
 
 from __future__ import annotations
 
-from xax_compiler import x86_64_linux_exec_target
-from xax_graph_builder import program_store
 from xax_native import bootstrap_dir
-from xax_selfhost_facts import E, H_ARENA, H_ARENA_END, NONE, _function
-from xax_selfhost_views_backend import _FN, NativeProgram, _call, _ok
-from xax_selfhost_x86_64_general import GENERAL_ARENA_AT, GENERAL_ARENA_END
+from xax_selfhost_facts import E, NONE, _function
+from xax_selfhost_views_backend import NativeProgram, _call, _ok
 
 STORE_PATH = bootstrap_dir() / "xax_dex_jvm.xax"
 STATE_AT = 110 << 20
@@ -43,15 +40,6 @@ KI, KF, KJ, KD, KA = 1, 2, 3, 4, 5  # value kinds
 SCRATCH = 6
 ACC_STATIC, ACC_PRIVATE, ACC_CONSTRUCTOR = 0x0008, 0x0002, 0x10000
 TABLE = {"binary_op": 0, "binary_kind": 256, "unary_op": 512, "unary_kind": 768, "inverse": 1024, "nofall": 1280}
-
-
-def _tables() -> dict[str, dict[int, int]]:
-    import xax_dex_jvm as D
-
-    kinds = {"I": KI, "F": KF, "J": KJ, "D": KD}
-    return {"binary_op": {op: dex for op, (dex, _k) in D._BINARY.items()}, "binary_kind": {op: kinds[k] for op, (_d, k) in D._BINARY.items()},
-            "unary_op": {op: dex for op, (dex, _k) in D._UNARY.items()}, "unary_kind": {op: kinds[k] for op, (_d, k) in D._UNARY.items()},
-            "inverse": dict(D._INVERSE), "nofall": {op: 1 for op in D._NO_FALLTHROUGH}}
 
 
 def at(e: E, base, k):
@@ -1448,20 +1436,6 @@ def emit_text(e: E, h):
     _call(e, "dj_emittext", h)
 
 
-def skip_attributes(e: E, pos: str):
-    """Skips the attribute table at the variable ``pos``."""
-    p = e.p
-    e.var(f"{pos}_na", u2(e, p[pos]))
-    e.set(pos, e.add(p[pos], 2))
-
-    def one():
-        utf8_entry(e, u2(e, p[pos]))
-        e.set(pos, e.add(e.add(p[pos], 6), u4(e, e.add(p[pos], 2))))
-        _ok(e, e.le(p[pos], g(e, "bn")))  # DEX-CLASSFILE-TRUNCATED
-
-    e.for_(f"{pos}_k", 0, p[f"{pos}_na"], one)
-
-
 def _method_fn(tables):
     """``method(record)``: one method (``[flags, name, descriptor, code position or NONE, code length]``) lowered and
     written out."""
@@ -1560,162 +1534,6 @@ def _method_fn(tables):
     return _function(("record",), build, tables)
 
 
-def _frontend(tables):
-    def build(e: E):
-        p = e.p
-        e.st(0, 0)
-        e.set_hd(H_ARENA, GENERAL_ARENA_AT)
-        e.set_hd(H_ARENA_END, GENERAL_ARENA_END)
-        for name in G:
-            sg(e, name, 0)
-        for name, text in CONSTANT_TEXTS.items():
-            e.var("fe_h", e.alloc(len(text) + 1))
-            _ok(e, e.ne(p["fe_h"], NONE))
-            e.st(p["fe_h"], len(text))
-            for k, char in enumerate(text):
-                e.st(e.add(p["fe_h"], k + 1), ord(char))
-            e.st(K[name], p["fe_h"])
-        e.for_("fe_k", 0, 1536, lambda: e.st(e.add(TBL_AT, p["fe_k"]), 0))
-        for name, values in _tables().items():
-            for index, value in sorted(values.items()):
-                e.st(TBL_AT + TABLE[name] + index, value)
-
-        # The class file, one byte to a word; the renames.
-        word = lambda: _call(e, "dj_word")  # noqa: E731
-        e.var("fe_len", word())
-        _ok(e, e.lt(p["fe_len"], 1 << 26))
-        e.var("fe_ba", e.alloc(e.add(p["fe_len"], 8)))
-        _ok(e, e.ne(p["fe_ba"], NONE))
-        sg(e, "ba", p["fe_ba"])
-        sg(e, "bn", p["fe_len"])
-
-        def unpack():
-            e.var("fe_w", word())
-            for k in range(8):
-                e.st(e.add(p["fe_ba"], e.add(e.mul(p["fe_q"], 8), k)), e.and_(p["fe_w"], 255))
-                e.set("fe_w", e.udiv(p["fe_w"], 256))
-
-        e.for_("fe_q", 0, e.udiv(e.add(p["fe_len"], 7), 8), unpack)
-        e.var("fe_nr", word())
-        _ok(e, e.lt(p["fe_nr"], 1 << 20))
-        e.var("fe_rn", e.alloc(e.add(e.mul(p["fe_nr"], 2), 1)))
-        _ok(e, e.ne(p["fe_rn"], NONE))
-        e.st(p["fe_rn"], p["fe_nr"])
-        e.for_("fe_k", 0, e.mul(p["fe_nr"], 2), lambda: e.st(e.add(e.add(p["fe_rn"], 1), p["fe_k"]), _call(e, "dj_text")))
-        sg(e, "renames", p["fe_rn"])
-
-        # The constant pool: [tag, a, b] per entry (a UTF-8 entry's text in a; a long or double's 64 bits in a).
-        _ok(e, e.eq(u4(e, 0), 0xCAFEBABE))  # DEX-CLASSFILE-MAGIC
-        e.var("fe_count", u2(e, 8))
-        e.var("fe_pool", e.alloc(e.add(e.mul(p["fe_count"], 3), 3)))
-        _ok(e, e.ne(p["fe_pool"], NONE))
-        e.for_("fe_k", 0, e.add(e.mul(p["fe_count"], 3), 3), lambda: e.st(e.add(p["fe_pool"], p["fe_k"]), 0))
-        sg(e, "pool", p["fe_pool"])
-        sg(e, "npool", p["fe_count"])
-        e.var("pos", 10)
-        e.var("fe_i", 1)
-
-        def entry():
-            e.var("fe_tag", u1(e, p["pos"]))
-            e.set("pos", e.add(p["pos"], 1))
-            e.var("fe_e", e.add(p["fe_pool"], e.mul(p["fe_i"], 3)))
-            e.st(p["fe_e"], p["fe_tag"])
-            t = p["fe_tag"]
-
-            def utf8():
-                e.var("fe_n", u2(e, p["pos"]))
-                e.st(e.add(p["fe_e"], 1), _call(e, "dj_utf8", e.add(p["pos"], 2), p["fe_n"]))
-                e.set("pos", e.add(e.add(p["pos"], 2), p["fe_n"]))
-
-            def wide_value():
-                e.st(e.add(p["fe_e"], 1), e.add(e.mul(u4(e, p["pos"]), 1 << 32), u4(e, e.add(p["pos"], 4))))
-                e.set("pos", e.add(p["pos"], 8))
-                e.set("fe_i", e.add(p["fe_i"], 1))
-
-            def pair():
-                e.st(e.add(p["fe_e"], 1), u2(e, p["pos"]))
-                e.st(e.add(p["fe_e"], 2), u2(e, e.add(p["pos"], 2)))
-                e.set("pos", e.add(p["pos"], 4))
-
-            e.if_(e.eq(t, 1), utf8, lambda: e.if_(
-                e.either(e.eq(t, 3), e.eq(t, 4)), lambda: (e.st(e.add(p["fe_e"], 1), u4(e, p["pos"])), e.set("pos", e.add(p["pos"], 4))), lambda: e.if_(
-                    e.either(e.eq(t, 5), e.eq(t, 6)), wide_value, lambda: e.if_(
-                        e.either(e.eq(t, 7), e.eq(t, 8)), lambda: (e.st(e.add(p["fe_e"], 1), u2(e, p["pos"])), e.set("pos", e.add(p["pos"], 2))), lambda: e.if_(
-                            e.both(e.le(9, t), e.le(t, 12)), pair, lambda: _ok(e, e.eq(0, 1)))))))  # DEX-CLASSFILE-POOL-TAG
-            e.set("fe_i", e.add(p["fe_i"], 1))
-
-        e.while_(lambda: e.lt(p["fe_i"], p["fe_count"]), entry)
-        klass = lambda index: utf8_entry(e, pool(e, index, 1))  # noqa: E731
-
-        # The class, its superclass and interfaces.
-        e.var("fe_access", u2(e, p["pos"]))
-        sg(e, "this", klass(u2(e, e.add(p["pos"], 2))))
-        e.var("fe_super", u2(e, e.add(p["pos"], 4)))
-        e.var("fe_ni", u2(e, e.add(p["pos"], 6)))
-        e.set("pos", e.add(p["pos"], 8))
-        emit_text(e, _call(e, "dj_classtype", g(e, "this")))
-        emit(e, e.and_(p["fe_access"], 0xFFDF))
-        e.if_(e.ne(p["fe_super"], 0), lambda: (emit(e, 1), emit_text(e, _call(e, "dj_classtype", klass(p["fe_super"])))), lambda: emit(e, 0))
-        emit(e, p["fe_ni"])
-        e.for_("fe_k", 0, p["fe_ni"], lambda: (emit_text(e, _call(e, "dj_classtype", klass(u2(e, p["pos"])))), e.set("pos", e.add(p["pos"], 2))))
-
-        # The fields.
-        e.var("fe_nf", u2(e, p["pos"]))
-        e.set("pos", e.add(p["pos"], 2))
-        emit(e, p["fe_nf"])
-
-        def field():
-            e.var("fe_fa", u2(e, p["pos"]))
-            emit_text(e, utf8_entry(e, u2(e, e.add(p["pos"], 2))))
-            emit_text(e, _call(e, "dj_descriptor", utf8_entry(e, u2(e, e.add(p["pos"], 4)))))
-            emit(e, e.and_(p["fe_fa"], 0x50DF))
-            e.set("pos", e.add(p["pos"], 6))
-            skip_attributes(e, "pos")
-
-        e.for_("fe_k", 0, p["fe_nf"], field)
-
-        # The methods: their records first (the last Code attribute of each), then each lowered.
-        e.var("fe_nm", u2(e, p["pos"]))
-        e.set("pos", e.add(p["pos"], 2))
-        e.var("fe_ms", e.alloc(e.add(e.mul(p["fe_nm"], 5), 1)))
-        _ok(e, e.ne(p["fe_ms"], NONE))
-
-        def method():
-            e.var("fe_m", e.add(p["fe_ms"], e.mul(p["fe_k"], 5)))
-            e.st(p["fe_m"], u2(e, p["pos"]))
-            e.st(e.add(p["fe_m"], 1), utf8_entry(e, u2(e, e.add(p["pos"], 2))))
-            e.st(e.add(p["fe_m"], 2), utf8_entry(e, u2(e, e.add(p["pos"], 4))))
-            e.st(e.add(p["fe_m"], 3), NONE)
-            e.st(e.add(p["fe_m"], 4), 0)
-            e.set("pos", e.add(p["pos"], 6))
-            e.var("fe_na", u2(e, p["pos"]))
-            e.set("pos", e.add(p["pos"], 2))
-
-            def attribute():
-                e.var("fe_an", utf8_entry(e, u2(e, p["pos"])))
-                e.var("fe_al", u4(e, e.add(p["pos"], 2)))
-                _ok(e, e.le(e.add(e.add(p["pos"], 6), p["fe_al"]), g(e, "bn")))  # DEX-CLASSFILE-TRUNCATED
-
-                def code():
-                    _ok(e, e.le(8, p["fe_al"]))
-                    e.st(e.add(p["fe_m"], 3), e.add(p["pos"], 6))
-                    e.st(e.add(p["fe_m"], 4), u4(e, e.add(p["pos"], 10)))
-
-                e.if_(e.ne(_call(e, "dj_same", p["fe_an"], e.ld(K["Code"])), 0), code)
-                e.set("pos", e.add(e.add(p["pos"], 6), p["fe_al"]))
-
-            e.for_("fe_j", 0, p["fe_na"], attribute)
-
-        e.for_("fe_k", 0, p["fe_nm"], method)
-        skip_attributes(e, "pos")
-        emit(e, p["fe_nm"])
-        e.for_("fe_k", 0, p["fe_nm"], lambda: _call(e, "dj_method", e.add(p["fe_ms"], e.mul(p["fe_k"], 5))))
-        e.st(OUT_AT, g(e, "nout"))
-        e.st(0, 1)
-        e.give(1)
-    return _function((), build, tables)
-
-
 BUILDERS = (
     ("dj_byte", _byte_fn), ("dj_utf8", _utf8_fn), ("dj_same", _same_fn), ("dj_concat", _concat_fn), ("dj_slice", _slice_fn), ("dj_single", _single_fn),
     ("dj_rename", _rename_fn), ("dj_descriptor", _descriptor_fn), ("dj_classtype", _class_type_fn), ("dj_descof", _descriptor_of_fn),
@@ -1731,27 +1549,8 @@ BUILDERS = (
 )
 
 
-def build_dex_jvm_program():
-    """``(reader, function)``: the JVM-to-DEX class lowering program's store and its entry."""
-    tables = None
-    objects: list = []
-    _FN.clear()
-
-    def add(name, made):
-        function, items = made
-        objects.extend(items)
-        _FN[name] = function
-        return function
-
-    for name, builder in BUILDERS:
-        add(name, builder(tables))
-    program = add("frontend", _frontend(tables))
-    return program_store(program, x86_64_linux_exec_target(), tuple(objects)), program
-
-
-_PROGRAM = NativeProgram(STORE_PATH, build_dex_jvm_program, "dex-jvm")
+_PROGRAM = NativeProgram(STORE_PATH, "dex-jvm")
 load_dex_jvm_program = _PROGRAM.load
-write_dex_jvm_store = _PROGRAM.write
 OPT_OUT = "XAX_DEX_JVM_PYTHON"
 
 

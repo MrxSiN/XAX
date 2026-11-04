@@ -21,7 +21,7 @@ from pathlib import Path
 import xax_compiler as compiler
 from xax_compiler import Kind, SemanticObject, StoreReader, XaxError, store_resolver, uleb
 from xax_graph_builder import program_store
-from xax_selfhost_graph import REJECT, STORE_PATH, build_graph_decoder_program
+from xax_selfhost_graph import REJECT
 from test_xax_jvm import _random_function
 
 NATIVE = sys.platform.startswith("linux") and platform.machine().lower() in ("x86_64", "amd64")
@@ -66,17 +66,6 @@ def _graphs():
 
 
 _OBJECTS: dict[bytes, tuple] = {}
-
-
-class GraphDecoderStoreTests(unittest.TestCase):
-    def test_committed_store_regenerates(self):
-        building = compiler._GRAPH_DECODER_BUILDING
-        compiler._GRAPH_DECODER_BUILDING = True
-        try:
-            reader, _function = build_graph_decoder_program()
-        finally:
-            compiler._GRAPH_DECODER_BUILDING = building
-        self.assertEqual(reader.data, STORE_PATH.read_bytes())
 
 
 @unittest.skipUnless(NATIVE, "the native leaf runs on Linux x86-64")

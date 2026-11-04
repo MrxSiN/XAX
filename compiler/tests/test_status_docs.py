@@ -36,27 +36,25 @@ class StatusDocsTests(unittest.TestCase):
             self.assertLess(text.index("`linux-x86_64`"), text.index("`dotnet-clr`"))
 
     def test_bootstrap_block_is_the_derived_status(self):
-        """STATUS_DOCS_SYNCHRONIZED for B levels: the block comes from the derived evidence, never prose."""
-        import json
+        """STATUS_DOCS_SYNCHRONIZED for B levels: the block comes from ``bootstrap_status`` over the executed records,
+        never prose (W3, ADR-362: no M14 evidence, and the bootstrap seed is the native compiler)."""
+        from xax_selfhost import bootstrap_status
 
-        from xax_status_docs import BOOTSTRAP_EVIDENCE
-
+        status = bootstrap_status()
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            (root / BOOTSTRAP_EVIDENCE).parent.mkdir(parents=True)
-            evidence = json.loads((REPO / BOOTSTRAP_EVIDENCE).read_text(encoding="utf-8"))
-            (root / BOOTSTRAP_EVIDENCE).write_text(json.dumps(evidence), encoding="utf-8")
             page = root / "page.md"
             page.write_text("<!-- xax-status:bootstrap -->B6 everywhere<!-- /xax-status:bootstrap -->", encoding="utf-8")
             self.assertEqual(sync(write=True, repo=root), [page])
             text = page.read_text(encoding="utf-8")
-            full = evidence["bootstrap_status"]["full_production_compiler"]
+            full = status["full_production_compiler"]
             established = [f"B{n}" for n in range(7) if full[f"B{n}"]]
             self.assertIn("whole production compiler: " + (f"{', '.join(established)} established" if established else "none of B0-B6 is established"),
                           text)  # S15g (ADR-358): the derived levels, whatever they are
             self.assertNotIn("B6 everywhere", text)
-            self.assertIn("B2, B3, B4 hold, B5, B6 do not", text)
-            self.assertIn("requires Python: yes", text)
+            self.assertNotIn("M14", text)
+            self.assertIn("Bootstrap seed: native-elf `compiler/bootstrap/seed/xaxc-linux-x86_64`", text)
+            self.assertIn("requires Python: " + ("yes" if status["bootstrap_seed"]["requires_python"] else "no") + ".", text)
         self.assertTrue(any("xax-status:bootstrap" in path.read_text(encoding="utf-8") for path in documents()))
 
 
