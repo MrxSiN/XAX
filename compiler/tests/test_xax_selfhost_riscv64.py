@@ -20,7 +20,7 @@ from xax_compiler import execute, jvm_classfile_target, riscv64_baremetal_target
 from xax_graph_builder import program_store
 import xax_riscv64 as rv
 from xax_riscv64 import PythonEncoder, compile_riscv64_bound_target, run_riscv64
-from xax_selfhost_riscv64 import STORE_PATH, build_encoder_program, load_encoder_program, native_encoder
+from xax_selfhost_riscv64 import load_encoder_program, native_encoder
 from test_xax_jvm import _random_function
 
 NATIVE = sys.platform.startswith("linux") and platform.machine().lower() in ("x86_64", "amd64")
@@ -58,12 +58,6 @@ def _cases(rng: random.Random, count: int):
 
 
 class EncoderStoreTests(unittest.TestCase):
-    def test_committed_store_regenerates_and_verifies(self):
-        reader, encode = build_encoder_program()
-        self.assertEqual(reader.data, STORE_PATH.read_bytes())
-        loaded, loaded_encode = load_encoder_program()
-        self.assertEqual(loaded_encode.cid, encode.cid)
-
     def test_reference_executor_agrees_with_python(self):
         reader, encode = load_encoder_program()
         for arguments, expected in _cases(random.Random(1), 40):

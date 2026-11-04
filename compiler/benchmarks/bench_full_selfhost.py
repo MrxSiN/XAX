@@ -652,49 +652,50 @@ def measure() -> dict:
             row["bootstrap_diagnostic"] = BOOTSTRAP_DIAGNOSTICS[name]
         rows.append(row)
 
-    # S15d.4b (ADR-314): ordinary evolution.  C1, the first self-built compiler, replays the evolution ledger on the
-    # builders' baseline stores with its own ``edit`` and must make the committed driver and request stores, which its
-    # ``verify`` accepts.  The baseline is input data (what the builders made); every transaction is applied by C1.
+    # W2 (ADR-361): ordinary evolution on the frozen stores.  C1, the first self-built compiler, replays every ledger
+    # transaction with its own ``edit`` from the store it started at (the committed file, or git's copy of an earlier
+    # one) and must make the store the ledger records, which its ``verify`` accepts.  No builder baseline exists.
     evolution = None
     if len(executables) > 1:
-        from xax_selfhost_driver import build_general_driver_program
+        import xax_selfhost_evolution as EV
         from xax_selfhost_edit import STRUCTURAL, parse_record
-        from xax_selfhost_evolution import entries
-        from xax_selfhost_seed import REQUEST_PATH
 
-        building = X._TYPING_BUILDING
-        X._TYPING_BUILDING = True
-        try:
-            baseline = build_general_driver_program()[0]
-        finally:
-            X._TYPING_BUILDING = building
-        stores = {"driver": baseline.data, "request": compiler_request(baseline)[0].data}
-        committed = {"driver": GENERAL_STORE_PATH.read_bytes(), "request": REQUEST_PATH.read_bytes()}
         names = {1: "SetOperation", 2: "SetConstant", 3: "ReplaceReference", 4: "ReplaceUse", 5: "DeleteNode", 6: "InsertPureNode",
                  7: "SetResultType", 8: "DisconnectEdgeArgument", 9: "ConnectEdgeArgument"}
-        transactions, equal, verified = [], {}, {}
-        for name, data in stores.items():
-            path = directory / f"evolve-{name}.xax"
+        transactions = []
+        for index, (record, store, before, after) in enumerate(EV.ledger().transactions):
+            data = EV.before_store(store, before)
+            row = {"record": record.name, "store": store, "before": before, "after": after, "record_sha256": sha(record.read_bytes()),
+                   "mutations": len(parse_record(record.read_bytes())[1]),
+                   "kinds": sorted({names[kind] for kind, *_fields in parse_record(record.read_bytes())[1]})}
+            if data is None:
+                row["edit"] = "unavailable: git does not hold the earlier store"
+                transactions.append(row)
+                continue
+            path, output, verified = directory / f"evolve-{index}.xax", directory / f"evolve-{index}-next.xax", directory / f"evolve-{index}.bin"
             path.write_bytes(data)
-            for index, (record, _query) in enumerate(entries()):
-                output = directory / f"evolve-{name}-next.xax"
-                result = run(executables[1], ["edit", path, record, output], [output])
-                if name == "driver":
-                    kinds = sorted({names[kind] for kind, *_fields in parse_record(record.read_bytes())[1]})
-                    transactions.append({"record": record.name, "mutations": len(parse_record(record.read_bytes())[1]), "kinds": kinds,
-                                         "record_sha256": sha(record.read_bytes())})
-                if index < len(transactions):
-                    transactions[index][f"{name}_edit"] = {key: value for key, value in result.items() if key != "_data"}
-                if result["status"] != "image":
-                    break
-                output.replace(path)
-            equal[name] = path.read_bytes() == committed[name]
-            checked = run(executables[1], ["verify", path, directory / f"evolve-{name}-verified.bin"], [directory / f"evolve-{name}-verified.bin"])
-            verified[name] = checked["status"]
-        evolution = {"replayed_by": "C1", "baseline": "the builders' baseline stores (driver, and the request store derived from it)",
-                     "transactions": transactions, "structural": any(set(item["kinds"]) & {names[kind] for kind in STRUCTURAL} for item in transactions),
-                     "driver_equals_committed": equal["driver"], "request_equals_committed": equal["request"],
-                     "driver_verify": verified["driver"], "request_verify": verified["request"]}
+            result = run(executables[1], ["edit", path, record, output], [output])
+            row["edit"] = {key: value for key, value in result.items() if key != "_data"}
+            row["equals_ledger"] = result["status"] == "image" and EV.blob_id(output.read_bytes()) == after
+            if result["status"] == "image":
+                row["verify"] = run(executables[1], ["verify", output, verified], [verified])["status"]
+            transactions.append(row)
+        # A structural transaction the ledger does not record, applied by C1 to the committed driver store: its store
+        # must equal the Python reference engine's and verify (``probe_record``).
+        committed = X.StoreReader(GENERAL_STORE_PATH.read_bytes())
+        probe = directory / "evolve-probe.edit"
+        probe.write_bytes(EV.probe_record(committed))
+        output, verified = directory / "evolve-probe.xax", directory / "evolve-probe.bin"
+        result = run(executables[1], ["edit", GENERAL_STORE_PATH, probe, output], [output])
+        probed = {"record_sha256": sha(probe.read_bytes()), "kinds": sorted({names[kind] for kind, *_fields in parse_record(probe.read_bytes())[1]}),
+                  "edit": {key: value for key, value in result.items() if key != "_data"}}
+        probed["equals_reference"] = result["status"] == "image" and output.read_bytes() == EV.replay_reference(probe, committed.data)
+        probed["verify"] = run(executables[1], ["verify", output, verified], [verified])["status"] if result["status"] == "image" else None
+        rows = [*transactions, probed]
+        evolution = {"format": "xax-evolution-replay-v2", "replayed_by": "C1",
+                     "baseline": "the frozen stores (bootstrap/evolution/LEDGER baselines, ADR-361)",
+                     "ledger_heads_equal_committed": bool(EV.check()), "transactions": transactions, "probe": probed,
+                     "structural": any(set(item["kinds"]) & {names[kind] for kind in STRUCTURAL} for item in rows)}
 
     def elf_interpreter(path: Path) -> bool:
         data = path.read_bytes()

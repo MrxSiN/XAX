@@ -44,9 +44,9 @@ For trust-sensitive `xax-semantic-image-v1` releases, the primary OI-26 seed rec
 
 ## Self-hosted compiler stores (S ladder)
 
-Each store is canonical XAX semantic state for one compiler component on the production path (`XAX_IMPLEMENTATION_ROADMAP.md`, S ladder). The Python module next to each one builds the graph, checks the committed bytes, and loads the native leaf; it is seed material, not XAX source. In practice the builder is where a component is still edited, which is why `tests/test_store_regeneration.py` checks, on every host and twice per process, that each committed store is exactly what its builder makes (ADR-177). The native image of a store runs only on Linux x86-64; `xax_native.AUTHORITY` records which implementation ran.
+Each store is canonical XAX semantic state for one compiler component on the production path (`XAX_IMPLEMENTATION_ROADMAP.md`, S ladder). Since W2 (ADR-361) every store here except `xax_blake3_compress.xax` (a corpus program `xax_native_blake3` still builds) is frozen: the committed file is the component's source, and it changes only by transactions of the production compiler's own `edit` command recorded in `evolution/LEDGER` (`python -m xax_selfhost_evolution apply`). The Python builders that once made these stores are deleted. The module named next to each store loads it, runs its native image and holds the Python reference it is compared against; it is not XAX source. `tests/test_store_regeneration.py` checks on every host that each store is its ledger chain's end and replays every transaction (store + transaction = next store, byte for byte). The native image of a store runs only on Linux x86-64; `xax_native.AUTHORITY` records which implementation ran.
 
-| Store | Component | Builder |
+| Store | Component | Module |
 |---|---|---|
 | `xax_blake3_compress.xax` | BLAKE3 compression (S0) | `src/xax_native_blake3.py` |
 | `xax_blake3_hash.xax` | Whole BLAKE3-256 hash over lent views (S2) | `src/xax_selfhost_blake3.py` |

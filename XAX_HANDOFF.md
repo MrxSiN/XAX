@@ -21,7 +21,7 @@
 - Bootstrap labels B0–B6 are evidence claims. Capability presence, plans, or host-language simulation do not satisfy them.
 - B5/B6 claims are target-scoped. The M14 `xax-semantic-image-v1` result does not silently close the legacy native, WebAssembly, or accelerator backends.
 - B levels come only from `xax_selfhost.bootstrap_status` (generated blocks below); S-step self-compilation is a component fixed point, never B1–B4 (ADR-177).
-- Committed stores are what their builders make (`tests/test_store_regeneration.py`); the M14 seed is pinned and only `generate_m14.py rotate-seed` writes it; evidence that claims XAX-hosted execution runs with `XAX_REQUIRE_NATIVE=1`.
+- Committed self-hosting stores are frozen and are their evolution ledger's chain ends (`tests/test_store_regeneration.py`, ADR-361); the M14 seed is pinned and only `generate_m14.py rotate-seed` writes it; evidence that claims XAX-hosted execution runs with `XAX_REQUIRE_NATIVE=1`.
 - No hidden allocation, synchronization, syscall, initialization, exception edge, ownership transfer, device runtime, or target runtime assistance.
 - Tests/benchmarks count only when actually executed. Host-unavailable cases remain unavailable, not passed.
 
@@ -934,19 +934,27 @@ Step: [S1](#step-s1) · [S4](#step-s4) · [S5](#step-s5) · [S6](#step-s6) · [S
   - The external inputs follow the package identity in the input: digest, length, packed bytes. The driver appends what it kept at `INPUT_BYTES_AT`.
 - `bench_full_selfhost`'s scope has no `outside_scope`. `bootstrap_status` then takes the whole production compiler's levels from the Linux x86-64 compiler's derived ones. Keep its corpus covering every target and artifact `build` makes.
 
+#### W2 frozen stores and the ledger — 2026-11-04 (ADR-361)
+
+- There are no self-hosting builders. To change a component or the compiler, write an `XAXEDIT1` record (`xax_selfhost_edit.edit_record`, or translate a workspace batch with `xaxc edit` and record its effect) and run `python -m xax_selfhost_evolution apply <record> <store>...` on Linux x86-64. For the production compiler name both `xax_compiler_driver_general.xax` and `seed/xax_compiler_request.xax`, then `selfbuild.sh` and rotate the seed.
+- An edit of the 62 MB driver store takes about a minute with the seed. Python's `apply_reference` takes about 30 s for a constant and several minutes for a structural record.
+- `test_store_regeneration` reads earlier stores from git by blob id. Keep the history: a shallow clone skips those replays.
+- B6 evidence: `bench_full_selfhost` writes `evolution` as `xax-evolution-replay-v2` (ledger replays plus the structural `probe_record` on the committed driver). `bootstrap_status` reads both v1 and v2.
+- The S16a debugging aid (`XAX_DRIVER_DECLINE_SITES`) needed the driver builder and no longer exists. Instrument with a ledger transaction on a copy instead.
+
 #### S16a native workspace — 2026-10-30 (ADR-360)
 
 - The workspace helpers are `ws_*` in `xax_selfhost_edit.py`; `ws_command` classifies `edit`'s input. Helpers keep their state in workspace words (`WSC` control words, `EIN`/`WS_IN`/`BATCH` regions).
 - E-DSL pitfalls met here: a helper argument or variable must not be named `ip`, `iv`, `im`, `op`, `ov` or `om` (the view triples); a graph over about 4,000 blocks declines in the XAX verifier; inline text output (`_out_text`, `D.text`) multiplies nodes, so tables of packed words and loops keep helpers small.
 - The driver's main function has about 600 values left under `VCAP` (`xax_selfhost_general_view`). Count with the snippet in ADR-360's work (`values = sum(params + node results)` of the entry graph) before adding a driver stage; each `emit` call or new command adds dozens of blocks of about 95 parameters each.
-- Debugging a seed decline: build the committed driver with `XAX_DRIVER_DECLINE_SITES=1`, let the seed build it, and run it (the exit status names the site). Inside the general backend, `_ok` records no reason; instrument it temporarily (`H_REASON`) to find the check.
+- Debugging a seed decline: build the committed driver with `XAX_DRIVER_DECLINE_SITES=1`, let the seed build it, and run it (the exit status names the site). Inside the general backend, `_ok` records no reason; instrument it temporarily (`H_REASON`) to find the check. *(Superseded by the W2 section above, ADR-361: the driver builder no longer exists.)*
 
 #### S15e.6i.3 records, compressed branding, large inputs — 2026-10-30 (ADR-359)
 
 - The module record is decoded to code points (`an_jdecode`) and parsed with an explicit stack (`an_jparse`); value nodes are listed above `_jcp` in `xax_selfhost_android.py`. Python's rules over them are the `an_j*` helpers. A check belongs where the bootstrap fails: before `LIBXPOSED-JVM-INPUTS` only what fails before it (J1); the rest in J3/J4.
 - Compressed entries go through `an_entry_bytes`: `an_inflate`, `an_bunzip` (libbz2 1.0.8) and `an_unlzma` (liblzma 5.4.5). Every stop on short input ends in `an_zfinish`, which keeps `file_size` bytes and checks the CRC.
 - Large data lives in the image buffer once no AArch64 program can run again (`big_writer`, `an_bigalloc`): inputs from its start, records from its end.
-- A decline must leave the status word 0: the frontend clears it. Debug declines with `XAX_ANDROID_WHY=1` after `build_android_program()` in the same process (it fills `DECLINE_SITES`).
+- A decline must leave the status word 0: the frontend clears it. Debug declines with `XAX_ANDROID_WHY=1` after `build_android_program()` in the same process (it fills `DECLINE_SITES`). *(Superseded by W2, ADR-361: the Android builder is deleted.)*
 - `test_xax_selfhost_android_records.agree` is the differential harness; seed its fuzz differently to search further.
 
 ### Other self-hosting records

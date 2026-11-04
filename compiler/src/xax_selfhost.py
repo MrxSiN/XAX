@@ -622,12 +622,22 @@ def linux_x86_64_status(full: dict, seed: dict | None = None) -> dict:
     b5 = b2 and not full["required_paths_outside_xax"] and not any(full["executables_have_interpreter"].values())
     # S15d.4b (ADR-314): ordinary evolution is shown, not stated: the first self-built compiler replayed the ledger,
     # including a structural transaction, to exactly the committed stores, which it verified.
+    # W2 (ADR-361), ``xax-evolution-replay-v2``: the stores are frozen; C1 replayed every ledger transaction from the store
+    # it started at to the store the ledger records and verified it, and applied a structural probe transaction to the
+    # committed driver store, equal to the reference engine's store and verified.
     evolution = full.get("evolution") or {}
-    evolved = (bool(evolution.get("transactions")) and evolution.get("structural") is True and evolution.get("driver_equals_committed") is True
-               and evolution.get("request_equals_committed") is True and evolution.get("driver_verify") == "image"
-               and evolution.get("request_verify") == "image"
-               and all(item.get("driver_edit", {}).get("status") == "image" and item.get("request_edit", {}).get("status") == "image"
-                       for item in evolution["transactions"]))
+    if evolution.get("format") == "xax-evolution-replay-v2":
+        probe = evolution.get("probe") or {}
+        evolved = (evolution.get("structural") is True and evolution.get("ledger_heads_equal_committed") is True
+                   and probe.get("edit", {}).get("status") == "image" and probe.get("equals_reference") is True and probe.get("verify") == "image"
+                   and all(item.get("edit", {}).get("status") == "image" and item.get("equals_ledger") is True and item.get("verify") == "image"
+                           for item in evolution.get("transactions", ())))
+    else:
+        evolved = (bool(evolution.get("transactions")) and evolution.get("structural") is True and evolution.get("driver_equals_committed") is True
+                   and evolution.get("request_equals_committed") is True and evolution.get("driver_verify") == "image"
+                   and evolution.get("request_verify") == "image"
+                   and all(item.get("driver_edit", {}).get("status") == "image" and item.get("request_edit", {}).get("status") == "image"
+                           for item in evolution["transactions"]))
     b6 = b5 and evolved and not full["ordinary_evolution"]
     blockers = {
         "B0": None if b0 else "the seed did not produce a running compiler",

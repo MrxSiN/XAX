@@ -1,6 +1,6 @@
 """S12e.2 (ADR-276): the compiler driver lowers ordinary Linux programs with the general x86-64 backend program.
 
-The general driver is the S10/S11 driver (``xax_selfhost_driver.build_driver_program(general=True)``) with the general
+The general driver is the S10/S11 driver (its store frozen since ADR-361) with the general
 backend program (S12a-S12f.1) linked in.  For a target whose identity is a Linux ELF profile it builds the general
 program's object table itself (the program store, the target, the verifier's pointer extents taken from the facts
 engine during its own semantic verification, and the trap payload heads), calls the program, and writes the ELF

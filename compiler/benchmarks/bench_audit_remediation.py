@@ -25,13 +25,7 @@ from pathlib import Path
 COMPILER = Path(__file__).resolve().parents[1]
 REPO = COMPILER.parent
 EVIDENCE = Path(__file__).resolve().parent / "audit_remediation_evidence.json"
-BUILDERS = (
-    ("xax_selfhost_cfg", "build_cfg_program"), ("xax_selfhost_graph", "build_graph_decoder_program"),
-    ("xax_selfhost_riscv64", "build_encoder_program"), ("xax_selfhost_store", "build_decoder_program"),
-    ("xax_selfhost_blake3", "build_hash_program"), ("xax_selfhost_typing", "build_typing_program"),
-    ("xax_selfhost_verify", "build_verifier_program"), ("xax_selfhost_riscv64_backend", "build_backend_program"),
-    ("xax_selfhost_x86_64_backend", "build_backend_program"),
-)
+# W2 (ADR-361): the self-hosting stores are frozen; their evolution ledger replaces the builders this run once rebuilt.
 
 
 # Levels the matrix claimed when the independent audit ran (2026-10-06, uncommitted tree on af65d1b); an input to
@@ -47,26 +41,15 @@ def _git(*arguments: str) -> str:
     return subprocess.run(["git", *arguments], cwd=REPO, capture_output=True, text=True, check=False).stdout.strip()
 
 
-def _build(module, builder) -> bytes:
-    import xax_compiler
-
-    building = xax_compiler._TYPING_BUILDING
-    xax_compiler._TYPING_BUILDING = True
-    try:
-        return getattr(module, builder)()[0].data
-    finally:
-        xax_compiler._TYPING_BUILDING = building
-
-
 def canonical_state() -> dict:
+    """The typing store's identity, and whether every frozen store is its evolution ledger's chain end (ADR-361; until W2
+    each store was rebuilt from its Python builder here)."""
     import xax_compiler
+    import xax_selfhost_evolution as EV
 
-    stores = {}
-    for name, builder in BUILDERS:
-        module = importlib.import_module(name)
-        first, second = _build(module, builder), _build(module, builder)
-        stores[module.STORE_PATH.name] = first == second == module.STORE_PATH.read_bytes()
     typing = importlib.import_module("xax_selfhost_typing").STORE_PATH.read_bytes()
+    heads = EV.ledger().heads()
+    stores = {store: EV.blob_id(EV.store_path(store).read_bytes()) == head for store, head in sorted(heads.items())}
     return {
         "typing_root": xax_compiler.StoreReader(typing).root_cid.hex(),
         "typing_digest_sha256": hashlib.sha256(typing).hexdigest(),

@@ -453,7 +453,6 @@ EXTRA_AT = TRUST_TABLE + T_WORDS * TRUST_LIMIT  # the snapshot's references from
 EXTRA_WORDS = 5
 R_TRUST, R_USED = 20, 21  # the trust objects' count (set by the driver); the signatures the snapshot names
 assert EXTRA_AT + EXTRA_WORDS * (TRUST_LIMIT + 1) < 45 << 20
-POLICY_ENVELOPE = POLICY.envelope()
 TRUST_POLICY_FORM, SIGNATURE_FORM = int(BuildForm.TRUST_POLICY), int(BuildForm.SIGNATURE)
 
 

@@ -1,163 +1,212 @@
-"""Self-hosting step S15d.2 (ADR-305): the committed compiler stores are authoritative; the evolution ledger.
+"""Self-hosting step W2 (ADR-361): the committed self-hosting stores are frozen; the evolution ledger.
 
-Until S15d the general driver's store was exactly what its Python builder made (``build_general_driver_program``).
-From S15d.2 the builders are a *baseline*: the committed store is the baseline with the transactions of the evolution
-ledger applied in order, each by the production compiler's ``edit`` command (S15d.1).  The compiler is changed by
-adding a transaction to the ledger, not by editing a builder.
+S15d.2 (ADR-305) made the general driver's store its Python builder's baseline with the transactions of an evolution
+ledger applied.  From W2 there is no builder baseline: every self-hosting store under ``bootstrap/`` is *frozen*, the
+committed file is its source, and it changes only by transactions of the production compiler's ``edit`` command
+(``xaxc edit <store> <record> <out>``, then ``xaxc verify``), each recorded in the ledger.  The Python builders that made
+these stores were deleted; nothing regenerates a frozen store from Python.
 
-``bootstrap/evolution/`` holds one edit record per transaction (``NNNN-name.edit``, ``xax_selfhost_edit``'s format)
-and ``LEDGER``, a text list of them in order, each with the query that located its nodes::
+``bootstrap/evolution/LEDGER`` (``xax-evolution-ledger-v2``) is a text file of two kinds of lines::
 
-    <record file> <query name>
+    baseline <store> <blob>
+    <record> <store> <before blob> <after blob>
 
-A record names nodes by their function's CID, so it applies to one baseline.  When the baseline changes, ``rebase``
-derives each record again from its query (``QUERIES``: read-only tooling over the baseline store) and the ledger is
-reviewed; a record is never edited by hand.
+``<store>`` is a path under ``bootstrap/``; ``<blob>`` is the git object id of a store's bytes (``git hash-object``), so a
+store a later transaction replaced is read back from the repository (``git cat-file blob``).  The ``baseline`` lines
+are the stores as frozen at W2.  Each transaction line applies ``evolution/<record>`` (an ``XAXEDIT1`` edit record,
+``xax_selfhost_edit``'s format) to the store whose blob is ``before`` and makes the store whose blob is ``after``.  Per
+store the lines form a chain from its baseline; the committed store is the chain's end.
 
-``evolve`` applies the ledger with ``xax_selfhost_edit.apply_reference`` (the Python reference, equal to the XAX
-engine and to ``Workspace.commit``), so ``test_store_regeneration`` checks the committed store on every host; on Linux
-x86-64 ``tests/test_xax_selfhost_evolution.py`` checks that the production compiler's ``edit`` makes the same stores.
+``tests/test_store_regeneration.py`` checks every chain on every host and replays each transaction with the Python
+reference (``xax_selfhost_edit.apply_reference``, equal to the XAX engine) where git holds the earlier store; on Linux
+x86-64 ``tests/test_xax_selfhost_evolution.py`` replays them with the production compiler's ``edit``.
+
+Adding a transaction (Linux x86-64; no Python runs inside the compiler)::
+
+    python -m xax_selfhost_evolution apply <record> <store> [<store> ...] [--compiler <xaxc>]
+
+copies the record into ``evolution/``, runs ``xaxc edit`` and then ``xaxc verify`` on each named store, replaces the
+store and appends its line.  A change to the production compiler names ``xax_compiler_driver_general.xax`` and
+``seed/xax_compiler_request.xax`` (the request store must stay ``xax_selfhost_compiler.compiler_request`` of the driver
+store); rebuild with ``bootstrap/seed/selfbuild.sh``.  ``python -m xax_selfhost_evolution check`` checks the chains.
 """
 
 from __future__ import annotations
 
+import hashlib
+import shutil
+import subprocess
+import tempfile
 from pathlib import Path
 
 from xax_native import bootstrap_dir
 
-EVOLUTION_DIRECTORY = bootstrap_dir() / "evolution"
-GENERAL_STORE_PATH = bootstrap_dir() / "xax_compiler_driver_general.xax"  # the store the ledger evolves
+BOOTSTRAP = bootstrap_dir()
+EVOLUTION_DIRECTORY = BOOTSTRAP / "evolution"
 LEDGER_PATH = EVOLUTION_DIRECTORY / "LEDGER"
+GENERAL_STORE_PATH = BOOTSTRAP / "xax_compiler_driver_general.xax"  # the production compiler's store
+DRIVER_STORE, REQUEST_STORE = "xax_compiler_driver_general.xax", "seed/xax_compiler_request.xax"
+SEED_COMPILER = BOOTSTRAP / "seed" / "xaxc-linux-x86_64"
+INPUTS_LIMIT = 100  # the committed compiler's external-input bound (ADR-306; the frozen driver holds it)
+HEADER = ("# xax-evolution-ledger-v2 (ADR-361): the frozen self-hosting stores and the transactions applied to them, in order.\n"
+          "# baseline <store> <blob>  |  <record> <store> <before blob> <after blob>   (blob: the git object id of the store's bytes)\n")
 
 
-def entries() -> list[tuple[Path, str]]:
-    """``(record path, query name)`` per ledger line, in order."""
-    if not LEDGER_PATH.exists():
-        return []
-    found = []
-    for line in LEDGER_PATH.read_text(encoding="ascii").splitlines():
-        line = line.strip()
-        if line and not line.startswith("#"):
-            record, query = line.split()
-            found.append((EVOLUTION_DIRECTORY / record, query))
-    return found
+def blob_id(data: bytes) -> str:
+    """The git object id of ``data`` as a blob (``git hash-object``)."""
+    return hashlib.sha1(b"blob %d\0" % len(data) + data).hexdigest()
 
 
-def evolve(reader):
-    """``reader`` with every ledger transaction applied in order."""
+class Ledger:
+    """The parsed ledger: ``baselines`` (store -> blob) and ``transactions`` ((record path, store, before, after), in
+    order)."""
+
+    def __init__(self, text: str) -> None:
+        self.baselines: dict[str, str] = {}
+        self.transactions: list[tuple[Path, str, str, str]] = []
+        for number, line in enumerate(text.splitlines(), 1):
+            fields = line.split()
+            if not fields or fields[0].startswith("#"):
+                continue
+            if fields[0] == "baseline" and len(fields) == 3:
+                if fields[1] in self.baselines:
+                    raise ValueError(f"LEDGER:{number}: a second baseline for {fields[1]}")
+                self.baselines[fields[1]] = fields[2]
+            elif len(fields) == 4 and fields[0] != "baseline":
+                self.transactions.append((EVOLUTION_DIRECTORY / fields[0], fields[1], fields[2], fields[3]))
+            else:
+                raise ValueError(f"LEDGER:{number}: not a ledger line: {line!r}")
+
+    def heads(self) -> dict[str, str]:
+        """Each store's chain end; a transaction must start at its store's current end."""
+        heads = dict(self.baselines)
+        for record, store, before, after in self.transactions:
+            if store not in heads:
+                raise ValueError(f"{record.name}: {store} has no baseline")
+            if heads[store] != before:
+                raise ValueError(f"{record.name}: {store}'s chain is at {heads[store]}, the transaction starts at {before}")
+            heads[store] = after
+        return heads
+
+
+def ledger() -> Ledger:
+    return Ledger(LEDGER_PATH.read_text(encoding="ascii"))
+
+
+def store_path(store: str) -> Path:
+    return BOOTSTRAP / store
+
+
+def frozen_stores() -> list[str]:
+    return sorted(ledger().baselines)
+
+
+def check() -> dict[str, str]:
+    """``store -> blob`` after checking that every chain is well formed and ends at the committed store."""
+    heads = ledger().heads()
+    for store, head in heads.items():
+        actual = blob_id(store_path(store).read_bytes())
+        if actual != head:
+            raise ValueError(f"{store}: the committed store is {actual}; its ledger chain ends at {head}")
+    return heads
+
+
+def stored_blob(blob: str) -> bytes | None:
+    """A store's bytes from the repository's object database, or None where git or the object is unavailable."""
+    git = shutil.which("git")
+    if git is None:
+        return None
+    result = subprocess.run([git, "cat-file", "blob", blob], cwd=BOOTSTRAP, capture_output=True, check=False)
+    return result.stdout if result.returncode == 0 and blob_id(result.stdout) == blob else None
+
+
+def before_store(store: str, before: str) -> bytes | None:
+    """The store a transaction starts from: the committed file when it still is that store, else git's copy."""
+    data = store_path(store).read_bytes()
+    return data if blob_id(data) == before else stored_blob(before)
+
+
+def replay_reference(record: Path, data: bytes) -> bytes:
+    """One transaction with the Python reference engine (``apply_reference``, equal to ``xaxc edit``)."""
+    from xax_compiler import StoreReader
     from xax_selfhost_edit import apply_reference
 
-    for record, _query in entries():
-        reader = apply_reference(reader, record.read_bytes())
-    return reader
+    return apply_reference(StoreReader(data), record.read_bytes()).data
 
 
-def build_evolved_general():
-    """``(reader, entry)``: the general driver's baseline with the ledger applied; the committed store is this."""
-    from xax_compiler import Kind
-    from xax_selfhost_driver import build_general_driver_program
-
-    reader, _entry = build_general_driver_program()
-    reader = evolve(reader)
-    module = next(item for item in reader.objects() if item.kind == Kind.MODULE)
-    return reader, next(reader.get(cid) for cid in module.references if reader.get(cid).kind == Kind.FUNCTION)
-
-
-# -- queries (read-only tooling: which nodes a transaction changes) -------------------------------------------------
-
-def _main_graph(reader):
+def probe_record(reader) -> bytes:
+    """A structural transaction on a driver store that the ledger does not record: one constant (the type and value of
+    the function's first constant) inserted before the first node of the driver function's first block that has
+    nodes.  The evidence run has C1 apply it to the committed store, so ordinary evolution (B6) is shown on the frozen
+    store even while the ledger holds no structural transaction."""
     import xax_compiler as X
+    from xax_selfhost_edit import INSERT_NODE, edit_record
 
     module = next(item for item in reader.objects() if item.kind == X.Kind.MODULE)
     main = next(reader.get(cid) for cid in module.references if reader.get(cid).kind == X.Kind.FUNCTION)
     graph = X._parse_graph(reader.get(main.references[X.Cursor(main.body, "").uleb()]), reader.get)
-    return main, graph
+    constant = next(node for block in graph.blocks for node in block.nodes if node.operation == X.Operation.CONSTANT)
+    block = next(index for index, item in enumerate(graph.blocks) if item.nodes)
+    value = int.from_bytes(constant.entity.body[2:], "little")
+    return edit_record([(INSERT_NODE, main.cid, block, 0, 0, X.Operation.CONSTANT, (), constant.results[0], value, ())])
 
 
-def _constant_value(node):
-    import xax_compiler as X
-
-    return int.from_bytes(node.entity.body[2:], "little") if node.operation == X.Operation.CONSTANT else None
+def run_compiler(compiler: Path, *arguments) -> int:
+    return subprocess.run([str(compiler), *(str(item) for item in arguments)], check=False).returncode
 
 
-def query_inputs_limit(reader, limit: int = 100) -> list[tuple]:
-    """S15d.3 (ADR-306): raise the external input files a command takes from 64 to ``limit``.  Two facts change in the
-    driver's function: the argument check's bound (the constant 64 compared, unsigned, below the count of extra
-    arguments) and the staged digest's place in the workspace (``INPUTS_AT`` + 64 * 32 + k, which must stay above the
-    sorted list of ``limit`` digests: it moves to ``INPUTS_AT`` + 4096 + k)."""
-    import xax_compiler as X
-    from xax_selfhost_edit import SET_CONSTANT
-    from xax_selfhost_request import INPUTS_AT
+def apply(record: Path, stores: list[str], compiler: Path = SEED_COMPILER) -> list[str]:
+    """Add one transaction: ``xaxc edit`` then ``xaxc verify`` on each store, which is replaced; the ledger lines it
+    appended.  Nothing is changed unless every store's edit and verification succeed."""
+    from xax_selfhost_edit import parse_record
 
-    old_limit, old_staged, new_staged = 64, INPUTS_AT + 64 * 32, INPUTS_AT + 4096
-    if limit * 32 > new_staged - INPUTS_AT:
-        raise ValueError("the sorted digests would reach the staged one")
-    main, graph = _main_graph(reader)
-    mutations = []
-    for b, block in enumerate(graph.blocks):
-        for n, node in enumerate(block.nodes):
-            if node.operation == X.Operation.INT_COMPARE and node.attributes == (int(X.IntCompare.ULT),) and node.operands[0].tag == 1:
-                source = node.operands[0]
-                if _constant_value(graph.blocks[source.block].nodes[source.index]) == old_limit:
-                    mutations.append((SET_CONSTANT, main.cid, source.block, source.index, old_limit, limit))
-    if len(mutations) != 1:
-        raise ValueError(f"the argument check's bound: {len(mutations)} candidates")
-    for b, block in enumerate(graph.blocks):
-        for n, node in enumerate(block.nodes):
-            value = _constant_value(node)
-            if value is not None and old_staged <= value < old_staged + 32:
-                mutations.append((SET_CONSTANT, main.cid, b, n, value, value - old_staged + new_staged))
-    if len(mutations) < 1 + 32:
-        raise ValueError("the staged digest's places")
-    return mutations
-
-
-def query_dead_constants(reader) -> list[tuple]:
-    """S15d.4b (ADR-314): the driver's function holds constants nothing uses (each builder idiom that materialized a
-    constant on a path that then did not need it); delete them.  A constant is pure, so ``DeleteNode`` takes it when it
-    has no use: no node operand, terminator value or edge argument names it."""
-    import xax_compiler as X
-    from xax_selfhost_edit import DELETE_NODE
-
-    main, graph = _main_graph(reader)
-    used = set()
-    for block in graph.blocks:
-        values = [value for node in block.nodes for value in node.operands]
-        values += list(block.terminator.values) + [value for _target, arguments in block.terminator.edges for value in arguments]
-        used.update((value.block, value.index) for value in values if value.tag == 1)
-    mutations = [(DELETE_NODE, main.cid, b, n) for b, block in enumerate(graph.blocks) for n, node in enumerate(block.nodes)
-                 if node.operation == X.Operation.CONSTANT and (b, n) not in used]
-    if not mutations:
-        raise ValueError("no unused constant")
-    return mutations
+    data = Path(record).read_bytes()
+    parse_record(data)
+    heads = check()
+    target = EVOLUTION_DIRECTORY / Path(record).name
+    if target.exists() and target.read_bytes() != data:
+        raise ValueError(f"{target.name} already names another record")
+    made = {}
+    with tempfile.TemporaryDirectory(prefix="xax-evolve-") as directory:
+        for store in stores:
+            if store not in heads:
+                raise ValueError(f"{store} is not a frozen store")
+            output, verified = Path(directory) / f"{len(made)}.xax", Path(directory) / f"{len(made)}.verify"
+            status = run_compiler(compiler, "edit", store_path(store), record, output)
+            if status != 0:
+                raise RuntimeError(f"xaxc edit {store}: exit status {status} (the diagnostic record is in {output})")
+            status = run_compiler(compiler, "verify", output, verified)
+            if status != 0:
+                raise RuntimeError(f"xaxc verify of the edited {store}: exit status {status}")
+            made[store] = output.read_bytes()
+        target.write_bytes(data)
+        lines = []
+        for store, after in made.items():
+            store_path(store).write_bytes(after)
+            lines.append(f"{target.name} {store} {heads[store]} {blob_id(after)}")
+    with LEDGER_PATH.open("a", encoding="ascii") as handle:
+        handle.writelines(line + "\n" for line in lines)
+    return lines
 
 
-QUERIES = {"inputs_limit": query_inputs_limit, "dead_constants": query_dead_constants}
-INPUTS_LIMIT = 100  # the committed compiler's external-input bound since ledger entry 0001 (the baseline's is 64)
-
-
-def rebase(reader=None) -> list[Path]:
-    """Derive every record again from its query over the baseline (``reader``: default, the builder's), applying the
-    earlier ones first; the records are rewritten for review."""
-    from xax_selfhost_driver import build_general_driver_program
-    from xax_selfhost_edit import apply_reference, edit_record
-
-    if reader is None:
-        reader = build_general_driver_program()[0]
-    written = []
-    for record, query in entries():
-        data = edit_record(QUERIES[query](reader))
-        record.write_bytes(data)
-        written.append(record)
-        reader = apply_reference(reader, data)
-    return written
+def main(arguments: list[str]) -> int:
+    if arguments == ["check"]:
+        for store, head in sorted(check().items()):
+            print(head, store)
+        return 0
+    if len(arguments) >= 3 and arguments[0] == "apply":
+        compiler = SEED_COMPILER
+        if "--compiler" in arguments:
+            at = arguments.index("--compiler")
+            compiler = Path(arguments[at + 1])
+            arguments = arguments[:at] + arguments[at + 2:]
+        for line in apply(Path(arguments[1]), arguments[2:], compiler):
+            print(line)
+        return 0
+    raise SystemExit("usage: python -m xax_selfhost_evolution check | apply <record> <store>... [--compiler <xaxc>]")
 
 
 if __name__ == "__main__":
     import sys
 
-    if sys.argv[1:] == ["rebase"]:
-        for path in rebase():
-            print(path)
-    else:
-        raise SystemExit("usage: python -m xax_selfhost_evolution rebase")
+    raise SystemExit(main(sys.argv[1:]))
