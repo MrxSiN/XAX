@@ -1,32 +1,32 @@
 {
   "format": "xax-selfhost-closure-evidence-v1",
   "target_cid": "2435e2380c5aad9fb993264837aada4f9e3cf5bd202219e31eeca624b87a7519",
-  "host_nonsemantic": "Linux x86_64 Python 3.13.17",
+  "host_nonsemantic": "Linux x86_64 Python 3.13.18",
   "b1_gen1_images": [
     {
       "program": "xax_selfhost_cfg",
       "store_bytes": 16296,
-      "store_sha256": "4873077434b67def08e87bde6f996d9a15825f7b1a411ca5fd5675a132cc4fa5",
+      "store_sha256": "17563956cc96b2dbf2179ec9ea9dc6c21029daa8da5b706bad501779098e8941",
       "functions": 1,
       "code_bytes": 10080,
-      "image_sha256": "a86020a8f2ad57f26df46b055a71f90103dbc63670be89c10773cf345b85eddf",
+      "image_sha256": "3518c4b35776658d0b8d8ce98313d8a490bb4a88283f2ca919ec863dfc606e7b",
       "gen1_equals_bootstrap_reference": true,
       "host_s_nonsemantic": {
-        "gen1": 1.35,
-        "bootstrap": 0.05
+        "gen1": 0.28,
+        "bootstrap": 0.06
       }
     },
     {
       "program": "xax_selfhost_graph",
-      "store_bytes": 147689,
-      "store_sha256": "2ff5685b5d2b21a0efb0f7c1543e4316d41e0659e939ae239f9e741a3b2effe3",
+      "store_bytes": 147664,
+      "store_sha256": "f74bb0c08a3c8ab790949acf52222c8f273a11056ec412d4f3680252e1331bac",
       "functions": 1,
       "code_bytes": 91476,
-      "image_sha256": "7f2983222ad00db4146398245ab11b5cfb02b6b51e0d52ad454817662444c16b",
+      "image_sha256": "9d5bbea977a25e5fdcbfe493d4161bd11b3ca63c51daa573a9c1552aca524d7c",
       "gen1_equals_bootstrap_reference": true,
       "host_s_nonsemantic": {
-        "gen1": 0.86,
-        "bootstrap": 0.72
+        "gen1": 0.55,
+        "bootstrap": 0.31
       }
     },
     {
@@ -38,8 +38,8 @@
       "image_sha256": "4c19dd0eb2db997d9ec0e49f56df8635d76fae8a61642b30f62d5f5b8be15bc8",
       "gen1_equals_bootstrap_reference": true,
       "host_s_nonsemantic": {
-        "gen1": 0.04,
-        "bootstrap": 0.03
+        "gen1": 0.02,
+        "bootstrap": 0.01
       }
     },
     {
@@ -51,8 +51,8 @@
       "image_sha256": "86e4a11a9583b7cef8dd94b0b47df97eafbf803d0c8c54f06a020b95e2595f23",
       "gen1_equals_bootstrap_reference": true,
       "host_s_nonsemantic": {
-        "gen1": 1.92,
-        "bootstrap": 0.9
+        "gen1": 0.89,
+        "bootstrap": 0.75
       }
     },
     {
@@ -64,8 +64,8 @@
       "image_sha256": "e945fe42fc408b08be2f3931d66eb8240cf7207883b95ee3c8228b102bedaa40",
       "gen1_equals_bootstrap_reference": true,
       "host_s_nonsemantic": {
-        "gen1": 39.47,
-        "bootstrap": 30.2
+        "gen1": 27.5,
+        "bootstrap": 21.75
       }
     },
     {
@@ -77,8 +77,8 @@
       "image_sha256": "b6534be67dfb944a33cef25fd1bccd7f39dff8f4bb00ebf41b1579c15d40d8a9",
       "gen1_equals_bootstrap_reference": true,
       "host_s_nonsemantic": {
-        "gen1": 32.08,
-        "bootstrap": 34.59
+        "gen1": 23.82,
+        "bootstrap": 27.72
       }
     },
     {
@@ -90,8 +90,8 @@
       "image_sha256": "c6b30a5fa42085012608b6fb75aed3ae19a5446ecd608c08787c662df01aa5d1",
       "gen1_equals_bootstrap_reference": true,
       "host_s_nonsemantic": {
-        "gen1": 0.08,
-        "bootstrap": 0.09
+        "gen1": 0.06,
+        "bootstrap": 0.06
       }
     },
     {
@@ -103,8 +103,8 @@
       "image_sha256": "ef05cf7d4eb81c06d5a26cbab4336e58f28995ac83efa551bfae916de93d6fe0",
       "gen1_equals_bootstrap_reference": true,
       "host_s_nonsemantic": {
-        "gen1": 9.39,
-        "bootstrap": 11.09
+        "gen1": 8.04,
+        "bootstrap": 9.92
       }
     }
   ],
@@ -117,8 +117,8 @@
       "emulated_equals_native": true,
       "emulated_instructions_upper_bound": 1000000000,
       "host_s_nonsemantic": {
-        "native": 0.001,
-        "emulated": 1.7
+        "native": 0.089,
+        "emulated": 0.9
       }
     },
     {
@@ -129,8 +129,8 @@
       "emulated_equals_native": true,
       "emulated_instructions_upper_bound": 1000000000,
       "host_s_nonsemantic": {
-        "native": 0.0,
-        "emulated": 0.2
+        "native": 0.105,
+        "emulated": 0.3
       }
     },
     {
@@ -141,20 +141,32 @@
       "emulated_equals_native": true,
       "emulated_instructions_upper_bound": 1000000000,
       "host_s_nonsemantic": {
-        "native": 0.0,
+        "native": 0.073,
         "emulated": 0.3
       }
     },
     {
       "store": "xax_aarch64_general.xax",
-      "objects": 795,
+      "objects": 825,
       "store_proven": true,
-      "objects_proven": 289,
+      "objects_proven": 293,
       "emulated_equals_native": true,
-      "emulated_instructions_upper_bound": 10000000000,
+      "emulated_instructions_upper_bound": 11000000000,
       "host_s_nonsemantic": {
-        "native": 1.521,
-        "emulated": 203.7
+        "native": 1.832,
+        "emulated": 422.6
+      }
+    },
+    {
+      "store": "xax_android.xax",
+      "objects": 8397,
+      "store_proven": true,
+      "objects_proven": 961,
+      "emulated_equals_native": true,
+      "emulated_instructions_upper_bound": 47000000000,
+      "host_s_nonsemantic": {
+        "native": 6.177,
+        "emulated": 1701.3
       }
     },
     {
@@ -165,8 +177,8 @@
       "emulated_equals_native": true,
       "emulated_instructions_upper_bound": 1000000000,
       "host_s_nonsemantic": {
-        "native": 0.117,
-        "emulated": 14.8
+        "native": 0.175,
+        "emulated": 13.1
       }
     },
     {
@@ -177,8 +189,8 @@
       "emulated_equals_native": true,
       "emulated_instructions_upper_bound": 2000000000,
       "host_s_nonsemantic": {
-        "native": 0.273,
-        "emulated": 29.5
+        "native": 0.295,
+        "emulated": 27.1
       }
     },
     {
@@ -189,8 +201,8 @@
       "emulated_equals_native": true,
       "emulated_instructions_upper_bound": 1000000000,
       "host_s_nonsemantic": {
-        "native": 0.149,
-        "emulated": 14.6
+        "native": 0.182,
+        "emulated": 12.6
       }
     },
     {
@@ -201,8 +213,8 @@
       "emulated_equals_native": true,
       "emulated_instructions_upper_bound": 1000000000,
       "host_s_nonsemantic": {
-        "native": 0.113,
-        "emulated": 13.9
+        "native": 0.199,
+        "emulated": 13.8
       }
     },
     {
@@ -213,20 +225,20 @@
       "emulated_equals_native": true,
       "emulated_instructions_upper_bound": 1000000000,
       "host_s_nonsemantic": {
-        "native": 0.018,
-        "emulated": 2.8
+        "native": 0.082,
+        "emulated": 2.9
       }
     },
     {
       "store": "xax_apk_signer.xax",
-      "objects": 261,
+      "objects": 302,
       "store_proven": true,
-      "objects_proven": 27,
+      "objects_proven": 33,
       "emulated_equals_native": true,
       "emulated_instructions_upper_bound": 1000000000,
       "host_s_nonsemantic": {
-        "native": 0.062,
-        "emulated": 8.3
+        "native": 0.206,
+        "emulated": 14.4
       }
     },
     {
@@ -237,8 +249,8 @@
       "emulated_equals_native": true,
       "emulated_instructions_upper_bound": 1000000000,
       "host_s_nonsemantic": {
-        "native": 0.003,
-        "emulated": 0.8
+        "native": 0.078,
+        "emulated": 1.0
       }
     },
     {
@@ -249,8 +261,8 @@
       "emulated_equals_native": true,
       "emulated_instructions_upper_bound": 1000000000,
       "host_s_nonsemantic": {
-        "native": 0.011,
-        "emulated": 1.4
+        "native": 0.101,
+        "emulated": 1.5
       }
     },
     {
@@ -261,8 +273,8 @@
       "emulated_equals_native": true,
       "emulated_instructions_upper_bound": 1000000000,
       "host_s_nonsemantic": {
-        "native": 0.004,
-        "emulated": 1.1
+        "native": 0.111,
+        "emulated": 1.3
       }
     },
     {
@@ -273,20 +285,20 @@
       "emulated_equals_native": true,
       "emulated_instructions_upper_bound": 20000000000,
       "host_s_nonsemantic": {
-        "native": 3.044,
-        "emulated": 384.6
+        "native": 2.785,
+        "emulated": 868.6
       }
     },
     {
       "store": "xax_compiler_driver_general.xax",
-      "objects": 6857,
+      "objects": 14565,
       "store_proven": true,
-      "objects_proven": 1343,
+      "objects_proven": 1978,
       "emulated_equals_native": true,
-      "emulated_instructions_upper_bound": 71000000000,
+      "emulated_instructions_upper_bound": 99000000000,
       "host_s_nonsemantic": {
-        "native": 11.58,
-        "emulated": 1388.6
+        "native": 22.258,
+        "emulated": 4124.5
       }
     },
     {
@@ -297,8 +309,8 @@
       "emulated_equals_native": true,
       "emulated_instructions_upper_bound": 5000000000,
       "host_s_nonsemantic": {
-        "native": 0.68,
-        "emulated": 132.6
+        "native": 0.744,
+        "emulated": 168.6
       }
     },
     {
@@ -309,8 +321,8 @@
       "emulated_equals_native": true,
       "emulated_instructions_upper_bound": 2000000000,
       "host_s_nonsemantic": {
-        "native": 0.16,
-        "emulated": 20.0
+        "native": 0.387,
+        "emulated": 20.9
       }
     },
     {
@@ -321,8 +333,8 @@
       "emulated_equals_native": true,
       "emulated_instructions_upper_bound": 1000000000,
       "host_s_nonsemantic": {
-        "native": 0.085,
-        "emulated": 11.3
+        "native": 0.178,
+        "emulated": 11.9
       }
     },
     {
@@ -333,8 +345,8 @@
       "emulated_equals_native": true,
       "emulated_instructions_upper_bound": 1000000000,
       "host_s_nonsemantic": {
-        "native": 0.034,
-        "emulated": 5.0
+        "native": 0.132,
+        "emulated": 5.7
       }
     },
     {
@@ -345,8 +357,8 @@
       "emulated_equals_native": true,
       "emulated_instructions_upper_bound": 12000000000,
       "host_s_nonsemantic": {
-        "native": 1.696,
-        "emulated": 218.1
+        "native": 1.643,
+        "emulated": 396.1
       }
     },
     {
@@ -357,8 +369,8 @@
       "emulated_equals_native": true,
       "emulated_instructions_upper_bound": 9000000000,
       "host_s_nonsemantic": {
-        "native": 1.328,
-        "emulated": 165.1
+        "native": 1.324,
+        "emulated": 299.1
       }
     },
     {
@@ -369,8 +381,8 @@
       "emulated_equals_native": true,
       "emulated_instructions_upper_bound": 3000000000,
       "host_s_nonsemantic": {
-        "native": 0.329,
-        "emulated": 42.4
+        "native": 0.509,
+        "emulated": 46.2
       }
     },
     {
@@ -381,8 +393,8 @@
       "emulated_equals_native": true,
       "emulated_instructions_upper_bound": 1000000000,
       "host_s_nonsemantic": {
-        "native": 0.002,
-        "emulated": 0.6
+        "native": 0.075,
+        "emulated": 0.8
       }
     },
     {
@@ -393,8 +405,8 @@
       "emulated_equals_native": true,
       "emulated_instructions_upper_bound": 1000000000,
       "host_s_nonsemantic": {
-        "native": 0.066,
-        "emulated": 9.3
+        "native": 0.206,
+        "emulated": 10.9
       }
     },
     {
@@ -405,8 +417,8 @@
       "emulated_equals_native": true,
       "emulated_instructions_upper_bound": 6000000000,
       "host_s_nonsemantic": {
-        "native": 0.821,
-        "emulated": 97.9
+        "native": 0.979,
+        "emulated": 100.3
       }
     },
     {
@@ -417,20 +429,20 @@
       "emulated_equals_native": true,
       "emulated_instructions_upper_bound": 1000000000,
       "host_s_nonsemantic": {
-        "native": 0.028,
-        "emulated": 3.9
+        "native": 0.099,
+        "emulated": 3.8
       }
     },
     {
       "store": "xax_x86_64_backend.xax",
-      "objects": 387,
+      "objects": 386,
       "store_proven": true,
       "objects_proven": 59,
       "emulated_equals_native": true,
       "emulated_instructions_upper_bound": 4000000000,
       "host_s_nonsemantic": {
-        "native": 0.514,
-        "emulated": 58.2
+        "native": 0.727,
+        "emulated": 60.3
       }
     },
     {
@@ -441,8 +453,8 @@
       "emulated_equals_native": true,
       "emulated_instructions_upper_bound": 25000000000,
       "host_s_nonsemantic": {
-        "native": 3.663,
-        "emulated": 478.1
+        "native": 3.85,
+        "emulated": 990.7
       }
     }
   ],
@@ -451,7 +463,7 @@
       "store": "m11_bootstrap_bundle.xax",
       "bytes": 1566,
       "emulated_equals_production": true,
-      "host_s_nonsemantic": 0.01
+      "host_s_nonsemantic": 0.05
     },
     {
       "store": "m11_compiler_subset.xax",
@@ -463,49 +475,55 @@
       "store": "m14_selfhost_compiler.xax",
       "bytes": 2020,
       "emulated_equals_production": true,
-      "host_s_nonsemantic": 0.01
+      "host_s_nonsemantic": 0.02
     },
     {
       "store": "xax_aarch64_general.xax",
-      "bytes": 5743524,
+      "bytes": 6409360,
       "emulated_equals_production": true,
-      "host_s_nonsemantic": 5.46
+      "host_s_nonsemantic": 4.38
+    },
+    {
+      "store": "xax_android.xax",
+      "bytes": 30035274,
+      "emulated_equals_production": true,
+      "host_s_nonsemantic": 20.11
     },
     {
       "store": "xax_android_elf.xax",
       "bytes": 535453,
       "emulated_equals_production": true,
-      "host_s_nonsemantic": 0.52
+      "host_s_nonsemantic": 0.35
     },
     {
       "store": "xax_android_managed_rules.xax",
       "bytes": 1411271,
       "emulated_equals_production": true,
-      "host_s_nonsemantic": 1.34
+      "host_s_nonsemantic": 0.93
     },
     {
       "store": "xax_android_resources.xax",
       "bytes": 450712,
       "emulated_equals_production": true,
-      "host_s_nonsemantic": 0.46
+      "host_s_nonsemantic": 0.3
     },
     {
       "store": "xax_android_rules.xax",
       "bytes": 443685,
       "emulated_equals_production": true,
-      "host_s_nonsemantic": 0.43
+      "host_s_nonsemantic": 0.3
     },
     {
       "store": "xax_apk_container.xax",
       "bytes": 81828,
       "emulated_equals_production": true,
-      "host_s_nonsemantic": 0.09
+      "host_s_nonsemantic": 0.06
     },
     {
       "store": "xax_apk_signer.xax",
-      "bytes": 286193,
+      "bytes": 560117,
       "emulated_equals_production": true,
-      "host_s_nonsemantic": 0.28
+      "host_s_nonsemantic": 0.36
     },
     {
       "store": "xax_blake3_compress.xax",
@@ -517,7 +535,7 @@
       "store": "xax_blake3_hash.xax",
       "bytes": 34041,
       "emulated_equals_production": true,
-      "host_s_nonsemantic": 0.04
+      "host_s_nonsemantic": 0.03
     },
     {
       "store": "xax_cfg_analysis.xax",
@@ -527,57 +545,57 @@
     },
     {
       "store": "xax_compiler_driver.xax",
-      "bytes": 11976241,
+      "bytes": 11975681,
       "emulated_equals_production": true,
-      "host_s_nonsemantic": 11.88
+      "host_s_nonsemantic": 8.21
     },
     {
       "store": "xax_compiler_driver_general.xax",
-      "bytes": 42191746,
+      "bytes": 61677768,
       "emulated_equals_production": true,
-      "host_s_nonsemantic": 46.55
+      "host_s_nonsemantic": 42.96
     },
     {
       "store": "xax_dex_bridge.xax",
       "bytes": 3254754,
       "emulated_equals_production": true,
-      "host_s_nonsemantic": 3.18
+      "host_s_nonsemantic": 2.3
     },
     {
       "store": "xax_dex_jvm.xax",
       "bytes": 703708,
       "emulated_equals_production": true,
-      "host_s_nonsemantic": 0.66
+      "host_s_nonsemantic": 0.49
     },
     {
       "store": "xax_dex_writer.xax",
       "bytes": 387978,
       "emulated_equals_production": true,
-      "host_s_nonsemantic": 0.39
+      "host_s_nonsemantic": 0.26
     },
     {
       "store": "xax_graph_decoder.xax",
-      "bytes": 147689,
+      "bytes": 147664,
       "emulated_equals_production": true,
-      "host_s_nonsemantic": 0.15
+      "host_s_nonsemantic": 0.11
     },
     {
       "store": "xax_jvm_general.xax",
       "bytes": 6478332,
       "emulated_equals_production": true,
-      "host_s_nonsemantic": 6.33
+      "host_s_nonsemantic": 4.38
     },
     {
       "store": "xax_op_typing.xax",
       "bytes": 5045815,
       "emulated_equals_production": true,
-      "host_s_nonsemantic": 4.85
+      "host_s_nonsemantic": 3.49
     },
     {
       "store": "xax_riscv64_backend.xax",
       "bytes": 1375194,
       "emulated_equals_production": true,
-      "host_s_nonsemantic": 1.31
+      "host_s_nonsemantic": 0.93
     },
     {
       "store": "xax_riscv64_encoder.xax",
@@ -589,31 +607,31 @@
       "store": "xax_store_decoder.xax",
       "bytes": 274630,
       "emulated_equals_production": true,
-      "host_s_nonsemantic": 0.27
+      "host_s_nonsemantic": 0.2
     },
     {
       "store": "xax_store_verifier.xax",
       "bytes": 3213605,
       "emulated_equals_production": true,
-      "host_s_nonsemantic": 3.12
+      "host_s_nonsemantic": 2.08
     },
     {
       "store": "xax_store_writer.xax",
       "bytes": 133881,
       "emulated_equals_production": true,
-      "host_s_nonsemantic": 0.14
+      "host_s_nonsemantic": 0.1
     },
     {
       "store": "xax_x86_64_backend.xax",
-      "bytes": 1866462,
+      "bytes": 1866286,
       "emulated_equals_production": true,
-      "host_s_nonsemantic": 1.77
+      "host_s_nonsemantic": 1.26
     },
     {
       "store": "xax_x86_64_general.xax",
       "bytes": 13965708,
       "emulated_equals_production": true,
-      "host_s_nonsemantic": 14.17
+      "host_s_nonsemantic": 10.19
     }
   ],
   "b4_gen2_compiles_verifier": {
@@ -623,7 +641,7 @@
     "sha256": "b6534be67dfb944a33cef25fd1bccd7f39dff8f4bb00ebf41b1579c15d40d8a9",
     "equals_gen1_verifier_image": true,
     "emulated_instructions_upper_bound": 174000000000,
-    "host_s_nonsemantic": 3226.7
+    "host_s_nonsemantic": 2873.4
   },
   "authority": {
     "blake3-compress": {
@@ -638,7 +656,7 @@
     "verification:hash": {
       "component": "verification:hash",
       "store_verification": "memoized",
-      "record": "verified-hash-c388c4ab6f6d9d00805e99f6cf02045e047db4a1bc8696d71a02178c2ba998af.bin"
+      "record": "verified-hash-7664554e2193c978c7dc259bd9633c4e95773a2eaceb45eeb1359dccef89ddb9.bin"
     },
     "blake3-hash": {
       "component": "blake3-hash",
@@ -652,7 +670,7 @@
     "verification:store-decoder": {
       "component": "verification:store-decoder",
       "store_verification": "memoized",
-      "record": "verified-store-decoder-fe7857b254996d2756748d04debae524c11bba69b1bcac36cffbc117f83556f4.bin"
+      "record": "verified-store-decoder-98b83ad5d19ef9d10f08e195ab9fc0a651ec96774350bc45d7b5288e8bbfd634.bin"
     },
     "store-decoder": {
       "component": "store-decoder",
@@ -666,12 +684,12 @@
     "verification:cfg": {
       "component": "verification:cfg",
       "store_verification": "memoized",
-      "record": "verified-cfg-6f61122a25bcf5ffc3f6a352e28405ecedb352845ab982a5622bccc33f287b91.bin"
+      "record": "verified-cfg-db7eda1cc6ce536b45a441eb6269a800a4da69f91af5ac466794cd82a5fb623f.bin"
     },
     "verification:riscv64-encoder": {
       "component": "verification:riscv64-encoder",
       "store_verification": "memoized",
-      "record": "verified-riscv64-encoder-0b84b150577633ccda810175436d9e6bdc13b1cbd864b48c1cccdb8ca70e2437.bin"
+      "record": "verified-riscv64-encoder-c02d98ecdadeea3e155f16249f7c4ff08934685245bc8a8b0009211e58a5b785.bin"
     },
     "riscv64-encoder": {
       "component": "riscv64-encoder",
@@ -685,7 +703,7 @@
     "verification:typing": {
       "component": "verification:typing",
       "store_verification": "memoized",
-      "record": "verified-typing-4188eaa120927fff1c04ed6659903ff0a56a4365064893c135ee9c2ac3a45854.bin"
+      "record": "verified-typing-4a2e514b4a1189412771aa97a51278da21d28535e5dbc61ac2a18deb5f91600c.bin"
     },
     "typing": {
       "component": "typing",
@@ -699,7 +717,7 @@
     "verification:store-verifier": {
       "component": "verification:store-verifier",
       "store_verification": "memoized",
-      "record": "verified-store-verifier-219d0faa8711cf9a6152056c6786c8c28d96f453d66c3c4570cb6dd4c2a276dc.bin"
+      "record": "verified-store-verifier-d6c216009e76d0c13480d55c2ca21d3b6a3e7b2e7f2941ae8ac85a4710019add.bin"
     },
     "store-verifier": {
       "component": "store-verifier",
@@ -708,18 +726,17 @@
       "requested_authority": "xax",
       "actual_authority": "xax",
       "fallback_occurred": false,
-      "fallback_reason": null,
-      "declined_inputs": 6718
+      "fallback_reason": null
     },
     "verification:graph-decoder": {
       "component": "verification:graph-decoder",
       "store_verification": "memoized",
-      "record": "verified-graph-decoder-f1bf07cce8599cb9f592a37bf127a9bc26e3bddbd3ca657d15f040303dcffeba.bin"
+      "record": "verified-graph-decoder-15e6636ea91dd29facf4357ed35e2500b678b09185cb3497501ae9fa576ccc7d.bin"
     },
     "graph-decoder": {
       "component": "graph-decoder",
-      "semantic_root": "2b34c9bb61e0911568ff51fdf38f9692897186503acc26d2f34f18b2ee2a6474",
-      "native_artifact_digest": "03b077e79c1cf10b90acae3e627229ffab07326b38f0c6213139fda245fd7032",
+      "semantic_root": "3ec7cc5e943949cd58ee2e918e17dc2092a8a1171d0cb2535a868d1508fa33d4",
+      "native_artifact_digest": "a2006887ea146d0672a6219706e76586a358151aef07118d778922d04050b34c",
       "requested_authority": "xax",
       "actual_authority": "xax",
       "fallback_occurred": false,
@@ -727,8 +744,8 @@
     },
     "cfg": {
       "component": "cfg",
-      "semantic_root": "66d42ef0298b00e21b40906d2073dc21eef4957109bf6e5948006b75ded5c884",
-      "native_artifact_digest": "e178c633ab77fe926b0eb76f8573e1aed2720b9ca5daabc4576e5de916bb42a3",
+      "semantic_root": "852b583d5c5447ba5af47a74b5107a055aaab7891e9a4f8bb314f70cca664241",
+      "native_artifact_digest": "38ce7321dbf2abd1acae77b1014887091aa87bf881120350289692eeb5fcd77d",
       "requested_authority": "xax",
       "actual_authority": "xax",
       "fallback_occurred": false,
@@ -737,7 +754,7 @@
     "verification:xax_riscv64_backend": {
       "component": "verification:xax_riscv64_backend",
       "store_verification": "memoized",
-      "record": "verified-xax_riscv64_backend-aa519e8286c0d200a9d44ebb877c5c13fe532ad89fc69282957c3ff57e9d76ea.bin"
+      "record": "verified-xax_riscv64_backend-94387e1bf598f8c41d6a29114e074c24375f159f9f3d1e2ce3e55b684392e04d.bin"
     },
     "riscv64-backend": {
       "component": "riscv64-backend",

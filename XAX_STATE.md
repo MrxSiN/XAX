@@ -951,6 +951,12 @@ The XAX JVM program now builds callbacks: JDK streams and comparators that call 
 - The driver's function takes 2,078,110 of the pinned seed's 2,097,152 CFG input words; its graph is 2.02 MB of the graph decoder's 2 MiB.
 - The stores were regenerated and the ledger rebased. The seed was rotated to `c25276ad…` (seed = C1 = C2).
 
+#### Self-hosting evidence re-run on the committed stores — 2026-11-05
+
+- `selfhost_x86_64_evidence.json` and `selfhost_closure_evidence.json` were stale: the CFG, graph-decoder and x86-64 backend stores changed in S15e.6i.2a after they were recorded. Both were re-run on Linux x86-64 with `XAX_REQUIRE_NATIVE=1`; every component's authority is `xax`.
+- x86-64: all ten gen1 images equal the bootstrap references. RV64 closure: all eight gen1 images equal the references; the emulated store verifier equals the native one on all 29 committed stores (now including the 62 MB general driver and the 30 MB Android store); the emulated hash equals production on all 29; B4 holds.
+- The closure bench now verifies each store in a child process of its own, and the emulator packs its input words in one buffer: the driver store's verification had exceeded a 16 GB host. `test_every_b1_entry_is_bound_to_the_committed_store` passes again.
+
 #### W4 the Python compiler in `compiler/reference/` — 2026-11-04 (ADR-363)
 
 - 56 Python compiler modules (inventory classes A, B, C and `xax_bootstrap`) moved to `compiler/reference/`. `compiler/src/` keeps 72 modules: the native runners and tooling.
