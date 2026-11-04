@@ -1,14 +1,13 @@
 """Gates for the evidence-and-canonical-state integrity milestone (ADR-177).
 
 Each test names the audit failure it keeps from recurring.  Store regeneration is in ``test_store_regeneration.py``,
-derived B status in ``test_xax_selfhost.py``, the wheel in ``test_wheel_install.py``, evidence validation in
+derived B status in ``test_full_selfhost_status.py`` and ``test_python_free_seed.py``, the wheel in ``test_wheel_install.py``, evidence validation in
 ``test_replacement_matrix.py``, and generated status blocks in ``test_status_docs.py``.
 """
 import hashlib
 import importlib.util
 import json
 import os
-import shutil
 import subprocess
 import sys
 import tempfile
@@ -20,13 +19,6 @@ import xax_native
 COMPILER = Path(__file__).resolve().parents[1]
 BOOTSTRAP = COMPILER / "bootstrap"
 BENCHMARKS = COMPILER / "benchmarks"
-
-
-def _generator(root: Path = COMPILER):
-    spec = importlib.util.spec_from_file_location("xax_generate_m14_gate", root / "bootstrap" / "generate_m14.py")
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
 
 
 def _environment(src: Path) -> dict:
@@ -49,39 +41,17 @@ class SelfhostEvidenceCurrencyTests(unittest.TestCase):
 
 
 class SeedTests(unittest.TestCase):
-    def test_seed_digest_is_pinned(self):
-        """SEED_DIGEST_PINNED"""
-        generator = _generator()
-        seed = (BOOTSTRAP / generator.SEED_FILENAME).read_bytes()
-        self.assertEqual((hashlib.sha256(seed).hexdigest(), len(seed)), (generator.SEED_SHA256, generator.SEED_SIZE))
-        evidence = json.loads((BOOTSTRAP / "m14_selfhost_evidence.json").read_text(encoding="utf-8"))["seed_runtime"]
-        self.assertEqual((evidence["sha256"], evidence["size"], evidence["requires_python"]), (generator.SEED_SHA256, generator.SEED_SIZE, True))
+    def test_the_bootstrap_seed_is_native(self):
+        """W3 (ADR-362): the M14 Python zipapp seed is retired; the only bootstrap seed is the pinned native compiler
+        (``test_python_free_seed`` checks its pin and its Python-free self-build), and no Python seed or generator is
+        left in ``bootstrap/``."""
+        from xax_selfhost import bootstrap_status
 
-    def test_seed_packing_is_deterministic(self):
-        """SEED_PACKAGING_DETERMINISTIC: the seed is a pure function of its declared entries, and so is a rotation."""
-        generator = _generator()
-        seed = (BOOTSTRAP / generator.SEED_FILENAME).read_bytes()
-        self.assertEqual(generator.pack_seed(generator.seed_entries(seed)), seed)
-        self.assertEqual(generator.rotation_seed(), generator.rotation_seed())
-
-    def test_routine_generation_does_not_mutate_the_seed(self):
-        """ROUTINE_GENERATION_DOES_NOT_MUTATE_SEED, and a seed that is not the pinned one stops generation."""
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            shutil.copytree(COMPILER / "src", root / "src", ignore=shutil.ignore_patterns("__pycache__"))
-            shutil.copytree(BOOTSTRAP, root / "bootstrap", ignore=shutil.ignore_patterns("__pycache__"))
-            seed = root / "bootstrap" / "m14_seed_runtime.pyz"
-            before = seed.read_bytes()
-            run = lambda: subprocess.run([sys.executable, str(root / "bootstrap" / "generate_m14.py")], cwd=root,  # noqa: E731
-                                         env=_environment(root / "src"), capture_output=True, text=True)
-            completed = run()
-            self.assertEqual(completed.returncode, 0, completed.stderr)
-            self.assertEqual(seed.read_bytes(), before)
-            seed.write_bytes(before + b"\0")
-            completed = run()
-            self.assertNotEqual(completed.returncode, 0)
-            self.assertIn("is not the pinned seed", completed.stderr)
-            self.assertEqual(seed.read_bytes(), before + b"\0")
+        self.assertEqual(sorted(path.name for path in BOOTSTRAP.rglob("*.pyz")), [])
+        self.assertFalse((BOOTSTRAP / "generate_m14.py").exists())
+        self.assertFalse((BOOTSTRAP / "m14_selfhost_evidence.json").exists())
+        seed = bootstrap_status()["bootstrap_seed"]
+        self.assertEqual((seed["kind"], seed["path"], seed["requires_python"]), ("native-elf", "compiler/bootstrap/seed/xaxc-linux-x86_64", False))
 
 
 class NativeAuthorityTests(unittest.TestCase):

@@ -20,7 +20,8 @@ TRANSACTIONS = EV.ledger().transactions
 def test_every_committed_self_hosting_store_is_frozen():
     stores = {path.relative_to(EV.BOOTSTRAP).as_posix() for path in EV.BOOTSTRAP.glob("xax_*.xax")}
     stores.discard("xax_blake3_compress.xax")  # a corpus program (``xax_native_blake3``), not a compiler component
-    assert stores | {EV.REQUEST_STORE} == set(FROZEN)
+    # W3 (ADR-362): the retired M14 bootstrap's META-wrapper store is a frozen corpus program
+    assert stores | {EV.REQUEST_STORE, "m14_selfhost_compiler.xax"} == set(FROZEN)
 
 
 def test_ledger_chains_end_at_the_committed_stores():

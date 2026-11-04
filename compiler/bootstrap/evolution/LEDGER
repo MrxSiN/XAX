@@ -2,6 +2,7 @@
 # baseline <store> <blob>  |  <record> <store> <before blob> <after blob>   (blob: the git object id of the store's bytes)
 # The baselines are the stores as frozen at W2.  The general driver's baseline already holds the two ADR-305 transactions
 # (0001 inputs-limit, ADR-306; 0002 dead-constants, ADR-314); their records are in git history.
+# m14_selfhost_compiler.xax was frozen at W3 (ADR-362), when the M14 Python bootstrap that generated it was retired.
 baseline xax_aarch64_general.xax 73fc380368db232a9c37e4cdf4d691b5111a630a
 baseline xax_android.xax 3d4ff5cd5c1268b433b333d009e5e9ac45707897
 baseline xax_android_elf.xax fcfd8dcbd3333be55e4852f6d0f79ff8b52168f7
@@ -27,4 +28,5 @@ baseline xax_store_verifier.xax 92d7edd1e39e5628fcca3c6d0477284e39b6e525
 baseline xax_store_writer.xax 113ef9aa5c3398d835543dc1c9de8b0cd22d21f8
 baseline xax_x86_64_backend.xax 4fe55c7dbd9d11ff9b4c790585e5d8f5a0805743
 baseline xax_x86_64_general.xax 87cff584024e05738f9fcf2a89ca988aa3a69992
+baseline m14_selfhost_compiler.xax ba131affdf32d6e6b6408e9a6682a219c3d38250
 baseline seed/xax_compiler_request.xax 57fa5a649a6268c6d39eed71e8700b1954dc8e03
