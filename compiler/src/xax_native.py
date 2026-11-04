@@ -370,9 +370,10 @@ def _prepare_process(components: list[str], directory: Path, timeout: float | No
     import time
 
     here = str(Path(__file__).resolve().parent)
+    reference = Path(here).parent / "reference"  # W4 (ADR-363): the Python reference compiler, beside src/ in a checkout
     opt_outs = {variable: "1" for component, variable in _PREPARE_OPT_OUTS.items() if component not in components or store_only}
     environment = {**os.environ, "XAX_NATIVE_CACHE": str(directory), **opt_outs}
-    environment["PYTHONPATH"] = os.pathsep.join(filter(None, (here, environment.get("PYTHONPATH"))))
+    environment["PYTHONPATH"] = os.pathsep.join(filter(None, (here, str(reference) if reference.is_dir() else None, *sys.path)))
     command = [sys.executable, "-c", f"import xax_native; xax_native._prepare_child({list(components)!r}, {store_only!r})"]
     start = time.perf_counter()
     try:

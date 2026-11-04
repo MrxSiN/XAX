@@ -17,11 +17,19 @@ class PythonAuthorityInventoryTests(unittest.TestCase):
         self.inventory = json.loads(INVENTORY.read_text(encoding="utf-8"))
 
     def test_every_source_module_is_classified_once(self):
-        modules = {path.name for path in (COMPILER / "src").glob("*.py")}
+        modules = {path.name for directory in ("src", "reference") for path in (COMPILER / directory).glob("*.py")}
         self.assertEqual(set(self.inventory["modules"]), modules)
         for name, entry in self.inventory["modules"].items():
             with self.subTest(module=name):
                 self.assertIn(entry["class"], self.inventory["classes"])
+
+    def test_the_python_compiler_is_in_reference(self):
+        """W4 (ADR-363): the Python compiler (classes A, B and C, and the M11 Python seed) is in ``reference/``; ``src/``
+        holds the native compiler's runners, generated-store modules and tooling (classes D, E, G, and the native seed's)."""
+        for name, entry in self.inventory["modules"].items():
+            with self.subTest(module=name):
+                reference = entry["class"] in ("A", "B", "C") or name == "xax_bootstrap.py"
+                self.assertTrue((COMPILER / ("reference" if reference else "src") / name).is_file())
 
     def test_authoritative_modules_name_described_components(self):
         components = self.inventory["components"]

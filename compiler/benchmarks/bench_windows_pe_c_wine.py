@@ -6,7 +6,7 @@ bytes, executable section bytes (``.text`` for C; the code image for XAX),
 and process wall time over repeated runs under Wine.  Wine reimplements the
 Windows API on Linux and dominates wall time, so time is a start-up
 comparison, not a code-quality one.  Wine is not Windows.
-Run: PYTHONPATH=src:. python -m benchmarks.bench_windows_pe_c_wine
+Run: PYTHONPATH=src:reference:. python -m benchmarks.bench_windows_pe_c_wine
 """
 from __future__ import annotations
 

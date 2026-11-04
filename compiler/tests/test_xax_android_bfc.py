@@ -5,7 +5,7 @@ import sys
 import unittest
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
+sys.path[:0] = [str(Path(__file__).resolve().parents[1] / "src"), str(Path(__file__).resolve().parents[1] / "reference")]
 from xax_android import inspect_android_elf  # noqa: E402
 from xax_android_bfc import HOST, bind, build  # noqa: E402
 from xax_compiler import StoreReader  # noqa: E402

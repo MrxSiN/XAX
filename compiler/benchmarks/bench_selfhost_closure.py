@@ -9,7 +9,7 @@ run in the Unicorn RV64 emulator, verifies every committed store (its own
 included) with exactly the native production verifier's verdicts.  B4: gen2 (the
 backend's own RISC-V image) compiling the verifier store under emulation
 reproduces the verifier image byte for byte.  Host timings are non-semantic.
-Run: ``PYTHONPATH=src python benchmarks/bench_selfhost_closure.py [--write]``.
+Run: ``PYTHONPATH=src:reference python benchmarks/bench_selfhost_closure.py [--write]``.
 """
 
 from __future__ import annotations

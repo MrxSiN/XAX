@@ -8,7 +8,7 @@ decoding, semantic verification, object table, lowering, file write) against the
 with Python orchestrating them), median of five; the driver's time includes starting its process.  Also: the driver
 image is the bootstrap generator's (B1-like), and the self-build loop: the driver executable (gen1) lowers the driver
 store to gen2, gen2 to gen3, each a process (component fixed point).  Host timings are non-semantic.  Runs with ``XAX_REQUIRE_NATIVE=1``.
-Run: ``PYTHONPATH=src python benchmarks/bench_selfhost_driver.py [--write]``.
+Run: ``PYTHONPATH=src:reference python benchmarks/bench_selfhost_driver.py [--write]``.
 """
 
 from __future__ import annotations

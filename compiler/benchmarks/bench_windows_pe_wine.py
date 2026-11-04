@@ -5,7 +5,7 @@ bytes it records.  After allocator convergence changed the code, this runs
 the current bytes under Wine on Linux.  Wine is a Windows API
 reimplementation, not Windows: the claim is EXECUTED-UNDER-WINE, and Linux
 reports the exit status modulo 256 (1339 -> 59).
-Run: PYTHONPATH=src:. python -m benchmarks.bench_windows_pe_wine
+Run: PYTHONPATH=src:reference:. python -m benchmarks.bench_windows_pe_wine
 """
 from __future__ import annotations
 

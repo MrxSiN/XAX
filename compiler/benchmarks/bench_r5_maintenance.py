@@ -19,7 +19,7 @@ The cycle runs only through the ordinary XAX workspace interface:
 6. benchmark: original and rebuilt JARs run interleaved on the same document (fresh JVM per run);
 7. persist: the committed canonical store is saved and its digest recorded.
 
-Run ``PYTHONPATH=src:.:.. python -m benchmarks.bench_r5_maintenance [--row=jvm|linux-x86_64] [--write]`` from ``compiler/``
+Run ``PYTHONPATH=src:reference:.:.. python -m benchmarks.bench_r5_maintenance [--row=jvm|linux-x86_64] [--write]`` from ``compiler/``
 (the JVM row needs ``java``; the Linux row, ADR-213, a Linux x86-64 host; the ``linux-aarch64`` row, ADR-258, an
 AArch64 Android device on ``adb`` with ``XAX_AARCH64_ADB=1`` and ``ANDROID_NDK_HOME``: the tests run through
 ``run_linux_aarch64_executable`` and the benchmark through ``android_jsonmin.measure``, timed on the device).

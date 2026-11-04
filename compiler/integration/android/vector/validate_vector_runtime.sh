@@ -7,4 +7,4 @@ COMPILER="$(cd "$HERE/../../.." && pwd)"
 command -v adb >/dev/null || { echo "adb not found" >&2; exit 2; }
 adb get-state >/dev/null 2>&1 || { echo "no adb device; set ANDROID_SERIAL" >&2; exit 2; }
 cd "$COMPILER"
-PYTHONPATH="src:.:..${PYTHONPATH:+:$PYTHONPATH}" exec python "$HERE/vector_harness.py" "$@"
+PYTHONPATH="src:reference:.:..${PYTHONPATH:+:$PYTHONPATH}" exec python "$HERE/vector_harness.py" "$@"

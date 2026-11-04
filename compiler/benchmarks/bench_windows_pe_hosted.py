@@ -2,7 +2,7 @@
 
 XAX semantics -> verifier -> x86-64 lowering -> direct PE32+ container with
 kernel32 imports -> Windows process.  No CRT, linker, assembler, or LLVM.
-Run: PYTHONPATH=src:. python -m benchmarks.bench_windows_pe_hosted
+Run: PYTHONPATH=src:reference:. python -m benchmarks.bench_windows_pe_hosted
 """
 from __future__ import annotations
 

@@ -2,7 +2,7 @@
 
 Run as a pytest plugin over the suite::
 
-    S8_TRACE_OUT=/tmp/s8 PYTHONPATH=src:tests:migration python -m pytest -p s8_rejection_trace tests
+    S8_TRACE_OUT=/tmp/s8 PYTHONPATH=src:reference:tests:migration python -m pytest -p s8_rejection_trace tests
     python migration/s8_rejection_trace.py /tmp/s8
 
 Every ``fail()`` under ``verify_store`` or ``StoreReader`` is recorded when the store decoder, the typing program,

@@ -8,7 +8,7 @@ own image, run natively) compiles the backend store to gen2.  Also measured: the
 helper images' run time against the images the optimizing bootstrap x86-64 backend
 (``xax_x86_64.compile_native``) makes of the same stores, on the same inputs (median of
 seven; the input copy is included in both).  Host timings are non-semantic.
-Run: ``PYTHONPATH=src python benchmarks/bench_selfhost_x86_64.py [--write]``.
+Run: ``PYTHONPATH=src:reference python benchmarks/bench_selfhost_x86_64.py [--write]``.
 """
 
 from __future__ import annotations

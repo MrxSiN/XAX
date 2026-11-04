@@ -11,7 +11,7 @@ Measures, for ``uniqcount`` (:mod:`benchmarks.uniqcount`) over the packages of
    from the store and the artifact;
 3. compile cost: package construction, store verification, and lowering
    (medians on this host);
-Run: PYTHONPATH=src:. python -m benchmarks.bench_oi36_stdlib
+Run: PYTHONPATH=src:reference:. python -m benchmarks.bench_oi36_stdlib
 """
 
 from __future__ import annotations

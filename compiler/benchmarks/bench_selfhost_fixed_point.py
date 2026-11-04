@@ -5,7 +5,7 @@ views-profile image gen1 makes of the backend store (and the bootstrap
 reference makes too); gen3 is the image gen2 makes of the same store when run
 in the Unicorn RV64 emulator.  Records the store and image hashes, gen2 ==
 reference, gen3 == gen2, and the emulated instruction count.  Host timings are
-non-semantic.  Run: ``PYTHONPATH=src python benchmarks/bench_selfhost_fixed_point.py [--write]``.
+non-semantic.  Run: ``PYTHONPATH=src:reference python benchmarks/bench_selfhost_fixed_point.py [--write]``.
 """
 
 from __future__ import annotations

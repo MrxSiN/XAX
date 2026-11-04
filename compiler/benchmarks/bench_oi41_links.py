@@ -8,7 +8,7 @@
 
 Performance against C lives in ``oi37_chains_evidence.json`` (``xax-link`` arm).
 Timings are host-dependent medians.  No model is run.
-Run: PYTHONPATH=src:. python -m benchmarks.bench_oi41_links
+Run: PYTHONPATH=src:reference:. python -m benchmarks.bench_oi41_links
 """
 
 from __future__ import annotations
@@ -24,7 +24,7 @@ from benchmarks.linux_chains import build_chains_program
 from xax_compiler import Operation, verify_store
 
 OUTPUT = Path(__file__).resolve().parent / "oi41_links_evidence.json"
-SOURCE = Path(__file__).resolve().parents[1] / "src" / "xax_compiler.py"
+SOURCE = Path(__file__).resolve().parents[1] / "reference" / "xax_compiler.py"
 BASE_COMMIT = "cb0b53c"
 REPEATS = 15
 
