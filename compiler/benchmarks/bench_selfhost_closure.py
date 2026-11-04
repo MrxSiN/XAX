@@ -72,7 +72,6 @@ def measure(include_b4: bool = True) -> dict:
     import xax_riscv64 as R
     from xax_selfhost_riscv64_backend import collect_output
     from xax_selfhost_typing import IN_WORDS, OUT_WORDS
-    from xax_selfhost_verify import collect_verdicts, native_store_verifier
 
     target = X.riscv64_views_target()
     images, b1 = {}, []
@@ -91,26 +90,28 @@ def measure(include_b4: bool = True) -> dict:
                    "host_s_nonsemantic": {"gen1": round(gen1_seconds, 2), "bootstrap": round(reference_seconds, 2)}})
 
     verifier_reader, verifier_entry, verifier_image = images["xax_selfhost_verify"]
-    native = native_store_verifier()
+    # Each store is verified, natively and emulated, in a child process of its own (``--b3-store``): the largest stores'
+    # input words and the emulator's views take several GB each, and one process accumulating them exceeds a 16 GB host.
+    import os
+    import pickle
+    import subprocess
+    import tempfile
+
+    import xax_native
+
     b3 = []
-    for path in sorted(BOOTSTRAP.glob("*.xax")):
-        reader = X.StoreReader(path.read_bytes())
-        streamed = verifier_input(reader)
-        if streamed is None:  # ADR-276: a graph body beyond the decoder's capacity: the image makes no claim
-            b3.append({"store": path.name, "objects": len(list(reader.objects())), "store_proven": None, "beyond_capacity": True})
-            continue
-        words, listed, groups = streamed
-        start = time.perf_counter()
-        expected = native.verify(words, len(listed), groups)
-        native_seconds = time.perf_counter() - start
-        start = time.perf_counter()
-        emulated, instructions = _emulate(verifier_image, words, 8 * IN_WORDS, 8 * OUT_WORDS, lambda read: collect_verdicts(read, len(listed), groups))
-        emulated_seconds = time.perf_counter() - start
-        b3.append({"store": path.name, "objects": len(listed), "store_proven": bool(expected and expected[0]),
-                   "objects_proven": sum(1 for verdict in (expected[1] if expected else ()) if verdict == 1),
-                   "emulated_equals_native": same_verdicts(emulated, expected, listed),
-                   "emulated_instructions_upper_bound": instructions,
-                   "host_s_nonsemantic": {"native": round(native_seconds, 3), "emulated": round(emulated_seconds, 1)}})
+    with tempfile.TemporaryDirectory(prefix="xax-closure-") as directory:
+        image_path = Path(directory) / "verifier-image.pickle"
+        image_path.write_bytes(pickle.dumps(verifier_image))
+        environment = {**os.environ, "PYTHONPATH": os.pathsep.join(item for item in sys.path if item)}
+        for path in sorted(BOOTSTRAP.glob("*.xax")):
+            child = subprocess.run([sys.executable, __file__, "--b3-store", str(path), str(image_path)], env=environment,
+                                   capture_output=True, text=True, check=False)
+            if child.returncode != 0:
+                raise RuntimeError(f"{path.name}: the verification child exited {child.returncode}: {child.stderr.strip()[-2000:]}")
+            entry, authority = json.loads(child.stdout)
+            xax_native.AUTHORITY.update(authority)
+            b3.append(entry)
 
     from xax_selfhost_blake3 import INPUT_EXTENT, run_riscv64_hash
 
@@ -207,7 +208,37 @@ def _riscv64_reference(reader, function):
     return R.compile_riscv64_bound_target(reader, function.cid, X.riscv64_views_target(), backend="python")
 
 
-if __name__ == "__main__" and "--bind-committed" in sys.argv:
+def b3_store(path: Path, image_path: Path) -> dict:
+    """One store's B2/B3 entry: the native production verifier's verdicts and the emulated RISC-V verifier image's."""
+    import pickle
+
+    import xax_compiler as X
+    from xax_selfhost_typing import IN_WORDS, OUT_WORDS
+    from xax_selfhost_verify import collect_verdicts, native_store_verifier
+
+    verifier_image = pickle.loads(image_path.read_bytes())
+    reader = X.StoreReader(path.read_bytes())
+    streamed = verifier_input(reader)
+    if streamed is None:  # ADR-276: a graph body beyond the decoder's capacity: the image makes no claim
+        return {"store": path.name, "objects": len(list(reader.objects())), "store_proven": None, "beyond_capacity": True}
+    words, listed, groups = streamed
+    start = time.perf_counter()
+    expected = native_store_verifier().verify(words, len(listed), groups)
+    native_seconds = time.perf_counter() - start
+    start = time.perf_counter()
+    emulated, instructions = _emulate(verifier_image, words, 8 * IN_WORDS, 8 * OUT_WORDS, lambda read: collect_verdicts(read, len(listed), groups))
+    emulated_seconds = time.perf_counter() - start
+    return {"store": path.name, "objects": len(listed), "store_proven": bool(expected and expected[0]),
+            "objects_proven": sum(1 for verdict in (expected[1] if expected else ()) if verdict == 1),
+            "emulated_equals_native": same_verdicts(emulated, expected, listed),
+            "emulated_instructions_upper_bound": instructions,
+            "host_s_nonsemantic": {"native": round(native_seconds, 3), "emulated": round(emulated_seconds, 1)}}
+
+
+if __name__ == "__main__" and "--b3-store" in sys.argv:
+    at = sys.argv.index("--b3-store")
+    print(json.dumps([b3_store(Path(sys.argv[at + 1]), Path(sys.argv[at + 2])), __import__("xax_native").AUTHORITY]))
+elif __name__ == "__main__" and "--bind-committed" in sys.argv:
     evidence = json.loads(EVIDENCE.read_text())
     print("stale:", bind_to_committed_stores(evidence, PROGRAMS, _riscv64_reference))
     EVIDENCE.write_text(json.dumps(evidence, indent=2) + "\n")
