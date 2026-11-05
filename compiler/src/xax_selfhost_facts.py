@@ -133,6 +133,8 @@ MEMORY_SITES = (
     "TARGET_ATTRIBUTES", "TARGET_DEFINED", "TARGET_SCOPE_ENUM", "TARGET_SCOPE_SUPPORTED", "TARGET_SPACES", "TARGET_ARITY", "TARGET_TYPE",
     # S8 (ADR-251): a lend entry passed to a call that lends it no view (payload: its extent and the declaration).
     "LEND_VIEW_LENT",
+    # N0.3 (ADR-369): a growable access's limit operand.
+    "GROWABLE_LIMIT_BITS",
 )
 M = {name: index + 1 for index, name in enumerate(MEMORY_SITES)}
 # Per-value fields (each an array of V words).
@@ -1216,12 +1218,18 @@ def _end_views(tables):
     return _function(("cursor", "block"), build, tables)
 
 
-def _checked(tables, covers, load: bool):
+def _checked(tables, covers, load: bool, growable: bool = False):
+    """``checked.load/store.bits.le``; with ``growable`` (ADR-369) the ``bits<64>`` limit operand after the offset, and
+    the value and memory operands one later."""
+    g = int(growable)
+
     def build(e: E):
         n = _Node(e)
         source = n.vid(0)
         _pointer(e, source, exact=True)
-        _reject(e, n.shape(3, 2, 2) if load else n.shape(4, 1, 2), M["OP_CONTRACT"], n.no, n.nr, n.na)
+        _reject(e, n.shape(3 + g, 2, 2) if load else n.shape(4 + g, 1, 2), M["OP_CONTRACT"], n.no, n.nr, n.na)
+        if growable:
+            _reject(e, e.eq(e.table(_T.WIDTH, n.tid(2)), 64), M["GROWABLE_LIMIT_BITS"], n.tid(2))
         element = e.value(PEL, source)
         size = n.attr(0)
         # Byte-view widening (ADR-231): on a bits<8> element (the width table holds only canonical bits types, so
@@ -1238,12 +1246,12 @@ def _checked(tables, covers, load: bool):
         if load:
             _reject(e, e.ne(e.and_(permission, int(Permission.READ)), 0), M["READ_PERMISSION"], permission)
             _reject(e, e.ne(value_ok(n.rtid(0)), 0), M["CHECKED_LOAD_TYPE"], element, n.rtid(0), size, e.flag(byte_view))
-            effect_index = 2
+            effect_index = 2 + g
         else:
             _reject(e, e.ne(e.and_(permission, int(Permission.WRITE)), 0), M["WRITE_PERMISSION"], permission)
-            _reject(e, e.ne(value_ok(n.tid(2)), 0), M["CHECKED_STORE_TYPE"], element, n.tid(2), size, e.flag(byte_view))
-            _stored_provenance(e, n.vid(2), source)
-            effect_index = 3
+            _reject(e, e.ne(value_ok(n.tid(2 + g)), 0), M["CHECKED_STORE_TYPE"], element, n.tid(2 + g), size, e.flag(byte_view))
+            _stored_provenance(e, n.vid(2 + g), source)
+            effect_index = 3 + g
         storage = e.value(PST, source)
         intervals = _consume_effect(e, n.vid(effect_index), storage, exact=True)
         effect_type = n.tid(effect_index)
@@ -3349,6 +3357,7 @@ _CONTRACTS = {
     Operation.LOAD_BITS_LE: (2, 2, 2), Operation.STORE_BITS_LE: (3, 1, 2), Operation.ADDRESS_OFFSET: (1, 1, 1),
     Operation.STACK_END: (2, 0, 0), Operation.STACK_ALLOC: (0, 3, 2),
     Operation.CHECKED_LOAD_BITS_LE: (3, 2, 2), Operation.CHECKED_STORE_BITS_LE: (4, 1, 2), Operation.POINTER_REBASE: (2, 1, 1),
+    Operation.GROWABLE_LOAD_BITS_LE: (4, 2, 2), Operation.GROWABLE_STORE_BITS_LE: (5, 1, 2),
 }
 
 
@@ -3462,6 +3471,8 @@ def memory_diagnostic(site: int, payload, operation, refs, storages, read, cids=
         return "XAX.MEMORY.CHECKED_ALIGNMENT", "MEMORY-CHECKED-ALIGNMENT-BOOTSTRAP", 1, x
     if name == "CHECKED_OFFSET":
         return "XAX.MEMORY.CHECKED_OFFSET", "MEMORY-CHECKED-OFFSET-BITS", 32, x
+    if name == "GROWABLE_LIMIT_BITS":
+        return "XAX.MEMORY.CHECKED_OFFSET", "MEMORY-GROWABLE-LIMIT-BITS", 64, h(x)
     if name in ("CHECKED_LOAD_TYPE", "CHECKED_STORE_TYPE"):
         from xax_compiler import bits_type
 
@@ -3732,6 +3743,8 @@ def build_engine():
         Operation.CALL_DIRECT: add(_call_direct(tables, covers)),
         Operation.CHECKED_LOAD_BITS_LE: add(_checked(tables, covers, True)),
         Operation.CHECKED_STORE_BITS_LE: add(_checked(tables, covers, False)),
+        Operation.GROWABLE_LOAD_BITS_LE: add(_checked(tables, covers, True, growable=True)),
+        Operation.GROWABLE_STORE_BITS_LE: add(_checked(tables, covers, False, growable=True)),
         Operation.HEAP_VIEW: add(_heap_view_node(tables)),
         Operation.POINTER_ADDRESS: add(_pointer_address(tables)),
         Operation.POINTER_REBASE: add(_pointer_rebase(tables)),
