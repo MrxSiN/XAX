@@ -1141,6 +1141,7 @@ X86_64_LINUX_ELF_DYNAMIC_FORMAT = 6
 X86_64_LINUX_OPERATIONS = (
     1, 2, 3, *range(5, 25),
     38, 39, 40, 41, 42, 43, *range(44, 62), 62, 63, *range(66, 77),
+    77, 78,  # N0.3 (ADR-369): growable.load/store.bits.le
 )
 
 
@@ -1547,6 +1548,7 @@ def aarch64_linux_exec_target(*, dynamic: bool = False) -> SemanticObject:
         1, 2, 3, *range(5, 20), *(int(value) for value in AARCH64_GENERAL_OPERATIONS),
         int(Operation.CALL_FOREIGN), int(Operation.HEAP_VIEW), *AARCH64_INTEGER_COMPLETION_OPERATIONS,
         int(Operation.POINTER_ADDRESS), int(Operation.POINTER_REBASE),
+        int(Operation.GROWABLE_LOAD_BITS_LE), int(Operation.GROWABLE_STORE_BITS_LE),  # N0.3 (ADR-369)
     }))
     terminators = (1, 2, 3, 4)
     body = bytearray(uleb(len(identity)) + identity)
@@ -2745,6 +2747,9 @@ class Operation(IntEnum):
     LINK_MAKE = 74
     LINK_FOLLOW = 75
     LINK_TARGET = 76
+    # ADR-369 (N0.3): growable views: checked accesses bounded by a runtime limit too
+    GROWABLE_LOAD_BITS_LE = 77
+    GROWABLE_STORE_BITS_LE = 78
 
 
 # Same-width binary integer operations: two bits<N> operands, one bits<N> result.
@@ -2780,6 +2785,8 @@ RESOURCE_EFFECT_OPERATIONS = frozenset(
 
 MEMORY_OPERATIONS = frozenset(
     {
+        Operation.GROWABLE_LOAD_BITS_LE,
+        Operation.GROWABLE_STORE_BITS_LE,
         Operation.STACK_ALLOC,
         Operation.ADDRESS_OFFSET,
         Operation.STORE_BITS_LE,
@@ -5439,9 +5446,15 @@ def _verify_memory_node(
         )
         return
 
-    if operation in (Operation.CHECKED_LOAD_BITS_LE, Operation.CHECKED_STORE_BITS_LE):
-        is_load = operation == Operation.CHECKED_LOAD_BITS_LE
-        contract(3 if is_load else 4, 2 if is_load else 1, 2)
+    if operation in (Operation.CHECKED_LOAD_BITS_LE, Operation.CHECKED_STORE_BITS_LE, Operation.GROWABLE_LOAD_BITS_LE, Operation.GROWABLE_STORE_BITS_LE):
+        is_load = operation in (Operation.CHECKED_LOAD_BITS_LE, Operation.GROWABLE_LOAD_BITS_LE)
+        growable = operation in (Operation.GROWABLE_LOAD_BITS_LE, Operation.GROWABLE_STORE_BITS_LE)
+        contract((3 if is_load else 4) + growable, 2 if is_load else 1, 2)
+        if growable:
+            # ADR-369: a bits<64> limit after the offset bounds the access as well as the pointer's extent.
+            limit_type = resolve(node.operand_types[2])
+            if limit_type.kind != Kind.TYPE or not limit_type.body.startswith(uleb(1)) or decode_bits_width(limit_type) != 64:
+                fail("XAX.MEMORY.CHECKED_OFFSET", graph.cid.hex(), "MEMORY-GROWABLE-LIMIT-BITS", 64, node.operand_types[2].hex())
         size, alignment = node.attributes
         # Byte-view widening: on a view of exactly bits<8>, a checked access reads or writes 1, 2, 4, or 8 consecutive
         # bytes as one little-endian bits<8*size> integer; every other element keeps size == element size.
@@ -5464,16 +5477,17 @@ def _verify_memory_node(
         if is_load:
             if not pointer_fact.permission & Permission.READ:
                 fail("XAX.MEMORY.PERMISSION", graph.cid.hex(), "MEMORY-READ-PERMISSION", "read", int(pointer_fact.permission))
-            effect_index = 2
+            effect_index = 2 + growable
             if node.results[0] != value_type:
                 fail("XAX.MEMORY.VALUE_TYPE", graph.cid.hex(), "MEMORY-CHECKED-LOAD-TYPE", value_type.hex(), node.results[0].hex())
         else:
             if not pointer_fact.permission & Permission.WRITE:
                 fail("XAX.MEMORY.PERMISSION", graph.cid.hex(), "MEMORY-WRITE-PERMISSION", "write", int(pointer_fact.permission))
-            if node.operand_types[2] != value_type:
-                fail("XAX.MEMORY.VALUE_TYPE", graph.cid.hex(), "MEMORY-CHECKED-STORE-TYPE", value_type.hex(), node.operand_types[2].hex())
-            stored_pointer_provenance(node.operands[2], pointer_fact)
-            effect_index = 3
+            value_at = 2 + growable
+            if node.operand_types[value_at] != value_type:
+                fail("XAX.MEMORY.VALUE_TYPE", graph.cid.hex(), "MEMORY-CHECKED-STORE-TYPE", value_type.hex(), node.operand_types[value_at].hex())
+            stored_pointer_provenance(node.operands[value_at], pointer_fact)
+            effect_index = 3 + growable
         effect = consume_effect(node.operands[effect_index], pointer_fact.storage)
         effect_type = node.operand_types[effect_index]
         if not _is_memory_effect(resolve(effect_type)) or node.results[-1] != effect_type:
@@ -9219,6 +9233,19 @@ def _execute_graph(
             elif node.operation in (Operation.POINTER_ADDRESS, Operation.POINTER_REBASE, Operation.LINK_MAKE, Operation.LINK_FOLLOW):
                 # The reference executor has no address space; addresses are target facts.
                 fail("XAX.EXEC.UNSUPPORTED", "executor", f"EXEC-{node.operation.name.replace('_', '-')}-TARGET-ONLY", "compiled target", "reference executor")
+            elif node.operation in (Operation.GROWABLE_LOAD_BITS_LE, Operation.GROWABLE_STORE_BITS_LE):
+                is_load = node.operation == Operation.GROWABLE_LOAD_BITS_LE
+                pointer, dynamic_offset, limit = operands[:3]
+                size, alignment = node.attributes
+                absolute = pointer.offset + dynamic_offset
+                if dynamic_offset < 0 or dynamic_offset + size > min(limit, len(pointer.storage.data) - pointer.offset) or absolute % alignment:
+                    raise XaxTrap(b"memory-check")
+                if is_load:
+                    value = _runtime_scalar_from_bytes(bytes(pointer.storage.data[absolute : absolute + size]), resolve(node.results[0]))
+                    results = (value, _RuntimeEffect(operands[3].storage))
+                else:
+                    pointer.storage.data[absolute : absolute + size] = _runtime_scalar_bytes(operands[3], resolve(node.operand_types[3]))
+                    results = (_RuntimeEffect(operands[4].storage),)
             elif node.operation == Operation.CHECKED_LOAD_BITS_LE:
                 pointer, dynamic_offset, effect = operands
                 size, alignment = node.attributes

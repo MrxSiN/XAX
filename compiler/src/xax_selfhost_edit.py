@@ -40,11 +40,20 @@ construction; the expected root and the expected operation or value are its othe
 from __future__ import annotations
 
 import xax_selfhost_diagnostics as D
-from xax_compiler import ATTRIBUTE_OPERATIONS, ENTITY_OPERATIONS, Kind, Operation, uleb
+from xax_compiler import ATTRIBUTE_OPERATIONS, ENTITY_OPERATIONS, Kind, Operation, TerminatorKind, uleb
 from xax_selfhost_facts import E, NONE, _function
 from xax_selfhost_semantic import _cid_word, _kind, _nrefs, _payload, _ref
 
 RECORD_MAGIC = b"XAXEDIT1"
+# N0 (ADR-367): a reference to the record's own supplied object k (0-based, in record order), whose CID the record's
+# author cannot know: this 24-byte mark, then k as 8 big-endian bytes, in place of a CID.  The engine rewrites it with
+# object k's CID once k is hashed; k must come before the object that names it (or any object, for a REPLACE_REFERENCE).
+SUPPLIED_MARK = b"XAX-SUPPLIED-OBJECT-REF\0"
+
+
+def supplied_reference(index: int) -> bytes:
+    """The 32 bytes naming the record's supplied object ``index`` (``SUPPLIED_MARK``)."""
+    return SUPPLIED_MARK + index.to_bytes(8, "big")
 SET_OPERATION, SET_CONSTANT, REPLACE_REFERENCE = 1, 2, 3
 # S15d.4b (ADR-314): the workspace's graph mutations (``xax_workspace``'s ReplaceUse, DeleteNode, InsertPureNode,
 # SetResultType, DisconnectEdgeArgument, ConnectEdgeArgument), each naming its node or edge by function CID and block.
@@ -55,6 +64,8 @@ EB = 52 << 20  # workspace words
 (E_STATUS, E_LENGTH, E_MUTATIONS, E_EXTRAS, E_EXTRAS_DONE, E_OBJECTS, E_SLOT, E_KIND, E_NREFS, E_REFS_AT, E_BODY_AT, E_BODY_LENGTH,
  E_PRE_LENGTH, E_OBJECT, E_ROOT, E_AFFECTED, E_PRE_AT, E_NEW, E_BATCH_LENGTH, E_PRE_END) = range(20)
 OK, REJECT, MORE, DONE = 0, 1, 2, 3
+E_FIRST_SUPPLIED, E_SUPPLIED = 30, 31  # N0 (ADR-367): the first supplied object's extra row (NONE: none), their count
+E_CANON_IN, E_CANON_OUT, E_CANON_AT = 32, 33, 34  # N0: the canonicalizer's read and write cursors, and its next free word
 EC = EB  # control words (64)
 OPF = EB + 64  # per operation code: 1 entity, 2 attributes
 MUT = EB + 256  # 12 words per mutation: kind, function, graph, block, node, expected, value, extra, then (S15d.4b) four more
@@ -97,18 +108,28 @@ PRE_SMALL = 128  # W5 (ADR-364): a header's ULEBs, or a whole new constant's pre
 NEWT = PRE + PRE_LIMIT  # per new object: preimage start, length, references at, count, body at, length, kind, object, alias
 NEWT_WORDS, NEWT_LIMIT = 9, 1 << 16
 BATCH = NEWT + NEWT_WORDS * NEWT_LIMIT  # the S9 writer's batch, one byte per word (``xax_selfhost_writer``'s layout)
-BATCH_LIMIT = (1 << 26) - 4096  # the writer's input view less its slack (S15e.4, ADR-322: 64 MiB, the writer's since ADR-319)
 BATCH_AT = 58  # control word: the batch bytes written
 EXTRA_TAG = 1 << 40
-# OI-52 (dynamic tables): the extra rows (``EXTRA_WORDS`` each) grow from past the batch, committed as they are touched.
-# Every extra becomes a new object of the transaction, so the new-object table (``NEWT_LIMIT``) is their only bound; the
-# record's supplied objects take what the mutations' new constants (at most ``EXTRA_PER_MUTATION`` each) leave.
-EXTRA = BATCH + BATCH_LIMIT
-EXTRA_LIMIT = NEWT_LIMIT
-EXTRA_PER_MUTATION = 2
 # The edit record, one byte per word (S15d.4a: past the batch, room for supplied objects).
 EIN, EIN_LIMIT = 238 << 20, 16 << 20  # S15e.4 (ADR-322): above the batch, far above the typing tables (from 128M words)
-assert ENTITY_AT + MUT_LIMIT <= STATE and EXTRA + EXTRA_WORDS * EXTRA_LIMIT <= EIN and EIN + EIN_LIMIT <= __import__("xax_selfhost_facts").HEADER
+# N0 (ADR-367): a supplied graph or function whose references are not yet in canonical order (an author who names a
+# supplied object by index cannot sort it) is canonicalized: ``CANON_PERM`` maps each given reference index to its sorted,
+# distinct position; the sorted references and the rewritten body are appended from ``CANON`` on (one byte per word),
+# committed as touched, up to the edit record.  N0 (ADR-370): the canonicalizer's and the assembler's room is the top
+# 32M words below the record, so the batch takes everything between the new-object table and the extra rows.
+CANON = EIN - (32 << 20)
+CANON_FIRST = CANON - (1 << 16)  # per given reference: 1 when no earlier one is equal
+CANON_PERM = CANON_FIRST - (1 << 16)
+# OI-52 (dynamic tables): the extra rows (``EXTRA_WORDS`` each), committed as they are touched.  Every extra becomes a new
+# object of the transaction, so the new-object table (``NEWT_LIMIT``) is their only bound; the record's supplied objects
+# take what the mutations' new constants (at most ``EXTRA_PER_MUTATION`` each) leave.
+EXTRA_LIMIT = NEWT_LIMIT
+EXTRA_PER_MUTATION = 2
+EXTRA = CANON_PERM - EXTRA_WORDS * EXTRA_LIMIT
+# N0 (ADR-370): the batch fills the room up to the extra rows (about 126 MiB; 64 MiB less the writer's slack before).
+BATCH_LIMIT = EXTRA - BATCH
+assert ENTITY_AT + MUT_LIMIT <= STATE and EIN + EIN_LIMIT <= __import__("xax_selfhost_facts").HEADER
+assert BATCH_LIMIT + 4096 <= __import__("xax_selfhost_writer").IN_EXTENT  # the batch goes to the S9 writer's input view
 ENTITY = sorted(int(op) for op in ENTITY_OPERATIONS)
 ATTRIBUTE = sorted(int(op) for op in ATTRIBUTE_OPERATIONS)
 WRAPPING = (int(Operation.ADD_WRAP), int(Operation.SUB_WRAP), int(Operation.MUL_WRAP))
@@ -347,6 +368,279 @@ def _resolve_function():
     return _function((), build, None)
 
 
+def _unmark_function():
+    """N0 (ADR-367): the 32 bytes at record word ``ua`` that name the record's supplied object k (``SUPPLIED_MARK``, then
+    k big-endian) are rewritten in place with k's CID; k must be a supplied object already hashed (an earlier one).
+    Anything else (an ordinary CID) is left as it is."""
+    def build(e: E):
+        p = e.p
+        e.var("um", 1)
+        for j, byte in enumerate(SUPPLIED_MARK):
+            e.set("um", e.and_(p["um"], e.flag(e.eq(e.ld(e.add(p["ua"], j)), byte))))
+
+        def marked():
+            e.var("uk", 0)
+            for j in range(8):
+                e.set("uk", e.add(e.mul(p["uk"], 256), e.ld(e.add(p["ua"], len(SUPPLIED_MARK) + j))))
+            e.var("urow", e.add(_ctrl(e, E_FIRST_SUPPLIED), p["uk"]))
+            known = e.both(e.ne(_ctrl(e, E_FIRST_SUPPLIED), NONE), e.lt(p["uk"], _ctrl(e, E_SUPPLIED)), e.lt(p["urow"], _ctrl(e, E_EXTRAS_DONE)))
+
+            def write():
+                for k in range(4):  # each CID word big-endian, its bytes taken from the low end
+                    e.var(f"uw{k}", e.ld(e.add(e.add(EXTRA, e.mul(p["urow"], EXTRA_WORDS)), 4 + k)))
+                    for j in reversed(range(8)):
+                        e.st(e.add(p["ua"], 8 * k + j), e.and_(p[f"uw{k}"], 255))
+                        e.set(f"uw{k}", e.udiv(p[f"uw{k}"], 256))
+
+            e.if_(known, write, lambda: _reject(
+                e, "XAX.WORKSPACE.RELATION_CONFLICT", lambda: D.text(e, "edit"), "EDIT-OBJECT-REFERENCE",
+                lambda: D.text(e, "an earlier supplied object"), lambda: D.integer(e, p["uk"])))
+
+        e.if_(e.ne(p["um"], 0), marked)
+        e.give(0)
+    return _function(("ua",), build, None)
+
+
+# -- N0 (ADR-367): canonical order for supplied graphs and functions -------------------------------------------------------
+def _cmp32_function():
+    """0 when the 32 bytes at record words ``ca`` and ``cb`` are equal, 1 when ``ca``'s are smaller, 2 when larger."""
+    def build(e: E):
+        p = e.p
+        e.var("cr", 0)
+        e.var("cj", 0)
+
+        def step():
+            e.var("cx", e.ld(e.add(p["ca"], p["cj"])))
+            e.var("cy", e.ld(e.add(p["cb"], p["cj"])))
+            e.if_(e.lt(p["cx"], p["cy"]), lambda: e.set("cr", 1))
+            e.if_(e.lt(p["cy"], p["cx"]), lambda: e.set("cr", 2))
+            e.set("cj", e.add(p["cj"], 1))
+
+        e.while_(lambda: e.both(e.eq(p["cr"], 0), e.lt(p["cj"], 32)), step)
+        e.give(p["cr"])
+    return _function(("ca", "cb"), build, None)
+
+
+def _cn_uleb_function():
+    """The next ULEB of the record at ``E_CANON_IN``, which moves past it."""
+    def build(e: E):
+        p = e.p
+        e.var("nc", _ctrl(e, E_CANON_IN))
+        e.var("nv", 0)
+        e.var("nsh", 1)
+        e.var("nmore", 1)
+
+        def step():
+            e.var("nb", e.ld(p["nc"]))
+            e.set("nv", e.add(p["nv"], e.mul(e.and_(p["nb"], 127), p["nsh"])))
+            e.set("nsh", e.mul(p["nsh"], 128))
+            e.set("nmore", e.flag(e.le(128, p["nb"])))
+            e.set("nc", e.add(p["nc"], 1))
+
+        e.while_(lambda: e.ne(p["nmore"], 0), step)
+        _set(e, E_CANON_IN, p["nc"])
+        e.give(p["nv"])
+    return _function((), build, None)
+
+
+def _cn_put_function():
+    """``pv`` as a ULEB at ``E_CANON_OUT``, which moves past it."""
+    def build(e: E):
+        p = e.p
+        e.var("po", _ctrl(e, E_CANON_OUT))
+        e.var("pw", p["pv"])
+        e.var("pmore", 1)
+
+        def step():
+            e.var("plow", e.and_(p["pw"], 127))
+            e.set("pw", e.udiv(p["pw"], 128))
+            e.st(p["po"], e.add(p["plow"], e.mul(e.flag(e.ne(p["pw"], 0)), 128)))
+            e.set("po", e.add(p["po"], 1))
+            e.set("pmore", e.flag(e.ne(p["pw"], 0)))
+
+        e.while_(lambda: e.ne(p["pmore"], 0), step)
+        _set(e, E_CANON_OUT, p["po"])
+        e.give(0)
+    return _function(("pv",), build, None)
+
+
+def _cn_copy(e: E):
+    _call(e, "cn_put", _call(e, "cn_uleb"))
+
+
+def _cn_index(e: E):
+    """A reference index of the body, through ``CANON_PERM``."""
+    _call(e, "cn_put", e.ld(e.add(CANON_PERM, _call(e, "cn_uleb"))))
+
+
+def _cn_value(e: E):
+    """A value: tag, block, index, and a result when the tag is a node's."""
+    e.var("cv_tag", _call(e, "cn_uleb"))
+    _call(e, "cn_put", e.p["cv_tag"])
+    _cn_copy(e)
+    _cn_copy(e)
+    e.if_(e.eq(e.p["cv_tag"], 1), lambda: _cn_copy(e))
+
+
+def _cn_graph_function():
+    """A graph fragment's body from ``E_CANON_IN`` to ``E_CANON_OUT``, its reference indices through ``CANON_PERM``."""
+    def build(e: E):
+        p = e.p
+        e.var("gnb", _call(e, "cn_uleb"))
+        _call(e, "cn_put", p["gnb"])
+        _cn_copy(e)  # the entry block
+
+        def edge():
+            _cn_copy(e)  # the target block
+            e.var("ge_n", _call(e, "cn_uleb"))
+            _call(e, "cn_put", p["ge_n"])
+            e.for_("ge_k", 0, p["ge_n"], lambda: _cn_value(e))
+
+        def block():
+            e.var("gnp", _call(e, "cn_uleb"))
+            _call(e, "cn_put", p["gnp"])
+            e.for_("gp", 0, p["gnp"], lambda: _cn_index(e))
+            e.var("gnn", _call(e, "cn_uleb"))
+            _call(e, "cn_put", p["gnn"])
+
+            def node():
+                e.var("gop", _call(e, "cn_uleb"))
+                _call(e, "cn_put", p["gop"])
+                e.if_(e.eq(p["gop"], int(Operation.CALL_GROUP_MEMBER)), lambda: _cn_copy(e))
+                e.var("gflags", e.ld(e.add(OPF, e.sel(e.lt(p["gop"], 128), p["gop"], 0))))
+                e.if_(e.ne(e.and_(p["gflags"], 1), 0), lambda: _cn_index(e))
+                e.var("gno", _call(e, "cn_uleb"))
+                _call(e, "cn_put", p["gno"])
+                e.for_("go", 0, p["gno"], lambda: _cn_value(e))
+                e.var("gnr", _call(e, "cn_uleb"))
+                _call(e, "cn_put", p["gnr"])
+                e.for_("gr", 0, p["gnr"], lambda: _cn_index(e))
+
+                def attributes():
+                    e.var("gna", _call(e, "cn_uleb"))
+                    _call(e, "cn_put", p["gna"])
+                    e.for_("ga", 0, p["gna"], lambda: _cn_copy(e))
+
+                e.if_(e.ne(e.and_(p["gflags"], 2), 0), attributes)
+
+            e.for_("gn", 0, p["gnn"], node)
+            e.var("gkind", _call(e, "cn_uleb"))
+            _call(e, "cn_put", p["gkind"])
+            e.if_(e.eq(p["gkind"], int(TerminatorKind.BRANCH)), edge)
+            e.if_(e.eq(p["gkind"], int(TerminatorKind.CONDITIONAL_BRANCH)), lambda: (_cn_value(e), edge(), edge()))
+
+            def returns():
+                e.var("gnv", _call(e, "cn_uleb"))
+                _call(e, "cn_put", p["gnv"])
+                e.for_("gv", 0, p["gnv"], lambda: _cn_value(e))
+
+            e.if_(e.eq(p["gkind"], int(TerminatorKind.RETURN)), returns)
+
+            def payload():
+                e.var("gpl", _call(e, "cn_uleb"))
+                _call(e, "cn_put", p["gpl"])
+
+                def byte():
+                    e.st(_ctrl(e, E_CANON_OUT), e.ld(_ctrl(e, E_CANON_IN)))
+                    _set(e, E_CANON_OUT, e.add(_ctrl(e, E_CANON_OUT), 1))
+                    _set(e, E_CANON_IN, e.add(_ctrl(e, E_CANON_IN), 1))
+
+                e.for_("gy", 0, p["gpl"], byte)
+
+            e.if_(e.eq(p["gkind"], int(TerminatorKind.TRAP)), payload)
+
+        e.for_("gb", 0, p["gnb"], block)
+        e.give(0)
+    return _function((), build, None)
+
+
+def _cn_function_function():
+    """A function's body (its graph, then its parameter and return types) through ``CANON_PERM``."""
+    def build(e: E):
+        p = e.p
+        _cn_index(e)
+        for side in ("fp", "fr"):
+            e.var(f"{side}_n", _call(e, "cn_uleb"))
+            _call(e, "cn_put", p[f"{side}_n"])
+            e.for_(f"{side}_k", 0, p[f"{side}_n"], lambda: _cn_index(e))
+        e.give(0)
+    return _function((), build, None)
+
+
+def _canonical_function():
+    """Supplied extra row ``kr``, its references resolved: when they are not distinct and ascending, a graph or a
+    function gets them sorted and distinct, and its body rewritten through that order, from ``CANON`` on (the row then
+    names the new references and body); any other object rejects (EDIT-OBJECT-REFERENCE)."""
+    def build(e: E):
+        p = e.p
+        e.var("kn", e.ld(e.add(p["kr"], X_NREFS)))
+        e.var("kra", e.ld(e.add(p["kr"], X_REFS)))
+        e.var("ksorted", 1)
+        e.for_("kq", 1, p["kn"], lambda: e.if_(
+            e.ne(_call(e, "cmp32", e.add(p["kra"], e.mul(e.sub(p["kq"], 1), 32)), e.add(p["kra"], e.mul(p["kq"], 32))), 1),
+            lambda: e.set("ksorted", 0)))
+
+        def canonicalize():
+            e.var("kkind", e.ld(e.add(p["kr"], X_KIND)))
+            e.var("kok", e.flag(e.either(e.eq(p["kkind"], int(Kind.GRAPH_FRAGMENT)), e.eq(p["kkind"], int(Kind.FUNCTION)))))
+            e.var("kat", _ctrl(e, E_CANON_AT))
+            e.var("kroom", e.flag(e.both(e.lt(p["kn"], 1 << 16),
+                                          e.le(e.add(p["kat"], e.add(e.mul(p["kn"], 32), e.mul(e.ld(e.add(p["kr"], X_BODY_LENGTH)), 2))), EIN))))
+            e.if_(e.eq(p["kok"], 0), lambda: _reject(
+                e, "XAX.WORKSPACE.RELATION_CONFLICT", lambda: D.text(e, "edit"), "EDIT-OBJECT-REFERENCE",
+                lambda: D.text(e, "distinct references in ascending order"), lambda: D.integer(e, p["kkind"])))
+            e.if_(e.both(e.ne(p["kok"], 0), e.eq(p["kroom"], 0)), lambda: _reject(
+                e, "XAX.DRIVER.CAPACITY", lambda: D.text(e, "edit"), "DRIVER-EDIT-CAPACITY", lambda: D.integer(e, EIN - CANON),
+                lambda: D.text(e, "larger")))
+
+            def rewrite():
+                # which references are a value's first copy, then each one's rank among the distinct values (a repeat
+                # takes its first copy's)
+                def first():
+                    e.var("kfa", e.add(p["kra"], e.mul(p["kf"], 32)))
+                    e.var("kfirst", 1)
+                    e.for_("kg", 0, p["kf"], lambda: e.if_(e.eq(_call(e, "cmp32", e.add(p["kra"], e.mul(p["kg"], 32)), p["kfa"]), 0),
+                                                           lambda: e.set("kfirst", 0)))
+                    e.st(e.add(CANON_FIRST, p["kf"]), p["kfirst"])
+
+                e.for_("kf", 0, p["kn"], first)
+                e.var("kd", 0)
+
+                def rank():
+                    e.var("ka", e.add(p["kra"], e.mul(p["ki"], 32)))
+                    e.var("kless", 0)
+
+                    def other():
+                        e.var("kc", _call(e, "cmp32", e.add(p["kra"], e.mul(p["kj"], 32)), p["ka"]))
+                        e.if_(e.both(e.eq(p["kc"], 1), e.ne(e.ld(e.add(CANON_FIRST, p["kj"])), 0)), lambda: e.set("kless", e.add(p["kless"], 1)))
+
+                    e.for_("kj", 0, p["kn"], other)
+
+                    def place():
+                        e.set("kd", e.add(p["kd"], 1))
+                        e.for_("kz", 0, 32, lambda: e.st(e.add(e.add(p["kat"], e.mul(p["kless"], 32)), p["kz"]), e.ld(e.add(p["ka"], p["kz"]))))
+
+                    e.st(e.add(CANON_PERM, p["ki"]), p["kless"])
+                    e.if_(e.ne(e.ld(e.add(CANON_FIRST, p["ki"])), 0), place)
+
+                e.for_("ki", 0, p["kn"], rank)
+                e.var("kbody", e.add(p["kat"], e.mul(p["kd"], 32)))
+                _set(e, E_CANON_IN, e.ld(e.add(p["kr"], X_BODY)))
+                _set(e, E_CANON_OUT, p["kbody"])
+                e.if_(e.eq(p["kkind"], int(Kind.GRAPH_FRAGMENT)), lambda: _call(e, "cn_graph"), lambda: _call(e, "cn_function"))
+                e.st(e.add(p["kr"], X_REFS), p["kat"])
+                e.st(e.add(p["kr"], X_NREFS), p["kd"])
+                e.st(e.add(p["kr"], X_BODY), p["kbody"])
+                e.st(e.add(p["kr"], X_BODY_LENGTH), e.sub(_ctrl(e, E_CANON_OUT), p["kbody"]))
+                _set(e, E_CANON_AT, _ctrl(e, E_CANON_OUT))
+
+            e.if_(e.eq(_ctrl(e, E_STATUS), OK), rewrite)
+
+        e.if_(e.eq(p["ksorted"], 0), canonicalize)
+        e.give(0)
+    return _function(("kr",), build, None)
+
+
 def _replaced_function():
     """S15d.4a: the source owner ``o``'s reference to ``source`` names after the transaction: a ``REPLACE_REFERENCE``'s
     new child (found by ``resolve``; a missing one is EDIT-REFERENCE-TARGET), else ``source``."""
@@ -356,13 +650,14 @@ def _replaced_function():
 
         def each():
             def hit():
+                _call(e, "unmark", _mutation(e, p["rq"], 5))  # N0 (ADR-367): a supplied object named by its index
                 for k in range(4):
                     e.var(f"nw{k}", 0)
                     for j in range(8):
                         e.set(f"nw{k}", e.add(e.mul(p[f"nw{k}"], 256), e.ld(e.add(_mutation(e, p["rq"], 5), 8 * k + j))))
                     _set(e, KEY + k, p[f"nw{k}"])
                 e.var("target", _call(e, "resolve"))
-                e.if_(e.eq(p["target"], NONE), lambda: _reject(
+                e.if_(e.both(e.eq(_ctrl(e, E_STATUS), OK), e.eq(p["target"], NONE)), lambda: _reject(
                     e, "XAX.WORKSPACE.RELATION_CONFLICT", lambda: _cid_of(e, p["o"]), "EDIT-REFERENCE-TARGET",
                     lambda: D.text(e, "an object of the store or of the record"), lambda: _record_cid(e, _mutation(e, p["rq"], 5))))
                 e.if_(e.ne(p["target"], NONE), lambda: e.set("out", p["target"]))
@@ -1244,6 +1539,9 @@ def _begin(tables):
         _set(e, E_STATUS, OK)
         _set(e, E_EXTRAS, 0)
         _set(e, E_EXTRAS_DONE, 0)
+        _set(e, E_FIRST_SUPPLIED, NONE)
+        _set(e, E_SUPPLIED, 0)
+        _set(e, E_CANON_AT, CANON)
         _set(e, E_MUTATIONS, 0)
         e.st(EC + 42, 0)  # the new references' sources written so far
         _set(e, E_NEW, 0)
@@ -1509,6 +1807,8 @@ def _begin(tables):
                 e, "XAX.DRIVER.CAPACITY", lambda: D.text(e, "edit"), "DRIVER-EDIT-CAPACITY", lambda: D.integer(e, EXTRA_LIMIT),
                 lambda: D.text(e, "larger")))
             e.if_(e.both(running(), e.eq(p["supplied"], 0)), malformed("EDIT-RECORD-END"))  # an empty section is no section
+            _set(e, E_FIRST_SUPPLIED, _ctrl(e, E_EXTRAS))
+            _set(e, E_SUPPLIED, p["supplied"])
             e.var("si", 0)
 
             def one():
@@ -1933,6 +2233,11 @@ def _next(tables):
                 e.var(name, e.ld(e.add(p["xrow"], field)))  # names: values cross blocks only so
 
             def write():
+                e.for_("xu", 0, p["xnrefs"], lambda: _call(e, "unmark", e.add(p["xrefs"], e.mul(p["xu"], 32))))  # N0 (ADR-367)
+                # N0: references that resolve out of order (or repeat) are put in canonical order, the body following
+                _call(e, "canonical", p["xrow"])
+                for name, field in (("xnrefs", X_NREFS), ("xrefs", X_REFS), ("xbody", X_BODY), ("xblen", X_BODY_LENGTH)):
+                    e.set(name, e.ld(e.add(p["xrow"], field)))
                 header(p["xkind"], p["xnrefs"])
                 e.for_("xr", 0, e.mul(p["xnrefs"], 32), lambda: _pre_byte(e, e.ld(e.add(p["xrefs"], p["xr"]))))
                 body_from(p["xbody"], p["xblen"])
@@ -2169,7 +2474,7 @@ def _reach(tables):
 
                     e.for_("xq", 0, e.ld(e.add(p["xrow"], X_NREFS)), each)
 
-                e.if_(e.both(e.eq(p["xa"], NONE), e.ne(e.ld(e.add(p["xrow"], X_SUPPLIED)), 0), e.eq(e.ld(e.add(p["xrow"], X_REACHED)), 0)), supplied)
+                e.if_(e.both(e.eq(p["xa"], NONE), e.ne(e.ld(e.add(p["xrow"], X_SUPPLIED)), 0), e.ne(e.ld(e.add(p["xrow"], X_REACHED)), 1)), supplied)
 
             def object_():
                 e.var("st", e.ld(e.add(STATE, p["s"])))
@@ -2245,8 +2550,12 @@ def _place(tables):
                     e.set("same", e.and_(p["same"], e.flag(e.eq(e.ld(e.add(p["other"], k)), p[f"key{k}"]))))
                 def same():
                     e.st(e.add(e.add(NEWT, e.mul(p["last"], NEWT_WORDS)), 8), 1)
-                    # S15d.4a: a rebuilt object equal to a supplied one is written as that supplied object, reached.
-                    e.if_(e.le(EXTRA_TAG, p["object"]), lambda: e.st(e.add(e.add(EXTRA, e.mul(e.sub(p["object"], EXTRA_TAG), EXTRA_WORDS)), X_REACHED), 1))
+                    # S15d.4a: a rebuilt object equal to a supplied one is written as that supplied object.  N0 (ADR-367): marked
+                    # 2 (to be written), not 1 (walked): ``reach`` must still walk its references, or the objects only it names
+                    # are dropped when the root reaches it through the supplied path.
+                    e.if_(e.le(EXTRA_TAG, p["object"]), lambda: e.if_(
+                        e.eq(e.ld(e.add(e.add(EXTRA, e.mul(e.sub(p["object"], EXTRA_TAG), EXTRA_WORDS)), X_REACHED)), 0),
+                        lambda: e.st(e.add(e.add(EXTRA, e.mul(e.sub(p["object"], EXTRA_TAG), EXTRA_WORDS)), X_REACHED), 2)))
 
                 e.if_(e.ne(p["same"], 0), same)
 
@@ -2573,7 +2882,12 @@ def _ws_constant_function():
 
             e.while_(lambda: e.ne(p["cw"], 0), byte)
 
-        e.if_(e.ne(p["print"], 0), lambda: e.if_(e.lt(8, p["cn"]), wide, lambda: _call(e, "ws_decimal", p["cv"])))
+        # N0 (ADR-367): decimal only for a ``bits`` constant (its width gives its length back); every other one shows all
+        # its bytes, so the view is lossless and ``define`` can read it back
+        e.var("cty", _ref(e, p["c"], 0))
+        tlen, tat = _plain_body(e, p["cty"])
+        e.var("cbits", e.flag(e.eq(e.rd(tat), 1)))
+        e.if_(e.ne(p["print"], 0), lambda: e.if_(e.either(e.lt(8, p["cn"]), e.eq(p["cbits"], 0)), wide, lambda: _call(e, "ws_decimal", p["cv"])))
         e.give(p["cv"])
     return _function(("c", "print"), build, None)
 
@@ -2773,6 +3087,19 @@ def _ws_walk_function():
             def trap():
                 e.if_(e.ne(p["wpr"], 0), lambda: _out_text(e, "trap"))
                 e.var("wtn", _call(e, "uleb_read"))
+
+                def payload():  # N0 (ADR-367): the payload's bytes in order, so the view is lossless
+                    _out_text(e, " 0x")
+
+                    def byte():
+                        e.var("wty", e.rd(e.add(_ctrl(e, CUR), p["wtb"])))
+                        for shift in (16, 1):
+                            e.var("wtnib", e.and_(e.udiv(p["wty"], shift), 15))
+                            _out(e, e.add(p["wtnib"], e.sel(e.lt(p["wtnib"], 10), 48, 87)))
+
+                    e.for_("wtb", 0, p["wtn"], byte)
+
+                e.if_(e.both(e.ne(p["wpr"], 0), e.ne(p["wtn"], 0)), payload)
                 _set(e, CUR, e.add(_ctrl(e, CUR), p["wtn"]))
 
             e.if_(e.eq(p["wtk"], 4), trap)
@@ -2883,6 +3210,9 @@ def _ws_is(e: E, text: str):
                   *(e.eq(e.ld(e.add(WS_IN, e.add(at, k))), byte) for k, byte in enumerate(text.encode("ascii"))))
 
 
+U64_TENTH = ((1 << 64) - 1) // 10  # N0: a decimal value past it times ten (or equal, with a digit past 5) wraps
+
+
 def _ws_number_function():
     """The token's characters from ``from`` as a number (decimal, or hexadecimal after ``0x``) into ``W_INT``: 1, or 0
     when they are not one (or there are none)."""
@@ -2901,12 +3231,15 @@ def _ws_number_function():
             e.var("nc", e.ld(e.add(WS_IN, p["na"])))
             e.var("nd", e.sel(e.both(e.le(48, p["nc"]), e.le(p["nc"], 57)), e.sub(p["nc"], 48),
                               e.sel(e.both(e.eq(p["nbase"], 16), e.le(97, p["nc"]), e.le(p["nc"], 102)), e.sub(p["nc"], 87), 99)))
+            # N0: a decimal value up to 2^64 - 1 (20 digits): the next digit must not carry past 64 bits
+            e.if_(e.both(e.eq(p["nbase"], 10), e.either(e.lt(U64_TENTH, p["nv"]), e.both(e.eq(p["nv"], U64_TENTH), e.lt(5, p["nd"])))),
+                  lambda: e.set("nok", 0))
             e.if_(e.lt(p["nd"], p["nbase"]), lambda: e.set("nv", e.add(e.mul(p["nv"], p["nbase"]), p["nd"])), lambda: e.set("nok", 0))
             e.set("ndigits", e.add(p["ndigits"], 1))
             e.set("na", e.add(p["na"], 1))
 
         e.while_(lambda: e.both(e.lt(p["na"], p["ne"]), e.ne(p["nok"], 0)), digit)
-        e.if_(e.lt(e.sel(e.eq(p["nbase"], 16), 16, 19), p["ndigits"]), lambda: e.set("nok", 0))
+        e.if_(e.lt(e.sel(e.eq(p["nbase"], 16), 16, 20), p["ndigits"]), lambda: e.set("nok", 0))
         _wset(e, W_INT, p["nv"])
         e.give(p["nok"])
     return _function(("from",), build, None)
@@ -3160,9 +3493,12 @@ BATCH_REJECTS = (("ROOT", "R"), ("ROOT", "64 hexadecimal digits"), ("FUNCTION", 
                  ("OPERATION", "add.wrap, sub.wrap or mul.wrap"), ("OPERAND", "an operand of the node"), ("NODE", "a single-result anchor"),
                  ("EDGE", "an edge argument of the anchor's block"), ("TYPE", "T<i> or a result index"), ("TYPE", "T<i>"),
                  ("TYPE", "a result index for a node without one result"), ("TYPE", "a result of the node"), ("TYPE", "T<i> of the function's view"),
-                 ("FORM", "const, op, operand, delete, insert-constant, edge or type"), ("COUNT", f"at most {MUT_LIMIT} mutations"))
+                 ("FORM", "const, op, operand, delete, insert-constant, edge, type, define or replace"), ("COUNT", f"at most {MUT_LIMIT} mutations"),
+                 ("DEFINE", "a function in view form, then a line end"), ("DEFINE", "@<name> defined once, before its use"),
+                 ("DEFINE", "a type line T<i> bits<w> or T<i> form<f> <CID>"), ("DEFINE", "within the assembler's tables"))
 (R_ROOT, R_ROOT_HEX, R_FUNCTION, R_FUNCTION_GRAPH, R_HANDLE, R_HANDLE_NODE, R_INTEGER, R_VALUE, R_VALUE_OF, R_CONSTANT, R_OPERATION,
- R_OPERATION_WRAP, R_OPERAND, R_ANCHOR, R_EDGE, R_TYPE_OR_INDEX, R_TYPE, R_TYPE_INDEX, R_TYPE_RESULT, R_TYPE_VIEW, R_FORM, R_COUNT) = range(len(BATCH_REJECTS))
+ R_OPERATION_WRAP, R_OPERAND, R_ANCHOR, R_EDGE, R_TYPE_OR_INDEX, R_TYPE, R_TYPE_INDEX, R_TYPE_RESULT, R_TYPE_VIEW, R_FORM, R_COUNT,
+ R_DEFINE, R_DEFINE_NAME, R_DEFINE_TYPE, R_DEFINE_ROOM) = range(len(BATCH_REJECTS))
 W_SAVE_B, W_SAVE_N, W_S_TYPE = 35, 36, 37  # ``apply``'s node across a value handle; a parsed type's object
 
 
@@ -3465,7 +3801,8 @@ def _ws_translate_function():
     view.  Each mutation's old operation, value, operand, edge argument or type comes from the store."""
     verbs = (("const", "ws_tr_constant"), ("set-constant", "ws_tr_constant"), ("op", "ws_tr_operation"), ("set-op", "ws_tr_operation"),
              ("operand", "ws_tr_operand"), ("replace-operand", "ws_tr_operand"), ("delete", "ws_tr_delete"), ("insert-constant", "ws_tr_insert"),
-             ("edge", "ws_tr_edge"), ("set-edge", "ws_tr_edge"), ("type", "ws_tr_type"), ("set-type", "ws_tr_type"))
+             ("edge", "ws_tr_edge"), ("set-edge", "ws_tr_edge"), ("type", "ws_tr_type"), ("set-type", "ws_tr_type"),
+             ("define", "ws_tr_define"), ("replace", "ws_tr_replace"))
 
     def build(e: E):
         p = e.p
@@ -3473,6 +3810,8 @@ def _ws_translate_function():
         _wset(e, W_TCUR, 0)
         _wset(e, W_RCUR, 0)
         _wset(e, W_COUNT, 0)
+        for field in (W_ASUP, W_AOBJ, W_ANDEF):  # N0: the assembler's supplied objects and definitions
+            _wset(e, field, 0)
         running = lambda: _ws_running(e)  # noqa: E731
         for k, byte in enumerate(RECORD_MAGIC):
             e.st(EIN + k, byte)
@@ -3557,7 +3896,27 @@ def _ws_translate_function():
 
             e.while_(lambda: e.ne(p["tmore"], 0), count_byte)
             e.for_("tq", 0, _wctrl(e, W_RCUR), lambda: e.st(e.add(p["ta"], p["tq"]), e.ld(e.add(WS_TMP, p["tq"]))))
-            _set(e, E_LENGTH, e.sub(e.add(p["ta"], _wctrl(e, W_RCUR)), EIN))
+            e.set("ta", e.add(p["ta"], _wctrl(e, W_RCUR)))
+
+            def supplied():  # N0 (ADR-367): the assembler's objects, after the mutations
+                e.var("tsn", _wctrl(e, W_ASUP))
+                e.var("tsmore", 1)
+
+                def supplied_count_byte():
+                    e.var("tslow", e.and_(p["tsn"], 127))
+                    e.set("tsn", e.udiv(p["tsn"], 128))
+                    e.st(p["ta"], e.add(p["tslow"], e.mul(e.flag(e.ne(p["tsn"], 0)), 128)))
+                    e.set("ta", e.add(p["ta"], 1))
+                    e.set("tsmore", e.flag(e.ne(p["tsn"], 0)))
+
+                e.while_(lambda: e.ne(p["tsmore"], 0), supplied_count_byte)
+                e.if_(e.lt(EIN + EIN_LIMIT, e.add(p["ta"], _wctrl(e, W_AOBJ))), lambda: _reject(
+                    e, "XAX.DRIVER.CAPACITY", lambda: D.text(e, "apply"), "DRIVER-FILE-CAPACITY", lambda: D.integer(e, EIN_LIMIT), lambda: D.text(e, "larger")))
+                e.if_(_ws_running(e), lambda: (e.for_("tq", 0, _wctrl(e, W_AOBJ), lambda: e.st(e.add(p["ta"], p["tq"]), e.ld(e.add(ASM_OBJS, p["tq"])))),
+                                               e.set("ta", e.add(p["ta"], _wctrl(e, W_AOBJ)))))
+
+            e.if_(e.ne(_wctrl(e, W_ASUP), 0), supplied)
+            _set(e, E_LENGTH, e.sub(p["ta"], EIN))
 
         e.if_(running(), assemble)
         e.give(_ctrl(e, E_STATUS))
@@ -3954,6 +4313,976 @@ def _ws_command_function():
     return _function((), build, None)
 
 
+
+# -- N0 (ADR-367): ``define @name`` / ``replace F<n> @name``: the native assembler ---------------------------------------
+# ``define`` reads a function in exactly the form ``view`` prints it (signature, ``entry B<k>``, ``B<k>(P<i>:T<j>,..)``,
+# node lines, ``br``/``cbr``/``ret``/``trap``, then its ``T<i>`` lines) up to a line ``end``, and adds its objects to the
+# record as supplied objects: each constant node's constant, any ``bits`` type the store lacks, the graph and the
+# function.  A reference to an object of the same record is its supplied index (``SUPPLIED_MARK``) and a graph's or
+# function's references are in the order met; the engine resolves and orders them (``canonical``).  ``replace`` makes a
+# ``REPLACE_REFERENCE`` from every object of the store that refers to ``F<n>`` to the named function.
+ASM_OBJS = CANON  # the supplied objects' record bytes, one byte per word, before ``apply`` appends them
+ASM_OBJS_LIMIT = 16 << 20
+ASM_REFS = ASM_OBJS + ASM_OBJS_LIMIT  # the graph's references in the order met: 32 bytes each
+ASM_REFS_LIMIT = 1 << 16
+ASM_BODY = ASM_REFS + 32 * ASM_REFS_LIMIT  # the graph's body
+ASM_BODY_LIMIT = 8 << 20
+ASM_NB = ASM_BODY + ASM_BODY_LIMIT  # per node handle: its block
+ASM_PB = ASM_NB + (1 << 20)  # per parameter handle: its block
+ASM_HANDLES = 1 << 20
+ASM_BN = ASM_PB + ASM_HANDLES  # per block: its first node handle, then its first parameter handle (``ASM_BP``)
+ASM_BP = ASM_BN + (1 << 16)
+ASM_BLOCKS = (1 << 16) - 1
+ASM_T = ASM_BP + (1 << 16)  # per type handle: state (1 CID, 2 supplied), CID words, supplied index, bits width + 1
+ASM_TW = 7
+ASM_TYPES = 1 << 14
+ASM_TSLOT = ASM_T + ASM_TW * ASM_TYPES  # per type handle: its graph reference slot + 1
+ASM_FSLOT = ASM_TSLOT + ASM_TYPES  # per function handle: its graph reference slot + 1
+ASM_SIG = ASM_FSLOT + (1 << 16)  # the signature's type handles: parameters, then returns
+ASM_DEFS = ASM_SIG + (1 << 14)  # per definition: name start, name length, its function's supplied index
+ASM_DEFS_LIMIT = 1 << 10
+assert ASM_DEFS + 3 * ASM_DEFS_LIMIT < EIN
+(W_ACUR, W_AEND, W_AOBJ, W_ASUP, W_ANREF, W_ABODY, W_ANDEF, W_ANB, W_ANN, W_ANP, W_ANSIG_P, W_ANSIG_R, W_AVAL, W_ADIG, W_AOK,
+ W_ASTART) = range(40, 56)
+NEWLINE = 10
+
+
+def _a_byte(e: E, at):
+    return e.ld(e.add(WS_IN, at))
+
+
+def _a_here(e: E):
+    """The byte at the cursor (NONE past the definition's end)."""
+    return e.sel(e.lt(_wctrl(e, W_ACUR), _wctrl(e, W_AEND)), _a_byte(e, _wctrl(e, W_ACUR)), NONE)
+
+
+def _a_step(e: E):
+    _wset(e, W_ACUR, e.add(_wctrl(e, W_ACUR), 1))
+
+
+def _a_fail(e: E, index: int):
+    """A rejection at the cursor (its offset is the diagnostic's position)."""
+    _wset(e, W_TOK_AT, _wctrl(e, W_ACUR))
+    _batch_reject(e, index)
+    _wset(e, W_AOK, 0)
+
+
+def _a_blank_function():
+    """Past spaces and tabs (not line ends)."""
+    def build(e: E):
+        e.while_(lambda: e.either(e.eq(_a_here(e), 32), e.eq(_a_here(e), 9), e.eq(_a_here(e), 13)), lambda: _a_step(e))
+        e.give(0)
+    return _function((), build, None)
+
+
+def _a_eol_function():
+    """1 at a line's end (or the definition's)."""
+    def build(e: E):
+        _call(e, "a_blank")
+        e.give(e.flag(e.either(e.eq(_a_here(e), NEWLINE), e.eq(_a_here(e), NONE))))
+    return _function((), build, None)
+
+
+def _a_line_function():
+    """Past the rest of the line and any blank lines: 1 when another line follows."""
+    def build(e: E):
+        e.while_(lambda: e.both(e.ne(_a_here(e), NEWLINE), e.ne(_a_here(e), NONE)), lambda: _a_step(e))
+
+        def blank_lines():
+            e.while_(lambda: e.either(e.eq(_a_here(e), NEWLINE), e.eq(_a_here(e), 32), e.eq(_a_here(e), 9), e.eq(_a_here(e), 13)),
+                     lambda: _a_step(e))
+
+        blank_lines()
+        e.give(e.flag(e.ne(_a_here(e), NONE)))
+    return _function((), build, None)
+
+
+def _a_char_function():
+    """1 and past it when the cursor's byte is ``c``."""
+    def build(e: E):
+        p = e.p
+        e.var("ach", 0)
+        e.if_(e.eq(_a_here(e), p["c"]), lambda: (_a_step(e), e.set("ach", 1)))
+        e.give(p["ach"])
+    return _function(("c",), build, None)
+
+
+def _a_need(e: E, c: int, index: int = None):
+    e.if_(e.both(e.ne(_wctrl(e, W_AOK), 0), e.eq(_call(e, "a_char", c), 0)), lambda: _a_fail(e, R_DEFINE if index is None else index))
+
+
+def _a_number_function():
+    """A decimal number at the cursor into ``W_AVAL`` (``W_ADIG`` its digits); with ``hex`` set, ``0x`` and
+    hexadecimal digits (at most 16)."""
+    def build(e: E):
+        p = e.p
+        e.var("anv", 0)
+        e.var("ann", 0)
+        e.var("anbase", 10)
+        e.if_(e.ne(p["hex"], 0), lambda: e.if_(e.both(e.eq(_a_here(e), 48), e.eq(_a_byte(e, e.add(_wctrl(e, W_ACUR), 1)), 120)),
+                                               lambda: (_a_step(e), _a_step(e), e.set("anbase", 16))))
+        e.var("ango", 1)
+
+        def digit():
+            e.var("anc", _a_here(e))
+            e.var("and", e.sel(e.both(e.le(48, p["anc"]), e.le(p["anc"], 57)), e.sub(p["anc"], 48),
+                               e.sel(e.both(e.eq(p["anbase"], 16), e.le(97, p["anc"]), e.le(p["anc"], 102)), e.sub(p["anc"], 87), 99)))
+            # N0: a decimal value up to 2^64 - 1 (20 digits): the next digit must not carry past 64 bits
+            e.if_(e.both(e.lt(p["and"], p["anbase"]), e.eq(p["anbase"], 10), e.either(e.lt(U64_TENTH, p["anv"]), e.both(
+                e.eq(p["anv"], U64_TENTH), e.lt(5, p["and"])))), lambda: e.set("anover", 1))
+            e.if_(e.lt(p["and"], p["anbase"]), lambda: (e.set("anv", e.add(e.mul(p["anv"], p["anbase"]), p["and"])), e.set("ann", e.add(p["ann"], 1)),
+                                                        _a_step(e)), lambda: e.set("ango", 0))
+
+        e.var("anover", 0)
+        e.while_(lambda: e.ne(p["ango"], 0), digit)
+        e.if_(e.either(e.eq(p["ann"], 0), e.ne(p["anover"], 0), e.lt(e.sel(e.eq(p["anbase"], 16), 16, 20), p["ann"])), lambda: _a_fail(e, R_DEFINE))
+        _wset(e, W_AVAL, p["anv"])
+        _wset(e, W_ADIG, p["ann"])
+        e.give(p["anv"])
+    return _function(("hex",), build, None)
+
+
+def _a_handle(e: E, letter: int):
+    """``<letter><n>``: its number (a rejection when the letter is not there)."""
+    _a_need(e, letter)
+    return _call(e, "a_number", 0)
+
+
+# -- the supplied objects' bytes ------------------------------------------------------------------------------------------
+def _a_obj_byte_function():
+    def build(e: E):
+        p = e.p
+        e.var("aob", _wctrl(e, W_AOBJ))
+        e.if_(e.lt(p["aob"], ASM_OBJS_LIMIT), lambda: (e.st(e.add(ASM_OBJS, p["aob"]), p["v"]), _wset(e, W_AOBJ, e.add(p["aob"], 1))),
+              lambda: _a_fail(e, R_DEFINE_ROOM))
+        e.give(0)
+    return _function(("v",), build, None)
+
+
+def _a_obj_uleb_function():
+    def build(e: E):
+        p = e.p
+        e.var("aou", p["v"])
+        e.var("aomore", 1)
+
+        def step():
+            e.var("aolow", e.and_(p["aou"], 127))
+            e.set("aou", e.udiv(p["aou"], 128))
+            _call(e, "a_obj_byte", e.add(p["aolow"], e.mul(e.flag(e.ne(p["aou"], 0)), 128)))
+            e.set("aomore", e.flag(e.ne(p["aou"], 0)))
+
+        e.while_(lambda: e.ne(p["aomore"], 0), step)
+        e.give(0)
+    return _function(("v",), build, None)
+
+
+def _a_obj_mark_function():
+    """``SUPPLIED_MARK`` and supplied index ``k``, as a reference's 32 bytes."""
+    def build(e: E):
+        p = e.p
+        for byte in SUPPLIED_MARK:
+            _call(e, "a_obj_byte", byte)
+        for j in range(8):
+            _call(e, "a_obj_byte", e.and_(e.udiv(p["k"], 1 << (8 * (7 - j))), 255) if j < 7 else e.and_(p["k"], 255))
+        e.give(0)
+    return _function(("k",), build, None)
+
+
+def _a_obj_words_function():
+    """A CID given as four big-endian words, as a reference's 32 bytes."""
+    def build(e: E):
+        p = e.p
+        for k in range(4):
+            for j in range(8):
+                _call(e, "a_obj_byte", e.and_(e.udiv(p[f"w{k}"], 1 << (8 * (7 - j))), 255) if j < 7 else e.and_(p[f"w{k}"], 255))
+        e.give(0)
+    return _function(("w0", "w1", "w2", "w3"), build, None)
+
+
+def _a_type_ref(e: E, t):
+    """Type handle ``t``'s reference, as 32 record bytes of the object being written."""
+    e.var("atr_at", e.add(ASM_T, e.mul(t, ASM_TW)))
+    e.if_(e.eq(e.ld(e.p["atr_at"]), 2), lambda: _call(e, "a_obj_mark", e.ld(e.add(e.p["atr_at"], 5))),
+          lambda: _call(e, "a_obj_words", *(e.ld(e.add(e.p["atr_at"], 1 + k)) for k in range(4))))
+
+
+# -- the graph's references and body --------------------------------------------------------------------------------------
+def _a_ref_function():
+    """A new graph reference slot: ``mode`` 1 the CID in words ``w0``..``w3``, 2 supplied index ``w0``; gives the slot."""
+    def build(e: E):
+        p = e.p
+        e.var("ars", _wctrl(e, W_ANREF))
+        e.if_(e.le(ASM_REFS_LIMIT, p["ars"]), lambda: _a_fail(e, R_DEFINE_ROOM))
+
+        def write():
+            e.var("ara", e.add(ASM_REFS, e.mul(p["ars"], 32)))
+
+            def words():
+                for k in range(4):
+                    for j in range(8):
+                        e.st(e.add(p["ara"], 8 * k + j), e.and_(e.udiv(p[f"w{k}"], 1 << (8 * (7 - j))), 255) if j < 7 else e.and_(p[f"w{k}"], 255))
+
+            def mark():
+                for j, byte in enumerate(SUPPLIED_MARK):
+                    e.st(e.add(p["ara"], j), byte)
+                for j in range(8):
+                    e.st(e.add(p["ara"], len(SUPPLIED_MARK) + j), e.and_(e.udiv(p["w0"], 1 << (8 * (7 - j))), 255) if j < 7 else e.and_(p["w0"], 255))
+
+            e.if_(e.eq(p["mode"], 1), words, mark)
+            _wset(e, W_ANREF, e.add(p["ars"], 1))
+
+        e.if_(e.lt(p["ars"], ASM_REFS_LIMIT), write)
+        e.give(p["ars"])
+    return _function(("mode", "w0", "w1", "w2", "w3"), build, None)
+
+
+def _a_body_function():
+    """``v`` as a ULEB of the graph's body."""
+    def build(e: E):
+        p = e.p
+        e.var("abu", p["v"])
+        e.var("abmore", 1)
+
+        def step():
+            e.var("ablow", e.and_(p["abu"], 127))
+            e.set("abu", e.udiv(p["abu"], 128))
+            e.var("abat", _wctrl(e, W_ABODY))
+            e.if_(e.lt(p["abat"], ASM_BODY_LIMIT), lambda: (e.st(e.add(ASM_BODY, p["abat"]), e.add(p["ablow"], e.mul(e.flag(e.ne(p["abu"], 0)), 128))),
+                                                            _wset(e, W_ABODY, e.add(p["abat"], 1))), lambda: _a_fail(e, R_DEFINE_ROOM))
+            e.set("abmore", e.flag(e.ne(p["abu"], 0)))
+
+        e.while_(lambda: e.ne(p["abmore"], 0), step)
+        e.give(0)
+    return _function(("v",), build, None)
+
+
+def _a_type_slot_function():
+    """``T<i>`` at the cursor: its graph reference slot (one per type handle)."""
+    def build(e: E):
+        p = e.p
+        e.var("ats_t", _a_handle(e, 84))
+        e.var("ats", 0)
+
+        def known():
+            e.var("ats_at", e.add(ASM_T, e.mul(p["ats_t"], ASM_TW)))
+            e.var("ats_state", e.ld(p["ats_at"]))
+            e.if_(e.eq(p["ats_state"], 0), lambda: _a_fail(e, R_DEFINE_TYPE))
+
+            def slot():
+                e.var("ats_slot", e.ld(e.add(ASM_TSLOT, p["ats_t"])))
+
+                def fresh():
+                    # a stored type by its CID words; a supplied one by its supplied index
+                    e.set("ats_slot", e.add(_call(e, "a_ref", p["ats_state"],
+                                                  e.sel(e.eq(p["ats_state"], 2), e.ld(e.add(p["ats_at"], 5)), e.ld(e.add(p["ats_at"], 1))),
+                                                  *(e.ld(e.add(p["ats_at"], k)) for k in (2, 3, 4))), 1))
+                    e.st(e.add(ASM_TSLOT, p["ats_t"]), p["ats_slot"])
+
+                e.if_(e.eq(p["ats_slot"], 0), fresh)
+                e.set("ats", e.sub(p["ats_slot"], 1))
+
+            e.if_(e.ne(p["ats_state"], 0), slot)
+
+        e.if_(e.both(e.ne(_wctrl(e, W_AOK), 0), e.lt(p["ats_t"], ASM_TYPES)), known, lambda: _a_fail(e, R_DEFINE_TYPE))
+        e.give(p["ats"])
+    return _function((), build, None)
+
+
+def _a_value_function():
+    """``P<i>``, ``N<i>`` or ``N<i>.R<k>`` at the cursor, written to the body as a block-relative value."""
+    def build(e: E):
+        p = e.p
+        e.var("avc", _a_here(e))
+
+        def parameter():
+            _a_step(e)
+            e.var("avi", _call(e, "a_number", 0))
+            e.if_(e.le(_wctrl(e, W_ANP), p["avi"]), lambda: _a_fail(e, R_VALUE_OF))
+
+            def write():
+                e.var("avb", e.ld(e.add(ASM_PB, p["avi"])))
+                for v in (0, p["avb"], e.sub(p["avi"], e.ld(e.add(ASM_BP, p["avb"])))):
+                    _call(e, "a_body", v)
+
+            e.if_(e.ne(_wctrl(e, W_AOK), 0), write)
+
+        def node():
+            _a_step(e)
+            e.var("avn", _call(e, "a_number", 0))
+            e.var("avr", 0)
+            e.if_(e.eq(_a_here(e), 46), lambda: (_a_step(e), _a_need(e, 82), e.set("avr", _call(e, "a_number", 0))))
+            e.if_(e.le(_wctrl(e, W_ANN), p["avn"]), lambda: _a_fail(e, R_VALUE_OF))
+
+            def write():
+                e.var("avb", e.ld(e.add(ASM_NB, p["avn"])))
+                for v in (1, p["avb"], e.sub(p["avn"], e.ld(e.add(ASM_BN, p["avb"]))), p["avr"]):
+                    _call(e, "a_body", v)
+
+            e.if_(e.ne(_wctrl(e, W_AOK), 0), write)
+
+        e.if_(e.eq(p["avc"], 80), parameter, lambda: e.if_(e.eq(p["avc"], 78), node, lambda: _a_fail(e, R_VALUE)))
+        e.give(0)
+    return _function((), build, None)
+
+
+def _a_edge_function():
+    """``B<t>(v,..)``: the target and its arguments."""
+    def build(e: E):
+        p = e.p
+        e.var("aet", _a_handle(e, 66))
+        _call(e, "a_body", p["aet"])
+        _a_need(e, 40)
+        # the arguments' count first: count the commas up to ``)``
+        e.var("aeat", _wctrl(e, W_ACUR))
+        e.var("aen", e.flag(e.ne(_a_here(e), 41)))
+        e.while_(lambda: e.both(e.ne(_a_byte(e, p["aeat"]), 41), e.lt(p["aeat"], _wctrl(e, W_AEND)), e.ne(_a_byte(e, p["aeat"]), NEWLINE)),
+                 lambda: (e.if_(e.eq(_a_byte(e, p["aeat"]), 44), lambda: e.set("aen", e.add(p["aen"], 1))), e.set("aeat", e.add(p["aeat"], 1))))
+        _call(e, "a_body", p["aen"])
+
+        def argument():
+            e.if_(e.ne(p["aek"], 0), lambda: _a_need(e, 44))
+            e.if_(e.ne(_wctrl(e, W_AOK), 0), lambda: _call(e, "a_value"))
+
+        e.for_("aek", 0, p["aen"], argument)
+        _a_need(e, 41)
+        e.give(0)
+    return _function((), build, None)
+
+
+# -- the passes -----------------------------------------------------------------------------------------------------------
+def _a_find_bits_function():
+    """The store's ``bits<w>`` type object (NONE when it has none)."""
+    def build(e: E):
+        p = e.p
+        e.var("afb", NONE)
+
+        def each():
+            def type_():
+                length, at = _plain_body(e, p["afz"])
+                e.var("afb_len", length)
+                e.var("afb_at", at)
+                one = e.both(e.eq(p["afb_len"], 2), e.eq(e.rd(p["afb_at"]), 1), e.eq(e.rd(e.add(p["afb_at"], 1)), p["w"]))
+                two = e.both(e.eq(p["afb_len"], 3), e.eq(e.rd(p["afb_at"]), 1), e.le(128, p["w"]),
+                             e.eq(e.rd(e.add(p["afb_at"], 1)), e.add(e.and_(p["w"], 127), 128)), e.eq(e.rd(e.add(p["afb_at"], 2)), e.udiv(p["w"], 128)))
+                e.if_(e.both(e.eq(p["afb"], NONE), e.either(e.both(e.lt(p["w"], 128), one), two)), lambda: e.set("afb", p["afz"]))
+
+            e.if_(e.eq(_kind(e, p["afz"]), int(Kind.TYPE)), type_)
+
+        e.for_("afz", 0, e.rd(0), each)
+        e.give(p["afb"])
+    return _function(("w",), build, None)
+
+
+def _a_types_function():
+    """Pass 1's type lines: ``T<i> bits<w>`` (the store's type, else a new supplied one) or ``T<i> form<f> <CID>``."""
+    def build(e: E):
+        p = e.p
+        e.var("aty", _a_handle(e, 84))
+        e.if_(e.le(ASM_TYPES, p["aty"]), lambda: _a_fail(e, R_DEFINE_TYPE))
+        _call(e, "a_blank")
+        e.var("atyat", e.add(ASM_T, e.mul(e.sel(e.lt(p["aty"], ASM_TYPES), p["aty"], 0), ASM_TW)))
+
+        def bits():
+            for byte in b"bits":
+                _a_need(e, byte, R_DEFINE_TYPE)
+            e.var("atyw", _call(e, "a_number", 0))
+            e.var("atyo", _call(e, "a_find_bits", p["atyw"]))
+            e.st(e.add(p["atyat"], 6), e.add(p["atyw"], 1))
+
+            def stored():
+                e.st(p["atyat"], 1)
+                for k in range(4):
+                    e.st(e.add(p["atyat"], 1 + k), _cid_word(e, p["atyo"], k))
+
+            def new():
+                e.st(p["atyat"], 2)
+                e.st(e.add(p["atyat"], 5), _wctrl(e, W_ASUP))
+                _call(e, "a_obj_uleb", int(Kind.TYPE))
+                _call(e, "a_obj_uleb", 0)
+                e.var("atyb", e.add(1, e.sel(e.lt(p["atyw"], 128), 1, 2)))
+                _call(e, "a_obj_uleb", p["atyb"])
+                _call(e, "a_obj_uleb", 1)
+                _call(e, "a_obj_uleb", p["atyw"])
+                _wset(e, W_ASUP, e.add(_wctrl(e, W_ASUP), 1))
+
+            e.if_(e.ne(p["atyo"], NONE), stored, new)
+
+        def form():
+            for byte in b"form":
+                _a_need(e, byte, R_DEFINE_TYPE)
+            _call(e, "a_number", 0)
+            _call(e, "a_blank")
+            e.st(p["atyat"], 1)
+            e.st(e.add(p["atyat"], 6), 0)
+            for k in range(4):
+                e.var("atyw", 0)
+
+                def nibble():
+                    e.var("atyc", _a_here(e))
+                    e.var("atyd", e.sel(e.both(e.le(48, p["atyc"]), e.le(p["atyc"], 57)), e.sub(p["atyc"], 48),
+                                        e.sel(e.both(e.le(97, p["atyc"]), e.le(p["atyc"], 102)), e.sub(p["atyc"], 87), 99)))
+                    e.if_(e.lt(15, p["atyd"]), lambda: _a_fail(e, R_DEFINE_TYPE))
+                    e.set("atyw", e.add(e.mul(p["atyw"], 16), e.and_(p["atyd"], 15)))
+                    _a_step(e)
+
+                e.for_(f"atyk{k}", 0, 16, nibble)
+                e.st(e.add(p["atyat"], 1 + k), p["atyw"])
+
+        e.if_(e.eq(_a_here(e), 98), bits, lambda: e.if_(e.eq(_a_here(e), 102), form, lambda: _a_fail(e, R_DEFINE_TYPE)))
+        e.give(0)
+    return _function((), build, None)
+
+
+def _a_scan_function():
+    """Pass 1: number the blocks, nodes and parameters (``ASM_BN``/``ASM_BP``, ``ASM_NB``/``ASM_PB``) and read the type
+    lines.  Every line's first byte says what it is; node and parameter handles must come in order."""
+    def build(e: E):
+        p = e.p
+        _wset(e, W_ACUR, _wctrl(e, W_ASTART))
+        for field in (W_ANB, W_ANN, W_ANP):
+            _wset(e, field, 0)
+        e.var("asgo", e.flag(e.ne(_a_here(e), NONE)))
+
+        def line():
+            e.var("asc", _a_here(e))
+
+            def block():
+                e.var("asb", _a_handle(e, 66))
+                e.if_(e.either(e.ne(p["asb"], _wctrl(e, W_ANB)), e.le(ASM_BLOCKS, p["asb"])), lambda: _a_fail(e, R_DEFINE))
+                e.if_(e.ne(_wctrl(e, W_AOK), 0), lambda: (e.st(e.add(ASM_BN, p["asb"]), _wctrl(e, W_ANN)), e.st(e.add(ASM_BP, p["asb"]), _wctrl(e, W_ANP)),
+                                                          _wset(e, W_ANB, e.add(p["asb"], 1))))
+                # its parameters: each ``P<i>`` up to the line's end
+                e.while_(lambda: e.both(e.ne(_a_here(e), NEWLINE), e.ne(_a_here(e), NONE), e.ne(_wctrl(e, W_AOK), 0)), lambda: e.if_(
+                    e.eq(_a_here(e), 80), lambda: (
+                        _a_step(e), e.var("asp", _call(e, "a_number", 0)),
+                        e.if_(e.either(e.ne(p["asp"], _wctrl(e, W_ANP)), e.le(ASM_HANDLES, p["asp"])), lambda: _a_fail(e, R_DEFINE)),
+                        e.if_(e.ne(_wctrl(e, W_AOK), 0), lambda: (e.st(e.add(ASM_PB, p["asp"]), p["asb"]), _wset(e, W_ANP, e.add(p["asp"], 1))))),
+                    lambda: _a_step(e)))
+
+            def node():
+                e.var("asn", _a_handle(e, 78))
+                e.if_(e.either(e.ne(p["asn"], _wctrl(e, W_ANN)), e.le(ASM_HANDLES, p["asn"]), e.eq(_wctrl(e, W_ANB), 0)), lambda: _a_fail(e, R_DEFINE))
+                e.if_(e.ne(_wctrl(e, W_AOK), 0), lambda: (e.st(e.add(ASM_NB, p["asn"]), e.sub(_wctrl(e, W_ANB), 1)), _wset(e, W_ANN, e.add(p["asn"], 1))))
+
+            e.if_(e.eq(p["asc"], 66), block, lambda: e.if_(e.eq(p["asc"], 78), node, lambda: e.if_(e.eq(p["asc"], 84), lambda: _call(e, "a_types"))))
+            e.if_(e.ne(_wctrl(e, W_AOK), 0), lambda: e.set("asgo", _call(e, "a_line")), lambda: e.set("asgo", 0))
+
+        e.while_(lambda: e.ne(p["asgo"], 0), line)
+        e.st(e.add(ASM_BN, _wctrl(e, W_ANB)), _wctrl(e, W_ANN))
+        e.st(e.add(ASM_BP, _wctrl(e, W_ANB)), _wctrl(e, W_ANP))
+        e.if_(e.eq(_wctrl(e, W_ANB), 0), lambda: _a_fail(e, R_DEFINE))
+        e.give(0)
+    return _function((), build, None)
+
+
+def _a_operation_function():
+    """The operation name at the cursor (as ``view`` prints it: lower case, ``.`` for ``_``; or ``op<n>``)."""
+    def build(e: E):
+        p = e.p
+        e.var("aos", _wctrl(e, W_ACUR))
+        e.while_(lambda: e.both(e.ne(_a_here(e), 32), e.ne(_a_here(e), NEWLINE), e.ne(_a_here(e), NONE), e.ne(_a_here(e), 9)), lambda: _a_step(e))
+        e.var("aon", e.sub(_wctrl(e, W_ACUR), p["aos"]))
+        e.var("aocode", NONE)
+
+        def each():
+            e.var("aoslot", e.add(OPERATION_ENUM * 128, p["aoz"]))
+            e.var("aolen", e.ld(e.add(ENUM_LENGTH, p["aoslot"])))
+            e.var("aoat", e.ld(e.add(ENUM_AT, p["aoslot"])))
+
+            def compare():
+                e.var("aosame", 1)
+
+                def byte():
+                    e.var("aob", _call(e, "ws_byte_of", e.ld(e.add(ENUM_NAMES_AT, e.udiv(e.add(p["aoat"], p["aok"]), 8))), e.urem(e.add(p["aoat"], p["aok"]), 8)))
+                    e.var("aol", e.sel(e.eq(p["aob"], 95), 46, e.sel(e.both(e.le(65, p["aob"]), e.le(p["aob"], 90)), e.add(p["aob"], 32), p["aob"])))
+                    e.if_(e.ne(p["aol"], _a_byte(e, e.add(p["aos"], p["aok"]))), lambda: e.set("aosame", 0))
+
+                e.for_("aok", 0, p["aon"], byte)
+                e.if_(e.ne(p["aosame"], 0), lambda: e.set("aocode", p["aoz"]))
+
+            e.if_(e.both(e.eq(p["aocode"], NONE), e.eq(p["aolen"], p["aon"]), e.ne(p["aon"], 0)), compare)
+
+        e.for_("aoz", 1, 128, each)
+
+        def numbered():  # ``op<n>``
+            _wset(e, W_ACUR, e.add(p["aos"], 2))
+            e.set("aocode", _call(e, "a_number", 0))
+
+        e.if_(e.both(e.eq(p["aocode"], NONE), e.lt(2, p["aon"]), e.eq(_a_byte(e, p["aos"]), 111), e.eq(_a_byte(e, e.add(p["aos"], 1)), 112)), numbered)
+        e.if_(e.eq(p["aocode"], NONE), lambda: _a_fail(e, R_OPERATION))
+        e.give(p["aocode"])
+    return _function((), build, None)
+
+
+def _a_constant_function():
+    """``constant V -> T<t>`` after the operation: a new supplied constant (its value decimal for a ``bits`` type,
+    else ``0x`` and its bytes, most significant first) and its graph reference slot.  ``ct`` is the cursor at ``V``."""
+    def build(e: E):
+        p = e.p
+        e.var("acv_at", _wctrl(e, W_ACUR))
+        # the result type, after ``->``: read ahead
+        e.while_(lambda: e.both(e.ne(_a_here(e), 62), e.ne(_a_here(e), NEWLINE), e.ne(_a_here(e), NONE)), lambda: _a_step(e))
+        _a_need(e, 62)
+        _call(e, "a_blank")
+        e.var("acv_t", _a_handle(e, 84))
+        e.var("acv_tat", e.add(ASM_T, e.mul(e.sel(e.lt(p["acv_t"], ASM_TYPES), p["acv_t"], 0), ASM_TW)))
+        e.if_(e.either(e.le(ASM_TYPES, p["acv_t"]), e.eq(e.ld(p["acv_tat"]), 0)), lambda: _a_fail(e, R_DEFINE_TYPE))
+        e.var("acv_end", _wctrl(e, W_ACUR))
+        _wset(e, W_ACUR, p["acv_at"])
+        e.var("acv_k", _wctrl(e, W_ASUP))
+
+        def write():
+            _call(e, "a_obj_uleb", int(Kind.CONSTANT))
+            _call(e, "a_obj_uleb", 1)
+            _a_type_ref(e, p["acv_t"])
+
+            def wide():  # ``0x`` and the bytes, most significant first: written least significant first
+                _a_step(e)
+                _a_step(e)
+                e.var("acv_s", _wctrl(e, W_ACUR))
+                e.while_(lambda: e.either(e.both(e.le(48, _a_here(e)), e.le(_a_here(e), 57)), e.both(e.le(97, _a_here(e)), e.le(_a_here(e), 102))),
+                         lambda: _a_step(e))
+                e.var("acv_n", e.udiv(e.sub(_wctrl(e, W_ACUR), p["acv_s"]), 2))
+                e.if_(e.either(e.eq(p["acv_n"], 0), e.ne(e.mul(p["acv_n"], 2), e.sub(_wctrl(e, W_ACUR), p["acv_s"]))), lambda: _a_fail(e, R_CONSTANT))
+                _call(e, "a_obj_uleb", e.add(p["acv_n"], e.add(1, e.sel(e.lt(p["acv_n"], 128), 1, 2))))
+                _call(e, "a_obj_uleb", 0)
+                _call(e, "a_obj_uleb", p["acv_n"])
+
+                def byte():
+                    e.var("acv_bat", e.add(p["acv_s"], e.mul(e.sub(e.sub(p["acv_n"], 1), p["acv_q"]), 2)))
+                    e.var("acv_byte", 0)
+                    for half in (0, 1):
+                        e.var("acv_c", _a_byte(e, e.add(p["acv_bat"], half)))
+                        e.set("acv_byte", e.add(e.mul(p["acv_byte"], 16), e.sel(e.le(97, p["acv_c"]), e.sub(p["acv_c"], 87), e.sub(p["acv_c"], 48))))
+                    _call(e, "a_obj_byte", p["acv_byte"])
+
+                e.for_("acv_q", 0, p["acv_n"], byte)
+
+            def decimal():
+                e.var("acv_v", _call(e, "a_number", 0))
+                e.var("acv_w", e.ld(e.add(p["acv_tat"], 6)))
+                e.if_(e.eq(p["acv_w"], 0), lambda: _a_fail(e, R_CONSTANT))
+                e.var("acv_n", e.udiv(e.add(e.sub(p["acv_w"], 1), 7), 8))
+                _call(e, "a_obj_uleb", e.add(p["acv_n"], e.add(1, e.sel(e.lt(p["acv_n"], 128), 1, 2))))
+                _call(e, "a_obj_uleb", 0)
+                _call(e, "a_obj_uleb", p["acv_n"])
+                e.for_("acv_q", 0, p["acv_n"], lambda: (_call(e, "a_obj_byte", e.and_(p["acv_v"], 255)), e.set("acv_v", e.udiv(p["acv_v"], 256))))
+
+            e.if_(e.both(e.eq(_a_here(e), 48), e.eq(_a_byte(e, e.add(_wctrl(e, W_ACUR), 1)), 120)), wide, decimal)
+            _wset(e, W_ASUP, e.add(_wctrl(e, W_ASUP), 1))
+
+        e.if_(e.ne(_wctrl(e, W_AOK), 0), write)
+        _wset(e, W_ACUR, p["acv_at"])
+        e.while_(lambda: e.both(e.ne(_a_here(e), 32), e.ne(_a_here(e), NEWLINE), e.ne(_a_here(e), NONE)), lambda: _a_step(e))  # past V
+        e.give(_call(e, "a_ref", 2, p["acv_k"], 0, 0, 0))
+    return _function((), build, None)
+
+
+def _a_node_function():
+    """One node line: ``N<i> <operation> [V | entity=..] [member=k] operands [-> T..,T..] [[a,..]]``."""
+    def build(e: E):
+        p = e.p
+        _a_handle(e, 78)
+        _call(e, "a_blank")
+        e.var("anop", _call(e, "a_operation"))
+        _call(e, "a_body", p["anop"])
+        e.var("anflags", e.ld(e.add(OPF, e.sel(e.lt(p["anop"], 128), p["anop"], 0))))
+        _call(e, "a_blank")
+
+        def entity():
+            def constant():
+                _call(e, "a_body", _call(e, "a_constant"))
+
+            def named():
+                for byte in b"entity=":
+                    _a_need(e, byte)
+
+                def function():
+                    _a_step(e)
+                    e.var("anf", _call(e, "a_number", 0))
+                    e.var("anfo", _call(e, "ws_function", p["anf"]))
+                    e.if_(e.either(e.eq(p["anfo"], NONE), e.le(1 << 16, p["anf"])), lambda: _a_fail(e, R_FUNCTION))
+
+                    def slot():
+                        e.var("anfs", e.ld(e.add(ASM_FSLOT, p["anf"])))
+                        e.if_(e.eq(p["anfs"], 0), lambda: (
+                            e.set("anfs", e.add(_call(e, "a_ref", 1, *(_cid_word(e, p["anfo"], k) for k in range(4))), 1)),
+                            e.st(e.add(ASM_FSLOT, p["anf"]), p["anfs"])))
+                        _call(e, "a_body", e.sub(p["anfs"], 1))
+
+                    e.if_(e.ne(_wctrl(e, W_AOK), 0), slot)
+
+                def defined():  # ``@name``: a function defined earlier in this batch
+                    _a_step(e)
+                    e.var("ans", _wctrl(e, W_ACUR))
+                    e.while_(lambda: e.both(e.ne(_a_here(e), 32), e.ne(_a_here(e), NEWLINE), e.ne(_a_here(e), NONE)), lambda: _a_step(e))
+                    e.var("and_k", _call(e, "a_def_find", p["ans"], e.sub(_wctrl(e, W_ACUR), p["ans"])))
+                    e.if_(e.eq(p["and_k"], NONE), lambda: _a_fail(e, R_DEFINE_NAME),
+                          lambda: _call(e, "a_body", _call(e, "a_ref", 2, p["and_k"], 0, 0, 0)))
+
+                def cid():
+                    for k in range(4):
+                        e.var("anw", 0)
+
+                        def nibble():
+                            e.var("anc", _a_here(e))
+                            e.var("and", e.sel(e.both(e.le(48, p["anc"]), e.le(p["anc"], 57)), e.sub(p["anc"], 48),
+                                               e.sel(e.both(e.le(97, p["anc"]), e.le(p["anc"], 102)), e.sub(p["anc"], 87), 99)))
+                            e.if_(e.lt(15, p["and"]), lambda: _a_fail(e, R_DEFINE))
+                            e.set("anw", e.add(e.mul(p["anw"], 16), e.and_(p["and"], 15)))
+                            _a_step(e)
+
+                        e.for_(f"ank{k}", 0, 16, nibble)
+                        e.var(f"anw{k}", p["anw"])
+                    _call(e, "a_body", _call(e, "a_ref", 1, *(p[f"anw{k}"] for k in range(4))))
+
+                e.if_(e.eq(_a_here(e), 70), function, lambda: e.if_(e.eq(_a_here(e), 64), defined, cid))
+
+            e.if_(e.eq(p["anop"], int(Operation.CONSTANT)), constant, named)
+
+        e.if_(e.both(e.ne(_wctrl(e, W_AOK), 0), e.ne(e.and_(p["anflags"], 1), 0)), entity)
+
+        def member():
+            _call(e, "a_blank")
+            for byte in b"member=":
+                _a_need(e, byte)
+            _call(e, "a_body", _call(e, "a_number", 0))
+
+        e.if_(e.both(e.ne(_wctrl(e, W_AOK), 0), e.eq(p["anop"], int(Operation.CALL_GROUP_MEMBER))), member)
+        # operands: values up to ``->``, ``[`` or the line's end
+        _call(e, "a_blank")
+        e.var("anoat", _wctrl(e, W_ACUR))
+        e.var("ano", 0)
+        e.while_(lambda: e.both(e.either(e.eq(_a_here(e), 80), e.eq(_a_here(e), 78)), e.ne(_wctrl(e, W_AOK), 0)), lambda: (
+            e.set("ano", e.add(p["ano"], 1)),
+            e.while_(lambda: e.both(e.ne(_a_here(e), 32), e.ne(_a_here(e), NEWLINE), e.ne(_a_here(e), NONE)), lambda: _a_step(e)),
+            _call(e, "a_blank")))
+        _call(e, "a_body", p["ano"])
+        _wset(e, W_ACUR, p["anoat"])
+        e.for_("anq", 0, p["ano"], lambda: e.if_(e.ne(_wctrl(e, W_AOK), 0), lambda: (_call(e, "a_value"), _call(e, "a_blank"))))
+        # results
+        e.var("anr", 0)
+        e.var("anrat", _wctrl(e, W_ACUR))
+
+        def count_results():
+            _a_step(e)
+            _a_need(e, 62)
+            _call(e, "a_blank")
+            e.set("anrat", _wctrl(e, W_ACUR))
+            e.set("anr", 1)
+            e.while_(lambda: e.both(e.ne(_a_here(e), 32), e.ne(_a_here(e), NEWLINE), e.ne(_a_here(e), NONE)), lambda: (
+                e.if_(e.eq(_a_here(e), 44), lambda: e.set("anr", e.add(p["anr"], 1))), _a_step(e)))
+
+        e.if_(e.eq(_a_here(e), 45), count_results)
+        _call(e, "a_body", p["anr"])
+        e.var("anend", _wctrl(e, W_ACUR))
+        _wset(e, W_ACUR, p["anrat"])
+        e.for_("anrk", 0, p["anr"], lambda: (e.if_(e.ne(p["anrk"], 0), lambda: _a_need(e, 44)),
+                                              e.if_(e.ne(_wctrl(e, W_AOK), 0), lambda: _call(e, "a_body", _call(e, "a_type_slot")))))
+        e.if_(e.ne(p["anr"], 0), lambda: _wset(e, W_ACUR, p["anend"]))
+
+        def attributes():
+            _call(e, "a_blank")
+            e.var("anaat", _wctrl(e, W_ACUR))
+            e.var("ana", 0)
+
+            def listed():
+                _a_step(e)
+                e.set("anaat", _wctrl(e, W_ACUR))
+                e.set("ana", 1)
+                e.while_(lambda: e.both(e.ne(_a_here(e), 93), e.ne(_a_here(e), NEWLINE), e.ne(_a_here(e), NONE)), lambda: (
+                    e.if_(e.eq(_a_here(e), 44), lambda: e.set("ana", e.add(p["ana"], 1))), _a_step(e)))
+                _wset(e, W_ACUR, p["anaat"])
+
+            e.if_(e.eq(_a_here(e), 91), listed)
+            _call(e, "a_body", p["ana"])
+            e.for_("anak", 0, p["ana"], lambda: (e.if_(e.ne(p["anak"], 0), lambda: _a_need(e, 44)), _call(e, "a_body", _call(e, "a_number", 0))))
+            e.if_(e.ne(p["ana"], 0), lambda: _a_need(e, 93))
+
+        e.if_(e.both(e.ne(_wctrl(e, W_AOK), 0), e.ne(e.and_(p["anflags"], 2), 0)), attributes)
+        e.if_(e.both(e.ne(_wctrl(e, W_AOK), 0), e.eq(_call(e, "a_eol"), 0)), lambda: _a_fail(e, R_DEFINE))
+        e.give(0)
+    return _function((), build, None)
+
+
+def _a_def_find_function():
+    """The supplied index of the function defined as ``@`` + the ``n`` bytes at text offset ``at`` (NONE: none)."""
+    def build(e: E):
+        p = e.p
+        e.var("adf", NONE)
+
+        def each():
+            e.var("adf_at", e.add(ASM_DEFS, e.mul(p["adz"], 3)))
+
+            def compare():
+                e.var("adf_same", 1)
+                e.for_("adk", 0, p["n"], lambda: e.if_(e.ne(_a_byte(e, e.add(e.ld(p["adf_at"]), p["adk"])), _a_byte(e, e.add(p["at"], p["adk"]))),
+                                                     lambda: e.set("adf_same", 0)))
+                e.if_(e.ne(p["adf_same"], 0), lambda: e.set("adf", e.ld(e.add(p["adf_at"], 2))))
+
+            e.if_(e.eq(e.ld(e.add(p["adf_at"], 1)), p["n"]), compare)
+
+        e.for_("adz", 0, _wctrl(e, W_ANDEF), each)
+        e.give(p["adf"])
+    return _function(("at", "n"), build, None)
+
+
+def _a_emit_function():
+    """Pass 2: the signature, the blocks and their terminators into the graph's body and references; then the graph
+    and the function as supplied objects.  Gives the function's supplied index."""
+    def build(e: E):
+        p = e.p
+        _wset(e, W_ACUR, _wctrl(e, W_ASTART))
+        _wset(e, W_ANREF, 0)
+        _wset(e, W_ABODY, 0)
+        e.for_("aez", 0, ASM_TYPES, lambda: e.st(e.add(ASM_TSLOT, p["aez"]), 0))
+        e.for_("aez", 0, 1 << 16, lambda: e.st(e.add(ASM_FSLOT, p["aez"]), 0))
+        # the signature
+        _a_need(e, 40)
+        for side, field in ((0, W_ANSIG_P), (1, W_ANSIG_R)):
+            if side:
+                for byte in b"->(":
+                    _a_need(e, byte)
+            e.var("aesn", 0)
+            e.while_(lambda: e.both(e.ne(_a_here(e), 41), e.ne(_wctrl(e, W_AOK), 0)), lambda: (
+                e.if_(e.ne(p["aesn"], 0), lambda: _a_need(e, 44)),
+                e.var("aest", _a_handle(e, 84)),
+                e.st(e.add(ASM_SIG, e.add(e.mul(side, 1 << 13), p["aesn"])), p["aest"]),
+                e.set("aesn", e.add(p["aesn"], 1))))
+            _a_need(e, 41)
+            _wset(e, field, p["aesn"])
+        e.var("aego", _call(e, "a_line"))
+        e.var("aeentry", 0)
+
+        def entry():
+            for byte in b"entry B":
+                _a_need(e, byte)
+            e.set("aeentry", _call(e, "a_number", 0))
+            e.set("aego", _call(e, "a_line"))
+
+        e.if_(e.both(e.ne(p["aego"], 0), e.eq(_a_here(e), 101)), entry)
+        _call(e, "a_body", _wctrl(e, W_ANB))
+        _call(e, "a_body", p["aeentry"])
+
+        def block():
+            e.var("aeb", _a_handle(e, 66))
+            _a_need(e, 40)
+            _call(e, "a_body", e.sub(e.ld(e.add(ASM_BP, e.add(p["aeb"], 1))), e.ld(e.add(ASM_BP, p["aeb"]))))
+            e.while_(lambda: e.both(e.ne(_a_here(e), 41), e.ne(_wctrl(e, W_AOK), 0)), lambda: (
+                e.if_(e.eq(_a_here(e), 44), lambda: _a_step(e)),
+                _a_handle(e, 80), _a_need(e, 58),
+                _call(e, "a_body", _call(e, "a_type_slot"))))
+            _a_need(e, 41)
+            _call(e, "a_body", e.sub(e.ld(e.add(ASM_BN, e.add(p["aeb"], 1))), e.ld(e.add(ASM_BN, p["aeb"]))))
+            e.set("aego", _call(e, "a_line"))
+            e.while_(lambda: e.both(e.ne(p["aego"], 0), e.eq(_a_here(e), 78), e.ne(_wctrl(e, W_AOK), 0)), lambda: (
+                _call(e, "a_node"), e.set("aego", _call(e, "a_line"))))
+            # the terminator
+            e.var("aet0", _a_here(e))
+            e.var("aet1", _a_byte(e, e.add(_wctrl(e, W_ACUR), 1)))
+
+            def branch():
+                for byte in b"br":
+                    _a_need(e, byte)
+                _call(e, "a_blank")
+                _call(e, "a_body", int(TerminatorKind.BRANCH))
+                _call(e, "a_edge")
+
+            def conditional():
+                for byte in b"cbr":
+                    _a_need(e, byte)
+                _call(e, "a_blank")
+                _call(e, "a_body", int(TerminatorKind.CONDITIONAL_BRANCH))
+                _call(e, "a_value")
+                _call(e, "a_blank")
+                _call(e, "a_edge")
+                _call(e, "a_blank")
+                _call(e, "a_edge")
+
+            def returned():
+                for byte in b"ret":
+                    _a_need(e, byte)
+                _call(e, "a_body", int(TerminatorKind.RETURN))
+                e.var("aerat", _wctrl(e, W_ACUR))
+                e.var("aern", 0)
+                e.while_(lambda: e.eq(_call(e, "a_eol"), 0), lambda: (
+                    e.set("aern", e.add(p["aern"], 1)),
+                    e.while_(lambda: e.both(e.ne(_a_here(e), 32), e.ne(_a_here(e), NEWLINE), e.ne(_a_here(e), NONE)), lambda: _a_step(e))))
+                _call(e, "a_body", p["aern"])
+                _wset(e, W_ACUR, p["aerat"])
+                e.for_("aerk", 0, p["aern"], lambda: (_call(e, "a_blank"), _call(e, "a_value")))
+
+            def trap():
+                for byte in b"trap":
+                    _a_need(e, byte)
+                _call(e, "a_body", int(TerminatorKind.TRAP))
+                _call(e, "a_blank")
+                e.var("aetn", 0)
+
+                def payload():
+                    _a_step(e)
+                    _a_step(e)
+                    e.var("aets", _wctrl(e, W_ACUR))
+                    e.while_(lambda: e.either(e.both(e.le(48, _a_here(e)), e.le(_a_here(e), 57)), e.both(e.le(97, _a_here(e)), e.le(_a_here(e), 102))),
+                             lambda: _a_step(e))
+                    e.set("aetn", e.udiv(e.sub(_wctrl(e, W_ACUR), p["aets"]), 2))
+                    _call(e, "a_body", p["aetn"])
+
+                    def byte():
+                        e.var("aetb", 0)
+                        for half in (0, 1):
+                            e.var("aetc", _a_byte(e, e.add(p["aets"], e.add(e.mul(p["aetq"], 2), half))))
+                            e.set("aetb", e.add(e.mul(p["aetb"], 16), e.sel(e.le(97, p["aetc"]), e.sub(p["aetc"], 87), e.sub(p["aetc"], 48))))
+                        e.var("aetat", _wctrl(e, W_ABODY))
+                        e.st(e.add(ASM_BODY, p["aetat"]), p["aetb"])
+                        _wset(e, W_ABODY, e.add(p["aetat"], 1))
+
+                    e.for_("aetq", 0, p["aetn"], byte)
+
+                e.if_(e.eq(_a_here(e), 48), payload, lambda: _call(e, "a_body", 0))
+
+            e.if_(e.both(e.eq(p["aet0"], 98), e.eq(p["aet1"], 114)), branch, lambda: e.if_(
+                e.eq(p["aet0"], 99), conditional, lambda: e.if_(e.eq(p["aet0"], 114), returned, lambda: e.if_(
+                    e.eq(p["aet0"], 116), trap, lambda: _a_fail(e, R_DEFINE)))))
+            e.if_(e.both(e.ne(_wctrl(e, W_AOK), 0), e.eq(_call(e, "a_eol"), 0)), lambda: _a_fail(e, R_DEFINE))
+            e.set("aego", _call(e, "a_line"))
+
+        e.var("aebk", 0)
+        e.while_(lambda: e.both(e.lt(p["aebk"], _wctrl(e, W_ANB)), e.ne(_wctrl(e, W_AOK), 0)), lambda: (block(), e.set("aebk", e.add(p["aebk"], 1))))
+        e.var("aefn", NONE)
+
+        def objects():
+            # the graph: its references in the order met (the engine orders them), then its body
+            e.var("aeg", _wctrl(e, W_ASUP))
+            _call(e, "a_obj_uleb", int(Kind.GRAPH_FRAGMENT))
+            _call(e, "a_obj_uleb", _wctrl(e, W_ANREF))
+            e.for_("aeq", 0, e.mul(_wctrl(e, W_ANREF), 32), lambda: _call(e, "a_obj_byte", e.ld(e.add(ASM_REFS, p["aeq"]))))
+            _call(e, "a_obj_uleb", _wctrl(e, W_ABODY))
+            e.for_("aeq", 0, _wctrl(e, W_ABODY), lambda: _call(e, "a_obj_byte", e.ld(e.add(ASM_BODY, p["aeq"]))))
+            # the function: the graph, then each signature type (one reference each, in order)
+            e.var("aenp", _wctrl(e, W_ANSIG_P))
+            e.var("aenr", _wctrl(e, W_ANSIG_R))
+            _call(e, "a_obj_uleb", int(Kind.FUNCTION))
+            _call(e, "a_obj_uleb", e.add(1, e.add(p["aenp"], p["aenr"])))
+            _call(e, "a_obj_mark", p["aeg"])
+            e.for_("aeq", 0, p["aenp"], lambda: _a_type_ref(e, e.ld(e.add(ASM_SIG, p["aeq"]))))
+            e.for_("aeq", 0, p["aenr"], lambda: _a_type_ref(e, e.ld(e.add(ASM_SIG + (1 << 13), p["aeq"]))))
+            # its body's length: the ULEBs of 0, the counts and the indices 1 .. np + nr
+            e.var("aelen", 0)
+            for value in (0, p["aenp"], p["aenr"]):
+                e.set("aelen", e.add(p["aelen"], e.sel(e.lt(value, 128), 1, e.sel(e.lt(value, 1 << 14), 2, 3))))
+            e.for_("aeq", 1, e.add(1, e.add(p["aenp"], p["aenr"])), lambda: e.set("aelen", e.add(p["aelen"], e.sel(e.lt(p["aeq"], 128), 1, e.sel(e.lt(p["aeq"], 1 << 14), 2, 3)))))
+            _call(e, "a_obj_uleb", p["aelen"])
+            _call(e, "a_obj_uleb", 0)
+            _call(e, "a_obj_uleb", p["aenp"])
+            e.for_("aeq", 0, p["aenp"], lambda: _call(e, "a_obj_uleb", e.add(1, p["aeq"])))
+            _call(e, "a_obj_uleb", p["aenr"])
+            e.for_("aeq", 0, p["aenr"], lambda: _call(e, "a_obj_uleb", e.add(1, e.add(p["aenp"], p["aeq"]))))
+            _wset(e, W_ASUP, e.add(p["aeg"], 2))
+            e.set("aefn", e.add(p["aeg"], 1))
+
+        e.if_(e.ne(_wctrl(e, W_AOK), 0), objects)
+        e.give(p["aefn"])
+    return _function((), build, None)
+
+
+def _ws_tr_define_function():
+    """``define @name`` and a function in view form, then a line ``end``."""
+    def build(e: E):
+        p = e.p
+        _wset(e, W_AOK, 1)
+        _call(e, "ws_expect", R_DEFINE_NAME)
+        e.var("adn_at", e.add(_wctrl(e, W_TOK_AT), 1))
+        e.var("adn_n", e.sub(_wctrl(e, W_TOK_LEN), 1))
+        e.if_(e.both(_ws_running(e), e.either(e.ne(_a_byte(e, _wctrl(e, W_TOK_AT)), 64), e.eq(p["adn_n"], 0),
+                                              e.ne(_call(e, "a_def_find", p["adn_at"], p["adn_n"]), NONE), e.le(ASM_DEFS_LIMIT, _wctrl(e, W_ANDEF)))),
+              lambda: _batch_reject(e, R_DEFINE_NAME))
+
+        def body():
+            # the definition: from the next line to the line ``end``
+            _wset(e, W_ACUR, e.add(_wctrl(e, W_TOK_AT), _wctrl(e, W_TOK_LEN)))
+            _wset(e, W_AEND, _wctrl(e, W_LEN))
+            _call(e, "a_line")
+            _wset(e, W_ASTART, _wctrl(e, W_ACUR))
+            e.var("adn_end", NONE)
+
+            def find_end():
+                e.var("adn_c", _wctrl(e, W_ACUR))
+                e.if_(e.both(e.eq(_a_byte(e, p["adn_c"]), 101), e.eq(_a_byte(e, e.add(p["adn_c"], 1)), 110), e.eq(_a_byte(e, e.add(p["adn_c"], 2)), 100),
+                             e.either(e.le(_wctrl(e, W_LEN), e.add(p["adn_c"], 3)), e.eq(_a_byte(e, e.add(p["adn_c"], 3)), NEWLINE),
+                                      e.eq(_a_byte(e, e.add(p["adn_c"], 3)), 32), e.eq(_a_byte(e, e.add(p["adn_c"], 3)), 13))),
+                      lambda: e.set("adn_end", p["adn_c"]), lambda: e.if_(e.eq(_call(e, "a_line"), 0), lambda: e.set("adn_end", _wctrl(e, W_LEN))))
+
+            e.while_(lambda: e.eq(p["adn_end"], NONE), find_end)
+            e.if_(e.le(_wctrl(e, W_LEN), p["adn_end"]), lambda: _a_fail(e, R_DEFINE))
+            _wset(e, W_AEND, p["adn_end"])
+            e.if_(e.ne(_wctrl(e, W_AOK), 0), lambda: _call(e, "a_scan"))
+            e.var("adn_fn", NONE)
+            e.if_(e.ne(_wctrl(e, W_AOK), 0), lambda: e.set("adn_fn", _call(e, "a_emit")))
+
+            def name():
+                e.var("adn_slot", e.add(ASM_DEFS, e.mul(_wctrl(e, W_ANDEF), 3)))
+                e.st(p["adn_slot"], p["adn_at"])
+                e.st(e.add(p["adn_slot"], 1), p["adn_n"])
+                e.st(e.add(p["adn_slot"], 2), p["adn_fn"])
+                _wset(e, W_ANDEF, e.add(_wctrl(e, W_ANDEF), 1))
+
+            e.if_(e.both(e.ne(_wctrl(e, W_AOK), 0), e.ne(p["adn_fn"], NONE)), name)
+            _wset(e, W_TCUR, e.add(p["adn_end"], 3))  # the batch goes on after ``end``
+
+        e.if_(_ws_running(e), body)
+        e.give(0)
+    return _function((), build, None)
+
+
+def _ws_tr_replace_function():
+    """``replace F<n> @name``: REPLACE_REFERENCE(owner, F<n>, @name's function) for every object referring to ``F<n>``."""
+    def build(e: E):
+        p = e.p
+        _call(e, "ws_expect", R_FUNCTION)
+        e.var("arf", NONE)
+        e.if_(e.both(_ws_running(e), e.ne(_call(e, "ws_handle"), 0)), lambda: e.if_(
+            e.both(e.eq(_wctrl(e, W_H_KIND), 70), e.eq(_wctrl(e, W_H_RES), 0)), lambda: e.set("arf", _call(e, "ws_function", _wctrl(e, W_H_NUM)))))
+        e.if_(e.both(_ws_running(e), e.eq(p["arf"], NONE)), lambda: _batch_reject(e, R_FUNCTION))
+        _call(e, "ws_expect", R_DEFINE_NAME)
+        e.var("arn", NONE)
+        e.if_(e.both(_ws_running(e), e.eq(_a_byte(e, _wctrl(e, W_TOK_AT)), 64)), lambda: e.set(
+            "arn", _call(e, "a_def_find", e.add(_wctrl(e, W_TOK_AT), 1), e.sub(_wctrl(e, W_TOK_LEN), 1))))
+        e.if_(e.both(_ws_running(e), e.eq(p["arn"], NONE)), lambda: _batch_reject(e, R_DEFINE_NAME))
+
+        def owners():
+            def each():
+                def owner():
+                    _call(e, "ws_record_uleb", REPLACE_REFERENCE)
+                    _call(e, "ws_record_cid", p["arz"])
+                    _call(e, "ws_record_cid", p["arf"])
+                    for byte in SUPPLIED_MARK:
+                        _call(e, "ws_record_byte", byte)
+                    for j in range(8):
+                        _call(e, "ws_record_byte", e.and_(e.udiv(p["arn"], 1 << (8 * (7 - j))), 255) if j < 7 else e.and_(p["arn"], 255))
+                    _wset(e, W_COUNT, e.add(_wctrl(e, W_COUNT), 1))
+
+                e.var("arhit", 0)
+                e.for_("arr", 0, _nrefs(e, p["arz"]), lambda: e.if_(e.eq(_ref(e, p["arz"], p["arr"]), p["arf"]), lambda: e.set("arhit", 1)))
+                e.if_(e.ne(p["arhit"], 0), owner)
+
+            e.for_("arz", 0, e.rd(0), each)
+
+        e.if_(_ws_running(e), owners)
+        e.give(0)
+    return _function((), build, None)
+
+
+ASM_HELPERS = (("a_blank", _a_blank_function), ("a_eol", _a_eol_function), ("a_line", _a_line_function), ("a_char", _a_char_function),
+               ("a_number", _a_number_function), ("a_obj_byte", _a_obj_byte_function), ("a_obj_uleb", _a_obj_uleb_function),
+               ("a_obj_mark", _a_obj_mark_function), ("a_obj_words", _a_obj_words_function), ("a_ref", _a_ref_function),
+               ("a_body", _a_body_function), ("a_type_slot", _a_type_slot_function), ("a_value", _a_value_function), ("a_edge", _a_edge_function),
+               ("a_find_bits", _a_find_bits_function), ("a_types", _a_types_function), ("a_scan", _a_scan_function),
+               ("a_operation", _a_operation_function), ("a_def_find", _a_def_find_function), ("a_constant", _a_constant_function),
+               ("a_node", _a_node_function), ("a_emit", _a_emit_function), ("ws_tr_define", _ws_tr_define_function),
+               ("ws_tr_replace", _ws_tr_replace_function))
+
+
 WS_HELPERS = (("ws_out", _ws_out_function),
               ("ws_decimal", _ws_decimal_function),
               ("ws_byte_of", _ws_byte_of_function),
@@ -4003,7 +5332,9 @@ def build_functions():
     functions, objects = {}, []
     for name, builder in (("record_uleb", _record_uleb_function), ("uleb_read", _uleb_read_function), ("put_uleb", _put_uleb_function), ("copy_uleb", _copy_uleb_function),
                           ("copy_string", _copy_string_function), ("search", _search_function), ("insert", _insert_function),
-                          ("resolve", _resolve_function), ("replaced", _replaced_function),
+                          ("resolve", _resolve_function), ("unmark", _unmark_function), ("cmp32", _cmp32_function), ("cn_uleb", _cn_uleb_function),
+                          ("cn_put", _cn_put_function), ("cn_graph", _cn_graph_function), ("cn_function", _cn_function_function),
+                          ("canonical", _canonical_function), ("replaced", _replaced_function),
                           ("reference", _reference_function), ("record_value", _record_value_function), ("count_rows", _count_rows_function),
                           ("remap", _remap_function), ("local", _local_function), ("emit_value", _emit_value_function), ("read_value", _read_value_function),
                           ("emit_ref", _emit_ref_function), ("type_source", _type_source_function), ("emit_insert", _emit_insert_function),
@@ -4020,7 +5351,7 @@ def build_functions():
         functions[name] = function
         objects.extend(items)
     # S16a (ADR-360): the native workspace's ``view`` and ``apply``.
-    for name, builder in WS_HELPERS:
+    for name, builder in WS_HELPERS + ASM_HELPERS:
         _F[name], items = builder()
         objects.extend(items)
     for name, builder in (("ws_view", _ws_view_function), ("ws_translate", _ws_translate_function), ("ws_explain", _ws_explain_function),
@@ -4088,6 +5419,70 @@ def edit_record(mutations, expected_root: bytes = bytes(32), objects=()) -> byte
     return bytes(data)
 
 
+def _canonical_body(kind, body: bytes, permutation: list[int]) -> bytes:
+    """N0 (ADR-367): a graph's or function's body with each reference index ``i`` replaced by ``permutation[i]`` (the
+    reference model of the engine's ``cn_graph`` and ``cn_function``)."""
+    from xax_compiler import ATTRIBUTE_OPERATIONS, ENTITY_OPERATIONS, Cursor, Kind as K, Operation as O, TerminatorKind as T
+
+    cursor, out = Cursor(body, "canonical"), bytearray()
+    copy = lambda: out.extend(uleb(cursor.uleb()))  # noqa: E731
+    index = lambda: out.extend(uleb(permutation[cursor.uleb()]))  # noqa: E731
+
+    def value():
+        tag = cursor.uleb()
+        out.extend(uleb(tag))
+        copy(), copy()
+        if tag == 1:
+            copy()
+
+    def counted(each):
+        n = cursor.uleb()
+        out.extend(uleb(n))
+        for _ in range(n):
+            each()
+
+    if kind == K.FUNCTION:
+        index()
+        counted(index)
+        counted(index)
+        return bytes(out)
+
+    def edge():
+        copy()
+        counted(value)
+
+    blocks = cursor.uleb()
+    out.extend(uleb(blocks))
+    copy()
+    for _ in range(blocks):
+        counted(index)
+        nodes = cursor.uleb()
+        out.extend(uleb(nodes))
+        for _ in range(nodes):
+            operation = cursor.uleb()
+            out.extend(uleb(operation))
+            if operation == O.CALL_GROUP_MEMBER:
+                copy()
+            if operation in ENTITY_OPERATIONS:
+                index()
+            counted(value)
+            counted(index)
+            if operation in ATTRIBUTE_OPERATIONS:
+                counted(copy)
+        terminator = cursor.uleb()
+        out.extend(uleb(terminator))
+        if terminator == T.BRANCH:
+            edge()
+        elif terminator == T.CONDITIONAL_BRANCH:
+            value(), edge(), edge()
+        elif terminator == T.RETURN:
+            counted(value)
+        else:
+            payload = cursor.byte_string()
+            out.extend(uleb(len(payload)) + payload)
+    return bytes(out)
+
+
 def parse_record(record: bytes, with_objects: bool = False):
     """``(expected root or None, mutations)`` of a well-formed record (``edit_record``'s tuples); with ``with_objects``
     also the supplied objects."""
@@ -4140,10 +5535,29 @@ def parse_record(record: bytes, with_objects: bool = False):
         if not count:  # an empty section is no section: the record ends before it
             cursor.pos = start
             cursor.end("EDIT-RECORD-END")
+        def unmark(reference: bytes) -> bytes:
+            """N0 (ADR-367): a supplied object named by its index (``SUPPLIED_MARK``) is an earlier one's CID."""
+            if reference[:len(SUPPLIED_MARK)] != SUPPLIED_MARK:
+                return reference
+            index = int.from_bytes(reference[len(SUPPLIED_MARK):], "big")
+            if index >= len(objects):
+                raise ValueError("EDIT-OBJECT-REFERENCE: a supplied object names a later or missing one")
+            return objects[index].cid
+
         for _ in range(count):
             kind = K(cursor.uleb())
-            references = tuple(cursor.take(32) for _ in range(cursor.uleb()))
-            objects.append(SemanticObject.create(kind, cursor.take(cursor.uleb()), references))
+            references = tuple(unmark(cursor.take(32)) for _ in range(cursor.uleb()))
+            body = cursor.take(cursor.uleb())
+            if list(references) != sorted(set(references)):  # N0: the engine's canonical order (``_canonical_function``)
+                if kind not in (K.GRAPH_FRAGMENT, K.FUNCTION):
+                    raise ValueError("EDIT-OBJECT-REFERENCE: references not distinct and ascending")
+                ordered = sorted(set(references))
+                body = _canonical_body(kind, body, [ordered.index(reference) for reference in references])
+                references = tuple(ordered)
+            objects.append(SemanticObject.create(kind, body, references))
+        for index, mutation in enumerate(mutations):
+            if mutation[0] == REPLACE_REFERENCE:
+                mutations[index] = (*mutation[:3], unmark(mutation[3]))
     cursor.end("EDIT-RECORD-END")
     parsed = (None if root == bytes(32) else root), tuple(mutations)
     return (*parsed, tuple(objects)) if with_objects else parsed

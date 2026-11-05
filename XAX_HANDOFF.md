@@ -1370,6 +1370,107 @@ BLAKE3 compression is now the first real compiler hot path implemented as an ord
 - The rule is in `_verify_memory_node` (`BYTE_ELEMENT_CID`, `CHECKED_BYTE_VIEW_WIDTHS` in `xax_compiler.py`) and mirrored in the facts engine's `_checked`. A backend that cannot do unaligned wide access sets `BYTE_VIEW_WIDENING = False` on its ISA class (views backends) and rejects in its Python lowering with the same text (`BYTE_VIEW_WIDTH_EXPECTED`).
 - In the XAX views backend, `value_id` advances the stream cursor: read an operand's id once and keep it.
 
+## N0 native-evolution bootstrap — 2026-11-05 (ADR-367, ADR-368)
+
+Superseded by "N0 native-evolution bootstrap: N0.3 landed" below.
+
+**Rule (ADR-367).** After N0, compiler logic is authored only as canonical XAX graphs through native XAX transactions.
+Until N0 completes, only N0's own infrastructure may be generated. The generator worktree used for N0 is the pre-W2
+tree (commit `b3e22b0`) with the ledger fixes ported in; it reproduces the committed driver byte for byte (generator
+output, then the baseline queries `inputs_limit` and `dead_constants` of the pre-W2 `xax_selfhost_evolution`). Records
+are authored by pairing old and new generator output by function name and replacing references at the changed
+functions' owners outside the generated set, never at the old versions' own graphs.
+
+**Done.**
+- N0.1/N0.2 (ledger 0004, seed `1e5868c9…`): `define @name` (a function in view form, then `end`) and
+  `replace F<n> @name` in `xaxc edit` batches; records may name their own supplied objects by index
+  (`SUPPLIED_MARK`); the engine puts supplied graphs' and functions' references in canonical order; the reach fix for a
+  rebuilt object equal to a supplied one; the view is lossless. A structural change was authored, applied, verified,
+  lowered and run with the seed alone (exit 41).
+- N0.3 reference half (ADR-369, superseding ADR-368): `growable.load/store.bits.le` (77, 78), checked accesses with a
+  `bits<64>` limit operand, in `reference/xax_compiler.py` and `XAX_SPEC.md`;
+  `tests/test_xax_growable_views.py` (reference passes only: it switches the native graph decoder and typing off).
+
+**Next (N0.3 native half), in the generator worktree, then one ledger transaction and a seed rotation.**
+1. Graph decoder (`xax_selfhost_graph`): the operation flag sets come from `xax_compiler`; regenerating it with the
+   new operations differs from the committed store only by them (unmodified generation reproduces it exactly).
+2. Typing and facts (`xax_selfhost_typing`, `xax_selfhost_facts`): 77 and 78 handled as the checked accesses with the
+   `bits<64>` limit operand after the offset (`MEMORY-GROWABLE-LIMIT-BITS`), the value and memory operands one later.
+   No type form is involved (ADR-369).
+3. Backends: x86-64 general (`xax_selfhost_general_regalloc`/`_emit`) and AArch64 (`xax_selfhost_aarch64_lower`/
+   `_emit`): the checked access's static compare, plus `offset + size <= limit` against the limit register. Other
+   targets reject.
+4. Regenerate the stores in the generator worktree, author one ledger transaction, self-build, rotate the seed, and run
+   `tests/test_xax_growable_views.py` with the native programs on, then the program natively (lower and run).
+
+**Then.** N0.4: recursion-group rebuilds in the edit engine; the ledger keyed by XAX hashes so native tools record and
+replay it; the completion demo (a natively authored change adding a function, a block, a changed signature and a
+growable view; a self-rebuild with identical artifacts). After N0: the dynamic limits (the 64 MiB store family, the
+fixed tables), P1, packed bytes and OI-52 R1 through the native workflow only, then BBC.
+
+## N0 native-evolution bootstrap: N0.3 landed — 2026-11-05 (ADR-370, ADR-371)
+
+Superseded by "N0 complete" below.
+
+**Done since the section above.**
+- Ledger 0005 (ADR-370): the store family's views hold 256 MiB (decoder data view, S9 writer input and output; writer
+  buffer 512 MiB), and the edit batch is about 130 MiB. Seed `a5a33e89…` (32,986,843 bytes).
+- Ledger 0006 (ADR-371): growable accesses in the facts program, its rendering, the verifier's and the views backends'
+  graph parsers, and the x86-64 and AArch64 general backends (register and frame paths). Seed `b37b6cb4…`
+  (33,138,571 bytes).
+- Ledger 0007 (ADR-371): the Linux x86-64 and AArch64 targets list operations 77 and 78. It is a separate
+  transaction because a target may list only operations the applying seed's verifier knows
+  (`TARGET-OPERATIONS-CANONICAL`). Its request self-builds to the same seed bytes, so the seed stays.
+- `tests/test_xax_growable_views.py` runs the reference and the XAX front end, and lowers and runs natively on
+  x86-64 and on AArch64 (qemu).
+
+**How the N0 records are made.** Set up the worktree as `compiler/bootstrap/evolution/n0/README.md` describes, change
+the generators, and regenerate the affected stores. The driver is generator output followed by the `inputs_limit` and
+`dead_constants` queries; the request is `compiler_request(driver)`. Then run
+`n0/diff_record.py <committed store> <regenerated store> <record>` and apply each record with
+`python -m xax_selfhost_evolution apply`. Before a full apply, probe one store with the seed's `xaxc edit` then
+`xaxc verify`. After the stores change, `selfbuild.sh` must give xaxc1 = xaxc2; copy xaxc1 as the seed and update the
+pins.
+
+**Next.** N0.4: recursion-group rebuilds in the edit engine; the ledger keyed by XAX hashes, so that native tools record
+and replay it; the completion demo (a natively authored change adding a function, a block, a changed signature and a
+growable view; a self-rebuild with identical artifacts). The Android shared-object targets do not list the growable
+operations yet. After N0: dynamic limits through growable views (replacing ADR-370's fixed reservations), P1, packed
+bytes and OI-52 R1, through the native workflow only, then BBC.
+
+## N0 complete: native evolution — 2026-11-05 (ADR-372)
+
+**Done.**
+- Native ledger tool: `compiler/bootstrap/evolution/evolve.sh` (`apply`, `replay`, `check`; sh, the seed, git).
+- Ledger 0008: the assembler takes every `bits<64>` decimal.
+- **Ledger 0009, the completion change**, written only as batch text. It adds a new function and two new blocks,
+  changes the decoder's signature and its call sites, and makes the decoder's 166 data reads growable loads bounded by
+  the store's own length. It was applied with `evolve.sh`, and the edited request was self-built without Python, with
+  identical results (xaxc1 = xaxc2). Seed `7302550b…` (33,141,194 bytes).
+
+**How to change the compiler now.**
+1. `xaxc edit <store> <empty file> <list>` lists the functions; `xaxc edit <store> <file with F<n>> <view>` shows
+   one. Each takes about a minute on the driver.
+2. Write the batch: `R <root>`, `F<n>`, then `define @name … end` (view form; handles in order) and
+   `replace F<n> @name`. Mechanical edits of a large view (renumbering after an insertion) may be done with `awk`, as
+   in `compiler/bootstrap/evolution/n0/0009/`.
+3. Probe: `xaxc edit <store> <batch> <out>` then `xaxc verify <out> <report>`. Then try `selfbuild.sh` on copies,
+   because a store that verifies can still fail to build.
+4. Record: `sh compiler/bootstrap/evolution/evolve.sh apply <batch> <store>`, once per store (driver, then the
+   request with its own `R` line). Then `selfbuild.sh`, copy xaxc1 to the seed, and update `SEED_SHA256` and
+   `SEED_SIZE`.
+
+**The general backend's limits for the driver.** These decide whether a change builds:
+- the register path takes at most four machine parameters per function and four machine inputs per call; anything
+  larger falls to the frame path, which cannot lower main's startup reads;
+- main is 632 values below `VCAP` (262,144), and leaf calls are inlined into their callers, so add no call to main
+  that would be inlined.
+
+**Next.** Through the native workflow only: dynamic limits (growable views in place of ADR-370's fixed
+reservations), P1, packed bytes, OI-52 R1. Then BBC: rebuild its driver from the production driver, build bbc.exe
+natively, and run the Android-first checks. Still open in the native workspace: recursion-group rebuilds,
+`set-signature`, `move`, `prune-dead`.
+
 ## Open issues
 
 ### OI-45 self-hosting re-runs — 2026-10-07

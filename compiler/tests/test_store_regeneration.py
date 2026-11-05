@@ -34,6 +34,8 @@ def test_ledger_chains_end_at_the_committed_stores():
 @pytest.mark.parametrize("index", range(len(TRANSACTIONS)), ids=[f"{t[0].name}:{t[1]}" for t in TRANSACTIONS])
 def test_transaction_makes_the_next_store(index):
     record, store, before, after = TRANSACTIONS[index]
+    if EV.is_batch(record):  # N0.4 (ADR-372): native batch text; the assembler is the compiler's, test_xax_selfhost_evolution replays it
+        pytest.skip(f"NATIVE: {record.name} is a batch, replayed with xaxc edit only")
     data = EV.before_store(store, before)
     if data is None:
         pytest.skip(f"UNAVAILABLE: the repository does not hold {store}'s earlier store {before}")
