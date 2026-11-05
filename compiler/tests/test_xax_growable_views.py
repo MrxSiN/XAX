@@ -36,10 +36,9 @@ def program(mutation: str | None = None):
     limit = block.op1(Operation.ADD_WRAP, (block.const(B64, 0), block.const(B64, 4096)), B64)
     if mutation == "narrow-limit":
         limit = block.const(B32, 4096)
-    memory = block.op1(Operation.GROWABLE_STORE_BITS_LE, (view, block.const(B32, 100), limit, block.const(B8, 42), memory), mem, attributes=(1, 1))
+    stored = block.const(B32, 42) if mutation == "wide-store" else block.const(B8, 42)  # a 1-byte access storing a bits<32> value
+    memory = block.op1(Operation.GROWABLE_STORE_BITS_LE, (view, block.const(B32, 100), limit, stored, memory), mem, attributes=(1, 1))
     value, memory = block.op(Operation.GROWABLE_LOAD_BITS_LE, (view, block.const(B32, 100), limit, memory), (B8, mem), attributes=(1, 1))
-    if mutation == "wide-access":
-        value, memory = block.op(Operation.GROWABLE_LOAD_BITS_LE, (view, block.const(B32, 100), limit, memory), (B32, mem), attributes=(1, 1))
     status = block.op1(Operation.INT_ZERO_EXTEND, (value,), B32)
     memory = block.op(Operation.CALL_FOREIGN, (view, token, memory), (B64, mem), entity=api.munmap_view(BYTES, RESERVATION))[1]
     process = block.op1(Operation.CALL_FOREIGN, (status, process), api.process_effect, entity=api.exit_group)
@@ -67,7 +66,7 @@ class GrowableViewTests(unittest.TestCase):
         self.verify()
 
     def test_forged_accesses_reject(self):
-        for mutation, rule in (("narrow-limit", "MEMORY-GROWABLE-LIMIT-BITS"), ("wide-access", "MEMORY-CHECKED-LOAD-TYPE")):
+        for mutation, rule in (("narrow-limit", "MEMORY-GROWABLE-LIMIT-BITS"), ("wide-store", "MEMORY-CHECKED-STORE-TYPE")):
             with self.subTest(mutation):
                 with self.assertRaises(XaxError) as raised:
                     self.verify(mutation)
