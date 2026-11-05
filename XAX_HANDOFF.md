@@ -1385,23 +1385,21 @@ functions' owners outside the generated set, never at the old versions' own grap
   (`SUPPLIED_MARK`); the engine puts supplied graphs' and functions' references in canonical order; the reach fix for a
   rebuilt object equal to a supplied one; the view is lossless. A structural change was authored, applied, verified,
   lowered and run with the seed alone (exit 41).
-- N0.3 reference half (ADR-368): `extent<V>` (form 12), `extent.make` (77, view handed back), `extent.grow` (78),
-  `growable.load/store.bits.le` (79, 80) in `reference/xax_compiler.py` and `XAX_SPEC.md`;
+- N0.3 reference half (ADR-369, superseding ADR-368): `growable.load/store.bits.le` (77, 78), checked accesses with a
+  `bits<64>` limit operand, in `reference/xax_compiler.py` and `XAX_SPEC.md`;
   `tests/test_xax_growable_views.py` (reference passes only: it switches the native graph decoder and typing off).
 
 **Next (N0.3 native half), in the generator worktree, then one ledger transaction and a seed rotation.**
-1. Graph decoder (`xax_selfhost_graph`): the operation flag sets come from `xax_compiler`; regenerate and confirm 77-80
-   decode.
-2. Typing (`xax_selfhost_typing`): form 12 accepted (the unknown-form test is `form == 0 or form > 11`); its sites
-   `TYPE-EXTENT-CANONICAL`/`TYPE-EXTENT-VIEW` in `TYPE_SITES` and `_type_diagnostic`; the 64-bit machine width in the
-   type tables.
-3. Facts (`xax_selfhost_facts`): handlers for 77-80 next to the checked accesses (`handlers[Operation.X]`, names in
-   the `M` table and the diagnostic mapping near line 3480), mirroring `_verify_memory_node`; `extent.make` must not end
-   the view's storage (the reference's `_end_heap_views` exemption) and hands the owner fact to its first result.
-4. Backends: x86-64 general (`xax_selfhost_general_regalloc`/`_emit`) and AArch64 (`xax_selfhost_aarch64_lower`/
-   `_emit`): growable accesses as the checked ones with the bound in a register; `extent.make` a zero; `extent.grow` a
-   compare, a capacity trap and a max. Other targets reject.
-5. Run `tests/test_xax_growable_views.py` with the native programs on, then natively (lower and run the program).
+1. Graph decoder (`xax_selfhost_graph`): the operation flag sets come from `xax_compiler`; regenerating it with the
+   new operations differs from the committed store only by them (unmodified generation reproduces it exactly).
+2. Typing and facts (`xax_selfhost_typing`, `xax_selfhost_facts`): 77 and 78 handled as the checked accesses with the
+   `bits<64>` limit operand after the offset (`MEMORY-GROWABLE-LIMIT-BITS`), the value and memory operands one later.
+   No type form is involved (ADR-369).
+3. Backends: x86-64 general (`xax_selfhost_general_regalloc`/`_emit`) and AArch64 (`xax_selfhost_aarch64_lower`/
+   `_emit`): the checked access's static compare, plus `offset + size <= limit` against the limit register. Other
+   targets reject.
+4. Regenerate the stores in the generator worktree, author one ledger transaction, self-build, rotate the seed, and run
+   `tests/test_xax_growable_views.py` with the native programs on, then the program natively (lower and run).
 
 **Then.** N0.4: recursion-group rebuilds in the edit engine; the ledger keyed by XAX hashes so native tools record and
 replay it; the completion demo (a natively authored change adding a function, a block, a changed signature and a

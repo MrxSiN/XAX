@@ -3664,9 +3664,20 @@ feature. Tests and contract: compiler/integration/android/CARRIER_TRANSACTIONS.m
 
 ## ADR-368 — N0.3: growable views (OI-52 R3)
 
+Superseded by [ADR-369](#adr-369--n03-growable-views-as-limit-bounded-checked-accesses) before any native use.
+
 | Field | Record |
 |---|---|
 | Decision | **Type form 12, `extent<V>`**: a runtime byte limit of one heap-view type `V` (`heap_view<E>`): a machine `bits<64>` value, always `<= E`, ordinary (copyable, not a proof). **`extent.make` (operation 77)**: operand the view token of a live heap view of type `V`; results the same token (handed back: it stays linear) and an `extent<V>` with limit 0. **`extent.grow` (78)**: operands an `extent<V>` and a `bits<64>` `n`; traps (reason: capacity) when `n > E`, else results in `extent<V>` with limit `max(limit, n)`: a limit never decreases, so every extent value a program holds is at most its view's current limit and no linearity is needed. **`growable.load.bits.le` (79)** and **`growable.store.bits.le` (80)**: `checked.load/store.bits.le` with one more operand, an `extent<V>` of the pointer's own view; the runtime condition is `offset + size <= limit` (which implies `<= E`), else trap. Every other rule of the checked forms is unchanged (permission, provenance, lifetime, frontier, initialization, byte-view widening). The memory a limit covers is the program's to commit: hosts with lazy commit (Linux `mmap`) need nothing; elsewhere the program commits the range before growing past it, so no host needs a fault handler. Targets without support reject the type and the operations (`*-OP-TARGET-SUPPORTED`). |
 | Rationale | OI-52 R3 and ADR-367 N0.3: a view whose usable size is a run-time value with a verified grow operation, so a program reserves once, grows on demand with overflow and capacity checks, and touches only what it has grown into. Making `extent` monotonic keeps the verifier's rule local (the extent's view type must be the pointer's) instead of adding a linear resource. Memory safety still rests on the static reservation `E`; the limit adds the runtime size discipline. |
 | Evidence | None yet. |
 | Limits | `E` is still bounded by today's checked offsets (`bits<32>`) and the x86-64 bound encoding (OI-52 R1, R2). Shrinking and releasing committed memory are host calls, not part of the kernel. |
+
+## ADR-369 — N0.3: growable views as limit-bounded checked accesses
+
+| Field | Record |
+|---|---|
+| Decision | Supersedes ADR-368. **`growable.load.bits.le` (operation 77)** and **`growable.store.bits.le` (78)** are `checked.load/store.bits.le` with one more operand after the offset, a `bits<64>` limit: `(pointer, offset, limit, memory)` and `(pointer, offset, limit, value, memory)`. The runtime condition is `offset + size <= limit` and `offset + size <=` the pointer's extent, else trap; every other rule of the checked forms is unchanged (permission, provenance, lifetime, frontier, initialization, byte-view widening). A growable view is an ordinary heap view reserved at its largest extent and used through a runtime limit: the program keeps the limit, grows it with ordinary arithmetic and a capacity check (a library function authored natively), and commits the memory it grows into (hosts with lazy commit need nothing), so no host needs a fault handler and only grown memory is touched. Targets without support reject the operations (`*-OP-TARGET-SUPPORTED`). ADR-368's type form 12 and operations `extent.make`/`extent.grow` are withdrawn. |
+| Rationale | Memory safety rests on the pointer's static reservation, which every access still checks, so any limit value is safe. ADR-368's `extent<V>` type added no safety beyond that; its typing passes, type sites, diagnostics and native rendering would have been most of the native work. The kernel grows by two operations and no type. |
+| Evidence | Reference verifier and executor: `tests/test_xax_growable_views.py`. Native verifier and backends: pending. |
+| Limits | The reservation is still bounded by today's checked offsets (`bits<32>`) and the x86-64 bound encoding (OI-52 R1, R2). Committing and releasing memory are host calls. |
