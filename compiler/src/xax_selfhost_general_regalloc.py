@@ -62,7 +62,7 @@ def _op(name: Operation) -> int:
 PURE_BINARY = tuple(_op(op) for op in (Operation.ADD_WRAP, Operation.SUB_WRAP, Operation.MUL_WRAP, Operation.BIT_XOR, Operation.BIT_AND, Operation.BIT_OR))
 COPY = tuple(_op(op) for op in (Operation.INT_ZERO_EXTEND, Operation.POINTER_CAST, Operation.LINK_MAKE))
 MEMORY = tuple(_op(op) for op in (Operation.LOAD_BITS_LE, Operation.STORE_BITS_LE, Operation.CHECKED_LOAD_BITS_LE, Operation.CHECKED_STORE_BITS_LE,
-                                  Operation.RAW_LOAD_BITS_LE))
+                                  Operation.RAW_LOAD_BITS_LE, Operation.GROWABLE_LOAD_BITS_LE, Operation.GROWABLE_STORE_BITS_LE))
 CALLS = tuple(_op(op) for op in (Operation.CALL_DIRECT, Operation.CALL_FOREIGN, Operation.CALL_INDIRECT))
 ROTATABLE = tuple(sorted({_op(Operation.CONSTANT), _op(Operation.INT_COMPARE), *PURE_BINARY, *COPY, _op(Operation.INT_TRUNCATE),
                           _op(Operation.ROTATE_RIGHT), _op(Operation.ADDRESS_OFFSET), _op(Operation.LOAD_BITS_LE),

@@ -45,7 +45,7 @@ LR = 30
 RESOURCE = tuple(sorted(int(op) for op in RESOURCE_EFFECT_OPERATIONS))
 CALLS = (int(Operation.CALL_DIRECT), int(Operation.CALL_FOREIGN))
 MEMORY = tuple(int(op) for op in (Operation.LOAD_BITS_LE, Operation.RAW_LOAD_BITS_LE, Operation.STORE_BITS_LE, Operation.CHECKED_LOAD_BITS_LE,
-                                  Operation.CHECKED_STORE_BITS_LE))
+                                  Operation.CHECKED_STORE_BITS_LE, Operation.GROWABLE_LOAD_BITS_LE, Operation.GROWABLE_STORE_BITS_LE))
 NOT_MACHINE, WIDE = 0, NONE  # ``_machine_width``: a proof value; anything but bits<=64 or a pointer (the bootstrap's False)
 
 
