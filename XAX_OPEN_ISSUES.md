@@ -794,7 +794,8 @@ three present XAX limits, measured with the native driver on 2026-10-29:
 
 **Roadmap.**
 
-- **R1 (x86-64 encoding).** When `extent - size` is not a sign-extended imm32,
+- **R1 (x86-64 encoding). DONE 2026-11-05 (ADR-373, ADR-374; ledgers 0010, 0011)** for the native general backend's
+  register and frame paths; the PE legacy path and the division span check still reject. When `extent - size` is not a sign-extended imm32,
   materialize the bound in a register (`mov r64, imm64`) and compare 64-bit. This
   alone lifts x86-64 to the 4 GiB offset limit. Test: the 2^31 and 4 GiB−4 KiB
   probes above, plus first-crossing traps at both edges.
