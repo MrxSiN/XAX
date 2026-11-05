@@ -53,6 +53,7 @@ Only issues requiring implementation, target, ecosystem, or benchmark evidence a
 - [OI-50 — x86-64 branch fusion loses cross-block comparison values](#oi-50--x86-64-branch-fusion-loses-cross-block-comparison-values)
 - [OI-51 — Windows native driver coverage and diagnostic parity](#oi-51--windows-native-driver-coverage-and-diagnostic-parity)
 - [OI-52 — 64-bit checked offsets and growable views (roadmap)](#oi-52--64-bit-checked-offsets-and-growable-views-roadmap)
+- [OI-53 — `xaxc verify` rejects byte-view widening](#oi-53--xaxc-verify-rejects-byte-view-widening)
 
 ## OI-02 — Canonical object and graph-fragment granularity
 
@@ -813,3 +814,12 @@ three present XAX limits, measured with the native driver on 2026-10-29:
 **Evidence that closes it.** Native builds and device runs on Windows x86-64 and
 Android ARM64 of a program that moves past 4 GiB of tape and then fails exactly
 at the new edge, with the importer and hosts unchanged except for the extent.
+
+## OI-53 — `xaxc verify` rejects byte-view widening
+
+**Status: OPEN (2026-11-05).** The production compiler's `verify` answers `MEMORY-CHECKED-STORE-TYPE` for an 8-byte
+`bits<64>` checked store through a `ptr<bits8>` heap view (byte-view widening, ADR-231). `verify_store` accepts it, both
+with the native typing program and with the reference alone. The driver holds the typing store's 88 functions as the
+same objects, so the difference is in the tables the driver builds for them. BBC's committed driver
+(`integration/bfx/bbc.xax`) fails native `verify` this way. Reproduction: `tests/test_native_verify_byte_view.py`
+(expected failure). Fix natively (a driver transaction), then lift the expected failure.
