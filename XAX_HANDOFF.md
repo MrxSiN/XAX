@@ -1372,6 +1372,8 @@ BLAKE3 compression is now the first real compiler hot path implemented as an ord
 
 ## N0 native-evolution bootstrap — 2026-11-05 (ADR-367, ADR-368)
 
+Superseded by "N0 native-evolution bootstrap: N0.3 landed" below.
+
 **Rule (ADR-367).** After N0, compiler logic is authored only as canonical XAX graphs through native XAX transactions.
 Until N0 completes, only N0's own infrastructure may be generated. The generator worktree used for N0 is the pre-W2
 tree (commit `b3e22b0`) with the ledger fixes ported in; it reproduces the committed driver byte for byte (generator
@@ -1405,6 +1407,34 @@ functions' owners outside the generated set, never at the old versions' own grap
 replay it; the completion demo (a natively authored change adding a function, a block, a changed signature and a
 growable view; a self-rebuild with identical artifacts). After N0: the dynamic limits (the 64 MiB store family, the
 fixed tables), P1, packed bytes and OI-52 R1 through the native workflow only, then BBC.
+
+## N0 native-evolution bootstrap: N0.3 landed — 2026-11-05 (ADR-370, ADR-371)
+
+**Done since the section above.**
+- Ledger 0005 (ADR-370): the store family's views hold 256 MiB (decoder data view, S9 writer input and output; writer
+  buffer 512 MiB), and the edit batch is about 130 MiB. Seed `a5a33e89…` (32,986,843 bytes).
+- Ledger 0006 (ADR-371): growable accesses in the facts program, its rendering, the verifier's and the views backends'
+  graph parsers, and the x86-64 and AArch64 general backends (register and frame paths). Seed `b37b6cb4…`
+  (33,138,571 bytes).
+- Ledger 0007 (ADR-371): the Linux x86-64 and AArch64 targets list operations 77 and 78. It is a separate
+  transaction because a target may list only operations the applying seed's verifier knows
+  (`TARGET-OPERATIONS-CANONICAL`). Its request self-builds to the same seed bytes, so the seed stays.
+- `tests/test_xax_growable_views.py` runs the reference and the XAX front end, and lowers and runs natively on
+  x86-64 and on AArch64 (qemu).
+
+**How the N0 records are made.** Set up the worktree as `compiler/bootstrap/evolution/n0/README.md` describes, change
+the generators, and regenerate the affected stores. The driver is generator output followed by the `inputs_limit` and
+`dead_constants` queries; the request is `compiler_request(driver)`. Then run
+`n0/diff_record.py <committed store> <regenerated store> <record>` and apply each record with
+`python -m xax_selfhost_evolution apply`. Before a full apply, probe one store with the seed's `xaxc edit` then
+`xaxc verify`. After the stores change, `selfbuild.sh` must give xaxc1 = xaxc2; copy xaxc1 as the seed and update the
+pins.
+
+**Next.** N0.4: recursion-group rebuilds in the edit engine; the ledger keyed by XAX hashes, so that native tools record
+and replay it; the completion demo (a natively authored change adding a function, a block, a changed signature and a
+growable view; a self-rebuild with identical artifacts). The Android shared-object targets do not list the growable
+operations yet. After N0: dynamic limits through growable views (replacing ADR-370's fixed reservations), P1, packed
+bytes and OI-52 R1, through the native workflow only, then BBC.
 
 ## Open issues
 
