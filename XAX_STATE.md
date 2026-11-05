@@ -951,6 +951,14 @@ The XAX JVM program now builds callbacks: JDK streams and comparators that call 
 - The driver's function takes 2,078,110 of the pinned seed's 2,097,152 CFG input words; its graph is 2.02 MB of the graph decoder's 2 MiB.
 - The stores were regenerated and the ledger rebased. The seed was rotated to `c25276ad…` (seed = C1 = C2).
 
+#### Ledger transactions 0001–0003 and the dynamic-limit work — 2026-11-05 (ADR-364, ADR-365, ADR-366)
+
+- 0001 (ADR-364): the edit engine checks each new object's exact preimage instead of reserving about 6 MiB per object in its 16 MiB region. Seed `d21bd059…`.
+- 0002 (ADR-365): the native general backend's block layout no longer leaks a queue per search, and loop slots keep one cycle flag per block instead of an nb × nb matrix. BBC's hanoi decision (12,142 blocks) now builds. Seed `e3df0fe0…`.
+- 0003 (ADR-366, OI-52): a record's supplied objects are bounded by the transaction's new-object table, not by the 256-row mutation table. The extra rows grow from past the batch as they are touched. The old layout also let 256 supplied objects plus a new constant overrun the next table. Seed `ab9621b6…` (C1 = C2, 616 s).
+- Still fixed (OI-52 follow-up): the 64 MiB store family. That is the driver's file view, the writer's input, the edit batch and the native container decoder. A 71.7 MB store (BBC's Windows driver) is rejected with `DRIVER-FILE-CAPACITY` (verify) and `DRIVER-SNAPSHOT-CAPACITY` (edit). Other fixed limits are 256 mutations per record and 65,536 objects per store.
+- The Python reference `StoreReader` copied the rest of the store for every object that the native decoder had not parsed. A store past the decoder's capacity took over 5 minutes to read; it now takes 12 s.
+
 #### Optimization P0 baseline and the P1 blocker — 2026-11-05
 
 - P0 ([compiler_cost_2026-11-05.json](compiler/benchmarks/compiler_cost_2026-11-05.json)): with the pinned seed on an idle 4-vCPU host, `verify`, `edit` and `resolve` of the compiler's own stores each take about 54 s (1.6, 2.2 and 1.7 GB peak); `build` takes 260–271 s (2.9 GB) and reproduces the seed byte for byte.

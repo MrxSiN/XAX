@@ -3625,3 +3625,30 @@ feature. Tests and contract: compiler/integration/android/CARRIER_TRANSACTIONS.m
 | Evidence | EXECUTED on Linux x86-64. Every module of both directories imports with `src:reference` on the path; the suite collects (1,626 tests) with and without `PYTHONPATH`. `tests/test_python_authority_inventory.py`: every module is classified once across both directories, and classes A/B/C and `xax_bootstrap` are in `reference/`, the rest in `src/`. A wheel built with build isolation holds all 128 modules; installed alone in a fresh virtual environment every module imports, the stores and the ledger are installed, the reference verifier accepts `m11_compiler_subset.xax`, and `xaxc verify` exits 0 (this host's setuptools cannot build without isolation, so `test_wheel_install` skips here). The affected suites (matrix, status docs, audit remediation, compiler, vector contract, OI-14, BFC, PE DLL, libxposed JVM, full-selfhost status, META introspection, OI-27) pass under plain `pytest`, except `test_every_b1_entry_is_bound_to_the_committed_store`, which already failed before W2 (`selfhost_closure_evidence.json` and `selfhost_x86_64_evidence.json` predate the S15e.6i.2a store changes; a native evidence run is needed). Two path assumptions the move exposed were fixed: the isolated native runner's child process now receives the parent's import path, and the x86-64 backend's image-cache key reads the Python lowering sources from their modules, not from `src/`. |
 | Limits | `src/` still imports `reference/`: the runners lower stores with the Python views backend driver and verify with the reference verifier, so the native path is not yet Python-free in-process (the production compiler as a process is). Historical sections and evidence files keep their `compiler/src/` paths. The inventory's class names are the 2026-10-16 record's. |
 
+
+## ADR-364 — W5: the edit engine checks each new object's exact preimage (ledger 0001)
+
+| Field | Record |
+|---|---|
+| Decision | `edit_next` no longer reserves `BODY_LIMIT + 32 × RC_LIMIT` bytes (about 6 MiB) of the 16 MiB preimage region before every new object. A supplied or rebuilt object checks its exact preimage (header, references, body) before writing it, and only a new constant is checked against `PRE_SMALL` (128 bytes). Exceeding the region still rejects with `DRIVER-EDIT-CAPACITY`. Applied as evolution ledger transaction 0001 to the general driver and request stores. |
+| Rationale | The reservation let one transaction rebuild only about 10 MB of objects, which refused graph-replacing optimizations (P1) and BBC's driver port. |
+| Evidence | EXECUTED on Linux x86-64: ledger, replay, derived-request and kept-generator tests; self-build C1 = C2; seed rotated (`d21bd059…`). |
+| Limits | The region is still 16 MiB of one-byte words (OI-52). |
+
+## ADR-365 — The native backend's block layout and loop slots in linear memory (ledger 0002)
+
+| Field | Record |
+|---|---|
+| Decision | `_distance` (block layout's breadth-first search) restores the bump-arena mark on return instead of leaking an nb + 1-word queue per call. `_loop_slots` keeps one cycle flag per block, from a search that stops on reaching the block and reuses one visited array by stamps (2nb words), instead of an nb × nb reachability matrix of which it read only the diagonal. Applied as ledger 0002 to the driver, request and x86-64 backend stores, and the layout function to the AArch64 and Android programs. |
+| Rationale | Large functions were declined in the native general backend (BBC's hanoi decision, 12,142 blocks; OI-51); the matrix alone was 688 MB at 9,277 blocks. |
+| Evidence | EXECUTED on Linux x86-64: the edited x86-64 backend store equals the fixed generator's output; ledger tests; C1 = C2; seed `e3df0fe0…`; the production compiler builds hanoi for Windows and its output matches the reference interpreter. |
+| Limits | Hanoi's Windows build runs slowly (15.9 s under Wine); not profiled yet. |
+
+## ADR-366 — Supplied objects bounded by the new-object table (ledger 0003, OI-52)
+
+| Field | Record |
+|---|---|
+| Decision | The edit engine's extra rows (new constants and supplied objects, 16 words each) move from the 256-row block inside the control area to their own region past the batch, which grows as it is touched, bounded by `NEWT_LIMIT` (every extra becomes a new object of the transaction). The supplied count is checked against the room the mutations' new constants leave (at most two per mutation) and rejects with `DRIVER-EDIT-CAPACITY`, not `EDIT-RECORD-COUNT`. Applied as ledger 0003 to the driver and request stores. |
+| Rationale | OI-52's present model is tables and views that a host reserves and commits on first touch, with no artificial bound below the structural one. The 256-row cap refused BBC's hosting layer (1,176 objects); the shared rows also let 256 supplied objects plus a new constant overrun `ENTITY_AT`. |
+| Evidence | EXECUTED on Linux x86-64: ledger, replay, derived-request and kept-generator tests; `test_replace_reference` with 300 more supplied objects than mutation rows equals the reference; self-build C1 = C2 (32,706,267 bytes, 616 s); seed `ab9621b6…`. The BBC layer record now parses natively and stops at `DRIVER-SNAPSHOT-CAPACITY`. |
+| Limits | `NEWT_LIMIT` (65,536 new objects), 256 mutations per record, 65,536 objects per store and the 64 MiB store family (file view, writer input, batch, container decoder) remain fixed; OI-52 R1–R3 remain open. |
