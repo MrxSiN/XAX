@@ -510,3 +510,18 @@ What remains is mostly build's lowering, which is 40% of the steps' machine
 time for hello and most of it for deep_nesting_512. After that come the
 first verification of each store's types, constants and new graphs, and one Wine
 process launch.
+
+## Linear layout and loop-slot analysis — 2026-11-05
+
+[transactions/backend_linear_layout_loop_slots.edit](transactions/backend_linear_layout_loop_slots.edit)
+ports XAX evolution ledger transaction 0002 into `bbc.xax`'s embedded driver: block layout's
+breadth-first search releases its queue (it leaked one block-count-sized allocation per call
+into the bump arena), and loop-slot analysis keeps one cycle flag per block instead of a
+blocks x blocks reachability matrix (quadratic memory). BBC's two functions differed from the
+production pre-fix functions only in their 1 GiB workspace constants (2^27 words) and one no-op
+addition; the ported functions are the fixed production functions with BBC's constants, view
+types and callees (mapped by aligning the pre-fix graphs). Applied with the reference edit
+engine and fully verified by the reference verifier: no native driver can edit this store, the
+production verifier rejects its byte-view checked stores and BBC's own driver declines a store
+past 32 MiB (`DRIVER-FILE-CAPACITY`). With it, hanoi still declines in BBC's own `verify` (exit 2)
+while the production compiler builds it; see XAX_STATE.md.
