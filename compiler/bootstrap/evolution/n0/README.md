@@ -1,8 +1,8 @@
 # N0 authoring worktree (ADR-367)
 
 N0's own infrastructure is authored once with the pre-W2 generators: commit `b3e22b0`, plus this patch, plus the
-current `compiler/reference/xax_compiler.py` and `compiler/src/xax_selfhost_edit.py` copied over the worktree's
-`src/` copies. With nothing else changed the worktree regenerates the committed general driver byte for byte
+current `compiler/reference/xax_compiler.py`, `compiler/src/xax_selfhost_edit.py`, `xax_selfhost_store.py` and
+`xax_selfhost_writer.py` (their view constants, ADR-370) copied over the worktree's `src/` copies. With nothing else changed the worktree regenerates the committed general driver byte for byte
 (generator output, then the pre-W2 ledger queries `inputs_limit` and `dead_constants`).
 
 `generator.patch` holds the worktree's N0 changes to generators that have no copy in this repository:
@@ -12,4 +12,5 @@ current `compiler/reference/xax_compiler.py` and `compiler/src/xax_selfhost_edit
   `GROWABLE_LIMIT_BITS`) and their native rendering (`xax_selfhost_render_graph.py`).
 
 Records authored from the worktree pair old and new generator output by function name and replace references at the
-changed functions' owners outside the generated set. After N0, no generator authors compiler logic.
+changed functions' owners outside the generated set (ledger 0003, 0004), or pair the committed store with the
+worktree's regenerated one from the root down (`diff_record.py`, ledger 0005 on). After N0, no generator authors compiler logic.
