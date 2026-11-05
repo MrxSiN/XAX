@@ -94,6 +94,7 @@ BODY = STACK + (1 << 17)  # the re-encoded body, one byte per word
 BODY_LIMIT = 1 << 22
 PRE = BODY + BODY_LIMIT  # every new object's CID preimage after the domain, one byte per word, in order
 PRE_LIMIT = 1 << 24
+PRE_SMALL = 128  # W5 (ADR-364): a header's ULEBs, or a whole new constant's preimage, fit in this many bytes
 NEWT = PRE + PRE_LIMIT  # per new object: preimage start, length, references at, count, body at, length, kind, object, alias
 NEWT_WORDS, NEWT_LIMIT = 9, 1 << 16
 BATCH = NEWT + NEWT_WORDS * NEWT_LIMIT  # the S9 writer's batch, one byte per word (``xax_selfhost_writer``'s layout)
@@ -1921,13 +1922,18 @@ def _next(tables):
             """S15d.4a: a supplied object's preimage, from the record."""
             for name, field in (("xkind", X_KIND), ("xnrefs", X_NREFS), ("xrefs", X_REFS), ("xbody", X_BODY), ("xblen", X_BODY_LENGTH)):
                 e.var(name, e.ld(e.add(p["xrow"], field)))  # names: values cross blocks only so
-            header(p["xkind"], p["xnrefs"])
-            e.for_("xr", 0, e.mul(p["xnrefs"], 32), lambda: _pre_byte(e, e.ld(e.add(p["xrefs"], p["xr"]))))
-            body_from(p["xbody"], p["xblen"])
-            _set(e, E_SLOT, e.add(p["xrow"], 4))
-            _set(e, E_OBJECT, e.add(EXTRA_TAG, p["x"]))
-            _set(e, E_EXTRAS_DONE, e.add(p["x"], 1))
-            e.set("result", MORE)
+
+            def write():
+                header(p["xkind"], p["xnrefs"])
+                e.for_("xr", 0, e.mul(p["xnrefs"], 32), lambda: _pre_byte(e, e.ld(e.add(p["xrefs"], p["xr"]))))
+                body_from(p["xbody"], p["xblen"])
+                _set(e, E_SLOT, e.add(p["xrow"], 4))
+                _set(e, E_OBJECT, e.add(EXTRA_TAG, p["x"]))
+                _set(e, E_EXTRAS_DONE, e.add(p["x"], 1))
+                e.set("result", MORE)
+
+            # The object's exact preimage (header, references, body) must fit (W5: no worst-case reservation).
+            e.if_(fits(e.add(e.mul(p["xnrefs"], 32), p["xblen"])), write, full)
 
         def extra():
             e.var("x", _ctrl(e, E_EXTRAS_DONE))
@@ -2064,18 +2070,29 @@ def _next(tables):
                 e.if_(e.eq(p["rkind"], int(Kind.GRAPH_FRAGMENT)), lambda: _call(e, "scan_graph", o), lambda: _call(e, "scan_other", o))
 
             e.if_(e.ne(p["is_module"], 0), module_body, emit)
-            header(p["rkind"], p["m"])
-            e.for_("hc", 0, p["m"], lambda: _pre_cid(e, [e.ld(e.add(e.add(SR, e.mul(p["hc"], 4)), k)) for k in range(4)]))
-            body_from(BODY, _ctrl(e, OUT))
-            _set(e, E_SLOT, e.add(NEWCID, e.mul(o, 4)))
-            _set(e, E_OBJECT, o)
-            e.st(e.add(STATE, o), 2)
-            e.set("result", MORE)
+
+            def write():
+                header(p["rkind"], p["m"])
+                e.for_("hc", 0, p["m"], lambda: _pre_cid(e, [e.ld(e.add(e.add(SR, e.mul(p["hc"], 4)), k)) for k in range(4)]))
+                body_from(BODY, _ctrl(e, OUT))
+                _set(e, E_SLOT, e.add(NEWCID, e.mul(o, 4)))
+                _set(e, E_OBJECT, o)
+                e.st(e.add(STATE, o), 2)
+                e.set("result", MORE)
+
+            # The re-encoded object's exact preimage must fit (W5: no worst-case reservation).
+            e.if_(fits(e.add(e.mul(p["m"], 32), _ctrl(e, OUT))), write, full)
 
         def full():
             _reject(e, "XAX.DRIVER.CAPACITY", lambda: D.text(e, "edit"), "DRIVER-EDIT-CAPACITY", lambda: D.integer(e, PRE_LIMIT), lambda: D.text(e, "larger"))
 
-        room = e.both(e.le(e.add(p["pre_start"], BODY_LIMIT + 32 * RC_LIMIT + 64), PRE_LIMIT), e.lt(_ctrl(e, E_NEW), NEWT_LIMIT))
+        def fits(payload):
+            """1 when an object whose references and body take ``payload`` bytes fits after ``pre`` with its header."""
+            return e.le(e.add(e.add(p["pre"], payload), PRE_SMALL), PRE_LIMIT)
+
+        # W5 (ADR-364): only a new constant (at most PRE_SMALL bytes) is checked here; a supplied or rebuilt object checks
+        # its exact preimage before writing it (``fits``), so the region holds up to PRE_LIMIT bytes of real objects.
+        room = e.both(e.le(e.add(p["pre_start"], PRE_SMALL), PRE_LIMIT), e.lt(_ctrl(e, E_NEW), NEWT_LIMIT))
         e.if_(e.not_(room), full, lambda: e.if_(e.lt(_ctrl(e, E_EXTRAS_DONE), _ctrl(e, E_EXTRAS)), extra, objects_))
         _set(e, E_PRE_AT, e.add(PRE, p["pre_start"]))
         _set(e, E_PRE_LENGTH, e.sub(p["pre"], p["pre_start"]))
