@@ -195,6 +195,14 @@ def _compare_immediate(register: int, value: int) -> bytes:
     return _group1_immediate(None, register, value, 64)
 
 
+def _compare_bound(register: int, value: int) -> bytes:
+    """A checked access's ``cmp index, bound`` (64-bit).  OI-52 R1 (ledger 0010): a bound past ``imm32`` is
+    materialized, ``movabs r11, bound; cmp index, r11``, as the native general program does."""
+    if 0 <= value < 1 << 31:
+        return _compare_immediate(register, value)
+    return b"\x49\xbb" + value.to_bytes(8, "little") + bytes((0x4C | (1 if register >= 8 else 0), 0x39, 0xD8 | (register & 7)))
+
+
 def _scaled_access(opcode: bytes, register: int, base: int, index: int, scale: int, width: int, *, force_rex: bool = False) -> bytes:
     """``[base + index*scale]`` access of 1/2/4/8 bytes, without a displacement when the base allows it."""
     rex = 0x40 | (0x08 if width == 8 else 0) | (0x04 if register >= 8 else 0) | (0x02 if index >= 8 else 0) | (0x01 if base >= 8 else 0)
@@ -1790,7 +1798,7 @@ def compile_register_resident(
                         pass  # value ranges, or an earlier check in this block, prove this exact access
                     else:
                         checked.add((pointer, index_value, last_offset))
-                        emit(_compare_immediate(index, last_offset))
+                        emit(_compare_bound(index, last_offset))
                         trap_if(0x87, b"\x0f\x0b")  # ja: unsigned index above the last valid offset
                     if result in read_modify_write:
                         emit(_scaled_add_immediate(base, index, scale, size, read_modify_write[result]))
