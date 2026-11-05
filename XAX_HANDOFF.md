@@ -1471,6 +1471,34 @@ reservations), P1, packed bytes, OI-52 R1. Then BBC: rebuild its driver from the
 natively, and run the Android-first checks. Still open in the native workspace: recursion-group rebuilds,
 `set-signature`, `move`, `prune-dead`.
 
+## After N0: R1, the object form, and BBC's state — 2026-11-05 (ADR-373..375)
+
+**Done (all native batch records, `evolve.sh`, C1 = C2, seed rotated each time).**
+- Ledgers 0010, 0011, OI-52 R1. x86-64 checked bounds of 2^31 or more are materialized on the register path
+  (`em_memory`) and the frame path (`fr_memory`, `fr_tail`). The authoring scripts are in
+  `compiler/bootstrap/evolution/native/0010`, `0011`.
+- Ledger 0012, `define`'s `object <kind> 0x<body>` form. Native batches can supply reference-free objects (foreign
+  declarations). `@a_object` and its wrappers were written by hand in view form (`native/0012`).
+
+**BBC (still not on the current driver).**
+- *Finding: the committed `integration/bfx/bbc.xax` does not pass the production compiler's own `xaxc verify`.* It fails
+  with `MEMORY-CHECKED-STORE-TYPE` in graph `1cedb119…`: 8-byte checked stores of `bits64` values through a
+  `ptr<bits8>` (byte-view widening, ADR-231).
+  - The reference verifier accepts the graph.
+  - The native facts program implements widening only when the pointer value's element fact (`PEL`) is `bits8`. So
+    the gap is in how the native analysis derives `PEL` for these pointer values (a cast or block-parameter
+    provenance), not in the widening rule.
+  - The stores staged in `transactions/production_driver/` show the same failure.
+  - Fix that natively first: a facts transaction, plus a regression test with a widened store through such a pointer.
+- *Port plan* (native only; the Python `port_driver.py`/`port_bbc.py` may not author it any more):
+  1. Windows declarations become `object` forms. The shims (`_read`, `_write`, `_open`, `_close`) are written by hand
+     with `define`, and the old port's adapters are defined from their views in `bbc.xax`.
+  2. Main's host calls are rewritten in its view: about 100 sites, with result remapping and the token rebinding of the
+     view adapters.
+  3. Then the BBC layer, again defined from views.
+- *Risk:* main is 632 values below `VCAP`, and shims small enough to be inlined (256 nodes or fewer) add values at
+  every call site. Make the shims non-inlinable (more than 256 nodes, or calls inside them), or raise `VCAP` first.
+
 ## Open issues
 
 ### OI-45 self-hosting re-runs — 2026-10-07

@@ -3711,3 +3711,33 @@ Superseded by [ADR-369](#adr-369--n03-growable-views-as-limit-bounded-checked-ac
 | Rationale | ADR-367's completion criterion: a nontrivial compiler change (a new function, new control-flow blocks, a changed signature with its call sites, a growable view) authored and committed through native XAX alone, then a self-rebuild with identical artifacts without Python. The view text was rewritten mechanically (`awk`: parameter and node handles renumbered around the inserted parameter and calls); no generator produced compiler logic. |
 | Evidence | EXECUTED on Linux x86-64. `evolve.sh apply` of both batches (the seed's `xaxc edit` and `verify`). Then, without Python, the seed resolved and built the edited request, and that compiler rebuilt itself to the same bytes (`selfbuild.sh`: xaxc1 = xaxc2, 33,141,194 bytes). The seed was rotated to it. The request store equals `compiler_request` of the driver. A first form of the change (a fifth decoder parameter) verified but did not build, and was reverted (`72fe627`). |
 | Limits | Records are per store (a batch names its store's root). `move`, `prune-dead`, `set-signature` and recursion-group rebuilds remain open in the native workspace; the request store must still equal `compiler_request` of the driver (checked by a Python test). |
+
+
+## ADR-373 — OI-52 R1: x86-64 checked bounds past imm32 (ledger 0010)
+
+| Field | Record |
+|---|---|
+| Decision | The x86-64 general backend's register path no longer rejects a checked access whose bound `extent - size` is 2^31 or more (`NATIVE-CHECKED-BOUND-ENCODABLE`). It materializes the bound, `movabs r11, bound; cmp index, r11` (64-bit), and the access's `ja` trap follows as before. Below 2^31 the code is unchanged (`cmp index, imm32`). Ledger 0010 is three native batch records (the general driver, the request, the x86-64 general program), authored from the native view of `em_memory` and applied with `evolve.sh`; the Python reference's register path does the same (`_compare_bound`). |
+| Rationale | OI-52 R1. Checked offsets are `bits<32>`, so a view up to 4 GiB is within the kernel's rules; only the x86-64 immediate encoding stopped it. |
+| Evidence | EXECUTED on Linux x86-64: `tests/test_xax_oi52_r1.py`. A callee maps a lazily reserved view of 2^31 or 4 GiB - 4 KiB bytes. A store and a load at the last byte return 42, and the first byte past the extent traps, both natively (`frontend="xax"`) and with the reference. Before the change the 4 GiB - 4 KiB probe was rejected. `selfbuild.sh`: xaxc1 = xaxc2 (33,142,266 bytes); the seed is rotated. |
+| Limits | The frame path (process entries) still rejects a dynamic index under a bound past 2^31. Constant offsets there are checked statically. Other remaining rejections: the PE legacy path, the division span check, and offsets past `bits<32>` (OI-52 R2). |
+
+
+## ADR-374 — OI-52 R1 on the frame path (ledger 0011)
+
+| Field | Record |
+|---|---|
+| Decision | Completes ADR-373 for the x86-64 general backend's frame path, which takes the functions the register path declines (more than four machine parameters, and so on). Its three checked-bound sites (two in `fr_memory`, one in `fr_tail`) materialize a bound of 2^31 or more as `movabs r11, bound; cmp reg, r11` instead of rejecting it. Ledger 0011 is three batch records (the driver, the request, the x86-64 general program), written from the native views with `native/0011/frame_r1.awk` and applied with `evolve.sh`. |
+| Rationale | With 0010 alone, the same 4 GiB view built or was rejected depending on which path lowered the function. |
+| Evidence | EXECUTED on Linux x86-64: `tests/test_xax_oi52_r1.py::test_frame_path_bounds_past_imm32` (a callee of five machine parameters). Before the change the 4 GiB - 4 KiB probe was rejected; after it, the last byte answers and one past it traps. `selfbuild.sh`: xaxc1 = xaxc2; seed rotated. |
+| Limits | The Python reference's frame path, the PE legacy path and the division span check still reject such bounds. Offsets past `bits<32>` are OI-52 R2. |
+
+
+## ADR-375 — `define`'s `object` form: native authoring of reference-free objects (ledger 0012)
+
+| Field | Record |
+|---|---|
+| Decision | A `define @name` whose body is `object <kind> 0x<body>` supplies a canonical object with no references, so a native batch can create foreign declarations (and any other reference-free object) and call them by `@name`. Ledger 0012 adds `@a_object` and two wrappers, written by hand in view form. It redefines `ws_tr_define` to call them, in the driver and the request store. The kept edit generator no longer makes `ws_translate` or `ws_command`; `test_store_regeneration` records them as natively evolved. |
+| Rationale | `define` could make only functions, graphs, constants and types. Porting the production driver to a Windows host (BBC) needs Windows foreign declarations, and without this form only a Python-built record could supply them (ADR-367 forbids that). |
+| Evidence | EXECUTED on Linux x86-64: `tests/test_native_object_form.py` (the seed's `xaxc edit`). An entry redefined to call `exit_group` through `@decl`, supplied by its kind and body, makes the very same store. `selfbuild.sh`: xaxc1 = xaxc2; seed rotated. |
+| Limits | Objects with references still come only from `define`'s function form or from records. The kind and body are not checked until `verify`. |

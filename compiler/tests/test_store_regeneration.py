@@ -70,4 +70,9 @@ def test_kept_helper_generators_make_the_frozen_functions(module):
     finally:
         xax_compiler._TYPING_BUILDING = building
     driver = {item.cid for item in xax_compiler.StoreReader(EV.GENERAL_STORE_PATH.read_bytes()).objects()}
-    assert {name for name, function in functions.items() if function.cid not in driver} == set()
+    assert {name for name, function in functions.items() if function.cid not in driver} == NATIVELY_EVOLVED.get(module, set())
+
+
+# After N0 (ADR-367) a kept generator does not follow a native transaction: these helpers changed natively (ledger
+# 0012: ``define``'s ``object`` form reached ``ws_translate`` and ``ws_command`` through ``ws_tr_define``).
+NATIVELY_EVOLVED = {"xax_selfhost_edit": {"ws_translate", "ws_command"}}
