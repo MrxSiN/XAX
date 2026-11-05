@@ -3721,3 +3721,13 @@ Superseded by [ADR-369](#adr-369--n03-growable-views-as-limit-bounded-checked-ac
 | Rationale | OI-52 R1. Checked offsets are `bits<32>`, so a view up to 4 GiB is within the kernel's rules; only the x86-64 immediate encoding stopped it. |
 | Evidence | EXECUTED on Linux x86-64: `tests/test_xax_oi52_r1.py`. A callee maps a lazily reserved view of 2^31 or 4 GiB - 4 KiB bytes. A store and a load at the last byte return 42, and the first byte past the extent traps, both natively (`frontend="xax"`) and with the reference. Before the change the 4 GiB - 4 KiB probe was rejected. `selfbuild.sh`: xaxc1 = xaxc2 (33,142,266 bytes); the seed is rotated. |
 | Limits | The frame path (process entries) still rejects a dynamic index under a bound past 2^31. Constant offsets there are checked statically. Other remaining rejections: the PE legacy path, the division span check, and offsets past `bits<32>` (OI-52 R2). |
+
+
+## ADR-374 — OI-52 R1 on the frame path (ledger 0011)
+
+| Field | Record |
+|---|---|
+| Decision | Completes ADR-373 for the x86-64 general backend's frame path, which takes the functions the register path declines (more than four machine parameters, and so on). Its three checked-bound sites (two in `fr_memory`, one in `fr_tail`) materialize a bound of 2^31 or more as `movabs r11, bound; cmp reg, r11` instead of rejecting it. Ledger 0011 is three batch records (the driver, the request, the x86-64 general program), written from the native views with `native/0011/frame_r1.awk` and applied with `evolve.sh`. |
+| Rationale | With 0010 alone, the same 4 GiB view built or was rejected depending on which path lowered the function. |
+| Evidence | EXECUTED on Linux x86-64: `tests/test_xax_oi52_r1.py::test_frame_path_bounds_past_imm32` (a callee of five machine parameters). Before the change the 4 GiB - 4 KiB probe was rejected; after it, the last byte answers and one past it traps. `selfbuild.sh`: xaxc1 = xaxc2; seed rotated. |
+| Limits | The Python reference's frame path, the PE legacy path and the division span check still reject such bounds. Offsets past `bits<32>` are OI-52 R2. |
