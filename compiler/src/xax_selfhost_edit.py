@@ -108,25 +108,28 @@ PRE_SMALL = 128  # W5 (ADR-364): a header's ULEBs, or a whole new constant's pre
 NEWT = PRE + PRE_LIMIT  # per new object: preimage start, length, references at, count, body at, length, kind, object, alias
 NEWT_WORDS, NEWT_LIMIT = 9, 1 << 16
 BATCH = NEWT + NEWT_WORDS * NEWT_LIMIT  # the S9 writer's batch, one byte per word (``xax_selfhost_writer``'s layout)
-BATCH_LIMIT = (1 << 26) - 4096  # the writer's input view less its slack (S15e.4, ADR-322: 64 MiB, the writer's since ADR-319)
 BATCH_AT = 58  # control word: the batch bytes written
 EXTRA_TAG = 1 << 40
-# OI-52 (dynamic tables): the extra rows (``EXTRA_WORDS`` each) grow from past the batch, committed as they are touched.
-# Every extra becomes a new object of the transaction, so the new-object table (``NEWT_LIMIT``) is their only bound; the
-# record's supplied objects take what the mutations' new constants (at most ``EXTRA_PER_MUTATION`` each) leave.
-EXTRA = BATCH + BATCH_LIMIT
-EXTRA_LIMIT = NEWT_LIMIT
-EXTRA_PER_MUTATION = 2
+# The edit record, one byte per word (S15d.4a: past the batch, room for supplied objects).
+EIN, EIN_LIMIT = 238 << 20, 16 << 20  # S15e.4 (ADR-322): above the batch, far above the typing tables (from 128M words)
 # N0 (ADR-367): a supplied graph or function whose references are not yet in canonical order (an author who names a
 # supplied object by index cannot sort it) is canonicalized: ``CANON_PERM`` maps each given reference index to its sorted,
 # distinct position; the sorted references and the rewritten body are appended from ``CANON`` on (one byte per word),
-# committed as touched, up to the edit record.
-CANON_PERM = EXTRA + EXTRA_WORDS * EXTRA_LIMIT
-CANON_FIRST = CANON_PERM + (1 << 16)  # per given reference: 1 when no earlier one is equal
-CANON = CANON_FIRST + (1 << 16)
-# The edit record, one byte per word (S15d.4a: past the batch, room for supplied objects).
-EIN, EIN_LIMIT = 238 << 20, 16 << 20  # S15e.4 (ADR-322): above the batch, far above the typing tables (from 128M words)
-assert ENTITY_AT + MUT_LIMIT <= STATE and CANON < EIN and EIN + EIN_LIMIT <= __import__("xax_selfhost_facts").HEADER
+# committed as touched, up to the edit record.  N0 (ADR-370): the canonicalizer's and the assembler's room is the top
+# 32M words below the record, so the batch takes everything between the new-object table and the extra rows.
+CANON = EIN - (32 << 20)
+CANON_FIRST = CANON - (1 << 16)  # per given reference: 1 when no earlier one is equal
+CANON_PERM = CANON_FIRST - (1 << 16)
+# OI-52 (dynamic tables): the extra rows (``EXTRA_WORDS`` each), committed as they are touched.  Every extra becomes a new
+# object of the transaction, so the new-object table (``NEWT_LIMIT``) is their only bound; the record's supplied objects
+# take what the mutations' new constants (at most ``EXTRA_PER_MUTATION`` each) leave.
+EXTRA_LIMIT = NEWT_LIMIT
+EXTRA_PER_MUTATION = 2
+EXTRA = CANON_PERM - EXTRA_WORDS * EXTRA_LIMIT
+# N0 (ADR-370): the batch fills the room up to the extra rows (about 126 MiB; 64 MiB less the writer's slack before).
+BATCH_LIMIT = EXTRA - BATCH
+assert ENTITY_AT + MUT_LIMIT <= STATE and EIN + EIN_LIMIT <= __import__("xax_selfhost_facts").HEADER
+assert BATCH_LIMIT + 4096 <= __import__("xax_selfhost_writer").IN_EXTENT  # the batch goes to the S9 writer's input view
 ENTITY = sorted(int(op) for op in ENTITY_OPERATIONS)
 ATTRIBUTE = sorted(int(op) for op in ATTRIBUTE_OPERATIONS)
 WRAPPING = (int(Operation.ADD_WRAP), int(Operation.SUB_WRAP), int(Operation.MUL_WRAP))

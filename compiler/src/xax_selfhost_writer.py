@@ -41,10 +41,10 @@ from xax_selfhost_facts import E
 from xax_structured import B64, Proc
 
 STORE_PATH = bootstrap_dir() / "xax_store_writer.xax"
-IN_EXTENT = 1 << 26  # S14b (ADR-285): the compiler's own snapshot store (17.7 MB) fits; ADR-319: 64 MiB (33 MB)
-BUF_EXTENT = 1 << 27
+IN_EXTENT = 1 << 28  # S14b (ADR-285): the compiler's own snapshot store (17.7 MB) fits; ADR-319: 64 MiB (33 MB); ADR-370: 256 MiB (62 MB)
+BUF_EXTENT = 1 << 29
 # ``buf`` regions (byte offsets).  The store is written from 0; while objects are checked, a preimage is staged there.
-OUT_LIMIT = 1 << 26
+OUT_LIMIT = 1 << 28
 MAX_OBJECTS, MAX_RECORDS = 1 << 16, 1 << 12
 OBJECTS_AT = OUT_LIMIT + 4096  # per object: (batch offset, payload length after the CID), 64-bit words
 OBJECT_SORT_A = OBJECTS_AT + 16 * MAX_OBJECTS
