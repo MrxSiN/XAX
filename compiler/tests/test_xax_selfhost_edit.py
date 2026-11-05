@@ -333,6 +333,121 @@ class XaxEditTests(unittest.TestCase):
             return rejected()
         return "store", write_batch(bytes(out[EDT.BATCH + k] for k in range(out[EDT.EC + EDT.E_BATCH_LENGTH])))
 
+    def test_supplied_objects_named_by_index(self):
+        """N0 (ADR-367): a REPLACE_REFERENCE may name its new child by supplied index (``supplied_reference``); the store
+        equals the record naming it by CID.  An object's own reference may be an index only where the resolved
+        references stay distinct and ascending (the body's indices are into that order); otherwise the record rejects."""
+        from test_xax_linux import _status_program
+        from xax_selfhost_edit import REPLACE_REFERENCE, apply_reference, edit_record, supplied_reference
+
+        reader = _status_program(lambda b: b.const(X.bits_type(32), 7))[0]
+        other = _status_program(lambda b: b.const(X.bits_type(32), 9))[0]
+        module = next(item for item in reader.objects() if item.kind == X.Kind.MODULE)
+        old_function = next(reader.get(cid) for cid in module.references if reader.get(cid).kind == X.Kind.FUNCTION)
+        new_function = next(other.get(cid) for cid in next(item for item in other.objects() if item.kind == X.Kind.MODULE).references
+                            if other.get(cid).kind == X.Kind.FUNCTION)
+        stored = {item.cid for item in reader.objects()}
+        order, seen = [], set()
+
+        def visit(cid):  # the new objects, each after the new objects it refers to
+            if cid in stored or cid in seen:
+                return
+            seen.add(cid)
+            for child in other.get(cid).references:
+                visit(child)
+            order.append(other.get(cid))
+
+        visit(new_function.cid)
+        position = {item.cid: k for k, item in enumerate(order)}
+        mutation = (REPLACE_REFERENCE, module.cid, old_function.cid, new_function.cid)
+        by_cid = edit_record([mutation], reader.root_cid, order)
+
+        def target_by_index(record, index):
+            data = bytearray(record)
+            at = data.find(module.cid + old_function.cid + new_function.cid) + 64
+            data[at:at + 32] = supplied_reference(index)
+            return bytes(data)
+
+        by_index = target_by_index(by_cid, position[new_function.cid])
+        self.assertEqual(apply_reference(reader, by_index).data, other.data)
+        self.assertEqual(self.edit(reader, by_index), ("store", other.data))
+        self.assertEqual(self.edit(reader, by_index), self.edit(reader, by_cid))
+        # an index past the record's objects
+        outcome = self.edit(reader, target_by_index(by_cid, len(order)))
+        self.assertEqual((outcome[0], outcome[1].rule), ("rejected", "EDIT-OBJECT-REFERENCE"))
+        # every new object naming the others by index (its references then in the record's order, not canonical order)
+        records = bytearray(by_index)
+        for item in order:
+            refs = item.references
+            given = b"".join(supplied_reference(position[c]) if c in position else c for c in refs)
+            records = records.replace(b"".join(refs), given, 1)
+        everything = bytes(records)
+        self.assertEqual(apply_reference(reader, everything).data, other.data)
+        self.assertEqual(self.edit(reader, everything), ("store", other.data))
+        # a graph and a function whose references are shuffled and repeated, their bodies indexing that order
+        from xax_selfhost_edit import _canonical_body
+        import random
+        rng = random.Random(367)
+        shuffled = []
+        for item in order:
+            refs = list(item.references)
+            if item.kind in (X.Kind.GRAPH_FRAGMENT, X.Kind.FUNCTION) and len(refs) > 1:
+                given = refs + [refs[0]]
+                rng.shuffle(given)
+                to_given = [given.index(r) for r in refs]
+                body = _canonical_body(item.kind, item.body, to_given)
+                shuffled.append((item.kind, given, body))
+            else:
+                shuffled.append((item.kind, refs, item.body))
+        data = bytearray(edit_record([mutation], reader.root_cid, []))
+        data += X.uleb(len(shuffled))
+        for kind, refs, body in shuffled:
+            data += X.uleb(kind) + X.uleb(len(refs)) + b"".join(refs) + X.uleb(len(body)) + body
+        data = bytes(data)
+        self.assertEqual(apply_reference(reader, data).data, other.data)
+        self.assertEqual(self.edit(reader, data), ("store", other.data))
+
+    def test_rebuilt_object_equal_to_a_supplied_one_keeps_its_children(self):
+        """N0 (ADR-367): an owner rebuilt into exactly a supplied object, which the root reaches through the supplied
+        path, still has its references walked: nothing it alone names (here the new callee) is dropped."""
+        from test_xax_linux import _status_program
+        from xax_selfhost_edit import REPLACE_REFERENCE, _canonical_body, apply_reference, edit_record
+
+        reader = _status_program(lambda b: b.const(X.bits_type(32), 7))[0]
+        other = _status_program(lambda b: b.const(X.bits_type(32), 9))[0]
+        module = next(item for item in reader.objects() if item.kind == X.Kind.MODULE)
+        entry, callee = ws_functions(reader)
+        new_callee = ws_functions(other)[1]
+        stored, callee_objects, seen = {i.cid for i in reader.objects()}, [], set()
+
+        def closure(cid):  # the new callee's new objects, each after the new objects it names
+            if cid in stored or cid in seen:
+                return
+            seen.add(cid)
+            for child in other.get(cid).references:
+                closure(child)
+            callee_objects.append(other.get(cid))
+
+        closure(new_callee.cid)
+
+        def swapped(item, old, new):  # ``item`` with reference ``old`` replaced by ``new``, as the engine rebuilds it
+            given = [new if c == old else c for c in item.references]
+            ordered = sorted(set(given))
+            return X.SemanticObject.create(item.kind, _canonical_body(item.kind, item.body, [ordered.index(c) for c in given]), tuple(ordered))
+
+        graph = reader.get(entry.references[X.Cursor(entry.body, "").uleb()])
+        new_graph = swapped(graph, callee.cid, new_callee.cid)
+        new_entry = swapped(entry, graph.cid, new_graph.cid)
+        record = edit_record([(REPLACE_REFERENCE, graph.cid, callee.cid, new_callee.cid),
+                              (REPLACE_REFERENCE, module.cid, entry.cid, new_entry.cid)], reader.root_cid, [*callee_objects, new_graph, new_entry])
+        expected = apply_reference(reader, record).data
+        outcome = self.edit(reader, record)
+        self.assertEqual(outcome, ("store", expected))
+        edited = X.StoreReader(outcome[1])
+        kept = {item.cid for item in edited.objects()}
+        self.assertIn(new_callee.cid, kept)
+        self.assertTrue(all(c in kept for item in edited.objects() for c in item.references))
+
     def test_transactions_equal_the_workspace(self):
         outcomes = set()
         for reader, mutations, record in transactions(3031, 12):
@@ -584,7 +699,8 @@ def ws_view(reader, n):
             if node.entity is not None:
                 if node.operation == X.Operation.CONSTANT:
                     body = X.Cursor(node.entity.body, ""); body.uleb(); value = body.byte_string()
-                    line += f" {int.from_bytes(value, 'little')}" if len(value) <= 8 else " 0x" + value[::-1].hex()
+                    bits = _ws_type_text(reader.get(node.entity.references[0])).startswith("bits")
+                    line += f" {int.from_bytes(value, 'little')}" if len(value) <= 8 and bits else " 0x" + value[::-1].hex()
                 elif node.entity.cid in ford:
                     line += f" entity=F{ford[node.entity.cid]}"
                 else:
@@ -607,7 +723,7 @@ def ws_view(reader, n):
         elif term.kind == X.TerminatorKind.RETURN:
             lines.append("ret" + "".join(" " + val(v) for v in term.values))
         else:
-            lines.append("trap")
+            lines.append("trap" + (" 0x" + term.payload.hex() if term.payload else ""))
     for cid, k in sorted(types.items(), key=lambda i: i[1]):
         lines.append(f"T{k} {_ws_type_text(reader.get(cid))}")
     return "\n".join(lines) + "\n"
@@ -746,6 +862,63 @@ class NativeWorkspaceTests(unittest.TestCase):
             return status, diagnostic
         record = bytes(self.output[self.EDT.EIN + k] for k in range(self.output[self.EDT.EC + self.EDT.E_LENGTH]))
         return self.edit(reader, record)
+
+    def test_define_round_trips_every_view(self):
+        """N0 (ADR-367): every function's view, given back as ``define @f`` and ``replace F<n> @f``, makes the same
+        store: the native assembler rebuilds each graph, function, constant and type exactly."""
+        done = 0
+        for reader in _stores():
+            for n, function in enumerate(ws_functions(reader)):
+                graph = reader.get(function.references[X.Cursor(function.body, "").uleb()])
+                if graph.kind != X.Kind.GRAPH_FRAGMENT:
+                    continue
+                status, text = self.view(reader, f"F{n}".encode())
+                self.assertEqual(status, "view")
+                body = "\n".join(text.splitlines()[2:])
+                batch = f"R {reader.root_cid.hex()}\nF{n}\ndefine @f\n{body}\nend\nreplace F{n} @f\n".encode()
+                owners, frontier = set(), {function.cid}  # the objects a replacement rebuilds, transitively
+                while frontier:
+                    frontier = {o.cid for o in reader.objects() if o.cid not in owners and frontier & set(o.references)}
+                    owners |= frontier
+                grouped = any(reader.get(cid).kind == X.Kind.RECURSION_GROUP for cid in owners)
+                with self.subTest(store=reader.root_cid.hex()[:12], function=n):
+                    outcome = self.apply(reader, batch)
+                    if grouped:  # the engine does not rebuild recursion groups yet
+                        self.assertEqual((outcome[0], outcome[1].rule), ("rejected", "WORKSPACE-RECURSION-REBUILD"))
+                    else:
+                        self.assertEqual(outcome, ("store", reader.data))
+                        done += 1
+        self.assertGreaterEqual(done, 4)
+
+    def test_define_structural_change(self):
+        """N0 (ADR-367): a structural change written only as native batch text: a new two-block function ``@g`` of a new
+        signature, a new function ``@v`` calling it, and the entry redefined to call ``@v`` instead of ``F1``.  The edited
+        store verifies, ``@v`` computes 20 * 2 + 1, and ``F1`` is gone."""
+        from test_xax_linux import _status_program
+
+        reader = _status_program(lambda b: b.const(X.bits_type(32), 7))[0]
+        status, entry = self.view(reader, b"F0")
+        self.assertEqual(status, "view")
+        self.assertIn("entity=F1", entry)
+        main = "\n".join(entry.splitlines()[2:]).replace("entity=F1", "entity=@v")
+        batch = "\n".join([
+            f"R {reader.root_cid.hex()}", "F0",
+            "define @g", "(T0)->(T0)", "B0(P0:T0)", "N0 constant 2 -> T0", "N1 mul.wrap P0 N0 -> T0", "br B1(N1)",
+            "B1(P1:T0)", "N2 constant 1 -> T0", "N3 add.wrap P1 N2 -> T0", "ret N3", "T0 bits32", "end",
+            "define @v", "()->(T0)", "B0()", "N0 constant 20 -> T0", "N1 call.direct entity=@g N0 -> T0", "ret N1", "T0 bits32", "end",
+            "define @main", main, "end",
+            "replace F0 @main", ""]).encode()
+        outcome = self.apply(reader, batch)
+        self.assertEqual(outcome[0], "store", outcome)
+        edited = X.StoreReader(outcome[1])
+        X.verify_store(edited)
+        module = next(item for item in edited.objects() if item.kind == X.Kind.MODULE)
+        entry_function = next(edited.get(cid) for cid in module.references if edited.get(cid).kind == X.Kind.FUNCTION)
+        graph = X._parse_graph(edited.get(entry_function.references[X.Cursor(entry_function.body, "").uleb()]), edited.get)
+        callee = next(node.entity for block in graph.blocks for node in block.nodes if node.operation == X.Operation.CALL_DIRECT)
+        self.assertEqual(X.execute(edited, callee.cid, ()), (41,))
+        old_callee = ws_functions(reader)[1]
+        self.assertNotIn(old_callee.cid, {item.cid for item in edited.objects()})
 
     def test_view_equals_the_reference(self):
         viewed = 0
