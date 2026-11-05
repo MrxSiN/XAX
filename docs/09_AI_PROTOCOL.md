@@ -857,6 +857,11 @@ end
 replace F<n> @name       every object of the store that refers to F<n> refers to @name's function instead
 ```
 
+A definition whose body is the single line `object <kind> 0x<body>` (ledger 0012) supplies a canonical object with no
+references, of that kind and body, instead of a function; `@name` then names it as an entity, for example a foreign
+declaration a redefined function calls with `call.foreign entity=@name`. An object equal to one the store holds is
+that object.
+
 An entity is `F<n>`, a 64-digit CID, or `@<name>` defined earlier in the same batch; a constant's value is decimal for a
 `bits` type, else `0x` and all its bytes, most significant first; `trap` is followed by `0x` and the payload's bytes.
 Every constant, any `bits` type the store lacks, the graph and the function become objects the record supplies; a

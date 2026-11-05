@@ -1,0 +1,27 @@
+(T0,T1,T2,T3,T4,T2)->(T5,T0,T1,T2,T3,T4,T2)
+B0(P0:T0,P1:T1,P2:T2,P3:T3,P4:T4,P5:T2)
+N0 constant 436209592 -> T6
+N1 checked.load.bits.le P3 N0 P5 -> T5,T2 [8,1]
+N2 constant 257949696 -> T5
+N3 add.wrap N2 N1 -> T5
+N4 constant 8 -> T5
+N5 mul.wrap N3 N4 -> T5
+N6 int.truncate N5 -> T6
+N7 checked.load.bits.le P3 N6 N1.R1 -> T5,T2 [8,1]
+N8 constant 111 -> T5
+N9 int.compare N7 N8 -> T7 [1]
+cbr N9 B1(P0,P1,P2,P3,P4,N7.R1) B2(P0,P1,P2,P3,P4,N7.R1)
+B1(P6:T0,P7:T1,P8:T2,P9:T3,P10:T4,P11:T2)
+N10 constant 0 -> T5
+ret N10 P6 P7 P8 P9 P10 P11
+B2(P12:T0,P13:T1,P14:T2,P15:T3,P16:T4,P17:T2)
+N11 call.direct entity=@ORIGINAL P12 P13 P14 P15 P16 P17 -> T5,T0,T1,T2,T3,T4,T2
+ret N11 N11.R1 N11.R2 N11.R3 N11.R4 N11.R5 N11.R6
+T0 form2 31d89717f6b958bf0f6b6a810c2ae04d1a72385c46caaff6dedb6f56143ed1bd
+T1 form4 79085c8af2b185fefd059879892d48f5fe5b7ea37ba069eacbbd18709981deb8
+T2 form3 2b2704e5644b2a600cc1c05f91f133f54c03637cddb3aaf658a635fff068bd0a
+T3 form2 714382dabf692e7d84efff2336af149c8e48fca9dac5961c76235307d841b577
+T4 form4 1feb03b93fc61d17ff1f0f91be900ab4b6f7c3fb8c2f1c5dbc33fa7f9b16276f
+T5 bits64
+T6 bits32
+T7 bits1
