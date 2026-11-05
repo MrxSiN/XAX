@@ -3210,6 +3210,9 @@ def _ws_is(e: E, text: str):
                   *(e.eq(e.ld(e.add(WS_IN, e.add(at, k))), byte) for k, byte in enumerate(text.encode("ascii"))))
 
 
+U64_TENTH = ((1 << 64) - 1) // 10  # N0: a decimal value past it times ten (or equal, with a digit past 5) wraps
+
+
 def _ws_number_function():
     """The token's characters from ``from`` as a number (decimal, or hexadecimal after ``0x``) into ``W_INT``: 1, or 0
     when they are not one (or there are none)."""
@@ -3228,12 +3231,15 @@ def _ws_number_function():
             e.var("nc", e.ld(e.add(WS_IN, p["na"])))
             e.var("nd", e.sel(e.both(e.le(48, p["nc"]), e.le(p["nc"], 57)), e.sub(p["nc"], 48),
                               e.sel(e.both(e.eq(p["nbase"], 16), e.le(97, p["nc"]), e.le(p["nc"], 102)), e.sub(p["nc"], 87), 99)))
+            # N0: a decimal value up to 2^64 - 1 (20 digits): the next digit must not carry past 64 bits
+            e.if_(e.both(e.eq(p["nbase"], 10), e.either(e.lt(U64_TENTH, p["nv"]), e.both(e.eq(p["nv"], U64_TENTH), e.lt(5, p["nd"])))),
+                  lambda: e.set("nok", 0))
             e.if_(e.lt(p["nd"], p["nbase"]), lambda: e.set("nv", e.add(e.mul(p["nv"], p["nbase"]), p["nd"])), lambda: e.set("nok", 0))
             e.set("ndigits", e.add(p["ndigits"], 1))
             e.set("na", e.add(p["na"], 1))
 
         e.while_(lambda: e.both(e.lt(p["na"], p["ne"]), e.ne(p["nok"], 0)), digit)
-        e.if_(e.lt(e.sel(e.eq(p["nbase"], 16), 16, 19), p["ndigits"]), lambda: e.set("nok", 0))
+        e.if_(e.lt(e.sel(e.eq(p["nbase"], 16), 16, 20), p["ndigits"]), lambda: e.set("nok", 0))
         _wset(e, W_INT, p["nv"])
         e.give(p["nok"])
     return _function(("from",), build, None)
@@ -4421,11 +4427,15 @@ def _a_number_function():
             e.var("anc", _a_here(e))
             e.var("and", e.sel(e.both(e.le(48, p["anc"]), e.le(p["anc"], 57)), e.sub(p["anc"], 48),
                                e.sel(e.both(e.eq(p["anbase"], 16), e.le(97, p["anc"]), e.le(p["anc"], 102)), e.sub(p["anc"], 87), 99)))
+            # N0: a decimal value up to 2^64 - 1 (20 digits): the next digit must not carry past 64 bits
+            e.if_(e.both(e.lt(p["and"], p["anbase"]), e.eq(p["anbase"], 10), e.either(e.lt(U64_TENTH, p["anv"]), e.both(
+                e.eq(p["anv"], U64_TENTH), e.lt(5, p["and"])))), lambda: e.set("anover", 1))
             e.if_(e.lt(p["and"], p["anbase"]), lambda: (e.set("anv", e.add(e.mul(p["anv"], p["anbase"]), p["and"])), e.set("ann", e.add(p["ann"], 1)),
                                                         _a_step(e)), lambda: e.set("ango", 0))
 
+        e.var("anover", 0)
         e.while_(lambda: e.ne(p["ango"], 0), digit)
-        e.if_(e.either(e.eq(p["ann"], 0), e.lt(e.sel(e.eq(p["anbase"], 16), 16, 19), p["ann"])), lambda: _a_fail(e, R_DEFINE))
+        e.if_(e.either(e.eq(p["ann"], 0), e.ne(p["anover"], 0), e.lt(e.sel(e.eq(p["anbase"], 16), 16, 20), p["ann"])), lambda: _a_fail(e, R_DEFINE))
         _wset(e, W_AVAL, p["anv"])
         _wset(e, W_ADIG, p["ann"])
         e.give(p["anv"])
