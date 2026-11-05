@@ -71,13 +71,12 @@ PURE = (Operation.CONSTANT, Operation.ADD_WRAP, Operation.SUB_WRAP, Operation.MU
 # 16 words per new object of the transaction's own: type, length, value, alias, CID (4) for a new constant; S15d.4a
 # (ADR-312): a supplied object has X_SUPPLIED set and its kind, reference count, references, body length and body (record
 # words), and whether ``reach`` reached it.
-EXTRA = MUT + MUT_WORDS * MUT_LIMIT
 EXTRA_WORDS = 16
 X_SUPPLIED, X_KIND, X_NREFS, X_REFS, X_BODY_LENGTH, X_BODY, X_REACHED = range(8, 15)
 # S15d.4b: a new constant whose type the record names (an inserted constant, a constant node's new result type): field
 # 0 is NONE and ``X_TYPE_AT`` the record word of that type's CID (resolved once the supplied objects have CIDs).
 X_TYPE_AT = 15
-ENTITY_AT = EXTRA + EXTRA_WORDS * MUT_LIMIT  # per mutation: its node's entity reference index + 1 (0: none)
+ENTITY_AT = MUT + (MUT_WORDS + EXTRA_WORDS) * MUT_LIMIT  # per mutation: its node's entity reference index + 1 (0: none)
 STATE = EB + (1 << 17)  # per object: 0 untouched, 1 affected, 2 rebuilt
 NEWCID = STATE + (1 << 16)  # 4 words per object
 ALIAS = NEWCID + (1 << 18)  # per object: the old object whose CID its new version has, or NONE
@@ -101,9 +100,15 @@ BATCH = NEWT + NEWT_WORDS * NEWT_LIMIT  # the S9 writer's batch, one byte per wo
 BATCH_LIMIT = (1 << 26) - 4096  # the writer's input view less its slack (S15e.4, ADR-322: 64 MiB, the writer's since ADR-319)
 BATCH_AT = 58  # control word: the batch bytes written
 EXTRA_TAG = 1 << 40
+# OI-52 (dynamic tables): the extra rows (``EXTRA_WORDS`` each) grow from past the batch, committed as they are touched.
+# Every extra becomes a new object of the transaction, so the new-object table (``NEWT_LIMIT``) is their only bound; the
+# record's supplied objects take what the mutations' new constants (at most ``EXTRA_PER_MUTATION`` each) leave.
+EXTRA = BATCH + BATCH_LIMIT
+EXTRA_LIMIT = NEWT_LIMIT
+EXTRA_PER_MUTATION = 2
 # The edit record, one byte per word (S15d.4a: past the batch, room for supplied objects).
 EIN, EIN_LIMIT = 238 << 20, 16 << 20  # S15e.4 (ADR-322): above the batch, far above the typing tables (from 128M words)
-assert ENTITY_AT + MUT_LIMIT <= STATE and BATCH + BATCH_LIMIT <= EIN and EIN + EIN_LIMIT <= __import__("xax_selfhost_facts").HEADER
+assert ENTITY_AT + MUT_LIMIT <= STATE and EXTRA + EXTRA_WORDS * EXTRA_LIMIT <= EIN and EIN + EIN_LIMIT <= __import__("xax_selfhost_facts").HEADER
 ENTITY = sorted(int(op) for op in ENTITY_OPERATIONS)
 ATTRIBUTE = sorted(int(op) for op in ATTRIBUTE_OPERATIONS)
 WRAPPING = (int(Operation.ADD_WRAP), int(Operation.SUB_WRAP), int(Operation.MUL_WRAP))
@@ -1498,7 +1503,11 @@ def _begin(tables):
         def supplied():
             """S15d.4a (ADR-312): the objects the record supplies, each kept as a new object of the transaction's own."""
             e.var("supplied", uleb("s_count"))
-            e.if_(e.both(running(), e.lt(MUT_LIMIT, p["supplied"])), malformed("EDIT-RECORD-COUNT"))
+            # OI-52: bounded by the room the extra rows have left (the new-object table), not by the mutation table.
+            e.var("s_room", e.sub(EXTRA_LIMIT, e.add(_ctrl(e, E_EXTRAS), e.mul(p["count"], EXTRA_PER_MUTATION))))
+            e.if_(e.both(running(), e.lt(p["s_room"], p["supplied"])), lambda: _reject(
+                e, "XAX.DRIVER.CAPACITY", lambda: D.text(e, "edit"), "DRIVER-EDIT-CAPACITY", lambda: D.integer(e, EXTRA_LIMIT),
+                lambda: D.text(e, "larger")))
             e.if_(e.both(running(), e.eq(p["supplied"], 0)), malformed("EDIT-RECORD-END"))  # an empty section is no section
             e.var("si", 0)
 
