@@ -1141,6 +1141,7 @@ X86_64_LINUX_ELF_DYNAMIC_FORMAT = 6
 X86_64_LINUX_OPERATIONS = (
     1, 2, 3, *range(5, 25),
     38, 39, 40, 41, 42, 43, *range(44, 62), 62, 63, *range(66, 77),
+    77, 78,  # N0.3 (ADR-369): growable.load/store.bits.le
 )
 
 
@@ -1547,6 +1548,7 @@ def aarch64_linux_exec_target(*, dynamic: bool = False) -> SemanticObject:
         1, 2, 3, *range(5, 20), *(int(value) for value in AARCH64_GENERAL_OPERATIONS),
         int(Operation.CALL_FOREIGN), int(Operation.HEAP_VIEW), *AARCH64_INTEGER_COMPLETION_OPERATIONS,
         int(Operation.POINTER_ADDRESS), int(Operation.POINTER_REBASE),
+        int(Operation.GROWABLE_LOAD_BITS_LE), int(Operation.GROWABLE_STORE_BITS_LE),  # N0.3 (ADR-369)
     }))
     terminators = (1, 2, 3, 4)
     body = bytearray(uleb(len(identity)) + identity)
