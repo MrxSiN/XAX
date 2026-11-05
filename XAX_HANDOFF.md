@@ -1410,6 +1410,8 @@ fixed tables), P1, packed bytes and OI-52 R1 through the native workflow only, t
 
 ## N0 native-evolution bootstrap: N0.3 landed — 2026-11-05 (ADR-370, ADR-371)
 
+Superseded by "N0 complete" below.
+
 **Done since the section above.**
 - Ledger 0005 (ADR-370): the store family's views hold 256 MiB (decoder data view, S9 writer input and output; writer
   buffer 512 MiB), and the edit batch is about 130 MiB. Seed `a5a33e89…` (32,986,843 bytes).
@@ -1435,6 +1437,39 @@ and replay it; the completion demo (a natively authored change adding a function
 growable view; a self-rebuild with identical artifacts). The Android shared-object targets do not list the growable
 operations yet. After N0: dynamic limits through growable views (replacing ADR-370's fixed reservations), P1, packed
 bytes and OI-52 R1, through the native workflow only, then BBC.
+
+## N0 complete: native evolution — 2026-11-05 (ADR-372)
+
+**Done.**
+- Native ledger tool: `compiler/bootstrap/evolution/evolve.sh` (`apply`, `replay`, `check`; sh, the seed, git).
+- Ledger 0008: the assembler takes every `bits<64>` decimal.
+- **Ledger 0009, the completion change**, written only as batch text. It adds a new function and two new blocks,
+  changes the decoder's signature and its call sites, and makes the decoder's 166 data reads growable loads bounded by
+  the store's own length. It was applied with `evolve.sh`, and the edited request was self-built without Python, with
+  identical results (xaxc1 = xaxc2). Seed `7302550b…` (33,141,194 bytes).
+
+**How to change the compiler now.**
+1. `xaxc edit <store> <empty file> <list>` lists the functions; `xaxc edit <store> <file with F<n>> <view>` shows
+   one. Each takes about a minute on the driver.
+2. Write the batch: `R <root>`, `F<n>`, then `define @name … end` (view form; handles in order) and
+   `replace F<n> @name`. Mechanical edits of a large view (renumbering after an insertion) may be done with `awk`, as
+   in `compiler/bootstrap/evolution/n0/0009/`.
+3. Probe: `xaxc edit <store> <batch> <out>` then `xaxc verify <out> <report>`. Then try `selfbuild.sh` on copies,
+   because a store that verifies can still fail to build.
+4. Record: `sh compiler/bootstrap/evolution/evolve.sh apply <batch> <store>`, once per store (driver, then the
+   request with its own `R` line). Then `selfbuild.sh`, copy xaxc1 to the seed, and update `SEED_SHA256` and
+   `SEED_SIZE`.
+
+**The general backend's limits for the driver.** These decide whether a change builds:
+- the register path takes at most four machine parameters per function and four machine inputs per call; anything
+  larger falls to the frame path, which cannot lower main's startup reads;
+- main is 632 values below `VCAP` (262,144), and leaf calls are inlined into their callers, so add no call to main
+  that would be inlined.
+
+**Next.** Through the native workflow only: dynamic limits (growable views in place of ADR-370's fixed
+reservations), P1, packed bytes, OI-52 R1. Then BBC: rebuild its driver from the production driver, build bbc.exe
+natively, and run the Android-first checks. Still open in the native workspace: recursion-group rebuilds,
+`set-signature`, `move`, `prune-dead`.
 
 ## Open issues
 
