@@ -890,6 +890,20 @@ class NativeWorkspaceTests(unittest.TestCase):
                         done += 1
         self.assertGreaterEqual(done, 4)
 
+    def test_define_takes_every_bits64_value(self):
+        """N0: the assembler reads a decimal constant up to 2^64 - 1 (20 digits; the view prints it so, as in the driver's
+        own functions) and rejects one past it."""
+        from test_xax_linux import _status_program
+
+        b64, b32 = X.bits_type(64), X.bits_type(32)
+        reader = _status_program(lambda b: b.op1(X.Operation.INT_TRUNCATE, (b.const(b64, (1 << 64) - 1),), b32))[0]
+        n = next(k for k in range(len(ws_functions(reader))) if "18446744073709551615" in self.view(reader, f"F{k}".encode())[1])
+        body = "\n".join(self.view(reader, f"F{n}".encode())[1].splitlines()[2:])
+        batch = f"R {reader.root_cid.hex()}\nF{n}\ndefine @f\n{body}\nend\nreplace F{n} @f\n"
+        self.assertEqual(self.apply(reader, batch.encode()), ("store", reader.data))
+        status, diagnostic = self.apply(reader, batch.replace("18446744073709551615", "18446744073709551616").encode())
+        self.assertEqual((status, diagnostic.rule), ("rejected", "WORKSPACE-BATCH-DEFINE"))
+
     def test_define_structural_change(self):
         """N0 (ADR-367): a structural change written only as native batch text: a new two-block function ``@g`` of a new
         signature, a new function ``@v`` calling it, and the entry redefined to call ``@v`` instead of ``F1``.  The edited
