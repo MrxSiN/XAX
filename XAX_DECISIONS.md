@@ -3731,3 +3731,13 @@ Superseded by [ADR-369](#adr-369--n03-growable-views-as-limit-bounded-checked-ac
 | Rationale | With 0010 alone, the same 4 GiB view built or was rejected depending on which path lowered the function. |
 | Evidence | EXECUTED on Linux x86-64: `tests/test_xax_oi52_r1.py::test_frame_path_bounds_past_imm32` (a callee of five machine parameters). Before the change the 4 GiB - 4 KiB probe was rejected; after it, the last byte answers and one past it traps. `selfbuild.sh`: xaxc1 = xaxc2; seed rotated. |
 | Limits | The Python reference's frame path, the PE legacy path and the division span check still reject such bounds. Offsets past `bits<32>` are OI-52 R2. |
+
+
+## ADR-375 — `define`'s `object` form: native authoring of reference-free objects (ledger 0012)
+
+| Field | Record |
+|---|---|
+| Decision | A `define @name` whose body is `object <kind> 0x<body>` supplies a canonical object with no references, so a native batch can create foreign declarations (and any other reference-free object) and call them by `@name`. Ledger 0012 adds `@a_object` and two wrappers, written by hand in view form. It redefines `ws_tr_define` to call them, in the driver and the request store. The kept edit generator no longer makes `ws_translate` or `ws_command`; `test_store_regeneration` records them as natively evolved. |
+| Rationale | `define` could make only functions, graphs, constants and types. Porting the production driver to a Windows host (BBC) needs Windows foreign declarations, and without this form only a Python-built record could supply them (ADR-367 forbids that). |
+| Evidence | EXECUTED on Linux x86-64: `tests/test_native_object_form.py` (the seed's `xaxc edit`). An entry redefined to call `exit_group` through `@decl`, supplied by its kind and body, makes the very same store. `selfbuild.sh`: xaxc1 = xaxc2; seed rotated. |
+| Limits | Objects with references still come only from `define`'s function form or from records. The kind and body are not checked until `verify`. |
