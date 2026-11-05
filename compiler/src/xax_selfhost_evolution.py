@@ -126,6 +126,11 @@ def before_store(store: str, before: str) -> bytes | None:
     return data if blob_id(data) == before else stored_blob(before)
 
 
+def is_batch(record: Path) -> bool:
+    """N0.4 (ADR-372): a record written as native batch text (``R <root>`` first), not an ``XAXEDIT1`` edit record."""
+    return record.read_bytes()[:2] == b"R "
+
+
 def replay_reference(record: Path, data: bytes) -> bytes:
     """One transaction with the Python reference engine (``apply_reference``, equal to ``xaxc edit``)."""
     from xax_compiler import StoreReader
@@ -161,7 +166,8 @@ def apply(record: Path, stores: list[str], compiler: Path = SEED_COMPILER) -> li
     from xax_selfhost_edit import parse_record
 
     data = Path(record).read_bytes()
-    parse_record(data)
+    if data[:2] != b"R ":  # a batch (native text) is checked by xaxc edit itself
+        parse_record(data)
     heads = check()
     target = EVOLUTION_DIRECTORY / Path(record).name
     if target.exists() and target.read_bytes() != data:
