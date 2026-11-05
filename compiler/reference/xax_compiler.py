@@ -839,7 +839,8 @@ class StoreReader:
         if obj is not None:
             self._decoded[cid] = obj
             return obj
-        cursor = Cursor(self.data[offset:], f"object:{cid.hex()}")
+        # The envelope is a ULEB length (at most 10 bytes) then the record: slice only that, never the store's rest.
+        cursor = Cursor(self.data[offset : offset + 10 + length], f"object:{cid.hex()}")
         actual_length = cursor.uleb()
         if actual_length != length:
             fail("XAX.CANON.INDEX_LENGTH", cid.hex(), "SER-INDEX-RECORD-LENGTH", length, actual_length)
