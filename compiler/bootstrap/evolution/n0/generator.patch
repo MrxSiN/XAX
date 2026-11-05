@@ -1,0 +1,161 @@
+diff --git a/compiler/src/xax_selfhost_facts.py b/compiler/src/xax_selfhost_facts.py
+index fe63d3c..f078ea1 100644
+--- a/compiler/src/xax_selfhost_facts.py
++++ b/compiler/src/xax_selfhost_facts.py
+@@ -133,6 +133,8 @@ MEMORY_SITES = (
+     "TARGET_ATTRIBUTES", "TARGET_DEFINED", "TARGET_SCOPE_ENUM", "TARGET_SCOPE_SUPPORTED", "TARGET_SPACES", "TARGET_ARITY", "TARGET_TYPE",
+     # S8 (ADR-251): a lend entry passed to a call that lends it no view (payload: its extent and the declaration).
+     "LEND_VIEW_LENT",
++    # N0.3 (ADR-369): a growable access's limit operand.
++    "GROWABLE_LIMIT_BITS",
+ )
+ M = {name: index + 1 for index, name in enumerate(MEMORY_SITES)}
+ # Per-value fields (each an array of V words).
+@@ -1216,12 +1218,18 @@ def _end_views(tables):
+     return _function(("cursor", "block"), build, tables)
+ 
+ 
+-def _checked(tables, covers, load: bool):
++def _checked(tables, covers, load: bool, growable: bool = False):
++    """``checked.load/store.bits.le``; with ``growable`` (ADR-369) the ``bits<64>`` limit operand after the offset, and
++    the value and memory operands one later."""
++    g = int(growable)
++
+     def build(e: E):
+         n = _Node(e)
+         source = n.vid(0)
+         _pointer(e, source, exact=True)
+-        _reject(e, n.shape(3, 2, 2) if load else n.shape(4, 1, 2), M["OP_CONTRACT"], n.no, n.nr, n.na)
++        _reject(e, n.shape(3 + g, 2, 2) if load else n.shape(4 + g, 1, 2), M["OP_CONTRACT"], n.no, n.nr, n.na)
++        if growable:
++            _reject(e, e.eq(e.table(_T.WIDTH, n.tid(2)), 64), M["GROWABLE_LIMIT_BITS"], n.tid(2))
+         element = e.value(PEL, source)
+         size = n.attr(0)
+         # Byte-view widening (ADR-231): on a bits<8> element (the width table holds only canonical bits types, so
+@@ -1238,12 +1246,12 @@ def _checked(tables, covers, load: bool):
+         if load:
+             _reject(e, e.ne(e.and_(permission, int(Permission.READ)), 0), M["READ_PERMISSION"], permission)
+             _reject(e, e.ne(value_ok(n.rtid(0)), 0), M["CHECKED_LOAD_TYPE"], element, n.rtid(0), size, e.flag(byte_view))
+-            effect_index = 2
++            effect_index = 2 + g
+         else:
+             _reject(e, e.ne(e.and_(permission, int(Permission.WRITE)), 0), M["WRITE_PERMISSION"], permission)
+-            _reject(e, e.ne(value_ok(n.tid(2)), 0), M["CHECKED_STORE_TYPE"], element, n.tid(2), size, e.flag(byte_view))
+-            _stored_provenance(e, n.vid(2), source)
+-            effect_index = 3
++            _reject(e, e.ne(value_ok(n.tid(2 + g)), 0), M["CHECKED_STORE_TYPE"], element, n.tid(2 + g), size, e.flag(byte_view))
++            _stored_provenance(e, n.vid(2 + g), source)
++            effect_index = 3 + g
+         storage = e.value(PST, source)
+         intervals = _consume_effect(e, n.vid(effect_index), storage, exact=True)
+         effect_type = n.tid(effect_index)
+@@ -3349,6 +3357,7 @@ _CONTRACTS = {
+     Operation.LOAD_BITS_LE: (2, 2, 2), Operation.STORE_BITS_LE: (3, 1, 2), Operation.ADDRESS_OFFSET: (1, 1, 1),
+     Operation.STACK_END: (2, 0, 0), Operation.STACK_ALLOC: (0, 3, 2),
+     Operation.CHECKED_LOAD_BITS_LE: (3, 2, 2), Operation.CHECKED_STORE_BITS_LE: (4, 1, 2), Operation.POINTER_REBASE: (2, 1, 1),
++    Operation.GROWABLE_LOAD_BITS_LE: (4, 2, 2), Operation.GROWABLE_STORE_BITS_LE: (5, 1, 2),
+ }
+ 
+ 
+@@ -3462,6 +3471,8 @@ def memory_diagnostic(site: int, payload, operation, refs, storages, read, cids=
+         return "XAX.MEMORY.CHECKED_ALIGNMENT", "MEMORY-CHECKED-ALIGNMENT-BOOTSTRAP", 1, x
+     if name == "CHECKED_OFFSET":
+         return "XAX.MEMORY.CHECKED_OFFSET", "MEMORY-CHECKED-OFFSET-BITS", 32, x
++    if name == "GROWABLE_LIMIT_BITS":
++        return "XAX.MEMORY.CHECKED_OFFSET", "MEMORY-GROWABLE-LIMIT-BITS", 64, h(x)
+     if name in ("CHECKED_LOAD_TYPE", "CHECKED_STORE_TYPE"):
+         from xax_compiler import bits_type
+ 
+@@ -3732,6 +3743,8 @@ def build_engine():
+         Operation.CALL_DIRECT: add(_call_direct(tables, covers)),
+         Operation.CHECKED_LOAD_BITS_LE: add(_checked(tables, covers, True)),
+         Operation.CHECKED_STORE_BITS_LE: add(_checked(tables, covers, False)),
++        Operation.GROWABLE_LOAD_BITS_LE: add(_checked(tables, covers, True, growable=True)),
++        Operation.GROWABLE_STORE_BITS_LE: add(_checked(tables, covers, False, growable=True)),
+         Operation.HEAP_VIEW: add(_heap_view_node(tables)),
+         Operation.POINTER_ADDRESS: add(_pointer_address(tables)),
+         Operation.POINTER_REBASE: add(_pointer_rebase(tables)),
+diff --git a/compiler/src/xax_selfhost_general_regalloc.py b/compiler/src/xax_selfhost_general_regalloc.py
+index a7a7c42..0f6825b 100644
+--- a/compiler/src/xax_selfhost_general_regalloc.py
++++ b/compiler/src/xax_selfhost_general_regalloc.py
+@@ -2138,13 +2138,18 @@ def _loop_slots(tables):
+         e.var("ls_entry", _f(e, _g(e, G_BENTRY), B_POS))
+         e.var("ls_na", _ra(e, R_NALLOC))
+         # Reachability matrix: R[i][j] = 1 when j is reachable from i by at least one edge.
+-        e.var("ls_r", e.alloc(e.add(e.mul(p["ls_nb"], p["ls_nb"]), 1)))
++        # W5: whether each block lies on a CFG cycle (it reaches itself), the only reachability fact used here. It was an
++        # nb x nb reachability matrix (quadratic memory: 688 MB for a 9,277-block function, so the arena declined); now a
++        # flag per block from a search that stops on reaching the block, with one visited array reused by stamps.
++        e.var("ls_cyc", e.alloc(e.add(p["ls_nb"], 1)))
++        e.var("ls_seen", e.alloc(e.add(p["ls_nb"], 1)))
+         e.var("ls_stack", e.alloc(e.add(e.mul(p["ls_nb"], 4), 2)))
+-        _ok(e, e.both(e.ne(p["ls_r"], NONE), e.ne(p["ls_stack"], NONE)))
++        _ok(e, e.both(e.ne(p["ls_cyc"], NONE), e.ne(p["ls_seen"], NONE), e.ne(p["ls_stack"], NONE)))
++        e.for_("ls_j", 0, p["ls_nb"], lambda: e.st(e.add(p["ls_seen"], p["ls_j"]), 0))
+ 
+-        def reach_row():
+-            e.var("ls_row", e.add(p["ls_r"], e.mul(p["ls_i"], p["ls_nb"])))
+-            e.for_("ls_j", 0, p["ls_nb"], lambda: e.st(e.add(p["ls_row"], p["ls_j"]), 0))
++        def cycle_flag():
++            e.st(e.add(p["ls_cyc"], p["ls_i"]), 0)
++            e.var("ls_mark", e.add(p["ls_i"], 1))
+             e.var("ls_sp", 0)
+             _successor_positions(e, _block_at(e, p["ls_i"]), lambda t: (e.st(e.add(p["ls_stack"], p["ls_sp"]), t), e.set("ls_sp", e.add(p["ls_sp"], 1))))
+ 
+@@ -2153,17 +2158,18 @@ def _loop_slots(tables):
+                 e.var("ls_x", e.ld(e.add(p["ls_stack"], p["ls_sp"])))
+ 
+                 def visit():
+-                    e.st(e.add(p["ls_row"], p["ls_x"]), 1)
++                    e.st(e.add(p["ls_seen"], p["ls_x"]), p["ls_mark"])
+                     _successor_positions(e, _block_at(e, p["ls_x"]), lambda t: (e.st(e.add(p["ls_stack"], p["ls_sp"]), t), e.set("ls_sp", e.add(p["ls_sp"], 1))))
+ 
+-                e.if_(e.eq(e.ld(e.add(p["ls_row"], p["ls_x"])), 0), visit)
++                e.if_(e.eq(p["ls_x"], p["ls_i"]), lambda: e.st(e.add(p["ls_cyc"], p["ls_i"]), 1),
++                      lambda: e.if_(e.ne(e.ld(e.add(p["ls_seen"], p["ls_x"])), p["ls_mark"]), visit))
+ 
+-            e.while_(lambda: e.ne(p["ls_sp"], 0), step)
++            e.while_(lambda: e.both(e.ne(p["ls_sp"], 0), e.eq(e.ld(e.add(p["ls_cyc"], p["ls_i"])), 0)), step)
+ 
+-        e.for_("ls_i", 0, p["ls_nb"], reach_row)
++        e.for_("ls_i", 0, p["ls_nb"], cycle_flag)
+ 
+         def reach(i, j):
+-            return e.ne(e.ld(e.add(p["ls_r"], e.add(e.mul(i, p["ls_nb"]), j))), 0)
++            return e.ne(e.ld(e.add(p["ls_cyc"], i)), 0)
+ 
+         # Candidates: machine parameters a block only forwards on edges, in a CFG cycle, not pinned or homed.
+         e.var("ls_cstamp", _stamp(e))
+diff --git a/compiler/src/xax_selfhost_general_view.py b/compiler/src/xax_selfhost_general_view.py
+index 6ee04c3..4f8ea8e 100644
+--- a/compiler/src/xax_selfhost_general_view.py
++++ b/compiler/src/xax_selfhost_general_view.py
+@@ -1030,6 +1030,7 @@ def _distance(tables):
+         p = e.p
+         e.if_(e.eq(p["s"], p["g"]), lambda: e.give(0))
+         n = _g(e, G_BCOUNT)
++        e.var("ds_arena", e.hd(H_ARENA))  # the queue is dead once this returns: released below (it leaked per call)
+         e.var("ds_queue", e.alloc(e.add(n, 1)))
+         _ok(e, e.ne(p["ds_queue"], NONE))
+         e.var("ds_mark", e.add(_g(e, G_STAMP), 1))
+@@ -1062,6 +1063,7 @@ def _distance(tables):
+             e.if_(e.eq(p["ds_head"], p["ds_level_end"]), lambda: (e.set("ds_level_end", p["ds_tail"]), e.set("ds_steps", e.add(p["ds_steps"], 1))))
+ 
+         e.while_(lambda: e.both(e.eq(p["ds_found"], FAR), e.lt(p["ds_head"], p["ds_tail"])), step)
++        e.set_hd(H_ARENA, p["ds_arena"])
+         e.give(p["ds_found"])
+     return _function(("s", "g"), build, tables)
+ 
+diff --git a/compiler/src/xax_selfhost_render_graph.py b/compiler/src/xax_selfhost_render_graph.py
+index 487c8b8..d57a207 100644
+--- a/compiler/src/xax_selfhost_render_graph.py
++++ b/compiler/src/xax_selfhost_render_graph.py
+@@ -980,6 +980,7 @@ def _memory_part(tables, part: int):
+             "STORE_EFFECT_TYPE": ("XAX.MEMORY.EFFECT_TYPE", "MEMORY-EFFECT-TYPE", const("one matching effect<memory> result"), listing(h(x))),
+             "CHECKED_ALIGNMENT": ("XAX.MEMORY.CHECKED_ALIGNMENT", "MEMORY-CHECKED-ALIGNMENT-BOOTSTRAP", const(1), integer(x)),
+             "CHECKED_OFFSET": ("XAX.MEMORY.CHECKED_OFFSET", "MEMORY-CHECKED-OFFSET-BITS", const(32), integer(x)),
++            "GROWABLE_LIMIT_BITS": ("XAX.MEMORY.CHECKED_OFFSET", "MEMORY-GROWABLE-LIMIT-BITS", const(64), h(x)),
+             "CHECKED_LOAD_TYPE": ("XAX.MEMORY.VALUE_TYPE", "MEMORY-CHECKED-LOAD-TYPE", checked_type, h(y)),
+             "CHECKED_STORE_TYPE": ("XAX.MEMORY.VALUE_TYPE", "MEMORY-CHECKED-STORE-TYPE", checked_type, h(y)),
+             "CHECKED_EFFECT_TYPE": ("XAX.MEMORY.EFFECT_TYPE", "MEMORY-EFFECT-TYPE", const("matching effect<memory> continuation"), checked_effect),
