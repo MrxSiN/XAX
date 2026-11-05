@@ -2591,28 +2591,6 @@ def heap_owner_type() -> SemanticObject:
     return resource_type(HEAP_RESOURCE_KIND, 1, flags=ResourceFlags.RELEASABLE, instance=0)
 
 
-def extent_type(view: SemanticObject) -> SemanticObject:
-    """``extent<V>`` (form 12, ADR-368): a runtime byte limit, at most ``V``'s extent, of a heap view of type ``V``."""
-    return SemanticObject.create(Kind.TYPE, uleb(12) + uleb(0), (view.cid,))
-
-
-def _decode_extent_type(obj: SemanticObject, resolve: Callable[[bytes], SemanticObject]) -> tuple[bytes, int]:
-    """``(view type CID, its reservation in bytes)`` of an ``extent<V>``."""
-    cursor = Cursor(obj.body, obj.cid.hex())
-    if cursor.uleb() != 12 or len(obj.references) != 1 or cursor.uleb() != 0:
-        fail("XAX.TYPE.EXTENT", obj.cid.hex(), "TYPE-EXTENT-CANONICAL", "form 12 naming one heap-view type", obj.body.hex())
-    cursor.end("TYPE-EXTENT-CANONICAL")
-    view = obj.references[0]
-    info = _heap_view_info(resolve(view))
-    if info is None:
-        fail("XAX.TYPE.EXTENT", obj.cid.hex(), "TYPE-EXTENT-VIEW", "a heap-view type", view.hex())
-    return view, info[0]
-
-
-def _is_extent_type(obj: SemanticObject) -> bool:
-    return obj.kind == Kind.TYPE and obj.body.startswith(uleb(12))
-
-
 def heap_view_type(extent: int, *, initialized: bool = True) -> SemanticObject:
     """Linear ownership of a whole non-null heap block proven to span ``extent`` bytes.
 
@@ -2767,11 +2745,9 @@ class Operation(IntEnum):
     LINK_MAKE = 74
     LINK_FOLLOW = 75
     LINK_TARGET = 76
-    # ADR-368 (N0.3): growable views
-    EXTENT_MAKE = 77
-    EXTENT_GROW = 78
-    GROWABLE_LOAD_BITS_LE = 79
-    GROWABLE_STORE_BITS_LE = 80
+    # ADR-369 (N0.3): growable views: checked accesses bounded by a runtime limit too
+    GROWABLE_LOAD_BITS_LE = 77
+    GROWABLE_STORE_BITS_LE = 78
 
 
 # Same-width binary integer operations: two bits<N> operands, one bits<N> result.
@@ -2807,8 +2783,6 @@ RESOURCE_EFFECT_OPERATIONS = frozenset(
 
 MEMORY_OPERATIONS = frozenset(
     {
-        Operation.EXTENT_MAKE,
-        Operation.EXTENT_GROW,
         Operation.GROWABLE_LOAD_BITS_LE,
         Operation.GROWABLE_STORE_BITS_LE,
         Operation.STACK_ALLOC,
@@ -3851,8 +3825,6 @@ def value_bit_width(obj: SemanticObject, resolve: Callable[[bytes], SemanticObje
         return decode_float_width(obj)
     if form == 11:
         return LINK_BYTES * 8
-    if form == 12:
-        return 64
     if form == 8:
         widths = [value_bit_width(resolve(cid), resolve) for cid in _decode_tuple_type(obj, resolve)]
         return None if any(width is None for width in widths) else sum(widths)
@@ -3907,8 +3879,6 @@ def abi_layout(obj: SemanticObject, resolve: Callable[[bytes], SemanticObject], 
         return AbiLayout(size, size)
     if form == 11:
         return AbiLayout(LINK_BYTES, LINK_BYTES)
-    if form == 12:
-        return AbiLayout(8, 8)
     if form in (8, 9):
         if form == 8:
             components = _decode_tuple_type(obj, resolve)
@@ -4211,10 +4181,8 @@ def _verify_type(obj: SemanticObject, resolve: Callable[[bytes], SemanticObject]
     elif form == 11:
         if obj.body != uleb(11) or obj.references:
             fail("XAX.TYPE.LINK", obj.cid.hex(), "TYPE-LINK-CANONICAL", "empty link body", obj.body.hex())
-    elif form == 12:
-        _decode_extent_type(obj, resolve)
     else:
-        fail("XAX.TYPE.FORM", obj.cid.hex(), "TYPE-FORM-SUPPORTED", list(range(1, 13)), form)
+        fail("XAX.TYPE.FORM", obj.cid.hex(), "TYPE-FORM-SUPPORTED", list(range(1, 12)), form)
 
 
 def _is_memory_effect(obj: SemanticObject) -> bool:
@@ -5436,33 +5404,6 @@ def _verify_memory_node(
             )
         return
 
-    if operation == Operation.EXTENT_MAKE:
-        # ADR-368: a live heap view's limit, starting at 0; the view token is handed back (it stays linear), and the
-        # extent names the view's type.
-        contract(1, 2, 0)
-        view_type = node.operand_types[0]
-        if _heap_view_info(resolve(view_type)) is None or node.results[0] != view_type:
-            fail("XAX.MEMORY.EXTENT", graph.cid.hex(), "MEMORY-EXTENT-VIEW", "a heap-view value, handed back", view_type.hex())
-        if node.results[1] != extent_type(resolve(view_type)).cid:
-            fail("XAX.MEMORY.EXTENT", graph.cid.hex(), "MEMORY-EXTENT-TYPE", extent_type(resolve(view_type)).cid.hex(), node.results[1].hex())
-        owner = owners.get(node.operands[0])
-        if owner is None or node.operands[0] in owner_consumers or owner.storage in ended:
-            fail("XAX.MEMORY.OWNER", graph.cid.hex(), "MEMORY-EXTENT-LIVE-VIEW", "live heap view", [node.operands[0].block, node.operands[0].index, node.operands[0].result])
-        owner_consumers.add(node.operands[0])
-        owners[result_refs[0]] = owner
-        return
-
-    if operation == Operation.EXTENT_GROW:
-        # ADR-368: max(limit, n), trapping when n exceeds the view's extent; a limit never decreases.
-        contract(2, 1, 0)
-        extent_cid = node.operand_types[0]
-        if not _is_extent_type(resolve(extent_cid)) or node.results[0] != extent_cid:
-            fail("XAX.MEMORY.EXTENT", graph.cid.hex(), "MEMORY-EXTENT-GROW-TYPES", ["extent<V>", "bits<64>", "extent<V>"], [cid.hex() for cid in (*node.operand_types, *node.results)])
-        _decode_extent_type(resolve(extent_cid), resolve)
-        if decode_bits_width(resolve(node.operand_types[1])) != 64:
-            fail("XAX.MEMORY.EXTENT", graph.cid.hex(), "MEMORY-EXTENT-GROW-TYPES", ["extent<V>", "bits<64>", "extent<V>"], [cid.hex() for cid in node.operand_types])
-        return
-
     pointer_fact = pointer(node.operands[0])
     if operation == Operation.ADDRESS_OFFSET:
         contract(1, 1, 1)
@@ -5508,16 +5449,10 @@ def _verify_memory_node(
         growable = operation in (Operation.GROWABLE_LOAD_BITS_LE, Operation.GROWABLE_STORE_BITS_LE)
         contract((3 if is_load else 4) + growable, 2 if is_load else 1, 2)
         if growable:
-            # ADR-368: the extent operand (after the offset) bounds the access; it must be an extent of this pointer's
-            # whole view, so its limit is within the view's extent.
-            extent_cid = node.operand_types[2]
-            if not _is_extent_type(resolve(extent_cid)):
-                fail("XAX.MEMORY.EXTENT", graph.cid.hex(), "MEMORY-GROWABLE-EXTENT", "extent<V>", extent_cid.hex())
-            _view_cid, reservation = _decode_extent_type(resolve(extent_cid), resolve)
-            whole = pointer_fact.offset + pointer_fact.window + pointer_fact.extent
-            if pointer_fact.offset or pointer_fact.window or reservation != whole:
-                fail("XAX.MEMORY.EXTENT", graph.cid.hex(), "MEMORY-GROWABLE-WHOLE-VIEW", f"the base pointer of a {reservation}-byte view",
-                     [pointer_fact.offset, pointer_fact.window, whole])
+            # ADR-369: a bits<64> limit after the offset bounds the access as well as the pointer's extent.
+            limit_type = resolve(node.operand_types[2])
+            if limit_type.kind != Kind.TYPE or not limit_type.body.startswith(uleb(1)) or decode_bits_width(limit_type) != 64:
+                fail("XAX.MEMORY.CHECKED_OFFSET", graph.cid.hex(), "MEMORY-GROWABLE-LIMIT-BITS", 64, node.operand_types[2].hex())
         size, alignment = node.attributes
         # Byte-view widening: on a view of exactly bits<8>, a checked access reads or writes 1, 2, 4, or 8 consecutive
         # bytes as one little-endian bits<8*size> integer; every other element keeps size == element size.
@@ -7645,8 +7580,7 @@ def _parse_graph_uncached(obj: SemanticObject, resolve: Callable[[bytes], Semant
                     _verify_meta_node(obj, resolve, node)
                 elif node.operation in TARGET_OPERATIONS:
                     _verify_target_node(obj, resolve, node)
-                if node.operation not in (Operation.CALL_DIRECT, Operation.CALL_FOREIGN, Operation.HEAP_VIEW, Operation.EXTENT_MAKE):
-                    # ADR-368: ``extent.make`` reads the view token; it does not consume it
+                if node.operation not in (Operation.CALL_DIRECT, Operation.CALL_FOREIGN, Operation.HEAP_VIEW):
                     _end_heap_views(node.operands, operand_types, owners, owner_consumers, ended, resolve)
             # S8 (ADR-251): the engine's terminator rejection; a stack-owner entry's return checks are raised where the
             # bootstrap makes them (after the terminator's typing), the rest here.
@@ -9297,19 +9231,12 @@ def _execute_graph(
             elif node.operation in (Operation.POINTER_ADDRESS, Operation.POINTER_REBASE, Operation.LINK_MAKE, Operation.LINK_FOLLOW):
                 # The reference executor has no address space; addresses are target facts.
                 fail("XAX.EXEC.UNSUPPORTED", "executor", f"EXEC-{node.operation.name.replace('_', '-')}-TARGET-ONLY", "compiled target", "reference executor")
-            elif node.operation == Operation.EXTENT_MAKE:
-                results = (operands[0], 0)
-            elif node.operation == Operation.EXTENT_GROW:
-                limit, wanted = operands
-                if wanted > _decode_extent_type(resolve(node.operand_types[0]), resolve)[1]:
-                    raise XaxTrap(b"extent-capacity")
-                results = (max(limit, wanted),)
             elif node.operation in (Operation.GROWABLE_LOAD_BITS_LE, Operation.GROWABLE_STORE_BITS_LE):
                 is_load = node.operation == Operation.GROWABLE_LOAD_BITS_LE
                 pointer, dynamic_offset, limit = operands[:3]
                 size, alignment = node.attributes
                 absolute = pointer.offset + dynamic_offset
-                if dynamic_offset < 0 or dynamic_offset + size > limit or absolute % alignment:
+                if dynamic_offset < 0 or dynamic_offset + size > min(limit, len(pointer.storage.data) - pointer.offset) or absolute % alignment:
                     raise XaxTrap(b"memory-check")
                 if is_load:
                     value = _runtime_scalar_from_bytes(bytes(pointer.storage.data[absolute : absolute + size]), resolve(node.results[0]))
