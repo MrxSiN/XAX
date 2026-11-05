@@ -473,6 +473,14 @@ class EditCommandTests(unittest.TestCase):
                 self.assertEqual((status, data), (0, apply_reference(reader, record).data))
                 self.assertEqual(data, other.data)
                 self.assertEqual(self.driver.verify(output, verified), 0)
+        with self.subTest("more supplied objects than mutation rows"):
+            # OI-52 (ledger 0003): supplied objects are bounded by the transaction's new-object table, not by the
+            # 256-row mutation table; the 300 unreached constants are dropped as the one above is.
+            many = supplied + [X.constant(X.bits_type(32), 20000 + k) for k in range(300)]
+            record = edit_record([(REPLACE_REFERENCE, module.cid, old_function.cid, new_function.cid)], reader.root_cid, many)
+            status, data = run(record)
+            self.assertEqual((status, data), (0, apply_reference(reader, record).data))
+            self.assertEqual(data, other.data)
         for name, mutation, objects, rule in (
                 ("not a reference", (REPLACE_REFERENCE, old_function.cid, new_graph.cid, new_graph.cid), supplied, "EDIT-REFERENCE-PRECONDITION"),
                 ("no owner", (REPLACE_REFERENCE, bytes(32), old_graph.cid, new_graph.cid), supplied, "WORKSPACE-HANDLE-GENERATION"),
