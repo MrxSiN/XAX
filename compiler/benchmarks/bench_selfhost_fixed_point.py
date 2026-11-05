@@ -35,7 +35,15 @@ def _emulate(image, words, input_capacity, output_capacity, read_back):
     emulator.mem_map(R._STACK_TOP - R._STACK_SIZE, R._STACK_SIZE)
     emulator.mem_map(R._VIEWS_IN_BASE, (input_capacity + 0xFFF) & -0x1000)
     emulator.mem_map(R._VIEWS_OUT_BASE, (output_capacity + 0xFFF) & -0x1000)
-    emulator.mem_write(R._VIEWS_IN_BASE, b"".join(int(word).to_bytes(8, "little") for word in words))
+    from array import array
+
+    # One packed buffer (the same little-endian words): joining one bytes object per word took several GB for the
+    # largest stores and was killed on a 16 GB host.
+    packed = array("Q", words)
+    if packed.itemsize != 8 or __import__("sys").byteorder != "little":
+        packed = b"".join(int(word).to_bytes(8, "little") for word in words)
+    emulator.mem_write(R._VIEWS_IN_BASE, bytes(packed))
+    del packed
     emulator.reg_write(rv.UC_RISCV_REG_SP, R._STACK_TOP)
     emulator.reg_write(rv.UC_RISCV_REG_RA, R._RETURN_SENTINEL)
     emulator.reg_write(rv.UC_RISCV_REG_A0, R._VIEWS_IN_BASE)

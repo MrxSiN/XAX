@@ -951,6 +951,18 @@ The XAX JVM program now builds callbacks: JDK streams and comparators that call 
 - The driver's function takes 2,078,110 of the pinned seed's 2,097,152 CFG input words; its graph is 2.02 MB of the graph decoder's 2 MiB.
 - The stores were regenerated and the ledger rebased. The seed was rotated to `c25276ad…` (seed = C1 = C2).
 
+#### Optimization P0 baseline and the P1 blocker — 2026-11-05
+
+- P0 ([compiler_cost_2026-11-05.json](compiler/benchmarks/compiler_cost_2026-11-05.json)): with the pinned seed on an idle 4-vCPU host, `verify`, `edit` and `resolve` of the compiler's own stores each take about 54 s (1.6, 2.2 and 1.7 GB peak); `build` takes 260–271 s (2.9 GB) and reproduces the seed byte for byte.
+- 98.7% of the 62 MB driver store is graph bodies. 83% of its 3.85 M block parameters are single-source: the deleted builders' DSL threaded every live variable through every block.
+- P1 (remove those parameters by graph-replacing transactions) is blocked by the edit engine's fixed preimage region. It reserves about 6 MiB per new object in 16 MiB, and a function replacement cascades through every caller up to the 2 MB driver main graph, so one transaction can rebuild only about 10 MB. Even 73 functions are refused (`DRIVER-EDIT-CAPACITY`). The next step is an edit-engine change that grows that region on demand, then a self-build and seed rotation.
+
+#### Self-hosting evidence re-run on the committed stores — 2026-11-05
+
+- `selfhost_x86_64_evidence.json` and `selfhost_closure_evidence.json` were stale: the CFG, graph-decoder and x86-64 backend stores changed in S15e.6i.2a after they were recorded. Both were re-run on Linux x86-64 with `XAX_REQUIRE_NATIVE=1`; every component's authority is `xax`.
+- x86-64: all ten gen1 images equal the bootstrap references. RV64 closure: all eight gen1 images equal the references; the emulated store verifier equals the native one on all 29 committed stores (now including the 62 MB general driver and the 30 MB Android store); the emulated hash equals production on all 29; B4 holds.
+- The closure bench now verifies each store in a child process of its own, and the emulator packs its input words in one buffer: the driver store's verification had exceeded a 16 GB host. `test_every_b1_entry_is_bound_to_the_committed_store` passes again.
+
 #### W4 the Python compiler in `compiler/reference/` — 2026-11-04 (ADR-363)
 
 - 56 Python compiler modules (inventory classes A, B, C and `xax_bootstrap`) moved to `compiler/reference/`. `compiler/src/` keeps 72 modules: the native runners and tooling.
