@@ -840,12 +840,37 @@ edge N E A VALUE         set-edge: argument A of edge E of N's block
 type N T | type N K T    set-type: a node result's type
 ```
 
+**Definitions (N0, ADR-367).** Two more batch forms build and install whole functions:
+
+```text
+define @name             a function in exactly the form the view prints it, from its signature line
+(T0)->(T0)               (no R/F header lines), then a line `end`
+B0(P0:T0)
+N0 constant 2 -> T0
+N1 mul.wrap P0 N0 -> T0
+br B1(N1)
+B1(P1:T0)
+N2 call.direct entity=@other P1 -> T0
+ret N2
+T0 bits32
+end
+replace F<n> @name       every object of the store that refers to F<n> refers to @name's function instead
+```
+
+An entity is `F<n>`, a 64-digit CID, or `@<name>` defined earlier in the same batch; a constant's value is decimal for a
+`bits` type, else `0x` and all its bytes, most significant first; `trap` is followed by `0x` and the payload's bytes.
+Every constant, any `bits` type the store lacks, the graph and the function become objects the record supplies; a
+reference to another of them is its supplied index, which the engine resolves, and a graph's or function's references
+are put in canonical order by the engine. A signature change redefines the callers in the same batch. Functions inside a
+recursion group are not rebuilt yet (`WORKSPACE-RECURSION-REBUILD`). Any function's view given back this way makes the
+same store.
+
 A value is `P<i>`, `N<i>`, `N<i>.R<k>` or `@<id>` (`.R<k>`). Every old operation, value, operand, edge argument
 and type a mutation's preconditions need is read from the store, as `LocalMutationSession` does; the translated
 transaction is an edit record, applied by the same engine, so a stale root rejects
 (`WORKSPACE-EXPECTED-ROOT`) and the mutation preconditions are the workspace's. The output is a candidate; the client
-runs `verify` on it and publishes it only on success. `move`, `prune-dead`, `set-signature` and function-wide
-retyping are Python-workspace forms only.
+runs `verify` on it and publishes it only on success. `move` and `prune-dead` are Python-workspace forms only; a signature change or function-wide retyping is a
+`define` and `replace` of the function and its callers.
 
 **Rejections.** A rejection record given to `edit` is rendered as `code`, `entity`, `rule`, `expected` and `actual` lines (then
 `dependencies` and `repair` when present), each value as `xax_selfhost_diagnostics.decode_record` reads it.
