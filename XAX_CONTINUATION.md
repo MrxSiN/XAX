@@ -5,36 +5,6 @@ Paste everything below the line into a new session that has the `MrxSiN/XAX` rep
 
 ---
 
-## First: finish the full test run (left unfinished on 2026-11-06)
-
-A full run of the compiler suite (1749 tests, `cd compiler && python -m pytest -v -n 6 --durations=15`, on Windows)
-was stopped at 1613 of 1749. Finish it before the plan below:
-
-1. Run the full suite with its log written to a file (with `-v`) so progress stays visible. Do not pipe it through `grep`:
-   nothing is shown until the run ends, and a hung worker then looks the same as a slow one.
-2. The 136 tests that had not finished are mostly the slow ones: `tests/test_store_regeneration.py` (72),
-   `integration/mcp/tests/test_native_stdio.py` (47), and the Android tests (`test_xax_android_*`, about 50). An
-   earlier run stalled in this group for over an hour with two idle workers (one with 2.5 GB resident and no CPU),
-   so watch for a hang. Run a stalled file on its own (`-n 0 -v`) to find the test that hangs, and record it.
-3. Of the 1613 that finished, 11 failed. Three of them also fail on the tree before the commit-ID remap below
-   (checked); the store-hash failures are expected on a Windows checkout with `core.autocrlf=true`, where hashed
-   files get CRLF line endings. Run all 11 on a Linux checkout (or with `core.autocrlf=false` and a fresh checkout)
-   and fix whatever still fails there:
-   - `test_audit_remediation.py::SelfhostEvidenceCurrencyTests::test_every_b1_entry_is_bound_to_the_committed_store`
-   - `test_audit_remediation.py::SeedTests::test_the_bootstrap_seed_is_native`
-   - `test_python_free_seed.py::PythonFreeSeedTests::test_the_record_decides_whether_the_seed_requires_python`
-   - `test_full_selfhost_status.py::FullSelfhostStatusTests::test_the_record_describes_the_committed_compiler`
-   - `test_oi19_transform_proofs.py::OI19TransformProofTests::test_committed_evidence_replays_from_raw_samples`
-   - `test_oi19_transform_proofs.py::OI19TransformProofTests::test_implementation_accounting_rejects_solver_complexity`
-   - `test_oi20_abi_platform.py::OI20AbiPlatformTests::test_committed_evidence_replays_from_raw_samples`
-   - `test_oi20_abi_platform.py::OI20AbiPlatformTests::test_model_token_cost_is_not_fabricated`
-   - `test_xax_chains.py::ChainsTests::test_committed_artifact_identity_reproduces`
-   - `test_xax_construct.py::Xb64Tests::test_request_reconstructs_generation_0`
-   - `test_xax_construct.py::XcksumTests::test_request_reconstructs_generation_0`
-4. Context: on 2026-11-06 `main` was rewritten so that only benchmark-evidence-only commits keep Claude as author
-   (backup tag `backup/main-before-author-rewrite`), and commit IDs quoted in 40 tracked files were remapped to the
-   rewritten IDs. If a test compares a recorded commit ID, check it against the rewritten history.
-
 You are continuing the native evolution of XAX, a compiler whose source of truth is canonical semantic graphs in
 `.xax` stores (no textual source language). You also continue BBC, a Brainfuck compiler whose driver is XAX's production
 driver hosted on Windows. Work autonomously through the plan below. Commit and push after every finished step whose
