@@ -13,21 +13,21 @@
       "image_sha256": "38ce7321dbf2abd1acae77b1014887091aa87bf881120350289692eeb5fcd77d",
       "gen1_equals_bootstrap_reference": true,
       "host_s_nonsemantic": {
-        "gen1": 1.28,
-        "bootstrap": 0.06
+        "gen1": 0.17,
+        "bootstrap": 0.02
       }
     },
     {
       "program": "xax_selfhost_graph",
-      "store_bytes": 147664,
-      "store_sha256": "f74bb0c08a3c8ab790949acf52222c8f273a11056ec412d4f3680252e1331bac",
+      "store_bytes": 148158,
+      "store_sha256": "edf1abed022c677e40d0e9cd7b408f56708c0d529735cedacd93d62f10bf5cf4",
       "functions": 1,
-      "code_bytes": 108036,
-      "image_sha256": "a2006887ea146d0672a6219706e76586a358151aef07118d778922d04050b34c",
+      "code_bytes": 108102,
+      "image_sha256": "a07415eba416d95bb126fd2319e99dcbd0eb329a76e1a175d9eca8aaac57aa70",
       "gen1_equals_bootstrap_reference": true,
       "host_s_nonsemantic": {
-        "gen1": 0.76,
-        "bootstrap": 0.38
+        "gen1": 0.46,
+        "bootstrap": 0.24
       }
     },
     {
@@ -39,47 +39,47 @@
       "image_sha256": "fffd2989c93f099ff65c140bfd12ed2ac1b613525ac6fa31d1298ce83597dbd3",
       "gen1_equals_bootstrap_reference": true,
       "host_s_nonsemantic": {
-        "gen1": 0.02,
+        "gen1": 0.01,
         "bootstrap": 0.01
       }
     },
     {
       "program": "xax_selfhost_store",
-      "store_bytes": 274630,
-      "store_sha256": "445d1cc57ee6ec167196b008e9157daaa830d5820a2e79bb23810df7262f80c7",
+      "store_bytes": 274242,
+      "store_sha256": "5961ec1a2676b543e0a4dbe5f1111e95ee9c413e3d45c8d77fb480fe3e95913c",
       "functions": 1,
       "code_bytes": 190326,
-      "image_sha256": "8370b030b1e749b2ab41e25564cc9dd7ce2e106a47883318f1e56b06c7ec3539",
+      "image_sha256": "5f6e526b9a3fefbc69a2abbb80488ece024d33a468e29812f2a2386721887533",
       "gen1_equals_bootstrap_reference": true,
       "host_s_nonsemantic": {
-        "gen1": 1.09,
-        "bootstrap": 0.55
+        "gen1": 0.68,
+        "bootstrap": 0.41
       }
     },
     {
       "program": "xax_selfhost_typing",
-      "store_bytes": 5045815,
-      "store_sha256": "adae96732facbd9c73199391ac2e7716108081e8d0c639b66b813ccf00269753",
-      "functions": 86,
-      "code_bytes": 6078946,
-      "image_sha256": "23de8ac61125702aedec143fb2179b9f35e4d56ae5b0a6751b7e54d73aeac02e",
+      "store_bytes": 5190135,
+      "store_sha256": "df2cae7dd200d407ccf2592cee85b8c6da487196d7c0d05360250efd3d908205",
+      "functions": 88,
+      "code_bytes": 6176179,
+      "image_sha256": "3ad607dc6b76518c4454c3187ceb06a937920a3d4309ca55b1325fa1c92cef6a",
       "gen1_equals_bootstrap_reference": true,
       "host_s_nonsemantic": {
-        "gen1": 28.79,
-        "bootstrap": 15.27
+        "gen1": 18.3,
+        "bootstrap": 11.86
       }
     },
     {
       "program": "xax_selfhost_verify",
-      "store_bytes": 3213605,
-      "store_sha256": "2f7dced3473ea0e25221a3a86405f2ffe12be9548bba2c06082545c719bcd4c5",
+      "store_bytes": 3214054,
+      "store_sha256": "4de116619688c7d21472a0dfbd20c4e3ce1bb02e00697bb5d83d4e188c586c88",
       "functions": 29,
-      "code_bytes": 7914727,
-      "image_sha256": "5ad801bcde5532533b97bdc34807830ec1017d3c6df4c019b06b5950465307e7",
+      "code_bytes": 7915012,
+      "image_sha256": "3c9392cd69314c3569002d321337f62b80584587ebeae295eea0e050e1dfd029",
       "gen1_equals_bootstrap_reference": true,
       "host_s_nonsemantic": {
-        "gen1": 24.07,
-        "bootstrap": 12.25
+        "gen1": 14.72,
+        "bootstrap": 9.3
       }
     },
     {
@@ -91,8 +91,8 @@
       "image_sha256": "11ad18131e64a51f79b2b69ff31b98e17712cb678a43723716cb27fae952b6d0",
       "gen1_equals_bootstrap_reference": true,
       "host_s_nonsemantic": {
-        "gen1": 0.06,
-        "bootstrap": 0.06
+        "gen1": 0.04,
+        "bootstrap": 0.03
       }
     },
     {
@@ -104,8 +104,8 @@
       "image_sha256": "80d243f68383bbe6cded40d2a5927d52a29a17feab5a72608875708f7a992e15",
       "gen1_equals_bootstrap_reference": true,
       "host_s_nonsemantic": {
-        "gen1": 7.69,
-        "bootstrap": 5.31
+        "gen1": 5.57,
+        "bootstrap": 3.55
       }
     },
     {
@@ -117,21 +117,21 @@
       "image_sha256": "e56d99a79c527e72e00977a31e9ecd41202f7ec2ac7e694ceb39a75e653bfe7f",
       "gen1_equals_bootstrap_reference": true,
       "host_s_nonsemantic": {
-        "gen1": 11.73,
-        "bootstrap": 7.54
+        "gen1": 7.55,
+        "bootstrap": 4.88
       }
     },
     {
       "program": "xax_selfhost_writer",
-      "store_bytes": 133881,
-      "store_sha256": "2633bcecd78ae53c8f3388c405fa4e9657edae2d86635b1e9a978442de6abc06",
+      "store_bytes": 133831,
+      "store_sha256": "acd95da62c9ab737d125cc008a408b01de415a3b1e0409b67adda878e624dc48",
       "functions": 3,
-      "code_bytes": 310837,
-      "image_sha256": "7b5c047ce07cc12e3ad85b124877b795bd802e203d557ebbb9ba4f827af2525f",
+      "code_bytes": 310848,
+      "image_sha256": "2d4a9e29b7bce014433522d4cb6dfa2de76b2cbafdfb67f95155bfc08ca285e2",
       "gen1_equals_bootstrap_reference": true,
       "host_s_nonsemantic": {
-        "gen1": 0.38,
-        "bootstrap": 0.31
+        "gen1": 0.3,
+        "bootstrap": 0.24
       }
     }
   ],
@@ -166,7 +166,7 @@
     },
     {
       "store": "xax_android.xax",
-      "objects": 8397,
+      "objects": 8403,
       "store_verdict": true,
       "bootstrap_accepts": true,
       "agrees": true
@@ -243,7 +243,7 @@
     },
     {
       "store": "xax_compiler_driver_general.xax",
-      "objects": 14565,
+      "objects": 14774,
       "store_verdict": true,
       "bootstrap_accepts": true,
       "agrees": true
@@ -271,7 +271,7 @@
     },
     {
       "store": "xax_graph_decoder.xax",
-      "objects": 140,
+      "objects": 142,
       "store_verdict": true,
       "bootstrap_accepts": true,
       "agrees": true
@@ -285,7 +285,7 @@
     },
     {
       "store": "xax_op_typing.xax",
-      "objects": 1986,
+      "objects": 2032,
       "store_verdict": true,
       "bootstrap_accepts": true,
       "agrees": true
@@ -334,7 +334,7 @@
     },
     {
       "store": "xax_x86_64_general.xax",
-      "objects": 1934,
+      "objects": 1940,
       "store_verdict": true,
       "bootstrap_accepts": true,
       "agrees": true
@@ -345,40 +345,40 @@
     "code_bytes": 3596889,
     "sha256": "e56d99a79c527e72e00977a31e9ecd41202f7ec2ac7e694ceb39a75e653bfe7f",
     "gen3_equals_gen2": true,
-    "host_s_nonsemantic": 4.95
+    "host_s_nonsemantic": 3.8
   },
   "runtime_vs_optimizing_bootstrap": [
     {
       "program": "xax_selfhost_verify",
       "input": "xax_op_typing.xax",
-      "xax_backend_s": 1.0,
-      "optimizing_bootstrap_s": 0.8229,
-      "ratio": 1.215,
+      "xax_backend_s": 0.7423,
+      "optimizing_bootstrap_s": 0.5488,
+      "ratio": 1.353,
       "code_bytes": {
-        "xax_backend": 7914727,
-        "optimizing_bootstrap": 1985361
+        "xax_backend": 7915012,
+        "optimizing_bootstrap": 1985543
       }
     },
     {
       "program": "xax_selfhost_verify",
       "input": "xax_store_verifier.xax",
-      "xax_backend_s": 0.6663,
-      "optimizing_bootstrap_s": 0.5546,
-      "ratio": 1.201,
+      "xax_backend_s": 0.4482,
+      "optimizing_bootstrap_s": 0.3682,
+      "ratio": 1.217,
       "code_bytes": {
-        "xax_backend": 7914727,
-        "optimizing_bootstrap": 1985361
+        "xax_backend": 7915012,
+        "optimizing_bootstrap": 1985543
       }
     },
     {
       "program": "xax_selfhost_verify",
       "input": "xax_riscv64_backend.xax",
-      "xax_backend_s": 0.3773,
-      "optimizing_bootstrap_s": 0.2042,
-      "ratio": 1.848,
+      "xax_backend_s": 0.1904,
+      "optimizing_bootstrap_s": 0.1453,
+      "ratio": 1.31,
       "code_bytes": {
-        "xax_backend": 7914727,
-        "optimizing_bootstrap": 1985361
+        "xax_backend": 7915012,
+        "optimizing_bootstrap": 1985543
       }
     }
   ],
@@ -395,7 +395,7 @@
     "verification:hash": {
       "component": "verification:hash",
       "store_verification": "memoized",
-      "record": "verified-hash-7664554e2193c978c7dc259bd9633c4e95773a2eaceb45eeb1359dccef89ddb9.bin"
+      "record": "verified-hash-fbf6dbb46767af3903e36849a41e53d0b0d96b98dfa948a4606b37abe3102b9f.bin"
     },
     "blake3-hash": {
       "component": "blake3-hash",
@@ -409,12 +409,12 @@
     "verification:store-decoder": {
       "component": "verification:store-decoder",
       "store_verification": "memoized",
-      "record": "verified-store-decoder-98b83ad5d19ef9d10f08e195ab9fc0a651ec96774350bc45d7b5288e8bbfd634.bin"
+      "record": "verified-store-decoder-221f6c41d95e251356096f919b375def758a7c5a5ee87b1dd4a2fb313ee0a0d1.bin"
     },
     "store-decoder": {
       "component": "store-decoder",
-      "semantic_root": "53b5f4f2ffd52c1a00057356b15a3f35bc0a2cc771e1e4a078b604f6563edbe2",
-      "native_artifact_digest": "8370b030b1e749b2ab41e25564cc9dd7ce2e106a47883318f1e56b06c7ec3539",
+      "semantic_root": "4fcbb618eaf5b675f87504ca7ce28c20cf37b894dff18bf216b592812b2a7972",
+      "native_artifact_digest": "5f6e526b9a3fefbc69a2abbb80488ece024d33a468e29812f2a2386721887533",
       "requested_authority": "xax",
       "actual_authority": "xax",
       "fallback_occurred": false,
@@ -423,17 +423,17 @@
     "verification:cfg": {
       "component": "verification:cfg",
       "store_verification": "memoized",
-      "record": "verified-cfg-db7eda1cc6ce536b45a441eb6269a800a4da69f91af5ac466794cd82a5fb623f.bin"
+      "record": "verified-cfg-3ebb2e12aba8baf6d1961639e3fa48decd61dedd7574dca4bce6d1ed1996f357.bin"
     },
     "verification:typing": {
       "component": "verification:typing",
       "store_verification": "memoized",
-      "record": "verified-typing-4a2e514b4a1189412771aa97a51278da21d28535e5dbc61ac2a18deb5f91600c.bin"
+      "record": "verified-typing-470f2de396a59abad342f072a4fbf6a0d0a28d569b49254f06feb7251682852e.bin"
     },
     "typing": {
       "component": "typing",
-      "semantic_root": "6ba16d0ba4d1993f4d2f223ebf65caf94cb1f9cd2e83307b883be9b8fa156d11",
-      "native_artifact_digest": "23de8ac61125702aedec143fb2179b9f35e4d56ae5b0a6751b7e54d73aeac02e",
+      "semantic_root": "140195313908255e20bbcc52c407d8a5ef57b7da285a744b03feea44b3150180",
+      "native_artifact_digest": "3ad607dc6b76518c4454c3187ceb06a937920a3d4309ca55b1325fa1c92cef6a",
       "requested_authority": "xax",
       "actual_authority": "xax",
       "fallback_occurred": false,
@@ -442,27 +442,27 @@
     "verification:store-verifier": {
       "component": "verification:store-verifier",
       "store_verification": "memoized",
-      "record": "verified-store-verifier-d6c216009e76d0c13480d55c2ca21d3b6a3e7b2e7f2941ae8ac85a4710019add.bin"
+      "record": "verified-store-verifier-14de036db31e5caec425ba4509c783bf3c1a18c3ecd1a4d362638ff3c2ff84d7.bin"
     },
     "store-verifier": {
       "component": "store-verifier",
-      "semantic_root": "c29080234141757b312401df3ef43b6b18bde439dc31bfeda946d0047024fb3a",
-      "native_artifact_digest": "5ad801bcde5532533b97bdc34807830ec1017d3c6df4c019b06b5950465307e7",
+      "semantic_root": "0855ee44f9db404421f2df3143b2eee843dc68f5fa72da648221e9a52aae426d",
+      "native_artifact_digest": "3c9392cd69314c3569002d321337f62b80584587ebeae295eea0e050e1dfd029",
       "requested_authority": "xax",
       "actual_authority": "xax",
       "fallback_occurred": false,
       "fallback_reason": null,
-      "declined_inputs": 44651
+      "declined_inputs": 44914
     },
     "verification:graph-decoder": {
       "component": "verification:graph-decoder",
       "store_verification": "memoized",
-      "record": "verified-graph-decoder-15e6636ea91dd29facf4357ed35e2500b678b09185cb3497501ae9fa576ccc7d.bin"
+      "record": "verified-graph-decoder-75127112515b65f936043a645a646f675e3ad1c2959b4c7b328096f185969ef0.bin"
     },
     "graph-decoder": {
       "component": "graph-decoder",
-      "semantic_root": "3ec7cc5e943949cd58ee2e918e17dc2092a8a1171d0cb2535a868d1508fa33d4",
-      "native_artifact_digest": "a2006887ea146d0672a6219706e76586a358151aef07118d778922d04050b34c",
+      "semantic_root": "2c4653959eebbe505eec35e3a3d1163bac665988eea6af88ec550a70d61b8afe",
+      "native_artifact_digest": "a07415eba416d95bb126fd2319e99dcbd0eb329a76e1a175d9eca8aaac57aa70",
       "requested_authority": "xax",
       "actual_authority": "xax",
       "fallback_occurred": false,
@@ -480,7 +480,7 @@
     "verification:xax_x86_64_backend": {
       "component": "verification:xax_x86_64_backend",
       "store_verification": "memoized",
-      "record": "verified-xax_x86_64_backend-2dab92d47a2de70349b7d8224816115658ed7d78965b81be6cfb4573b0969f51.bin"
+      "record": "verified-xax_x86_64_backend-e10c5cc7efd887d9d688dc61d1c665cdd004a1a184549ba3739813478fb4b68c.bin"
     },
     "x86-64-views-backend": {
       "component": "x86-64-views-backend",
@@ -494,17 +494,17 @@
     "verification:riscv64-encoder": {
       "component": "verification:riscv64-encoder",
       "store_verification": "memoized",
-      "record": "verified-riscv64-encoder-c02d98ecdadeea3e155f16249f7c4ff08934685245bc8a8b0009211e58a5b785.bin"
+      "record": "verified-riscv64-encoder-03c22de4912f9d77843ed1de1ca47c40fb6260fad9f90af30d35ada1e9beeaf3.bin"
     },
     "verification:xax_riscv64_backend": {
       "component": "verification:xax_riscv64_backend",
       "store_verification": "memoized",
-      "record": "verified-xax_riscv64_backend-94387e1bf598f8c41d6a29114e074c24375f159f9f3d1e2ce3e55b684392e04d.bin"
+      "record": "verified-xax_riscv64_backend-3b7bf59eb067a9ff2240c6792d44dd7e61d56ee9c2b29006843603c0666ba77e.bin"
     },
     "verification:store-writer": {
       "component": "verification:store-writer",
       "store_verification": "memoized",
-      "record": "verified-store-writer-41d32ca1a9af6bc19d6692f0064918ea20be6184a91baaa012d41210bc697775.bin"
+      "record": "verified-store-writer-72b7c97b04d0de5d01050c591b0a7e9d7d06d520e6fb24fa78904e996fed5a96.bin"
     }
   }
 }
