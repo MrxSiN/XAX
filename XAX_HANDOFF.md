@@ -1499,6 +1499,26 @@ natively, and run the Android-first checks. Still open in the native workspace: 
 - *Risk:* main is 632 values below `VCAP`, and shims small enough to be inlined (256 nodes or fewer) add values at
   every call site. Make the shims non-inlinable (more than 256 nodes, or calls inside them), or raise `VCAP` first.
 
+## BBC on the native compiler: where it stands — 2026-11-06 (ADR-376)
+
+- Ledger 0013 (ADR-376) closed OI-53. The general backend no longer fuses a compare into its branch when a later block
+  reads it, so the self-built compiler's verifier is correct. `integration/bfx/bbc.xax` passes the production
+  `xaxc verify`.
+- **The native build of BBC's driver declines.** With a PE build request for `bbc.xax` (its module's entry and
+  `x86_64-windows-pe-v1`), the seed's `resolve` succeeds and `build` declines (exit 2). A probe of the general
+  program's state at the decline found:
+  - the closure is complete (557 functions);
+  - lowering stops in function `51514b76a3f3…` (object 2230). It is one of the driver's word-workspace helpers,
+    `(bits64, view, view) -> (bits64, view, view)`, which returns three machine values;
+  - the register path takes at most one machine result, so the function goes to the frame path;
+  - on the Windows (PE) host the frame path's hosted subset declines it. On Linux the same helpers lower.
+- **So `bbc.exe` needs this backend feature first:** the hosted (Win64) frame path must return several machine values
+  (pointers with borrowed views) the way the Linux frame path does. It has to be a native transaction on the general
+  backend's frame path (`frame_function` and its hosted allow-lists). Only after it does the BBC port (Windows
+  declarations through `define`'s `object` form, main's ~100 host-call sites, the BBC layer) become buildable.
+- The probe scripts (scratch) read output words 0, 1 (status, closure count) and 16.. (the order), then `G_RA` at
+  `GLOBALS + 60` and its `E_F`, `R_NPARAMS`, `R_NRETURNS` and `R_ELIGIBLE` slots.
+
 ## Open issues
 
 ### OI-45 self-hosting re-runs — 2026-10-07
