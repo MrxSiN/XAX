@@ -59,7 +59,7 @@ from xax_optimizer import (
 HERE = Path(__file__).resolve().parent
 EVIDENCE = HERE / "oi19_transform_proof_evidence.json"
 RAW = HERE / "oi19_transform_proof_timing.json"
-OPTIMIZER = HERE.parent / "src" / "xax_optimizer.py"
+OPTIMIZER = HERE.parent / "reference" / "xax_optimizer.py"
 THIS_FILE = Path(__file__).resolve()
 
 MAGIC = b"X19W"

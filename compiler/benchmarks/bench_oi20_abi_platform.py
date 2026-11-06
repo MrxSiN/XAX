@@ -58,11 +58,11 @@ HERE = Path(__file__).resolve().parent
 EVIDENCE = HERE / "oi20_abi_platform_evidence.json"
 RAW = HERE / "oi20_abi_platform_timing.json"
 THIS_FILE = Path(__file__).resolve()
-COMPILER = HERE.parent / "src" / "xax_compiler.py"
-X86 = HERE.parent / "src" / "xax_x86_64.py"
-AARCH64 = HERE.parent / "src" / "xax_aarch64.py"
-ANDROID = HERE.parent / "src" / "xax_android.py"
-JNI = HERE.parent / "src" / "xax_jni.py"
+COMPILER = HERE.parent / "reference" / "xax_compiler.py"
+X86 = HERE.parent / "reference" / "xax_x86_64.py"
+AARCH64 = HERE.parent / "reference" / "xax_aarch64.py"
+ANDROID = HERE.parent / "reference" / "xax_android.py"
+JNI = HERE.parent / "reference" / "xax_jni.py"
 
 MAGIC = b"X20A"
 VERSION = 1
