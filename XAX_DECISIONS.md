@@ -3741,3 +3741,13 @@ Superseded by [ADR-369](#adr-369--n03-growable-views-as-limit-bounded-checked-ac
 | Rationale | `define` could make only functions, graphs, constants and types. Porting the production driver to a Windows host (BBC) needs Windows foreign declarations, and without this form only a Python-built record could supply them (ADR-367 forbids that). |
 | Evidence | EXECUTED on Linux x86-64: `tests/test_native_object_form.py` (the seed's `xaxc edit`). An entry redefined to call `exit_group` through `@decl`, supplied by its kind and body, makes the very same store. `selfbuild.sh`: xaxc1 = xaxc2; seed rotated. |
 | Limits | Objects with references still come only from `define`'s function form or from records. The kind and body are not checked until `verify`. |
+
+
+## ADR-376 — The general backend fuses a compare only into its sole use (ledger 0013; closes OI-53)
+
+| Field | Record |
+|---|---|
+| Decision | The x86-64 general backend's register path fused a compare into its block's conditional branch when no other node of that block used it. A use in a later block (or an edge argument) was not counted, so that later block read a value never materialized. This is ADR-304's "`bits<1>` not carried into a later block". `basics` now also requires the compare's early use count (`T_EARLY`: every block, terminators included) to be 1. Ledger 0013 is three native batch records (the driver, the request, the x86-64 general program), written from the native view of `basics` with `native/0013/fuse.awk`. |
+| Rationale | The self-built compiler miscompiled its own facts program: `byte_view` (ADR-231) is such a compare, so `xaxc verify` rejected byte-view widening that `verify_store` (whose typing image the views backend lowers) accepted (OI-53). BBC's committed driver failed `verify` for this alone. Other `bits<1>` values that cross blocks in the compiler's programs are now lowered correctly too, so ADR-304's workaround (64-bit flags) is no longer needed. |
+| Evidence | EXECUTED on Linux x86-64. The seed built xaxc1 from the edited request; xaxc1 built xaxc2. They differ, as the backend change requires, and xaxc2 rebuilt itself to the same bytes (xaxc3 = xaxc2, 33,151,738 bytes). The seed is xaxc2. With it, `tests/test_native_verify_byte_view.py` passes, its expected failure lifted, and `integration/bfx/bbc.xax` verifies. |
+| Limits | The AArch64 backend lowers the same pattern correctly (`tests/test_native_branch_fusion.py`, which also fails on the pre-0013 x86-64 store: 1 instead of 11). |

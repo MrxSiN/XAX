@@ -817,7 +817,8 @@ at the new edge, with the importer and hosts unchanged except for the extent.
 
 ## OI-53 — `xaxc verify` rejects byte-view widening
 
-**Status: OPEN (2026-11-05).** The production compiler's `verify` answers `MEMORY-CHECKED-STORE-TYPE` for an 8-byte
+**Status: CLOSED (2026-11-06, ADR-376, ledger 0013):** the general backend fused a compare into its branch although a
+later block read it, so the self-built compiler miscompiled its own facts program. Before the fix, the production compiler's `verify` answered `MEMORY-CHECKED-STORE-TYPE` for an 8-byte
 `bits<64>` checked store through a `ptr<bits8>` heap view (byte-view widening, ADR-231). `verify_store` accepts it, both
 with the native typing program and with the reference alone. The driver holds the typing store's 88 functions as the
 same objects, so the difference is in the tables the driver builds for them. BBC's committed driver
