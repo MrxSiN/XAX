@@ -1,6 +1,6 @@
 # Ledger 0018: rewrite byte accesses of the x86-64 image buffer into accesses of the packed buffer.
 #
-#   awk -v SITES="N12:210 N40:210 ..." -f pack.awk <view> <view>
+#   awk -v SITES="N12:210 N40:=P7 ..." -f pack.awk <view> <view>   (SITE:SLOT reloads the base; SITE:=VALUE uses a value of the block)
 #
 # Each site is a workspace word load or store (`checked.load.bits.le` / `checked.store.bits.le`, the e.ld/e.st form:
 # the word address clamped below 2^28 and scaled by 8) that reads or writes one byte, one per word, of a byte buffer
@@ -73,9 +73,12 @@ FNR == 1 { for (s in slot) if (!(s in def)) fail(s, "no such node"); if (B64 == 
     if (kind == "checked.store.bits.le") { value = f[5]; mem = f[6] }
     else if (kind == "checked.load.bits.le") mem = f[5]
     else fail(s, "not a workspace access")
-    # The base: _ra(SLOT).
-    g = fresh(); emit(g " constant 29360188 -> " B64); t = fresh(); ld(t, g, ptr, mem)
-    r = fresh(); ld(r, bin("add.wrap", t, konst(slot[s])), ptr, t ".R1")
+    # The base: _ra(SLOT), or (SITE:=VALUE) a value of this block that holds it.
+    if (slot[s] ~ /^=/) { r = substr(slot[s], 2); rmem = mem }
+    else {
+        g = fresh(); emit(g " constant 29360188 -> " B64); t = fresh(); ld(t, g, ptr, mem)
+        r = fresh(); ld(r, bin("add.wrap", t, konst(slot[s])), ptr, t ".R1"); rmem = r ".R1"
+    }
     off = bin("sub.wrap", A, r)
     w = bin("add.wrap", r, bin("udiv", off, konst(8)))
     lane = bin("bit.and", off, konst(7))
@@ -84,11 +87,11 @@ FNR == 1 { for (s in slot) if (!(s in def)) fail(s, "no such node"); if (B64 == 
     f2 = bin("add.wrap", konst(1), bin("mul.wrap", bin("udiv", lane, konst(4)), konst(4294967295)))
     M = bin("mul.wrap", bin("mul.wrap", f0, f1), f2)
     if (kind == "checked.store.bits.le") {
-        o = fresh(); ld(o, w, ptr, r ".R1")
+        o = fresh(); ld(o, w, ptr, rmem)
         cleared = bin("sub.wrap", o, bin("mul.wrap", bin("bit.and", bin("udiv", o, M), konst(255)), M))
         st(s, w, ptr, bin("add.wrap", cleared, bin("mul.wrap", value, M)), o ".R1")
     } else {
-        ld(s, w, ptr, r ".R1")
+        ld(s, w, ptr, rmem)
         renamed[s] = bin("bit.and", bin("udiv", s, M), konst(255))
     }
 }

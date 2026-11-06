@@ -1,0 +1,11 @@
+# CID-prefix  name            image-buffer accesses (pack.awk SITES)                       caps (image, container)
+ac6e262b7600  image_add       N223:210 N309:210                                             image container
+d534ff1f9b2b  image_adapter   N9720:210 N9796:210 N10042:210 N10153:210 N10264:210 N10405:210 N10516:210 N10591:210 N10702:210 N10778:210 N10911:210 N11019:210   image container
+287b11445005  image_finish    N701:210 N1051:210 N1168:=N1156                               container
+998936629ee2  elf_static      N2734:210                                                     container
+af7913a63363  pe              N13471:210                                                    container
+c4553bdebe1e  elf_dynamic     N11613:210 N22296:210                                         container
+c323348dcc1d  image_snapshot  N117:=N105 N128:=P47                                          -
+833232b8752f  image_record    N377:=P160                                                    -
+23d6c35fd60f  general_main    -                                                             container
+17e6c1256b07  dll_edata       -                                                             container
