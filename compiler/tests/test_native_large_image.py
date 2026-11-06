@@ -3,8 +3,8 @@
 Before ledger 0018 the general program kept the image one byte per workspace word in a 32M-word buffer
 (``IMAGE_CAP`` = 2^25 bytes) and declined any larger image.  It now packs the buffer eight bytes to a word and
 assembles up to 48 MiB.  The program here has about 36 MiB of code: 1,700 functions, each a chain of 1,000
-multiply/xor steps over a 64-bit value (constants from a 16-entry pool, rotated per function so every function is a
-distinct object and none is small enough to inline), called in sequence by the process entry, which exits with the
+multiply/xor steps over a 64-bit value (constants from a 16-entry pool; the first step xors in the function's index, so every
+function is a distinct object, and none is small enough to inline), called in sequence by the process entry, which exits with the
 result's low byte.  It is built with ``frontend="xax"`` (the native program must assemble it, no fallback), the code
 must exceed 32 MiB, and the executable must exit with the status computed here.  Slow: about 25 minutes.
 """
@@ -32,7 +32,8 @@ FUNCTIONS, STEPS = 1700, 1000
 
 
 def _factors(index: int, step: int) -> tuple[int, int]:
-    return POOL[(step + index) % 16], POOL[(3 * step + 7 * index + 5) % 16] ^ FLIP
+    """The step's multiplier and mask; step 0 xors the function's own index in, so no two functions are equal."""
+    return POOL[(step + index) % 16], POOL[(3 * step + 7 * index + 5) % 16] ^ (FLIP if step else index)
 
 
 def _chain(index: int) -> tuple[GraphBuilder, object]:
