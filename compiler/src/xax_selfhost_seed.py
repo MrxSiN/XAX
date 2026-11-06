@@ -26,8 +26,8 @@ SEED_DIRECTORY = bootstrap_dir() / "seed"
 SEED_PATH = SEED_DIRECTORY / "xaxc-linux-x86_64"
 REQUEST_PATH = SEED_DIRECTORY / "xax_compiler_request.xax"
 SELFBUILD_PATH = SEED_DIRECTORY / "selfbuild.sh"
-SEED_SHA256 = "e1e096996634617bc66a1702ca02c5098332fdf5abee127814f91f3ade12ea84"
-SEED_SIZE = 33154026
+SEED_SHA256 = "a809c73045a98442894e9b23cea10cb2856e770559688f483d8f7cef4c77326d"
+SEED_SIZE = 33154122
 SELFBUILD_TOOLS = ("sh", "dirname", "mkdir", "chmod", "cmp")
 
 
