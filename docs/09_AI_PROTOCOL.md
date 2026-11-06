@@ -860,7 +860,9 @@ replace F<n> @name       every object of the store that refers to F<n> refers to
 A definition whose body is the single line `object <kind> 0x<body>` (ledger 0012) supplies a canonical object with no
 references, of that kind and body, instead of a function; `@name` then names it as an entity, for example a foreign
 declaration a redefined function calls with `call.foreign entity=@name`. An object equal to one the store holds is
-that object.
+that object. Since ledger 0015 the line may go on with the object's references as space-separated 64-digit CIDs, in
+canonical order: `object 2 0x0201000304 70bc…` is a stack `ptr<bits32>`. Each names an object the store holds or one
+the batch supplied earlier, and a type line or entity names a supplied object by its CID the same way.
 
 An entity is `F<n>`, a 64-digit CID, or `@<name>` defined earlier in the same batch; a constant's value is decimal for a
 `bits` type, else `0x` and all its bytes, most significant first; `trap` is followed by `0x` and the payload's bytes.
