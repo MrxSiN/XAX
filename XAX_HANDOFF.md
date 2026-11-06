@@ -1609,6 +1609,20 @@ natively, and run the Android-first checks. Still open in the native workspace: 
   - run BBC's checks under wine and qemu-aarch64: a scratch harness compiles Brainfuck programs for both targets and
     compares each run with an interpreter;
   - replace `integration/bfx/bbc.xax` and record the evidence.
+- **Update (same day):** after 0017, the seed's `build` of the rebuilt BBC driver (root `661b785b…`, from the
+  post-0017 production driver) *declines* after 6 minutes.
+  - The audit records show functions 0–541 emitted. Function 542 (`85b25a0f…`, a production-driver function) has
+    none, though alone it compiles on PE.
+  - The image state at the decline gives the cause: `I_LEN` = 33,529,728 bytes against `IMAGE_CAP` = 2^25
+    (33,554,432), with 954 of 1,060 functions placed.
+  - **BBC's program does not fit the general program's 32 MiB image buffer.** The production compiler alone is
+    33.15 MB, and BBC adds its layer and four copies of the entry.
+- **Next:** a capacity transaction on the general program's layout. The image buffer (`IMAGE_BUFFER_AT` 200M words,
+  one byte per word), the image record (232M–252M words) and the container buffer (`I_ELF`, `IMAGE_CAP` + 64 KiB, in
+  the arena) all assume 32 MiB, and the arena already reaches about 187M words on large builds. Options:
+  - pack eight bytes per word in the image and container buffers;
+  - or give the views 4 GiB.
+  Making BBC's four entry variants smaller would only postpone it.
 
 ## Open issues
 
