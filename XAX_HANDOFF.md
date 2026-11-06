@@ -1518,6 +1518,38 @@ natively, and run the Android-first checks. Still open in the native workspace: 
   declarations through `define`'s `object` form, main's ~100 host-call sites, the BBC layer) become buildable.
 - The probe scripts (scratch) read output words 0, 1 (status, closure count) and 16.. (the order), then `G_RA` at
   `GLOBALS + 60` and its `E_F`, `R_NPARAMS`, `R_NRETURNS` and `R_ELIGIBLE` slots.
+- *Superseded in part:* the decline's diagnosis is corrected in "BBC's PE decline found and fixed: frame-path heap
+  views — 2026-11-06 (ADR-377)" below.
+
+## BBC's PE decline found and fixed: frame-path heap views — 2026-11-06 (ADR-377)
+
+- **The diagnosis above was wrong.** F162 (`51514b76…`) is where the probe found the program stopped, not the
+  function that failed. On its own (an entry calling it with its real 512 MiB and 1 GiB views) it compiles on the
+  register path.
+- **Method:** the per-function records the program writes in audit mode. `general_object_table(..., audit=True)` and
+  `rebuild_views` read each function's analysis and emission record even when the run declines. Functions 97 (F97 of
+  the bbc listing: eleven parameters, three views) and 151 (F151: two views, a call returning an aggregate) had no
+  emission. They are ineligible for the register path, and the frame path declined them. The program goes on after
+  such a function with `I_OK` cleared, so the last `E_F` said nothing about them.
+- **Cause:** `frame_function` made heap-view pointers first-class (`F_DYN`) only off Windows. **Ledger 0014** sets it
+  on every target. It is one compare attribute, in three batches written from each store's own view. The seed
+  rotated (xaxc1 = xaxc2). `tests/test_native_pe_frame_heap_views.py` runs such a helper under wine: exact sums,
+  and a `ud2` trap past the extent.
+- **Next wall for the committed `bbc.xax`:** F163 (`51b36b76…`, 2,498 calls). Its inlined view passes `VCAP`
+  (2^18 values): `G_VCOUNT` reaches 262,144 inside `_view`, so the run stops before F163's emission record. That
+  driver is the old Windows copy. The port of the production driver (whose main is 632 values below `VCAP`) is still
+  the way to `bbc.exe`. `VCAP` is encoded in about a dozen functions of each store (as `VCAP`, `VCAP + 1`,
+  `VCAP + 2`, `2 * VCAP` and `v + VCAP` offsets, among other uses of the same numbers). Raising it is a careful,
+  broad transaction.
+- **Main's host calls**, for the port. Production main (F280 of the pre-0014 driver) has 100 foreign calls:
+  - `mmap` 22, `munmap` about 25 (one declaration per extent), `openat` 17, `close` 17, `write` 13, `read` 5;
+  - `exit_group`, and the startup `argc` and `arg_copy`.
+- **Known failing tests, both failing at the commit before 0014 too:**
+  - `test_python_free_seed.py::test_the_record_decides_whether_the_seed_requires_python`. The Python-free seed
+    evidence names an older request store; it is re-recorded with `benchmarks/bench_python_free_seed.py --write`.
+  - `test_xax_selfhost_evolution.py::test_the_raised_input_bound`. `NativeGeneralDriver` compiles the driver with the
+    Python-hosted x86-64 views backend program, which rejects it with `X86_64_VIEWS.UNSUPPORTED_OPERATION`. The
+    likely cause is ledger 0009's growable accesses in the driver.
 
 ## Open issues
 
