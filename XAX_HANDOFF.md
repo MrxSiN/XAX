@@ -1568,6 +1568,24 @@ natively, and run the Android-first checks. Still open in the native workspace: 
     or `bench_full_selfhost` takes the pinned seed as C0. Changing C0 changes what the record means, so that needs
     an ADR first.
 
+## The production driver on Windows, natively — 2026-11-06
+
+- **Done:** `compiler/integration/bfx/transactions/production_driver/native/` rebuilds the Windows-hosted production
+  driver from the current production store with native transactions only:
+  - a batch: supplied objects (ADR-378), BBC's six host adapters defined from their views, and the entry redefined
+    from its view by `port_main.awk`;
+  - a one-mutation XAXEDIT1 record that sets the PE target, with operations 77 and 78.
+  The seed's `verify` accepts the result. `resolve` and `build` make `xaxc.exe` (33,202,176 bytes).
+- **Evidence:** under wine, `xaxc.exe resolve` and `build` of the production compiler's request make the Linux seed
+  byte for byte, in 5 minutes. `tests/test_bbc_windows_host_port.py` replays the port.
+- **Next:** BBC's layer on top of it, from the ledger-0003 staged record's 36 functions.
+  - The 32 that are not variants of main call only driver helpers that are unchanged since 0003, so they can be
+    defined from their views with handles remapped by CID. The entry's call of the old main becomes the new main.
+  - The four main variants (lazy views; the three `compile` steps) are derived from the new main with each variant's
+    differences from the old ported main.
+  - BBC's own declarations and types are supplied with `object`.
+  - Then build `bbc.exe` and run BBC's checks under wine.
+
 ## Open issues
 
 ### OI-45 self-hosting re-runs — 2026-10-07
