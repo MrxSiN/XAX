@@ -218,8 +218,16 @@ known failing tests.
 
 ## 4. Known failures and open notes
 
-- `test_python_free_seed.py::test_the_record_decides_whether_the_seed_requires_python` and
-  `test_xax_selfhost_evolution.py::test_the_raised_input_bound` fail until step D.
+- The full run of 2026-11-06 on Linux x86-64 is recorded in `XAX_STATE.md` ("Full test run on Linux x86-64 —
+  2026-11-06"). Until step D, about 65 tests fail: every class built on `NativeGeneralDriver`
+  (`XAX.X86_64_VIEWS.UNSUPPORTED_OPERATION` for operation 77), `test_the_raised_input_bound`, the six op-77 stores of
+  `test_xax_selfhost_driver::test_every_committed_store`, and the three tests that read `full_selfhost_evidence.json`
+  (among them `test_the_record_decides_whether_the_seed_requires_python`).
+- Three tests fail because ledger 0007 changed the `x86_64-linux-elf-exec-v1` target's CID: both
+  `test_xax_construct.py::…::test_request_reconstructs_generation_0` and
+  `test_xax_chains.py::…::test_committed_artifact_identity_reproduces`. Their committed stores and evidence embed the
+  old target; regenerating them waits on the user's decision.
+- With 4 workers on a 15 GB host the full suite runs out of memory; run the slow self-hosting group with `-n 1` or `-n 2`.
 - The edit engine drops supplied objects that end up unreachable. A batch must make everything it defines reachable,
   which is why `rebuild.sh` uses stubs.
 - A reference to a supplied object must come after that object in the batch.
