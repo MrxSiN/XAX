@@ -29,7 +29,7 @@
 
 <!-- xax-status:levels -->Replacement levels (generated from `XAX_REPLACEMENT_MATRIX.json`): R6: jvm, linux-aarch64, linux-x86_64; R3: android-arm64; R2: aarch64-baremetal, browser-web, windows-x86_64-pe; R1: gpu-spirv-cuda-metal-dxil, riscv64, wasm32-core, wasm32-wasi; R0: accelerator-simt-packet; no level yet: bsd-unix, dotnet-clr, macos-ios-apple, rtos-embedded-mcu.<!-- /xax-status:levels -->
 
-<!-- xax-status:bootstrap -->Bootstrap status (derived by `xax_selfhost.bootstrap_status` from `compiler/benchmarks/full_selfhost_evidence.json` and `compiler/benchmarks/python_free_seed_evidence.json`): whole production compiler: B0, B1, B2, B3, B4, B5, B6 established (derived from the Linux x86-64 production compiler, whose executed record covers every target and artifact `build` makes (S15g, ADR-358)); Linux x86-64 production compiler (`benchmarks/full_selfhost_evidence.json`): B0, B1, B2, B3, B4, B5, B6 hold, none do not; its seed requires Python: no; S-step component fixed points are not B milestones (`XAX_SPEC.md` §16.5). Bootstrap seed: native-elf `compiler/bootstrap/seed/xaxc-linux-x86_64`, 32,699,483 bytes, requires Python: no.<!-- /xax-status:bootstrap -->
+<!-- xax-status:bootstrap -->Bootstrap status (derived by `xax_selfhost.bootstrap_status` from `compiler/benchmarks/full_selfhost_evidence.json` and `compiler/benchmarks/python_free_seed_evidence.json`): whole production compiler: B0, B1, B2, B3, B4, B5, B6 established (derived from the Linux x86-64 production compiler, whose executed record covers every target and artifact `build` makes (S15g, ADR-358)); Linux x86-64 production compiler (`benchmarks/full_selfhost_evidence.json`): B0, B1, B2, B3, B4, B5, B6 hold, none do not; its seed requires Python: yes; S-step component fixed points are not B milestones (`XAX_SPEC.md` §16.5). Bootstrap seed: native-elf `compiler/bootstrap/seed/xaxc-linux-x86_64`, 33,152,170 bytes, requires Python: yes.<!-- /xax-status:bootstrap -->
 
 Sections below are dated; a later section supersedes an earlier figure. The current full-suite result is under "Multi-language performance rule" and later entries in `XAX_STATE.md`.
 
@@ -1550,6 +1550,23 @@ natively, and run the Android-first checks. Still open in the native workspace: 
   - `test_xax_selfhost_evolution.py::test_the_raised_input_bound`. `NativeGeneralDriver` compiles the driver with the
     Python-hosted x86-64 views backend program, which rejects it with `X86_64_VIEWS.UNSUPPORTED_OPERATION`. The
     likely cause is ledger 0009's growable accesses in the driver.
+
+## Ledger 0015 and the self-hosting record — 2026-11-06 (ADR-378)
+
+- **Ledger 0015.** `define`'s `object` form takes references (`object <kind> 0x<body> <CID>...`). Native batches can
+  now supply pointer types, which BBC's Windows adapters need. The view is hand-written (`native/0015`), the seed
+  rotated (xaxc1 = xaxc2), and `tests/test_native_object_references.py` covers it.
+- **The Python-free seed record is re-measured** (`benchmarks/python_free_seed_evidence.json`, seed `33046fc4…`).
+- **The derived bootstrap status now reads "its seed requires Python: yes".** That is the honest derivation:
+  `seed_requires_python` also needs `full_selfhost_evidence.json` to name the same request store and compiler. That
+  record dates from before ledger 0001, and the committed status text was stale.
+  - The full record cannot be re-measured yet. Its C0 is the driver lowered by the x86-64 *views* backend program in
+    a Python host (`NativeGeneralDriver`), and that program does not lower operation 77 (`growable.load.bits.le`).
+    The driver has used it since ledger 0009 (`X86_64_VIEWS-OP-TARGET-SUPPORTED`, actual 77). This is also why
+    `test_xax_selfhost_evolution.py::test_the_raised_input_bound` fails.
+  - Either the views backend learns operations 77/78 (a native transaction on its store and the views target lists),
+    or `bench_full_selfhost` takes the pinned seed as C0. Changing C0 changes what the record means, so that needs
+    an ADR first.
 
 ## Open issues
 
