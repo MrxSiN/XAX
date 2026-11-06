@@ -29,7 +29,7 @@
 
 <!-- xax-status:levels -->Replacement levels (generated from `XAX_REPLACEMENT_MATRIX.json`): R6: jvm, linux-aarch64, linux-x86_64; R3: android-arm64; R2: aarch64-baremetal, browser-web, windows-x86_64-pe; R1: gpu-spirv-cuda-metal-dxil, riscv64, wasm32-core, wasm32-wasi; R0: accelerator-simt-packet; no level yet: bsd-unix, dotnet-clr, macos-ios-apple, rtos-embedded-mcu.<!-- /xax-status:levels -->
 
-<!-- xax-status:bootstrap -->Bootstrap status (derived by `xax_selfhost.bootstrap_status` from `compiler/benchmarks/full_selfhost_evidence.json` and `compiler/benchmarks/python_free_seed_evidence.json`): whole production compiler: B0, B1, B2, B3, B4, B5, B6 established (derived from the Linux x86-64 production compiler, whose executed record covers every target and artifact `build` makes (S15g, ADR-358)); Linux x86-64 production compiler (`benchmarks/full_selfhost_evidence.json`): B0, B1, B2, B3, B4, B5, B6 hold, none do not; its seed requires Python: yes; S-step component fixed points are not B milestones (`XAX_SPEC.md` §16.5). Bootstrap seed: native-elf `compiler/bootstrap/seed/xaxc-linux-x86_64`, 33,152,170 bytes, requires Python: yes.<!-- /xax-status:bootstrap -->
+<!-- xax-status:bootstrap -->Bootstrap status (derived by `xax_selfhost.bootstrap_status` from `compiler/benchmarks/full_selfhost_evidence.json` and `compiler/benchmarks/python_free_seed_evidence.json`): whole production compiler: B0, B1, B2, B3, B4, B5, B6 established (derived from the Linux x86-64 production compiler, whose executed record covers every target and artifact `build` makes (S15g, ADR-358)); Linux x86-64 production compiler (`benchmarks/full_selfhost_evidence.json`): B0, B1, B2, B3, B4, B5, B6 hold, none do not; its seed requires Python: yes; S-step component fixed points are not B milestones (`XAX_SPEC.md` §16.5). Bootstrap seed: native-elf `compiler/bootstrap/seed/xaxc-linux-x86_64`, 33,154,122 bytes, requires Python: yes.<!-- /xax-status:bootstrap -->
 
 Sections below are dated; a later section supersedes an earlier figure. The current full-suite result is under "Multi-language performance rule" and later entries in `XAX_STATE.md`.
 
@@ -1585,6 +1585,30 @@ natively, and run the Android-first checks. Still open in the native workspace: 
     differences from the old ported main.
   - BBC's own declarations and types are supplied with `object`.
   - Then build `bbc.exe` and run BBC's checks under wine.
+
+## BBC's driver on the production driver: ledgers 0016, 0017 — 2026-11-06 (ADR-379, ADR-380)
+
+- **BBC's layer is ported natively.** `integration/bfx/transactions/production_driver/native/rebuild.sh` rebuilds
+  BBC's driver from any production driver store with native transactions only:
+  - the Windows host;
+  - the PE target;
+  - BBC's layer: 32 functions from portable batches, plus four driver entry variants through stubs.
+  The result verifies (72.4 MB).
+- **`build` first rejected it.** BBC's frame-path functions call helpers that give back borrowed views, and the frame
+  path counted them as machine results. **Ledger 0016** elides them at frame-path call sites, through a hand-written
+  `@cl_borrow`.
+  - The first version had five machine parameters, so the pre-0016 seed's own frame path rejected it while building
+    the compiler. It now takes the two counts in one word.
+- **The build then ran for more than an hour.** Sampling the running program with gdb, and mapping the program
+  counter through the views image's function offsets, found `cycle` inside next-iteration prefetch: cubic in the
+  view's block count, and F811 inlines 1,782 calls. **Ledger 0017** skips prefetch for views of more than 4096
+  blocks (ADR-380).
+- Both ledgers: xaxc1 = xaxc2, the seed rotated, and the Python-free seed record re-measured.
+- **Next:**
+  - build `bbc.exe` from the rebuilt driver with the new seed;
+  - run BBC's checks under wine and qemu-aarch64: a scratch harness compiles Brainfuck programs for both targets and
+    compares each run with an interpreter;
+  - replace `integration/bfx/bbc.xax` and record the evidence.
 
 ## Open issues
 

@@ -3779,3 +3779,12 @@ Superseded by [ADR-369](#adr-369--n03-growable-views-as-limit-bounded-checked-ac
 | Evidence | EXECUTED on Linux x86-64 with wine. `tests/test_native_frame_borrowed_returns.py`: a six-parameter caller (frame path) calls a non-inlined callee that stores through the view and gives back `(bits64, borrowed view)`. It then stores and loads through the returned pointer, and the PE executable exits with the expected value under wine. The previous store rejects the program. The seed built xaxc1 and xaxc1 built xaxc2, the same bytes (33,154,026, SHA-256 `e1e09699…ea84`); the seed is xaxc1. `@cl_borrow` takes `cl_r` and `cl_r_first` in one word, so it has four machine parameters and the pre-0016 seed's register path builds it. A first version with five was rejected by the old frame path, for this very reason. |
 | Limits | A call whose first machine result is a borrowed view, followed by another machine value, is still rejected: the two kinds of callee would put different values in RAX. Indirect and foreign calls are unchanged. |
 
+## ADR-380 — Next-iteration prefetch only for views of at most 4096 blocks (ledger 0017)
+
+| Field | Record |
+|---|---|
+| Decision | The general backend's `prefetch` returns at once, selecting no prefetch, when the function's lowering view has more than 4096 blocks. Ledger 0017 is three native batch records (the driver, the request, the x86-64 general program): a guard block in front of `prefetch`'s own view (`native/0017/prefetch.awk`). |
+| Rationale | `prefetch` calls `cycle` for every block that ends in a branch. Each `cycle` makes a forward walk and then a backward fixed point over every block, so the cost grows roughly as the cube of the block count. BBC's F811 inlines 1,782 calls; sampling the native program (gdb, then the views image's function offsets) put it in `cycle` for more than 35 minutes, and the `bbc.exe` build did not finish in 70 minutes. Prefetch marks only add prefetches, so skipping them changes speed, never results. |
+| Evidence | With the guard, F811's closure compiles in the native general program (Python-hosted) in 4 minutes, every function emitted. |
+| Limits | A budget, not a better algorithm: a predecessor-list `cycle` would make the pass about quadratic and could lift the budget. Views above it get no prefetch marks. |
+
