@@ -1,10 +1,11 @@
-"""OI-53: the production compiler's ``xaxc verify`` rejects byte-view widening (ADR-231) that the reference and the
-native typing program (as ``verify_store`` runs it) accept.
+"""OI-53 (closed by ledger 0013, ADR-376): the production compiler's ``xaxc verify`` rejected byte-view widening (ADR-231)
+that the reference and the native typing program (as ``verify_store`` runs it) accept.
 
 A Linux program maps a heap view of ``ptr<bits8>`` and stores a ``bits<64>`` with an 8-byte checked store.  The seed's
-``verify`` answers MEMORY-CHECKED-STORE-TYPE (it is what BBC's committed driver fails on); ``verify_store`` accepts.
-The functions are the same objects in both (the driver holds the typing store's 88 functions), so the difference is in
-the tables the driver builds for them.  Expected to fail until a native transaction fixes the driver.
+``verify`` answered MEMORY-CHECKED-STORE-TYPE (BBC's committed driver failed on it); both accept it now.
+The cause was the general backend's register path: it fused a compare into its block's branch even when a later block
+read it (ADR-304's ``bits<1>`` hazard), and the facts program's ``byte_view`` flag is such a compare.  The self-built
+compiler miscompiled its own verifier; the views backend that lowers ``verify_store``'s copy did not.
 """
 
 from __future__ import annotations
@@ -47,7 +48,6 @@ class ByteViewWideningTests(unittest.TestCase):
         X.verify_store(widened_store())
 
     @unittest.skipUnless(platform.system() == "Linux" and platform.machine() in ("x86_64", "AMD64"), "the seed runs on Linux x86-64")
-    @unittest.expectedFailure  # OI-53
     def test_production_verify_accepts(self):
         with tempfile.TemporaryDirectory() as directory:
             store = Path(directory) / "s.xax"
