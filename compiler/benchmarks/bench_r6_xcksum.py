@@ -23,7 +23,8 @@ What is XAX here, and what is not:
 
 Run ``PYTHONPATH=src:reference:.:.. python -m benchmarks.bench_r6_xcksum [--write]`` from ``compiler/`` with the AArch64
 Android devices on ``adb`` (``XAX_R6_SERIALS``: comma-separated serials; default every attached device whose
-kernel reports ``aarch64``).
+kernel reports ``aarch64``).  ``--rebind "<reason>"`` rebuilds both stores without the phones and keeps the
+recorded deployments only when every artifact is byte-identical (``rebind``).
 """
 
 from __future__ import annotations
@@ -203,7 +204,71 @@ def run(write: bool = False) -> dict:
     }
 
 
+def rebind(reason: str) -> dict:
+    """Rebuild both committed generations exactly as ``run(write=True)`` does (generation 0 from the request,
+    generation 1 by the maintenance transaction) and rebind the recorded evidence to them, without the phones.
+
+    Only when every rebuilt artifact (``app`` and ``test``, both generations, and the incomplete-edit guard's
+    ``test``) is byte-identical to the one the phones ran are the recorded deployments kept; the stores' hashes and
+    roots, the provenance and request objects and the maintenance record are recomputed.  Any other difference is an
+    error: then the phones must run the new artifacts (``--write``)."""
+    from xax_compiler import StoreReader
+    from xax_construct import construct
+
+    evidence = json.loads(EVIDENCE.read_text(encoding="utf-8"))
+    request = json.loads(REQUEST.read_text(encoding="utf-8"))
+    constructed = construct(request)
+    gen0 = constructed.reader
+    workspace, result, generation, queries = maintain(gen0, constructed, MAINTENANCE_EDIT)
+    if not result.committed:
+        raise AssertionError(f"maintenance edit rejected: {result.diagnostic}")
+    probe, incomplete, _generation, _queries = maintain(gen0, constructed, INCOMPLETE_EDIT)
+    readers = (gen0, workspace.reader)
+    releases = []
+    for reader, recorded in zip(readers, evidence["releases"]):
+        builds = _builds(reader)
+        for name, item in builds.items():
+            if _sha(item["artifact"]) != recorded["builds"][name]["artifact_sha256"]:
+                raise AssertionError(f"generation {recorded['generation']} {name}: the artifact changed; run the phones (--write)")
+        releases.append(_release_record(recorded["generation"], reader, builds, recorded["deployments"]))
+    # The guard (the incomplete edit, which commits and which the XAX selftest catches on the phone) has no recorded
+    # artifact digest: rebuild it from the committed generation 0 with that store's own target and require equality.
+    import dataclasses
+
+    committed = StoreReader(STORES[0].read_bytes())
+    rebuilt = set(gen0.object_cids)
+    targets = [committed.get(cid) for cid in committed.object_cids
+               if cid not in rebuilt and committed.get(cid).kind == constructed.target.kind]
+    if len(targets) != 1:
+        raise AssertionError(f"the committed generation 0 differs from the rebuilt one in {len(targets)} targets")
+    committed_probe, committed_incomplete, _g, _q = maintain(committed, dataclasses.replace(constructed, reader=committed, target=targets[0]), INCOMPLETE_EDIT)
+    guard_artifact = _builds(probe.reader)["test"]["artifact"]
+    if (incomplete.committed, guard_artifact) != (committed_incomplete.committed, _builds(committed_probe.reader)["test"]["artifact"]):
+        raise AssertionError("the incomplete-edit guard changed; run the phones (--write)")
+    guard = _sha(guard_artifact)
+    STORES[0].write_bytes(gen0.canonical_bytes())
+    workspace.save(STORES[1])
+    if StoreReader(STORES[1].read_bytes()).root_cid != result.root:
+        raise AssertionError("committed generation 1 differs from the replayed transaction")
+    maintenance = evidence["maintenance"]
+    maintenance.update({"function_queries": queries, "generation_before": generation, "generation_after": workspace.generation,
+                        "committed": result.committed, "transaction_bytes": result.transaction_bytes,
+                        "touched_objects": result.touched_objects, "reused_objects": result.reused_objects,
+                        "semantic_diff": repr(workspace.diff(generation, 64))})
+    maintenance["test_guard"]["committed"] = incomplete.committed
+    evidence["construction"].update({"request_sha256": _sha(REQUEST.read_bytes()), "reconstructs_generation_0": True})
+    evidence["releases"] = releases
+    evidence["rebound"] = {"reason": reason, "artifacts_unchanged": True, "guard_test_artifact_sha256": guard,
+                           "deployments": "kept from the recorded phone run: every artifact the phones ran is byte-identical"}
+    return evidence
+
+
 def main(argv: list[str]) -> int:
+    if "--rebind" in argv:
+        evidence = rebind(argv[argv.index("--rebind") + 1])
+        EVIDENCE.write_text(json.dumps(evidence, indent=2) + "\n", encoding="utf-8")
+        print(json.dumps({"rebound": evidence["rebound"], "stores": [r["store_sha256"] for r in evidence["releases"]]}, indent=1))
+        return 0
     evidence = run("--write" in argv)
     text = json.dumps(evidence, indent=2) + "\n"
     if "--write" in argv:

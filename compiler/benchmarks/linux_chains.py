@@ -34,6 +34,7 @@ The C twin links nodes with real pointers.  XAX expresses the links two ways:
 from __future__ import annotations
 
 import argparse
+import copy
 import hashlib
 import json
 import subprocess
@@ -577,12 +578,41 @@ def run_benchmark(repetitions: int, warmup: int) -> dict:
     }
 
 
+EVIDENCE_LINKS = {"xax": "index", "xax_pointer": "pointer", "xax_link": "link", "xax_soa": "soa"}
+
+
+def bind_to_committed(evidence: dict, reason: str) -> dict:
+    """Rebind the committed evidence to the programs the current compiler builds, without re-timing it: recompile the
+    four XAX programs and, only when every executable is byte-identical to the one that was measured, replace the
+    semantic identities (program roots, entry functions and the index program's target).  The recorded samples still
+    describe exactly those executables.  Any other difference is an error: then re-run the benchmark."""
+    rebound = copy.deepcopy(evidence)
+    for key, links in EVIDENCE_LINKS.items():
+        program, executable = compile_chains(links=links)
+        record = rebound[key]
+        if (hashlib.sha256(executable.data).hexdigest(), len(executable.data)) != (record["artifact_sha256"], record["artifact_bytes"]):
+            raise AssertionError(f"{key}: the executable changed; re-run the benchmark (--write)")
+        record["program_root"] = program.reader.root_cid.hex()
+        record["entry_function"] = program.entry.cid.hex()
+        if "target" in record:
+            record["target"] = program.target.cid.hex()
+    rebound["rebound"] = {"reason": reason, "artifacts_unchanged": True,
+                          "samples": "kept from the recorded run: every measured executable is byte-identical"}
+    return rebound
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--repetitions", type=int, default=31)
     parser.add_argument("--warmup", type=int, default=3)
     parser.add_argument("--write", action="store_true", help="update the committed evidence JSON")
+    parser.add_argument("--bind-committed", metavar="REASON", help="rebind the committed evidence to the current programs without re-timing")
     arguments = parser.parse_args(argv)
+    if arguments.bind_committed:
+        evidence = bind_to_committed(json.loads(EVIDENCE.read_text()), arguments.bind_committed)
+        EVIDENCE.write_text(json.dumps(evidence, indent=2, sort_keys=True) + "\n")
+        sys.stdout.write(json.dumps(evidence["rebound"], indent=1) + "\n")
+        return 0
     evidence = run_benchmark(arguments.repetitions, arguments.warmup)
     text = json.dumps(evidence, indent=2, sort_keys=True) + "\n"
     if arguments.write:

@@ -173,6 +173,11 @@
     "warmup_runs": 3
   },
   "output": "1048576 9437420\n",
+  "rebound": {
+    "artifacts_unchanged": true,
+    "reason": "ledger 0007 (ADR-371) added operations 77 and 78 to x86_64-linux-elf-exec-v1, which changed the target CID the programs embed",
+    "samples": "kept from the recorded run: every measured executable is byte-identical"
+  },
   "results": {
     "clang-O2": {
       "file_bytes": 16160,
@@ -586,9 +591,9 @@
     "entry_function": "a0b372c0739f9fa0da45e720d12e6c15b0cc96080b476c170258bfbff047c7e6",
     "graph_blocks": 20,
     "link_representation": "b64 arena index + 1 (0 = end); byte offset = (index - 1) * 16, checked against the view extent",
-    "program_root": "92fc4516c075e33602a8a1d0fe05b7ce18b85e42f4fd6f90640722228a556067",
+    "program_root": "d02ea7714192cfb07db509d5cbf0d776f259a6edd1344eeadc7585422fcd4822",
     "runtime_dependencies": [],
-    "target": "0843714bb8ab058c655fa9e2833f37ed0ddcd009338ce44669fc2ef5117d682e"
+    "target": "28f1deec106cba698ccec0c1124346f2bef9199319cf928f5377975640f0c632"
   },
   "xax_link": {
     "artifact_bytes": 1312,
@@ -596,7 +601,7 @@
     "entry_function": "4f852e40b56a9d7f6f2c38acc41b235de526ac897b8011bbe8c14863c79b3355",
     "graph_blocks": 21,
     "link_representation": "record link fields (ADR-097): heads table targets the arena; link_follow is check-free (null test elided by the walk's own test)",
-    "program_root": "1c63ff98116ff38981329744f2f54c4a0094f46bf13e46afc9b1f04fd29c27ef",
+    "program_root": "569f39fee6e2ae82668459afa200b20ac1640e509e47d0c42a2a5ad84d47adca",
     "runtime_dependencies": []
   },
   "xax_pointer": {
@@ -605,7 +610,7 @@
     "entry_function": "6cdc6b7b7a3bf8187e44b44f257038ec2659945e8225680d2742dd06d2cd3c49",
     "graph_blocks": 19,
     "link_representation": "exposed node address (0 = end) reloaded by pointer_rebase(arena, address, 16): one range+alignment check, then unchecked field loads (ADR-092)",
-    "program_root": "1dc611494058f20e1ead7472907e87dec7ad169110241ae1015800b67f183bf0",
+    "program_root": "0bc9ad22b507b3c622f641083839fa0ce5dc4f7ee61968cd69e21900c5ec4b7c",
     "runtime_dependencies": []
   },
   "xax_soa": {
@@ -614,7 +619,7 @@
     "entry_function": "51cf46df67332298777651719a02d85f68a93d8f637e55ea3d6f638655027809",
     "graph_blocks": 21,
     "link_representation": "struct of arrays like the Rust twin: bits<32> slot links (node i in slot i + 1, 0 = end) in zero-filled mappings; one compare against the arena bounds each followed link, after which range analysis removes both access checks",
-    "program_root": "66c2a727f8aeadc3260f6b9c4c6935e1ae86f10486d00399e8797ccd537a692a",
+    "program_root": "37dd77563417426cd39a537b98e9dccca5cb09801538ad7ac3149d072f355a25",
     "runtime_dependencies": []
   }
 }

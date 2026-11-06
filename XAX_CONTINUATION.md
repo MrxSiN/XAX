@@ -223,10 +223,9 @@ known failing tests.
   (`XAX.X86_64_VIEWS.UNSUPPORTED_OPERATION` for operation 77), `test_the_raised_input_bound`, the six op-77 stores of
   `test_xax_selfhost_driver::test_every_committed_store`, and the three tests that read `full_selfhost_evidence.json`
   (among them `test_the_record_decides_whether_the_seed_requires_python`).
-- Three tests fail because ledger 0007 changed the `x86_64-linux-elf-exec-v1` target's CID: both
-  `test_xax_construct.py::…::test_request_reconstructs_generation_0` and
-  `test_xax_chains.py::…::test_committed_artifact_identity_reproduces`. Their committed stores and evidence embed the
-  old target; regenerating them waits on the user's decision.
+- Ledger 0007 changed the Linux targets' CIDs. The R6 stores and the OI-37 chains identity were rebuilt for it on
+  2026-11-06 (`XAX_STATE.md`); for a later target change use `bench_r6_xcksum --rebind` and
+  `linux_chains --bind-committed`, which keep recorded device runs and samples only for byte-identical executables.
 - With 4 workers on a 15 GB host the full suite runs out of memory; run the slow self-hosting group with `-n 1` or `-n 2`.
 - The edit engine drops supplied objects that end up unreachable. A batch must make everything it defines reachable,
   which is why `rebuild.sh` uses stubs.

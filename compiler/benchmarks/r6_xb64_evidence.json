@@ -35,7 +35,7 @@
     "transaction_bytes": 64,
     "touched_objects": 10,
     "reused_objects": 89,
-    "semantic_diff": "DiffPage(entities=(DiffView(handle='D1.0', change='removed', kind=<Kind.FUNCTION: 3>, classification='authoritative'), DiffView(handle='D1.1', change='removed', kind=<Kind.FUNCTION: 3>, classification='authoritative'), DiffView(handle='D1.2', change='removed', kind=<Kind.BUILD: 10>, classification='authoritative'), DiffView(handle='D1.3', change='removed', kind=<Kind.GRAPH_FRAGMENT: 7>, classification='authoritative'), DiffView(handle='D1.4', change='removed', kind=<Kind.GRAPH_FRAGMENT: 7>, classification='authoritative'), DiffView(handle='D1.5', change='removed', kind=<Kind.FUNCTION: 3>, classification='authoritative'), DiffView(handle='D1.6', change='removed', kind=<Kind.PACKAGE: 9>, classification='authoritative'), DiffView(handle='D1.7', change='removed', kind=<Kind.GRAPH_FRAGMENT: 7>, classification='authoritative'), DiffView(handle='D1.8', change='removed', kind=<Kind.CONSTANT: 5>, classification='authoritative'), DiffView(handle='D1.9', change='removed', kind=<Kind.BUILD: 10>, classification='authoritative'), DiffView(handle='D1.10', change='removed', kind=<Kind.MODULE: 2>, classification='authoritative'), DiffView(handle='D1.11', change='added', kind=<Kind.BUILD: 10>, classification='authoritative'), DiffView(handle='D1.12', change='added', kind=<Kind.BUILD: 10>, classification='authoritative'), DiffView(handle='D1.13', change='added', kind=<Kind.FUNCTION: 3>, classification='authoritative'), DiffView(handle='D1.14', change='added', kind=<Kind.FUNCTION: 3>, classification='authoritative'), DiffView(handle='D1.15', change='added', kind=<Kind.FUNCTION: 3>, classification='authoritative'), DiffView(handle='D1.16', change='added', kind=<Kind.GRAPH_FRAGMENT: 7>, classification='authoritative'), DiffView(handle='D1.17', change='added', kind=<Kind.MODULE: 2>, classification='authoritative'), DiffView(handle='D1.18', change='added', kind=<Kind.GRAPH_FRAGMENT: 7>, classification='authoritative'), DiffView(handle='D1.19', change='added', kind=<Kind.PACKAGE: 9>, classification='authoritative'), DiffView(handle='D1.20', change='added', kind=<Kind.GRAPH_FRAGMENT: 7>, classification='authoritative')), truncated=False, continuation=None)",
+    "semantic_diff": "DiffPage(entities=(DiffView(handle='D1.0', change='removed', kind=<Kind.FUNCTION: 3>, classification='authoritative'), DiffView(handle='D1.1', change='removed', kind=<Kind.FUNCTION: 3>, classification='authoritative'), DiffView(handle='D1.2', change='removed', kind=<Kind.GRAPH_FRAGMENT: 7>, classification='authoritative'), DiffView(handle='D1.3', change='removed', kind=<Kind.GRAPH_FRAGMENT: 7>, classification='authoritative'), DiffView(handle='D1.4', change='removed', kind=<Kind.FUNCTION: 3>, classification='authoritative'), DiffView(handle='D1.5', change='removed', kind=<Kind.PACKAGE: 9>, classification='authoritative'), DiffView(handle='D1.6', change='removed', kind=<Kind.GRAPH_FRAGMENT: 7>, classification='authoritative'), DiffView(handle='D1.7', change='removed', kind=<Kind.BUILD: 10>, classification='authoritative'), DiffView(handle='D1.8', change='removed', kind=<Kind.CONSTANT: 5>, classification='authoritative'), DiffView(handle='D1.9', change='removed', kind=<Kind.BUILD: 10>, classification='authoritative'), DiffView(handle='D1.10', change='removed', kind=<Kind.MODULE: 2>, classification='authoritative'), DiffView(handle='D1.11', change='added', kind=<Kind.FUNCTION: 3>, classification='authoritative'), DiffView(handle='D1.12', change='added', kind=<Kind.BUILD: 10>, classification='authoritative'), DiffView(handle='D1.13', change='added', kind=<Kind.FUNCTION: 3>, classification='authoritative'), DiffView(handle='D1.14', change='added', kind=<Kind.FUNCTION: 3>, classification='authoritative'), DiffView(handle='D1.15', change='added', kind=<Kind.GRAPH_FRAGMENT: 7>, classification='authoritative'), DiffView(handle='D1.16', change='added', kind=<Kind.MODULE: 2>, classification='authoritative'), DiffView(handle='D1.17', change='added', kind=<Kind.GRAPH_FRAGMENT: 7>, classification='authoritative'), DiffView(handle='D1.18', change='added', kind=<Kind.BUILD: 10>, classification='authoritative'), DiffView(handle='D1.19', change='added', kind=<Kind.PACKAGE: 9>, classification='authoritative'), DiffView(handle='D1.20', change='added', kind=<Kind.GRAPH_FRAGMENT: 7>, classification='authoritative')), truncated=False, continuation=None)",
     "whole_program_regenerated": false,
     "test_guard": {
       "edit": "const F2.B2.N52 64",
@@ -47,21 +47,21 @@
     {
       "generation": 0,
       "store": "xb64-gen0.xax",
-      "store_sha256": "26e908ab8428440abf2ede0cefdfd8b0de1467a7022b3d62a8417cd86eb943bd",
-      "root": "e245d976dbfeb85211192ee8532444e004c209b1d2c69177f1757dd246b7d539",
+      "store_sha256": "e4181ac91ec870435c2c56647ef7201d9d562ce9ff3768bc9ac908a42ab9010b",
+      "root": "ba4973ba4e0e38840d00ae4cc6410594b188669a2cf582a62b52be80f8a6fb75",
       "builds": {
         "app": {
           "artifact_sha256": "65980458c442eb3c4f4b68755e80cfe2c6a7b3d83954bf3aaca80a985eb413fb",
           "artifact_bytes": 2318,
-          "provenance": "d0d24e7dd3120b6051e4ed8ce9d5fb05b8492c106d5938ef276dab65bc9f0247",
-          "request": "66b50c404c67a6d4bf4699af9436a04c1d0e7f6c1b7e83a29d2724edb62bd1f2",
+          "provenance": "3e9a9e8088bf6abe2b614e44aa23c8e80de71456ad92d6bce13fd75fcd8823ea",
+          "request": "d0f763cc6dacb3d269703dff2d41a67a0ae655a27779853cf2838722f74c376d",
           "reproducible": true
         },
         "test": {
           "artifact_sha256": "4c244d405cb7adec384a50d48b5a1c0532af3d21926571fc0f2c3b2fc84887d1",
           "artifact_bytes": 4430,
-          "provenance": "dd3a26d291ea0879a24d13a74b448988e1b6b736f577e4113738f97e08569e5f",
-          "request": "24e6bccc2f3f8a499795637da37fa06adf1fe51e94bced0a237fa81f27254242",
+          "provenance": "3b10579b0d14a7d18323f15fdf9e78716acaf03f0a3d0de5b1854c34f646a4f6",
+          "request": "d24602e0afe5dd1a6551b4d0dc16886fc9658434ddb17313d3045712fcfc680e",
           "reproducible": true
         }
       },
@@ -77,21 +77,21 @@
     {
       "generation": 1,
       "store": "xb64-gen1.xax",
-      "store_sha256": "84303c94f495af1e6b4609deba3c23971c133c39e70c270e1f634c84a0302090",
-      "root": "07acda162ac62267a24397fd822f8f3adc9517765f6f2eecf8ae4c6ce05f09ba",
+      "store_sha256": "6a85d12fed8a9c52d057eb6abd163ae34969fa3ff7aa861b2ffd423a0d8ab98c",
+      "root": "b9e7d7e258ca098c1474f93064f6ecde261d20713fc4202850072303629acd0d",
       "builds": {
         "app": {
           "artifact_sha256": "4200cad9e14a8d50b4cd1181715e0d51ba5c95970286f0d2a05da8d6de4f6204",
           "artifact_bytes": 2318,
-          "provenance": "272de7df40556b967b34d191e32d4b3eaeff022bd84434f5476949ad22b1c200",
-          "request": "02029449d0d5e3e4f2ce6601aa77df66d763112cf4c741f4d5fb99f77b3b60b8",
+          "provenance": "9f794a1ee61036fd4b78857000feff8bfcca6faa6dcf1d85c9b243cd7feb4097",
+          "request": "20985c14278442bef484a7ea10b6b82f63c25ce7030e833ff8f113361f83f475",
           "reproducible": true
         },
         "test": {
           "artifact_sha256": "3f5f1f77ea0c1e055a00175bbe4ce955799efb6e412629368b63cd1e819a681d",
           "artifact_bytes": 4430,
-          "provenance": "d8a22b7a3535118ac521159516835946bb77aa28056544a5346075e74a5f2e19",
-          "request": "12790f819217d776f763f812f526708476d5a050f56c590698ea4fac9432fe2c",
+          "provenance": "1c06b016a48b3827634fe5186c77c94911b9913c32a956253b22f1f12b0fc1f7",
+          "request": "09bf4b777d36cdb43d12c3ce189e52be5d1544b57f1f1b9469d7925c8bc07418",
           "reproducible": true
         }
       },
