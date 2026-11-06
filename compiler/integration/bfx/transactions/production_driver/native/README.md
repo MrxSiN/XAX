@@ -66,3 +66,25 @@ BBC's own layer (36 functions of the ledger-0003 staged record `../2_bbc_layer.e
   borrowed pointers as machine results; its register path, and function interfaces (ADR-101), elide them. The old
   `bbc.exe` was lowered by the Python SDK, which inlined such sites. The fix belongs in the general backend: borrowed
   views elided at frame-path call sites.
+
+## Rebuilding BBC's driver from any production driver
+
+`rebuild.sh <production driver store> <work directory>` runs every step with the seed and ends with `xaxc verify` of
+`<work>/bbc.xax`:
+1. the Windows-host batch, with the entry ported by `port_main.awk`;
+2. the PE-target record;
+3. batch 3a, BBC's layer with stubs;
+4. the four variant batches (`variants.sh`).
+
+Its inputs are portable: they name driver functions by CID, not by store handle, and the eager entry by `@MAIN`.
+- `windows_objects.batch`: Win64 declarations and types;
+- `adapters.batch`: the six host adapters;
+- `layer_objects.batch`: BBC's declarations and types;
+- `layer_functions.batch`: the 32 layer functions in call order, `@STUB` marking the variants' places, from
+  `portable.awk` over the 0003 views;
+- `main_map.txt`, `pe_target_growable.hex`.
+
+`cids.py` only reads the CIDs a listing does not show: module, target, entry, and stubs.
+
+**First run** on the production driver after ledger 0016: BBC's driver root `b032947f…`, 72.4 MB; `verify` accepts
+it.
