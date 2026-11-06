@@ -1,6 +1,6 @@
 # N0 authoring worktree (ADR-367)
 
-N0's own infrastructure is authored once with the pre-W2 generators: commit `b3e22b0`, plus this patch, plus the
+N0's own infrastructure is authored once with the pre-W2 generators: commit `8f2c9f4`, plus this patch, plus the
 current `compiler/reference/xax_compiler.py` and `compiler/src/xax_selfhost_edit.py` copied over the worktree's
 `src/` copies. With nothing else changed the worktree regenerates the committed general driver byte for byte
 (generator output, then the pre-W2 ledger queries `inputs_limit` and `dead_constants`).

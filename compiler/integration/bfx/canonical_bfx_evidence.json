@@ -19,8 +19,8 @@
   },
   "parents": {
     "bbc": "15f8c63dd7b01fa9cb54cc63a623db8d89c9c3da",
-    "xax_initial": "6c9ed73474307d4b3f6130dd09a16431b0f8046d",
-    "xax_integrated_upstream": "943884a"
+    "xax_initial": "e40f77ddb9b671e750f055fcf84324f114d47b8f",
+    "xax_integrated_upstream": "690efae"
   },
   "canonical_sources": [
     {
@@ -52496,10 +52496,10 @@
       ],
       "all_current_root_stores_verified": true,
       "generic_sdk_unchanged": true,
-      "sdk_pin": "3dcb358e48b0f9a45b8cb72767c1aa600e55cd78"
+      "sdk_pin": "36c951b5d85e7a33338a3d764e927ba8cfc429bf"
     },
     "post_integration_checks": {
-      "upstream_parent": "943884a",
+      "upstream_parent": "690efae",
       "inherited_sdk_addition": "xax_selfhost_blake3.hash_span_function; not used by BFX",
       "migration_changes_generic_sdk": false,
       "all_component_images_exact": [
@@ -52701,7 +52701,7 @@
       ],
       "one_shared_decoder": true,
       "legacy_decoder_absent": true,
-      "historical_base": "6c9ed73474307d4b3f6130dd09a16431b0f8046d",
+      "historical_base": "e40f77ddb9b671e750f055fcf84324f114d47b8f",
       "retired_decoder_selection": "Standalone decoder closure functions and imported decoder ABI (seven typed parameters, old record view at parameter one), compared against every current BFX integration store."
     },
     "delivery_audit": {
@@ -52872,7 +52872,7 @@
       "links_checked": 362,
       "annotations_and_bf_brackets_valid": true,
       "migration_generic_sdk_diff_empty": true,
-      "sdk_comparison_parent": "943884a"
+      "sdk_comparison_parent": "690efae"
     },
     "android_authority": {
       "device": "Pixel 8 Pro",
@@ -52921,7 +52921,7 @@
   },
   "limitations": [
     "Native component execution is distinct from native XAX compiler-host completion. Generic Windows verification/lowering/packaging and helper-loader fallback remain disclosed.",
-    "Initial generic SDK snapshot matches 3dcb358e48b0f9a45b8cb72767c1aa600e55cd78. This migration edits no generic SDK files. Unrelated upstream hash-span construction addition is preserved; all eight component images rebuild identically afterward.",
+    "Initial generic SDK snapshot matches 36c951b5d85e7a33338a3d764e927ba8cfc429bf. This migration edits no generic SDK files. Unrelated upstream hash-span construction addition is preserved; all eight component images rebuild identically afterward.",
     "Five maximum instruction imports establish native emission, target equality and canonical storage integrity; not full SSA verification/lowering of every maximum graph.",
     "No new Android application, worker/cancellation, Linux execution, complete native driver, compiler/RAM, steady-state or competitor victory claim. M4 remains incomplete; M8 is not achieved.",
     "Historical evidence is byte-preserved and identifies its original old-format sources; current fixture data is migrated."

@@ -1,7 +1,7 @@
 {
   "date": "2026-10-20",
   "status": "EXECUTED unscored native coverage diagnosis; production verifier expansion remains open",
-  "xax_input_revision": "76792c792eb6f2165e562aaea41b11119f274798",
+  "xax_input_revision": "f3298ea45625733ef61052063c0c988f0ba00f33",
   "bbc_input_revision": "a2a28decb677d2c528938ed4ce38afe5ceb1f924",
   "production_driver_source_root": "2b8136a8e052ccefd88f31b5d906dc986a070f2ca6e370668b73b17783ed3d17",
   "production_driver_unchanged": true,

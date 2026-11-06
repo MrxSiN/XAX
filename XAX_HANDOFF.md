@@ -1376,7 +1376,7 @@ Superseded by "N0 native-evolution bootstrap: N0.3 landed" below.
 
 **Rule (ADR-367).** After N0, compiler logic is authored only as canonical XAX graphs through native XAX transactions.
 Until N0 completes, only N0's own infrastructure may be generated. The generator worktree used for N0 is the pre-W2
-tree (commit `b3e22b0`) with the ledger fixes ported in; it reproduces the committed driver byte for byte (generator
+tree (commit `8f2c9f4`) with the ledger fixes ported in; it reproduces the committed driver byte for byte (generator
 output, then the baseline queries `inputs_limit` and `dead_constants` of the pre-W2 `xax_selfhost_evolution`). Records
 are authored by pairing old and new generator output by function name and replacing references at the changed
 functions' owners outside the generated set, never at the old versions' own graphs.

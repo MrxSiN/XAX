@@ -1350,7 +1350,7 @@
     "No full-pipeline or competitor timing update",
     "The general compiler-driver store is above this host\u2019s inherited 16 MiB single-input capacity and is rejected; no incremental hash API is claimed"
   ],
-  "xax_base_revision": "ac7821c9bf9c1bde0c18f00da6d1a60a3b320816",
+  "xax_base_revision": "2865422e4dc86a0e653144a021bce0cb9f2fda64",
   "runtime_authority": {
     "component": "windows-hash-process",
     "semantic_root": "f44e8ae1786f3828bb09d89d92fb196bfa4979a2b5b904b3e2d1b4c29d306921",

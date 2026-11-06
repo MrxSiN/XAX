@@ -32,4 +32,7 @@ For repository maintenance (compiler, evidence, documentation):
 Git workflow:
 
 - Do not add AI attribution to commits or pull requests: no `Co-Authored-By` trailers naming an AI assistant, no session links, no "Generated with" footers.
+- Commits are authored and committed by the repository's git identity (`git config user.name` / `user.email`), never by Claude or `noreply@anthropic.com`; check `git log -1 --format='%an <%ae> / %cn <%ce>'` before pushing. Claude never appears as a GitHub contributor (the only exceptions are past benchmark-evidence-only commits).
+- Pull request titles say what the change does in plain words, under about 70 characters ("General backend: limit prefetch to small views"). Never use the branch name (`Ccr 9a7d54f8 ss6wxl`, `Claude/...`), a "WIP" prefix, or a title cut off mid-word; spell out internal IDs (ADR, ledger, step numbers) only as a parenthetical after the plain description.
+- Pull request descriptions start with one or two sentences a newcomer can follow: what changed and why. Then a `## Changes` list with one plain line per commit or logical change, and an optional `## Details` section for technical depth. Never leave the description empty.
 - Commit and push to `main` as soon as each task is finished and its tests pass; do not hold finished work until a larger set is complete.

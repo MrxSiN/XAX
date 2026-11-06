@@ -3,7 +3,7 @@
   "construction_date": "2026-10-19",
   "status": "EXECUTED bounded native Windows driver prototype; diagnostic parity and corrected self-store native gate are unmet",
   "scope": "Explicit native CLI for tested verification/inspection/resolution/editing and one PE build. Common Python helper loader, full BBC DLL pipeline and Android compiler hosting unchanged. No competitor-score or B-level promotion.",
-  "xax_base_revision": "f79b532fd4651ba808676d02f4b038e2cc271e6a",
+  "xax_base_revision": "d4302f764be6610b4001dcf7633d136bcc42c47a",
   "host": {
     "os": "Windows-11-10.0.26300-SP0",
     "architecture": "AMD64",

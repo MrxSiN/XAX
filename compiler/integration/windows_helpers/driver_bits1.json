@@ -1,7 +1,7 @@
 {
   "date": "2026-10-21",
   "state": "EXECUTED native x86-64 frame bitwise extension; native build workflow incomplete",
-  "xax_parent_revision": "d320babab5bb9fe61a9d29f1f14942a847bf83a7",
+  "xax_parent_revision": "552d958e9b18e7c43b9c1b38ad6a86d3e5e2a941",
   "canonical_change": {
     "parent": "2b8136a8e052ccefd88f31b5d906dc986a070f2ca6e370668b73b17783ed3d17",
     "root": "fd2fe37a0128b7b8661e2be7de4fe6a44108b8eb554b5becd1fa4b99629ad7bc",

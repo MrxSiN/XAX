@@ -29,7 +29,7 @@ the same graph.
 | `tests/test_native_stdio.py` | the Windows STDIO suite over the real PE32+ (port pending) |
 
 The five Python carrier emitters (`server.py`, `sandbox.py`, `seed.py`, `dsl.py`, `schemas.py`) were retired in
-this change. They are preserved in git history at `6b6c359`; the programs they emitted are the stores above. The
+this change. They are preserved in git history at `7fb1741`; the programs they emitted are the stores above. The
 store is the source: an edit is a typed `xaxc edit` record, not a regeneration from a DSL.
 
 ## Build and verify
@@ -60,7 +60,7 @@ backend omits the reference Windows guard-page probe, which shifts the image by 
 server PE remains the author-built one; the store and the carrier are byte-identical to the committed artifacts.
 
 The native `xaxc` is a local prototype and is not committed to the pinned tree. The pinned compiler commit is
-`3e9b0c2b3f88d2193caae72a5fe8eefa83d1995b`; the tools here are integration tooling for that pin.
+`14eed4a12e6a34cb9ff4736c570091cd2cec74d7`; the tools here are integration tooling for that pin.
 
 ## Run the tests
 

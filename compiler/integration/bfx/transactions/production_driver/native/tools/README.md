@@ -22,4 +22,4 @@ Run from `compiler/` with `PYTHONPATH=src:reference:.`. All run the XAX general 
 Profiling a slow native run: `gdb -p <pid> -batch -ex "info registers rip"` a few times, find the mapping in
 `/proc/<pid>/maps`, subtract the mapping base and the SysV→Win64 thunk (16-byte aligned), and map the offset with
 `compile_x86_64_views(reader, entry, x86_64_views_target(), backend="xax").function_offsets` of the general store
-(names: build `xax_selfhost_x86_64_general.build_general_program` at commit `1382225^` for `_FN`, or match by CID).
+(names: build `xax_selfhost_x86_64_general.build_general_program` at commit `4a5d4b8^` for `_FN`, or match by CID).

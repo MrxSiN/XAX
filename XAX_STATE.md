@@ -930,7 +930,7 @@ The XAX JVM program now builds callbacks: JDK streams and comparators that call 
 - Environmental failures:
   - The `compiler` package import needs the repository root on `sys.path` (`test_oi03`, `test_oi06`, the `test_oi07`-`test_oi09` collection errors).
   - Wheel builds fail on this host's setuptools (`install_layout`).
-- Already failing before this work: `test_windows_construct_platform_is_on_the_host_surface`. `xax_contract`'s construct platforms lack `android-libxposed`, added in `06f9675`.
+- Already failing before this work: `test_windows_construct_platform_is_on_the_host_surface`. `xax_contract`'s construct platforms lack `android-libxposed`, added in `5d390bd`.
 
 #### S15e.6h unsigned APKs in the self-built compiler — 2026-10-29 (ADR-354, ADR-355, ADR-356)
 
@@ -1446,7 +1446,7 @@ Tests: `compiler/tests/test_xax_jni_float.py`, `compiler/tests/test_xax_android_
 ### 2026-10-27 — Pinned native Windows seed (ADR-335)
 
 The existing Windows compiler is distributed under `compiler/bootstrap/windows`, tied to source root
-`ec66899f...45ebd` at `c97a11d`, with historical bootstrap trust and decline limits disclosed. The unchanged
+`ec66899f...45ebd` at `37a4c95`, with historical bootstrap trust and decline limits disclosed. The unchanged
 BLAKE3 host now has `hash_request.xax`; native verify/resolve/build and empty/abc digest vectors pass. Native
 semantic edits and small application builds were also exercised. This is a usable trusted native Windows seed,
 not whole-compiler migration or a Windows self-build result. Generated milestone and B/R-level blocks are unchanged.

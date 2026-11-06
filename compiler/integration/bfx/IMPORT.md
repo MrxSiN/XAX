@@ -38,8 +38,8 @@ using checked scratch outputs and small results.
 
 Fully verify every source store and emitted decision before lowering. Generic
 SDK files are not edited by this migration. Initial builds used snapshot
-`3dcb358e48b0f9a45b8cb72767c1aa600e55cd78`; unrelated upstream additions
-from `943884a` are preserved, with all eight component images rebuilding exactly.
+`36c951b5d85e7a33338a3d764e927ba8cfc429bf`; unrelated upstream additions
+from `690efae` are preserved, with all eight component images rebuilding exactly.
 Android uses the existing shared integer target. Windows uses the existing PE
 target and explicit generic source-coordinator callee inlining; its five-argument
 BF decision call otherwise meets a backend decline. No new Python compiler logic

@@ -2,7 +2,7 @@
   "date": "2026-10-21",
   "state": "IMPLEMENTED and EXECUTED; no new complete-build performance score",
   "baseline_bbc": "2d9fbd6c44b223905c6d486bcefe35d7433dd0cd",
-  "baseline_xax": "42de0fc3ce31d4447f697e35a565cb4fdc489eda",
+  "baseline_xax": "9214bfbc3b0a629c3655ae87ff33753f828bd54a",
   "external_authoring_archive": {
     "path": "C:\\Users\\User\\.codex\\visualizations\\2026\\10\\20\\01a156c6-4d9f-7521-888e-9f3bc25184bb\\modernization",
     "git_commit": "8bf485a2d142f68ee7996cc791fe640921fc9d14",

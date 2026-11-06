@@ -2,9 +2,9 @@
   "date": "2026-10-21",
   "state": "IMPLEMENTED, EXECUTED and MEASURED scoped XAX ARM64 build optimization",
   "hypothesis": "Repeated whole-CFG argument scans for every block parameter dominate deep Android prepared builds; index incoming edges once per function without changing alias semantics.",
-  "xax_parent_revision": "b765a4c3f8c9b1fb3d915752406b78074049bfa9",
-  "driver_bootstrap_sdk_revision": "1c211da49f88e6634b0b4f98557efdd7204ca800",
-  "authoring_sdk_revision": "2e1af7c167ad6af0107268be7a5beca9452f9148",
+  "xax_parent_revision": "8c3caa0099ec30cf63f49bc160ed6bb97b5c20bb",
+  "driver_bootstrap_sdk_revision": "bfc2059c7f9de1e9a46cae3f77230691a9c5c77b",
+  "authoring_sdk_revision": "60965e315827f6aa3fab1bfdc1fb07988be53ec7",
   "canonical_change": {
     "parent": "68ecf527e4c18c163d1fc2bdddc76335ca2f205eff4f57766cec944a67915f4c",
     "root": "ec66899fddc117eb0496bbd504e06742daf9931d0b8e64e9efde0725dae45ebd",

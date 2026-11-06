@@ -13,9 +13,9 @@ are unchanged. This is a generic memory-initialization improvement.
 
 ## Canonical change
 
-[wide_reset.edit](https://github.com/MrxSiN/XAX/blob/6c9ed73474307d4b3f6130dd09a16431b0f8046d/compiler/integration/bfx/wide_reset.edit) replaces one graph reference in the importer.
+[wide_reset.edit](https://github.com/MrxSiN/XAX/blob/e40f77ddb9b671e750f055fcf84324f114d47b8f/compiler/integration/bfx/wide_reset.edit) replaces one graph reference in the importer.
 Its parent is `import_bfx.xax` at revision
-`3ddafd26752511d7efbc6ff715e2f4899be93ff2`.
+`42dcf668e5a468eaa01769d47ca03f5b6ea400e1`.
 
 - Expected root: `108fe27f40ea8b1fffa14426c6ee85bcecb7caef91e2f8313292ec22770badb8`.
 - Result root: `6af38cf7dce17eaeb4929a5e3cde770f04996db84026d5c9acb6743a07f4e63e`.

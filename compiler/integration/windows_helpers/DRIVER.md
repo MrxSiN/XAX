@@ -230,8 +230,8 @@ per case; source frontend/import/binding are excluded. Separate OS counter
 samples record about 3.31 GiB private commit and 11.2–13.3 MiB peak resident memory.
 These boundaries do not establish a full-build or competitor win. The compiler
 PE is 11,866,112 bytes, SHA256 `23d0b374b3701f011e7ad3aa7f5169085b237c2078db603aab8376591c914f1c`.
-Its bootstrap uses SDK 1c211da; three private helpers also rebuild byte-identically
-under upstream 2e1af7c. That compatibility check is not a new whole-driver bootstrap.
+Its bootstrap uses SDK bfc2059; three private helpers also rebuild byte-identically
+under upstream 60965e3. That compatibility check is not a new whole-driver bootstrap.
 
 ## Android interval allocation — 2026-10-21
 
@@ -255,7 +255,7 @@ cases and six repeated exhaustion calls. Four O0/O1 framed frontend checks
 retain the single BFX format. Raw reports preserve rejected private attempts.
 
 The native compiler PE is 11,870,208 bytes, SHA-256
-`fa50e6005717a521e30123ad8e9cc637aa3fe15f28a1935cf394f0d4f2ee1125`. Generic SDK `1c211da` bootstraps it with mandatory
+`fa50e6005717a521e30123ad8e9cc637aa3fe15f28a1935cf394f0d4f2ee1125`. Generic SDK `bfc2059` bootstraps it with mandatory
 verification and existing same-process code-fragment APIs. Bootstrap timings
 and concurrent deep-build timings are unscored. This is a native prepared-stage
 coverage improvement, not a full-source speedup or competitor win.
@@ -291,7 +291,7 @@ Source frontend, BFX import, binding and snapshot preparation are excluded.
 These measurements do not replace full-source/competitor or peak-RAM results.
 The public source workflow, libraries, common loading, self-store/resource-callee
 coverage and Windows ABI gaps remain incomplete. Bootstrap uses unchanged
-SDK 1c211da and existing local proof/fragment APIs; bootstrap time is unscored.
+SDK bfc2059 and existing local proof/fragment APIs; bootstrap time is unscored.
 
 ## x86-64 borrowed-view call elision — 2026-10-21
 

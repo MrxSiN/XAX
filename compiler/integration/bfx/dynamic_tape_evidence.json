@@ -3,7 +3,7 @@
  "date": "2026-10-29",
  "status": "EXECUTED",
  "scope": "BBC decision views widened from 65,536 to 2,147,246,080 bytes, committed on touch; Windows 11 native and Pixel 8 Pro device execution.",
- "xax_base_revision": "488684e063c70fa1c4571b9ab9d1f64cfc01981b",
+ "xax_base_revision": "458a56804224512848eb0a5756e320ebb9197590",
  "host": {
   "os": "Windows-11-10.0.26300-SP0",
   "cpu": "AMD Ryzen 9 5900HS (16 logical)",

@@ -16,7 +16,7 @@ Use the unchanged reference expected-root edit service, fully verify each
 candidate and save through `Workspace.save` before the documented bootstrap
 lowering. Native edit of the driver source currently declines; no native replay
 success is claimed for these records. The first record's baseline is available
-at XAX revision `85abd4640439c748374dce79cb54bfecb406cedf`. The last two records
+at XAX revision `10207c3a9a1e4cb07e2b5eab6f64ae1cf8178a5d`. The last two records
 apply in order to the current production source, yielding private root
 `a4cfa166b469d70a3f95439c54698f7b844b28caf6b4d7d554563e94df6eb6c8`.
 

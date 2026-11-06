@@ -6,8 +6,8 @@
     "os": "Windows-11-10.0.26200-SP0",
     "python_external_transport": "3.13.5 (tags/v3.13.5:6cb20a2, Jun 11 2025, 16:15:46) [MSC v.1943 64 bit (AMD64)]"
   },
-  "xax_parent_revision": "85abd4640439c748374dce79cb54bfecb406cedf",
-  "generic_sdk_pin": "3dcb358e48b0f9a45b8cb72767c1aa600e55cd78",
+  "xax_parent_revision": "10207c3a9a1e4cb07e2b5eab6f64ae1cf8178a5d",
+  "generic_sdk_pin": "36c951b5d85e7a33338a3d764e927ba8cfc429bf",
   "generic_compiler_sources_unchanged": true,
   "canonical_change": {
     "expected_root": "59b52b732f54086588c34ba4098d54cea0d33dd1a102aeab5749b933cdc54d71",

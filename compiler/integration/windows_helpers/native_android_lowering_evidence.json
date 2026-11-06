@@ -2,9 +2,9 @@
   "date": "2026-10-21",
   "state": "IMPLEMENTED and EXECUTED Android ARM64 interval allocation; complete native BBC source workflow INCOMPLETE",
   "priority": "Android target coverage before further Windows-specific implementation",
-  "xax_parent_revision": "e2681460a35ac6c4593faccd8e7d741c08e606f5",
-  "driver_bootstrap_sdk_revision": "1c211da49f88e6634b0b4f98557efdd7204ca800",
-  "authoring_sdk_revision": "2e1af7c167ad6af0107268be7a5beca9452f9148",
+  "xax_parent_revision": "856485804271fc6854512320e98e19bf9c11f258",
+  "driver_bootstrap_sdk_revision": "bfc2059c7f9de1e9a46cae3f77230691a9c5c77b",
+  "authoring_sdk_revision": "60965e315827f6aa3fab1bfdc1fb07988be53ec7",
   "canonical_change": {
     "parent": "db44f3a8cdc955cf264aec7f4eabed549bca1bcc5bcb5d0685c6a1ee4b658e18",
     "root": "68ecf527e4c18c163d1fc2bdddc76335ca2f205eff4f57766cec944a67915f4c",

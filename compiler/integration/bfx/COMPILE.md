@@ -103,7 +103,7 @@ The expected SHA-256 of this recipe's executable is recorded there.
 
 ## Transaction provenance
 
-The baseline is XAX 42de0fc3ce31d4447f697e35a565cb4fdc489eda.
+The baseline is XAX 9214bfbc3b0a629c3655ae87ff33753f828bd54a.
 Initial facade construction uses existing generic canonical graph construction;
 all subsequent changes use expected-root transactions and Workspace.save.
 `transactions/unified/` retains:

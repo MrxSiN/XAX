@@ -2325,7 +2325,7 @@ class NativeTests(unittest.TestCase):
         self.assertEqual(run_native_isolated(image, (0xAABBCCDD,)), (0xAABBCCDD,))
 
     def test_unsupported_native_width_rejected(self):
-        # Wrapping arithmetic below 32 bits is lowered at 32 and masked (e268146, ADR-324); 48 bits has no lowering.
+        # Wrapping arithmetic below 32 bits is lowered at 32 and masked (8564858, ADR-324); 48 bits has no lowering.
         b48 = bits_type(48)
         graph = graph_fragment(
             [

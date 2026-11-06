@@ -6,7 +6,7 @@ saved through Workspace; replay against the resulting root rejects as stale.
 
 | Record in `transactions/` | Expected parent |
 |---|---|
-| `canonical_importer.edit` | Original `wide/import_bfx.xax` at commit 6c9ed73474307d4b3f6130dd09a16431b0f8046d |
+| `canonical_importer.edit` | Original `wide/import_bfx.xax` at commit e40f77ddb9b671e750f055fcf84324f114d47b8f |
 | `source.edit` | Original `wide/source.xax` at that commit |
 | `initial-pack.edit` | Original `wide/pack.xax` at that commit |
 | `pack_core.edit` | Result of initial-pack.edit; replaces the private BF packer with the checked BF source |

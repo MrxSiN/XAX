@@ -2,7 +2,7 @@
  "schema": "bbc-packed-lengths-evidence-v1",
  "date": "2026-10-31",
  "status": "EXECUTED on Windows 11 x86-64 (native); Android: two programs on a Pixel 8 Pro, full campaign BLOCKED (device went offline)",
- "parent_commit": "40db64ca742eaf462b894bd3077243f45f4a3087",
+ "parent_commit": "4c52b4cc13f4d8b8d9b276867ad1c2da8a7e6032",
  "host": "Windows-11-10.0.26300-SP0",
  "python_bootstrap": "3.12.10",
  "native_driver": {

@@ -1,8 +1,8 @@
 {
   "date": "2026-10-20",
   "bbc_parent": "655e7be",
-  "xax_parent": "ab25b75f7cc0f03d06aae3cab7d84327c59c5e37",
-  "generic_bootstrap_pin": "3dcb358e48b0f9a45b8cb72767c1aa600e55cd78",
+  "xax_parent": "e70cf3fab75b3d7b0c1c823f77219ad0b62aa790",
+  "generic_bootstrap_pin": "36c951b5d85e7a33338a3d764e927ba8cfc429bf",
   "native_compiler_host": false,
   "device": {
     "model": "Pixel 8 Pro",
@@ -190,7 +190,7 @@
     "stream_run_fixtures": 26,
     "old_frontend_fixtures": 12,
     "final_native_pipeline_mandelbrot_exact": true,
-    "generic_bootstrap_pin": "3dcb358e48b0f9a45b8cb72767c1aa600e55cd78",
+    "generic_bootstrap_pin": "36c951b5d85e7a33338a3d764e927ba8cfc429bf",
     "generic_python_unchanged": {
       "blake3.py": {
         "executed_file_sha256": "d06f19b142115ee8ca32df794235d97bfe35fc2996199d961ef26d53613c9c40",

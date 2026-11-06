@@ -8,7 +8,7 @@ all requests and mutation records below are transport.
 
 ## Observed native boundary
 
-At XAX `main` `fdc7312d60e12b6e784d920217f09df535090d55`, the generic driver's file commands remain `lower`,
+At XAX `main` `b4f37ce4f43fadfddd468e09c5a8a6566db093e6`, the generic driver's file commands remain `lower`,
 `build`, `verify`, `inspect`, `resolve`, `edit` and `resolve-trusted`. Native inspection returns a binary root
 and object/reference table; it is not the complete bounded workspace query interface. The generic command
 table does not dispatch `construct`. The separate constructor's implementation tooling exists in

@@ -3,7 +3,7 @@
  "date": "2026-10-29",
  "status": "EXECUTED",
  "scope": "BFX id 02 (no count, END byte, offset ADD/MUL/CHECK/MOVE) in the strict decoder, importer and compile_bfx; hosts rebound by reference; bbc.exe rebuilt with the generic SDK recipe",
- "base_revision": "94a54ae",
+ "base_revision": "cee0a01",
  "parents": {
   "import_bfx.xax": "previous main store",
   "compile.xax": "previous main store",

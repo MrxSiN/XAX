@@ -1,7 +1,7 @@
 {
   "date": "2026-10-20",
   "status": "EXECUTED optimization; MEASURED exploratory native calls and Android process comparisons; competitive objective NOT YET ACHIEVED",
-  "xax_base_revision": "3ddafd26752511d7efbc6ff715e2f4899be93ff2",
+  "xax_base_revision": "42dcf668e5a468eaa01769d47ca03f5b6ea400e1",
   "source": {
     "path": "compiler/integration/bfx/import_bfx.xax",
     "bytes": 414487,

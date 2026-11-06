@@ -3,7 +3,7 @@
 `xaxc-windows-x86_64.exe` packages the existing XAX-built alias-index driver as a trusted Windows x86-64 seed:
 11,876,864 bytes, SHA-256 `aa72234d6dd8a111efde62b47ced8449a482c4c5506d876714ff7fbe0968ab79`.
 Its original canonical source is `compiler/integration/windows_helpers/driver.xax` at
-`c97a11d0d1762c863ae9fc17ca311954d195aaba`, root
+`37a4c95df13ae211aa98e6d98438b84491004f31`, root
 `ec66899fddc117eb0496bbd504e06742daf9931d0b8e64e9efde0725dae45ebd`, source SHA-256
 `894820c6ec0b777232ac6817f454add9f00493f95c72d53071de8ed4c690eced`.
 The recovered source blob was compared with that Git revision byte for byte. Exact identities are in `seed.json`.

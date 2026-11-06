@@ -1,7 +1,7 @@
 {
   "date": "2026-10-20",
   "status": "EXECUTED standalone Android transport; MEASURED process advantage over pinned Awib configuration; brainfry remains faster; unrestricted competitive objective NOT YET ACHIEVED",
-  "xax_base_revision": "7761cf24218472c459c3491dcf7570263bc3b373",
+  "xax_base_revision": "6839ab34b6d170d84dd6ae68517fb4e376d07409",
   "source": {
     "path": "compiler/integration/bfx/standalone_arm64.xax",
     "root": "ffc802672a132e2bd40bc89c92d9d89b0ff9b7d21b1157cd0ba9caa2ab7c8dbd",

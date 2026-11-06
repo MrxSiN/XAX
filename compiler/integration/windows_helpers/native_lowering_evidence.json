@@ -1,8 +1,8 @@
 {
   "date": "2026-10-21",
   "state": "IMPLEMENTED and EXECUTED native frame lowering fixes; MEASURED prepared-build boundary; full native BBC workflow INCOMPLETE",
-  "xax_parent_revision": "2e1af7c167ad6af0107268be7a5beca9452f9148",
-  "driver_bootstrap_sdk_revision": "1c211da49f88e6634b0b4f98557efdd7204ca800",
+  "xax_parent_revision": "60965e315827f6aa3fab1bfdc1fb07988be53ec7",
+  "driver_bootstrap_sdk_revision": "bfc2059c7f9de1e9a46cae3f77230691a9c5c77b",
   "canonical_change": {
     "parent": "4be3d7d759a444c108700bc7e6d27d24da53431f225fa2b5079e98b54e5aad30",
     "lowering_root": "c72230163dfdc36f8a7d6f1610d2936c5b7a02092523391b79635aa7f8534d25",
@@ -4125,8 +4125,8 @@
       "scope": "Native byte-result emitter, exact AND EAX,255 plus existing eight-byte frame-slot store only for semantic width8. Widths1/32/64 retain exact old store bytes. Helper caller fixes RAX as the result register. Generic DLL bootstrap is separate from native driver packaging."
     },
     "current_sdk_compatibility": {
-      "bootstrap_revision": "1c211da49f88e6634b0b4f98557efdd7204ca800",
-      "new_upstream_revision": "2e1af7c167ad6af0107268be7a5beca9452f9148",
+      "bootstrap_revision": "bfc2059c7f9de1e9a46cae3f77230691a9c5c77b",
+      "new_upstream_revision": "60965e315827f6aa3fab1bfdc1fb07988be53ec7",
       "scope": "Upstream pointer-extent lookup and view sorting changes were fast-forwarded without edits. All three private helper DLLs rebuild byte-identically and rerun native cases under that SDK. Full driver bootstrap stays pinned to its original revision; no new cold-build score or whole-driver rebuild identity is inferred.",
       "cases": [
         {

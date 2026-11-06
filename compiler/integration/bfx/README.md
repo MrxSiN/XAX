@@ -43,7 +43,7 @@ and evidence.
 `canonical_bfx_evidence.json` records current execution. Old JSON execution
 reports remain immutable, with their original source hashes and format meanings.
 The old `wide/*.xax` entrypoints and obsolete legacy edit records are retired;
-Git commit `6c9ed73474307d4b3f6130dd09a16431b0f8046d` preserves them for history.
+Git commit `e40f77ddb9b671e750f055fcf84324f114d47b8f` preserves them for history.
 Migration replay edits old graphs as data; it is not a production legacy decoder.
 
 All implementation remains canonical XAX semantic graphs. Generic SDK Python
