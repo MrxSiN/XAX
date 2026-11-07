@@ -20,8 +20,9 @@ Run from `compiler/` with `PYTHONPATH=src:reference:.`. All run the XAX general 
   (wine / qemu-aarch64) and compares output bytes and the exact exit status with an independent interpreter; then the
   five compile error paths (exit status, no leftover files). Output goes through files, not pipes: wine's server and
   services inherit a run's descriptors.
-- `bench.py <bbc.exe> <work dir> <out.json> <trials> <baseline record> <program.b> ...`: build and run times per
-  trial (shuffled), every output checked against the hash BBC's baseline benchmark record holds for that source.
+- `bench.py <arm>[,<arm>...] <work dir> <out.json> <trials> <baseline record> <program.b> ...`: build and run times per
+  trial for one or more `bbc.exe` arms (`<name>=<path>`), all arms' trials in one shuffled order so they alternate, every
+  output checked against the hash BBC's baseline benchmark record holds for that source.
 
 Profiling a slow native run: `gdb -p <pid> -batch -ex "info registers rip"` a few times, find the mapping in
 `/proc/<pid>/maps`, subtract the mapping base and the SysV→Win64 thunk (16-byte aligned), and map the offset with
