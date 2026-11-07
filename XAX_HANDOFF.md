@@ -1642,7 +1642,38 @@ natively, and run the Android-first checks. Still open in the native workspace: 
   build's artifact, provenance and diagnostic with the new compiler as the driver, as with the old seed (run through a
   scratch shim that puts an `xaxc` executable in `NativeGeneralDriver`'s place; that class's own setup needs step D).
 - **Next:** step B, BBC's `bbc.exe` from the rebuilt driver. If a build declines at the container buffer's allocation
-  (the arena after the views), pack the container buffer too (ADR-381, Limits).
+  (the arena after the views), pack the container buffer too (ADR-381, Limits). (Done: see "BBC's `bbc.exe` built natively; C0 is the seed:
+  ledger 0019 — 2026-11-07".)
+
+## BBC's `bbc.exe` built natively; C0 is the seed: ledger 0019 — 2026-11-07 (ADR-382, ADR-383)
+
+- **Step B, `bbc.exe` from the production driver.** `rebuild.sh` on the post-0019 production driver gives
+  `bbc.xax` root `1a582526…` (72.3 MB, verified), and the seed builds `bbc.exe` in under 4 minutes. Three walls:
+  - **`VCAP`:** BBC's compile front (`51b36b76…`) inlined 2,434 leaf calls past 2^18 values. **Ledger 0019**
+    (ADR-383) inlines only while a view has at most 2^17 values (`native/0019`). xaxc1 ≠ xaxc2 (the compiler's own
+    largest functions keep some calls); xaxc2 = xaxc3 = `a9995432…` is the seed.
+  - **A stale layer:** the port's layer came from an older `bbc.xax`, so every compile's edit step was rejected
+    (`WORKSPACE-EXPECTED-ROOT`, the host request of 2026-10-21). `layer.sh` now takes the layer from the committed
+    `bbc.xax`.
+  - **The steps' argument counts:** resolve saw edit's `argc` (5 for 4). The step variants now call their own
+    count, as the old store did.
+  - Diagnosing: wine's relay log (`WINEDEBUG=+relay`, the bbc.exe thread's `ret=14…` calls) shows each step's
+    file I/O; `bbc bind` gives the edit record, and the Linux seed replays edit, resolve and build on it.
+- **Step C.** `integration/bfx/bbc.xax` is the rebuilt store; evidence
+  `integration/bfx/production_driver_evidence.json`; `COMPILE.md` has a dated section.
+  - `tools/check.py`: 93 programs, 370 of 372 compiles, 486 runs, no mismatch; error paths 1, 4, 4, 3, 3 with no
+    leftovers. `deep512active` declines on android-arm64 in the AArch64 general program (the seed's own build
+    declines too).
+  - Mandelbrot -O0 and hanoi -O1 (declined on 2026-11-05) build and run; hanoi -O0 still declines.
+  - `tools/bench.py` recorded build and run samples for six baseline programs. It is not an A/B run against the
+    old `bbc.exe`, which was not rebuilt.
+  - Capture wine output in files, not pipes: a wineserver a captured run starts inherits the pipe.
+- **Step D (ADR-382).** C0 of `bench_full_selfhost` is the pinned seed: neither the views profile nor the Python
+  reference lowers operation 77. `NativeGeneralDriver()` runs the seed, so the classes built on it run again.
+  - The bench now reads native batch records, keeps the corpus rows apart from the replay rows, and chains a replay
+    through a store git lacks (0018's two batches per store), as `evolve.sh replay` now does.
+- **Next:** BBC's docs (`docs/25_NATIVE_COMPILE.md`, `docs/05_STATUS.md`); the AArch64 decline of
+  `deep512active` and hanoi -O0; Windows-native and Pixel runs of the new artifacts; step E.
 
 ## Open issues
 

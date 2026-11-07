@@ -525,3 +525,29 @@ engine and fully verified by the reference verifier: no native driver can edit t
 production verifier rejects its byte-view checked stores and BBC's own driver declines a store
 past 32 MiB (`DRIVER-FILE-CAPACITY`). With it, hanoi still declines in BBC's own `verify` (exit 2)
 while the production compiler builds it; see XAX_STATE.md.
+
+## BBC's driver is the production driver, built natively — 2026-11-07
+
+`bbc.xax` is now XAX's production driver after ledger 0019 plus only the Windows hosting layer, rebuilt by
+[transactions/production_driver/native/rebuild.sh](transactions/production_driver/native/rebuild.sh) with native
+batches (the pinned seed's `xaxc edit`; `xaxc verify` accepts it): root `1a582526…`, 72.3 MB. The pinned seed builds
+`bbc.exe` from it in 3 minutes 46 seconds (35,956,736 bytes). It replaces the generic-SDK build; the previous
+`bbc.xax` (with the graph proof cache) is in git history. Evidence:
+[production_driver_evidence.json](production_driver_evidence.json).
+
+What it took, after ledgers 0016–0018:
+- **The current layer.** The port's BBC layer had come from an older `bbc.xax`, whose framing still expected the
+  host request of 2026-10-21, so every compile's edit step was rejected (`WORKSPACE-EXPECTED-ROOT`). `layer.sh` now
+  takes the layer from the committed `bbc.xax`; BBC's entry is that store's entry without the proof cache.
+- **Each step's argument count.** The compile steps fake `argv` through their argument helpers; they now also give
+  the driver's main their own `argc` (resolve 4, edit and build 5), as the old store did.
+- **Ledger 0019 (ADR-383).** BBC's compile front inlined 2,434 leaf calls past `VCAP`; the inliner now stops at
+  2^17 values per view.
+
+Checks (wine 9.0 and qemu-aarch64 user mode on one Linux host; not Windows-native or device runs):
+- 93 programs at -O0/-O1 for both targets (`tools/check.py`): 370 of 372 compiles, 486 runs, no output or exit
+  mismatch. `deep512active` declines on android-arm64 (exit 5): the seed's own build of that decision declines too,
+  so the limit is the AArch64 general program's.
+- The error paths exit 1, 4, 4, 3, 3 and leave no files.
+- Mandelbrot at -O0 and hanoi at -O1, which declined in the 2026-11-05 baseline, build and run correctly. Hanoi at
+  -O0 still declines (exit 5).

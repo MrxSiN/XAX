@@ -190,9 +190,9 @@ def check_error_paths(work: Path, env):
     rows = []
     for name, arguments, source, expected in ERROR_PATHS:
         hidden = work / "bbc-android-arm64.xax"
+        before = set(os.listdir(work))
         if name == "host request missing":
             hidden.rename(work / "hidden.xax")
-        before = set(os.listdir(work))
         try:
             compiled, _seconds = _compile(work, env, arguments, source)
         finally:
