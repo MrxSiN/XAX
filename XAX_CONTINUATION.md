@@ -110,7 +110,7 @@ of code with `frontend="xax"`. If a later build declines at the container buffer
 views), pack the container buffer too: its accesses are the same `_put` pattern in `pe`, `elf_static`, `elf_dynamic`,
 `dll_edata`, `image_finish` and the record, and `native/0018/pack.awk` already rewrites such accesses.
 
-### Step B — build `bbc.exe` natively and fix the next walls
+### Step B — build `bbc.exe` natively and fix the next walls: done (2026-11-07, ADR-383)
 
 `rebuild.sh` on the current production driver, then `tools/request.py`, then the seed's `resolve` and `build`. Diagnose
 any decline with `tools/audit.py` (the first function without `code`), `tools/probe_state.py`, `tools/probe_order.py`,
@@ -122,7 +122,7 @@ Expected possible walls:
 - **`DRIVER-FILE-CAPACITY`**: the driver reads `edit`'s input into a 16 MiB view. That is why `rebuild.sh` splits BBC's
   layer into batch 3a and four variant batches.
 
-### Step C — BBC's checks and the switch-over
+### Step C — BBC's checks and the switch-over: done (2026-11-07)
 
 Run `tools/check.py <bbc.exe> <work>` (wine for windows-x86_64, qemu-aarch64 for android-arm64, -O0/-O1).
 - Extend its cases toward the old campaign: 83 programs (pilot programs, BBC's tests, both depth-512 programs,
@@ -141,7 +141,7 @@ Run `tools/check.py <bbc.exe> <work>` (wine for windows-x86_64, qemu-aarch64 for
 - Benchmark compile time and run time against the old `bbc.exe` (`docs/08_BENCHMARKS.md` in BBC). `MEASURED` claims
   need raw per-arm samples.
 
-### Step D — the full self-hosting record (B levels honest again)
+### Step D — the full self-hosting record (B levels honest again): done (2026-11-07, ADR-382)
 
 The derived status reads "seed requires Python: yes" because `benchmarks/full_selfhost_evidence.json` predates ledger
 0001. Its C0 is the driver lowered by the x86-64 *views* backend in a Python host (`NativeGeneralDriver`), which
@@ -152,6 +152,11 @@ ledger 0009. Either:
 
 Then re-record `full_selfhost_evidence.json` with `XAX_REQUIRE_NATIVE=1`, regenerate the status blocks, and fix the two
 known failing tests.
+
+Steps B–D are recorded in `XAX_HANDOFF.md` ("BBC's `bbc.exe` built natively; C0 is the seed: ledger 0019"): ledger
+0019 (the inliner's value budget) and seed `a9995432…`; `bbc.xax` rebuilt from the production driver (the layer from
+the committed store, each step's argument count); 370 of 372 checks, `deep512active` declining on android-arm64; B0–B6
+derived with no Python. Open from them: that AArch64 decline, hanoi -O0, device runs, an A/B benchmark.
 
 ### Step E — the rest of the original plan
 

@@ -1672,8 +1672,16 @@ natively, and run the Android-first checks. Still open in the native workspace: 
   reference lowers operation 77. `NativeGeneralDriver()` runs the seed, so the classes built on it run again.
   - The bench now reads native batch records, keeps the corpus rows apart from the replay rows, and chains a replay
     through a store git lacks (0018's two batches per store), as `evolve.sh replay` now does.
-- **Next:** BBC's docs (`docs/25_NATIVE_COMPILE.md`, `docs/05_STATUS.md`); the AArch64 decline of
-  `deep512active` and hanoi -O0; Windows-native and Pixel runs of the new artifacts; step E.
+  - **Result:** `full_selfhost_evidence.json` re-recorded with `XAX_REQUIRE_NATIVE=1` (95 minutes): C1 = C2 = C3 =
+    the seed, every snapshot the Python resolver's, 198 corpus cases agreeing, 66 ledger transactions replayed and
+    verified by C1. The derived status: **B0–B6 hold and the seed requires no Python.**
+  - Fixed with it: `test_the_record_decides_whether_the_seed_requires_python`, `test_the_raised_input_bound`, the
+    capacity test (256 MiB views since ledger 0005), the fixed-point test (C1 now equals C0), and the status test's
+    v1 replay checks.
+- BBC's docs (`docs/25_NATIVE_COMPILE.md`, `docs/05_STATUS.md`, `docs/08_BENCHMARKS.md`) and a new evidence report
+  follow on BBC's branch.
+- **Next:** the AArch64 decline of `deep512active` and hanoi -O0; Windows-native and Pixel runs of the new
+  artifacts; an A/B benchmark against the old `bbc.exe`; step E.
 
 ## Open issues
 
