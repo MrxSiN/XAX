@@ -88,47 +88,27 @@ tests pass. Do not stop until the plan is done, or a decision only the user can 
 
 ## 2. Where things stand
 
-- **Ledgers 0014–0017 are in** (the frame path on PE, `object` with references, borrowed views at frame-path calls, a
-  prefetch block budget). The seed is xaxc of ledger 0017: SHA-256 `a809c730…326d`, 33,154,122 bytes.
+- **Ledgers 0014–0018 are in** (the frame path on PE, `object` with references, borrowed views at frame-path calls, a
+  prefetch block budget, the packed image buffer). The seed is xaxc of ledger 0018: SHA-256 `8f9eb1e3…a992`,
+  33,161,530 bytes.
 - **The Windows-hosted production driver builds natively.** Under wine, `xaxc.exe` builds the production compiler's
   request byte-identical to the Linux seed.
 - **`rebuild.sh <production driver> <work>` rebuilds BBC's whole driver natively,** and `xaxc verify` accepts it.
   Last run on the post-0017 driver: root `661b785b…`, 72.4 MB, about 28 minutes.
-- **The native `bbc.exe` build declines** (`xaxc build` exit 2 after about 6 min). The general program's image
-  buffer is full: `I_LEN` = 33,529,728 against `IMAGE_CAP` = 2^25, after 954 of 1,060 functions. Each function on
-  its own compiles.
+- **The native `bbc.exe` build declined** (`xaxc build` exit 2 after about 6 min): the general program's image
+  buffer was full (`I_LEN` = 33,529,728 against `IMAGE_CAP` = 2^25, after 954 of 1,060 functions). Ledger 0018
+  (step A, ADR-381) packs the buffer and raises the cap to 48 MiB; the build has not been retried yet (step B).
 
 ## 3. Work plan (in order)
 
-### Step A — image capacity (ledger 0018): make the general backend emit images larger than 32 MiB
+### Step A — image capacity (ledger 0018): done (2026-11-07, ADR-381)
 
-Inspect the image module's generator source at `4a5d4b8^`
-(`compiler/src/xax_selfhost_general_image.py`; the constants are still in the kept copy in `compiler/src`):
-- `IMAGE_CAP = 1 << 25` (one byte per word);
-- `IMAGE_BUFFER_AT = 200 << 20` words, with `assert IMAGE_BUFFER_AT + IMAGE_CAP <= IMAGE_AT`;
-- `IMAGE_AT, IMAGE_END = 232 << 20, 252 << 20` (the output image record);
-- the container buffer `I_ELF`, filled through `_elf`/`_put` with capacity `IMAGE_CAP + (1 << 16)` and allocated in
-  the arena;
-- the general arena is `120 << 20` … `200 << 20` words. The arena already reached about 187M words on large builds
-  (`G_BLIST` was seen at 187,478,160).
-
-The workspace view is 2 GiB, which is 256M words. Choose and document one design (ADR):
-1. **Pack the image and container buffers 8 bytes per word.** `_put` writes byte k of word `len/8`; readers
-   (`_read_image` on the host, `image_add` relocation and patching, the PE/ELF container writers, the output record)
-   follow. This frees about 28M words and allows a 256 MiB image. It is a broad change across every function that
-   reads or writes these buffers: list them by CID from the generator source, and edit each from its native view.
-2. **Grow the workspace to 4 GiB** and move the buffers up. Simpler per function, but every fixed address (clamps use
-   2^28 words) changes. Probably larger.
-3. **Minimal:** move `IMAGE_BUFFER_AT` down and raise `IMAGE_CAP` to about 48M, shrinking the arena. Only if
-   measurements show the arena peak of a BBC build stays below the new boundary. Risky, because the arena already
-   reached about 187M.
-
-Then:
-- Apply the change to the driver, the request and the x86-64 general store (and the AArch64 general store if it
-  shares the image code; check by CID).
-- Self-build, rotate, record the evidence, and add a regression test: a program whose image exceeds 32 MiB, built
-  with `frontend="xax"`.
-- Expect xaxc1 = xaxc2 unless the image bytes for the compiler change.
+The image buffer is packed eight bytes to a word and `IMAGE_CAP` is 48 MiB; the container buffer (one byte per word,
+in the arena) and its cap follow at 48 MiB + 64 KiB. See `compiler/bootstrap/evolution/native/0018/README.md`, ADR-381
+and `XAX_HANDOFF.md` ("The image buffer packed: ledger 0018"). `tests/test_native_large_image.py` builds about 36 MiB
+of code with `frontend="xax"`. If a later build declines at the container buffer's allocation (the arena after the
+views), pack the container buffer too: its accesses are the same `_put` pattern in `pe`, `elf_static`, `elf_dynamic`,
+`dll_edata`, `image_finish` and the record, and `native/0018/pack.awk` already rewrites such accesses.
 
 ### Step B — build `bbc.exe` natively and fix the next walls
 
