@@ -41,7 +41,7 @@ stub() {  # stub k: calls the eager entry; the constant k keeps the four apart
   k=0; while IFS= read -r line; do
       if [ "$line" = "@STUB" ]; then k=$((k + 1)); stub $k; else printf '%s\n' "$line" | sed "s/entity=@MAIN /entity=$main /"; fi
   done < "$here/layer_functions.batch"
-  echo "replace $mh @L_4fbeaf93"; } > "$work/3a_bbc_layer.batch"
+  echo "replace $mh $(grep "^define" "$here/layer_functions.batch" | tail -1 | cut -d" " -f2)"; } > "$work/3a_bbc_layer.batch"  # BBC entry: the last definition
 "$xaxc" edit "$work/W2.xax" "$work/3a_bbc_layer.batch" "$work/B3a.xax"
 # 3b-3e. the variants
 cids "$work/B3a.xax" stubs "$main" | sort -n > "$work/stubs.txt"
