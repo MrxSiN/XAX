@@ -551,3 +551,22 @@ Checks (wine 9.0 and qemu-aarch64 user mode on one Linux host; not Windows-nativ
 - The error paths exit 1, 4, 4, 3, 3 and leave no files.
 - Mandelbrot at -O0 and hanoi at -O1, which declined in the 2026-11-05 baseline, build and run correctly. Hanoi at
   -O0 still declines (exit 5).
+- *Superseded:* rebuilt after ledger 0020, `deep512active` builds on android-arm64; see "BBC's driver after ledger
+  0020" below.
+
+## BBC's driver after ledger 0020: deep nesting on Android ARM64 — 2026-11-07
+
+Ledger 0020 (ADR-384) changed the AArch64 general program in the production driver: `_aliases` reads each block
+parameter's incoming arguments from lists built once, and `_intervals` sizes its range pool from liveness. `bbc.xax`
+was rebuilt from the new production driver with `rebuild.sh` (23 min 41 s, root `560978…`, 72.3 MB, verified), and
+the new seed built `bbc.exe` from it in 5 min 12 s (35,964,416 bytes). Evidence:
+[production_driver_0020_evidence.json](production_driver_0020_evidence.json).
+
+Checks (wine 9.0 and qemu-aarch64 user mode on one Linux host; not Windows-native or device runs):
+- 93 programs at -O0/-O1 for both targets (`tools/check.py`): **372 of 372 compiles**, 488 runs, no output or exit
+  mismatch; the whole campaign takes 4 min 50 s.
+- `deep512active` builds and runs on android-arm64 (3.5 s at -O0, 6.9 s at -O1; it declined before), and `deep512`'s
+  Android compile takes 0.5–0.7 s instead of 122 s.
+- The error paths exit 1, 4, 4, 3, 3 and leave no files.
+- Hanoi at -O0 still declines: its decision graph (7.25 MB, about 54,000 blocks and 620,000 values) exceeds the graph
+  decoder's 4 MiB body view and `VCAP` (2^18 values per view).

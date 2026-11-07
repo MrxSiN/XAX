@@ -1682,6 +1682,35 @@ natively, and run the Android-first checks. Still open in the native workspace: 
   follow on BBC's branch.
 - **Next:** the AArch64 decline of `deep512active` and hanoi -O0; Windows-native and Pixel runs of the new
   artifacts; an A/B benchmark against the old `bbc.exe`; step E.
+- *Followed by:* "Deep nesting on AArch64, the old-vs-new benchmark and hanoi -O0's limits: ledger 0020 —
+  2026-11-07" below.
+
+## Deep nesting on AArch64, the old-vs-new benchmark and hanoi -O0's limits: ledger 0020 — 2026-11-07 (ADR-384)
+
+- **`deep512active` on Android ARM64.** Python-hosted, the native AArch64 program took 2,187 s on its snapshot and
+  then declined. gdb sampling with the image's function offsets put all 40 samples in `_aliases` (`adc7c672…`): every
+  round scanned every edge argument for every block parameter. Probing the stop state (arena cursor at `HEADER + 12`)
+  showed the decline: `_intervals` (`0952bb79…`) asked for a blocks × values range pool, 228.7 M words, past the
+  arena's end. **Ledger 0020** (`native/0020`, four stores: the driver, the request, `xax_aarch64_general.xax`,
+  `xax_android.xax`) lists each parameter's incoming arguments once and sizes the pool from liveness
+  (`@pool_bound`). The program builds the snapshot in 16 s. The request store equals `compiler_request` of the driver;
+  the seed's build is xaxc1 = xaxc2 = `439ddb0d…` (31,543,498 bytes), the new seed. Both seed records re-recorded.
+- **BBC rebuilt.** `rebuild.sh` from the new production driver (23 min 41 s; root `560978…`, 72.3 MB, verified),
+  `bbc.exe` by the new seed (5 min 12 s, 35,964,416 bytes). `tools/check.py`: **372 of 372 compiles**, 488 runs, no
+  mismatch, error paths 1, 4, 4, 3, 3; the campaign takes 4 min 50 s. `deep512active` builds on android-arm64 (3.5 s
+  / 6.9 s), `deep512`'s Android compile falls from 122 s to 0.5–0.7 s. Evidence:
+  `integration/bfx/production_driver_0020_evidence.json` (BBC: `evidence/production_driver_0020_2026-11-07.json`).
+- **Old vs new `bbc.exe`.** The old one was rebuilt from `bbc.xax` at `6417125` with the documented generic-SDK
+  recipes (16,007,680 bytes, not byte-identical to the baseline's `83404a20…`); `tools/bench.py` now takes several
+  arms and interleaves them. Where both build, the executables are byte-identical; the new `bbc.exe` builds 1.0–1.8×
+  slower; mandelbrot -O0 and hanoi -O1 build only with the new one (BBC: `evidence/old_new_benchmark_2026-11-07.json`,
+  `docs/08_BENCHMARKS.md`).
+- **hanoi -O0's limits.** Its decision graph is one 7.25 MB object (53,884 instructions; factor's O0 graph is 0.46 MB
+  for 3,878). The seed's own `verify` and `edit` decline the request store (exit 2): the graph decoder's body view is
+  4 MiB (`heap_view<4194304>` in `decode`'s signature and three `heap.view` buffers of the driver's main). Scaled from
+  factor, the view would hold about 54,000 blocks and 620,000 values, past `VCAP` (2^18); on AArch64 its liveness bit
+  sets alone (blocks × values / 64 words) would exceed the arena.
+- **Device runs:** still BLOCKED; no computer is connected to this session.
 
 ## Open issues
 
