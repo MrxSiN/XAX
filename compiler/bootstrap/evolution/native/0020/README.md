@@ -1,7 +1,7 @@
-# Ledger 0020 (in preparation): AArch64 `_aliases` and `_intervals` scale with nesting depth
+# Ledger 0020: AArch64 `_aliases` and `_intervals` scale with nesting depth (ADR-384)
 
-Not applied yet: these are the authoring aids, tested on `xax_aarch64_general.xax` in a scratch tree. The ledger
-line, the seed rotation and the ADR follow once the driver, request, AArch64 and Android batches pass.
+Applied to four stores with `../../evolve.sh apply`: `0020-aarch64-alias-lists.batch` (the driver), `-request`,
+`-aarch64` (`xax_aarch64_general.xax`) and `-android` (`xax_android.xax`), each from that store's own views.
 
 BBC's `deep512active` (512 nested loops, 2,058 blocks and 37,041 values in its view) took the native AArch64
 program about 2,100 s (Python-hosted) and then declined.
