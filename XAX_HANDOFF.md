@@ -1622,7 +1622,27 @@ natively, and run the Android-first checks. Still open in the native workspace: 
   the arena) all assume 32 MiB, and the arena already reaches about 187M words on large builds. Options:
   - pack eight bytes per word in the image and container buffers;
   - or give the views 4 GiB.
-  Making BBC's four entry variants smaller would only postpone it.
+  Making BBC's four entry variants smaller would only postpone it. (Done: see "The image buffer packed: ledger 0018 —
+  2026-11-07".)
+
+## The image buffer packed: ledger 0018 — 2026-11-07 (ADR-381)
+
+- **Ledger 0018** packs the general backend's x86-64 image buffer eight bytes to a word and raises `IMAGE_CAP` to
+  48 MiB; the container buffer and its cap follow (48 MiB + 64 KiB, still one byte per word, in the arena).
+  - Ten functions, the same objects in the driver, the request and the x86-64 general program, read or write the
+    buffer or size the container: 25 accesses become word read-modify-writes or word loads with a byte extract
+    (`native/0018/pack.awk`, `sites.txt`, `view.sh`, `mkbatch.sh`; the README tells how).
+  - Two batches per store. Replacing a function whose every caller the batch redefines, or `image_add` together with
+    the main, left an old object unreachable or missing; batch A replaces only the main and reaches the rest through
+    `@` references, batch B replaces `image_add`.
+- The seed rebuilt itself: xaxc1 = xaxc2 = `8f9eb1e3…` (33,161,530 bytes), now the pinned seed; the Python-free seed
+  record was re-measured.
+- **Checks:** `tests/test_native_large_image.py` (new, about 30 minutes): about 36 MiB of code built with
+  `frontend="xax"` is assembled by the XAX program and runs. Every `GeneralBuildTests` case gives the reference
+  build's artifact, provenance and diagnostic with the new compiler as the driver, as with the old seed (run through a
+  scratch shim that puts an `xaxc` executable in `NativeGeneralDriver`'s place; that class's own setup needs step D).
+- **Next:** step B, BBC's `bbc.exe` from the rebuilt driver. If a build declines at the container buffer's allocation
+  (the arena after the views), pack the container buffer too (ADR-381, Limits).
 
 ## Open issues
 
