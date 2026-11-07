@@ -670,8 +670,11 @@ def measure() -> dict:
         names = {1: "SetOperation", 2: "SetConstant", 3: "ReplaceReference", 4: "ReplaceUse", 5: "DeleteNode", 6: "InsertPureNode",
                  7: "SetResultType", 8: "DisconnectEdgeArgument", 9: "ConnectEdgeArgument"}
         transactions = []
+        made = {}  # store -> (blob, bytes) of C1's last replayed result: the start of a chained transaction git lacks
         for index, (record, store, before, after) in enumerate(EV.ledger().transactions):
             data = EV.before_store(store, before)
+            if data is None and made.get(store, (None,))[0] == before:
+                data = made[store][1]
             row = {"record": record.name, "store": store, "before": before, "after": after, "record_sha256": sha(record.read_bytes())}
             if EV.is_batch(record):  # N0.4 (ADR-372): native batch text; xaxc edit parses it
                 lines = record.read_text().splitlines()
@@ -690,6 +693,7 @@ def measure() -> dict:
             row["edit"] = {key: value for key, value in result.items() if key != "_data"}
             row["equals_ledger"] = result["status"] == "image" and EV.blob_id(output.read_bytes()) == after
             if result["status"] == "image":
+                made[store] = (EV.blob_id(output.read_bytes()), output.read_bytes())
                 row["verify"] = run(executables[1], ["verify", output, verified], [verified])["status"]
             transactions.append(row)
         # A structural transaction the ledger does not record, applied by C1 to the committed driver store: its store
@@ -703,11 +707,11 @@ def measure() -> dict:
                   "edit": {key: value for key, value in result.items() if key != "_data"}}
         probed["equals_reference"] = result["status"] == "image" and output.read_bytes() == EV.replay_reference(probe, committed.data)
         probed["verify"] = run(executables[1], ["verify", output, verified], [verified])["status"] if result["status"] == "image" else None
-        rows = [*transactions, probed]
+        replayed = [*transactions, probed]
         evolution = {"format": "xax-evolution-replay-v2", "replayed_by": "C1",
                      "baseline": "the frozen stores (bootstrap/evolution/LEDGER baselines, ADR-361)",
                      "ledger_heads_equal_committed": bool(EV.check()), "transactions": transactions, "probe": probed,
-                     "structural": any(set(item["kinds"]) & {names[kind] for kind in STRUCTURAL} for item in rows)}
+                     "structural": any(set(item["kinds"]) & {names[kind] for kind in STRUCTURAL} for item in replayed)}
 
     def elf_interpreter(path: Path) -> bool:
         data = path.read_bytes()
