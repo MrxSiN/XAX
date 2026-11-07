@@ -7,8 +7,8 @@ engine during its own semantic verification, and the trap payload heads), calls 
 file the program assembled.  Every run below is a real process with no Python inside.  Differential: each output
 equals ``compile_linux_executable`` (the executable bytes, or the exact ``Diagnostic``); where the general program
 leaves a decision to the bootstrap, the driver declines (S12f.2: code generation rejections are the program's).  The
-views profiles are lowered exactly as before.  S12e.3
-(ADR-277): the general driver verifies its own store and rebuilds itself through three generations as processes.
+views profiles are lowered exactly as before.  ADR-382: the driver under test is the pinned seed; the views profiles
+no longer lower the driver itself (operation 77).
 """
 
 from __future__ import annotations
@@ -38,12 +38,9 @@ def _root_entry(reader):
 class GeneralDriverTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        from xax_selfhost_driver import NativeGeneralDriver, load_driver_program
-        from xax_x86_64_views import compile_x86_64_views
+        from xax_selfhost_driver import NativeGeneralDriver
 
-        reader, function = load_driver_program(general=True)
-        cls.image = compile_x86_64_views(reader, function.cid, X.x86_64_views_exec_target(), backend="xax")
-        cls.driver = NativeGeneralDriver(cls.image)
+        cls.driver = NativeGeneralDriver()  # ADR-382: the pinned seed
         cls.directory = tempfile.mkdtemp()
 
     def run_driver(self, data: bytes, target):
@@ -135,31 +132,18 @@ class GeneralDriverTests(unittest.TestCase):
         self.assertEqual(self.run_driver(data, target), _reference(data, target))
 
 
-    def test_the_general_driver_rebuilds_itself_as_processes(self):
-        """S12e.3: gen1 (the XAX views backend's executable) lowers the general driver's store to gen2, gen2 to gen3;
-        gen1 = gen2 = gen3 = ``views_executable`` of the bootstrap generator's image."""
-        import subprocess
+    def test_the_views_profile_no_longer_lowers_the_driver(self):
+        """ADR-382 (was S12e.3): since ledger 0009 the driver uses ``growable.load.bits.le`` (operation 77), which the
+        views profiles do not list, so the views backend rejects the driver's store, and so does the driver itself
+        lowering its own store for ``x86_64-linux-views-exec-v1``, with the same diagnostic.  C0 is the pinned seed;
+        the driver's self-rebuild is ``test_xax_selfhost_compiler_fixed_point``."""
+        from test_xax_selfhost_driver import _reference
+        from xax_selfhost_driver import GENERAL_STORE_PATH
 
-        from xax_selfhost_driver import GENERAL_STORE_PATH, target_package
-        from xax_x86_64_views import compile_x86_64_views, views_executable
-
-        reader = X.StoreReader(GENERAL_STORE_PATH.read_bytes())
-        entry = _root_entry(reader)
-        self.assertEqual(self.image, compile_x86_64_views(reader, entry, X.x86_64_views_exec_target(), backend="python"))
-        package = Path(self.directory) / "exec.xax"
-        package.write_bytes(target_package(X.x86_64_views_exec_target()))
-        generation = Path(self.driver.path)
-        executables = [generation.read_bytes()]
-        for name in ("gen2", "gen3"):
-            output = Path(self.directory) / name
-            status = subprocess.run([str(generation), "lower", str(GENERAL_STORE_PATH), str(package), str(output)], check=False).returncode
-            self.assertEqual(status, 0, name)
-            os.chmod(output, 0o755)
-            executables.append(output.read_bytes())
-            generation = output
-        self.assertEqual(executables[0], views_executable(self.image))
-        self.assertEqual(executables[1], executables[0])
-        self.assertEqual(executables[2], executables[0])
+        data = GENERAL_STORE_PATH.read_bytes()
+        kind, diagnostic = self.run_driver(data, X.x86_64_views_exec_target())
+        self.assertEqual((kind, diagnostic), _reference(data, X.x86_64_views_exec_target()))
+        self.assertEqual(diagnostic.rule, "X86_64_VIEWS-OP-TARGET-SUPPORTED")
 
 
 if __name__ == "__main__":

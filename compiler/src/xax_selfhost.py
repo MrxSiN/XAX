@@ -30,11 +30,11 @@ SEED_EVIDENCE = Path(__file__).resolve().parents[1] / "benchmarks" / "python_fre
 def seed_requires_python(full: dict, seed: dict | None) -> bool:
     """False only when ``seed`` records the pinned seed, without an ELF interpreter, rebuilding the compiler of ``full``
     (the same request store, the same executable as its generations) twice with an environment of ``PATH`` alone, on
-    which no Python resolves."""
+    which no Python resolves.  ADR-382: ``full``'s C0 is that pinned seed, so without ``seed`` nothing shows it."""
     from xax_selfhost_seed import SEED_SHA256
 
     if seed is None:
-        return full["seed"]["requires_python"]
+        return True
     compiler = full["generations"][-1]["artifact_sha256"]
     return not (
         seed["seed"]["sha256"] == SEED_SHA256 and not seed["seed"]["has_interpreter"]

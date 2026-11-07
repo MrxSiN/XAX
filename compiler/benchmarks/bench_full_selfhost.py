@@ -3,7 +3,7 @@
 The production compiler on Linux x86-64 is the general driver (``xax_compiler_driver_general.xax``).  Its canonical
 build request (``xax_selfhost_compiler.compiler_request``) is resolved and built by the compiler itself:
 
-    C0 (seed: the driver lowered by the XAX views backend in a Python host process)
+    C0 (the pinned seed, bootstrap/seed/xaxc-linux-x86_64: the compiler the driver store built itself into; ADR-382)
     C_n resolve <request store> -> snapshot store;  C_n build <snapshot> -> C_n+1, provenance P_n+1     (n = 0, 1, 2)
 
 Every step is a process with no Python inside.  Recorded, raw: every executable's and snapshot's digest and size,
@@ -582,13 +582,20 @@ def measure() -> dict:
     module = next(item for item in driver.objects() if item.kind == X.Kind.MODULE)
     entry = next(driver.get(cid) for cid in module.references if driver.get(cid).kind == X.Kind.FUNCTION)
     start = time.perf_counter()
-    reference_compiler = compile_linux_executable(driver, entry.cid, X.x86_64_linux_exec_target().cid, frontend="python").data
+    try:
+        python_compile = compile_linux_executable(driver, entry.cid, X.x86_64_linux_exec_target().cid, frontend="python").data
+        python_compile_outcome = ["image", sha(python_compile)]
+    except X.XaxError as error:  # ADR-382: the Python reference does not lower operation 77 (ledger 0009)
+        python_compile, python_compile_outcome = None, ["rejected", error.diagnostic.code, error.diagnostic.rule]
     python_compile_s = time.perf_counter() - start
 
-    # C0: the seed.
+    # C0: the pinned seed (ADR-382).
     start = time.perf_counter()
     seed = NativeGeneralDriver()
     seed_s = time.perf_counter() - start
+    # The bootstrap's own compile of the compiler: the Python reference's where it lowers the driver, else the pinned
+    # seed, the bootstrap since ADR-286, which is the compiler the driver store built itself into (ADR-382).
+    reference_compiler = python_compile if python_compile is not None else seed.executable
     executables = [Path(seed.path)]
     generations = []
     for n in range(3):
@@ -612,7 +619,7 @@ def measure() -> dict:
                                     "request_root": view.request_root.hex(), "target_root": view.target_root.hex(), "profile_root": view.profile_root.hex(),
                                     "artifact_digest_blake3": view.artifact_digest.hex(), "compiler_identity": view.compiler_identity.hex(),
                                     "lowering_identity": view.lowering_identity.hex()}
-            if n == 0:
+            if n == 0 and python_compile is not None:
                 python_build = build(snapshot, view.request_root, compiler_identity=XAX_GENERAL_DRIVER_COMPILER_IDENTITY_V1)
                 record["equals_python_build"] = python_build.artifact == artifact_bytes and python_build.provenance.envelope() == provenance_bytes
         generations.append(record)
@@ -725,10 +732,14 @@ def measure() -> dict:
                      "request_store_sha256": sha(request_store.data), "request_root": request.cid.hex(),
                      "target_root": X.x86_64_linux_exec_target().cid.hex(), "resolver_identity": RESOLVER_IDENTITY.decode(),
                      "policy_root": POLICY.cid.hex(), "compiler_identity": XAX_GENERAL_DRIVER_COMPILER_IDENTITY_V1.hex()},
-        "seed": {"kind": "the driver store lowered by the XAX views backend for x86_64-linux-views-exec-v1, in a Python host process",
-                 "sha256": sha(seed.executable), "bytes": len(seed.executable), "requires_python": True,
+        # ADR-382: C0 is the pinned seed.  The views backend's lowering of the driver (the earlier C0) is rejected since
+        # ledger 0009 (operation 77); the seed's own Python-free rebuild is python_free_seed_evidence.json.
+        "seed": {"kind": "the pinned seed bootstrap/seed/xaxc-linux-x86_64 (ADR-286), checked against SEED_SHA256 (ADR-382)",
+                 "sha256": sha(seed.executable), "bytes": len(seed.executable), "requires_python": False,
                  "host_s_nonsemantic": round(seed_s, 1)},
         "references": {"python_resolver_snapshot_sha256": sha(reference_snapshot), "python_resolve_s_nonsemantic": round(python_resolve_s, 1),
+                       "python_reference_compile": python_compile_outcome,
+                       "bootstrap_compile_kind": "the Python reference compile" if python_compile is not None else "the pinned seed (ADR-382)",
                        "bootstrap_compile_sha256": sha(reference_compiler), "bootstrap_compile_bytes": len(reference_compiler),
                        "bootstrap_compile_s_nonsemantic": round(python_compile_s, 1)},
         "generations": generations,
@@ -750,7 +761,7 @@ def measure() -> dict:
         # evolution ledger, which C1 replays above; what remains:
         "evolution": evolution,
         "ordinary_evolution": None,
-        "python_dependency": {"production": False, "bootstrap_seed": True, "reference": True, "test_only": True},
+        "python_dependency": {"production": False, "bootstrap_seed": False, "reference": True, "test_only": True},
         "authority": xax_native.AUTHORITY,
     }
 
