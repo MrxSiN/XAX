@@ -75,6 +75,20 @@ def interpret(source: bytes, data: bytes, steps: int = 50_000_000):
     return 0, bytes(out)
 
 
+def run(command, data=b"", **options):
+    """``subprocess.run`` with stdin ``data`` and output captured in files, not pipes: wine's server and services,
+    started by a run, inherit its descriptors, so a pipe would never reach end of file."""
+    import tempfile
+
+    with tempfile.TemporaryFile() as given, tempfile.TemporaryFile() as out, tempfile.TemporaryFile() as err:
+        given.write(data)
+        given.seek(0)
+        done = subprocess.run(command, stdin=given, stdout=out, stderr=err, **options)
+        out.seek(0)
+        err.seek(0)
+        return subprocess.CompletedProcess(command, done.returncode, out.read(), err.read())
+
+
 def _random_program(rng: random.Random) -> bytes:
     """A balanced program that ends: each loop is entered with a counter, in its own cell to the right of the cells
     the program uses, that only the loop decrements."""
@@ -131,15 +145,15 @@ ERROR_PATHS = [  # (name, arguments, source, expected compile exit)
 
 def _compile(work: Path, env, arguments, source):
     start = time.time()
-    compiled = subprocess.run(["wine", "bbc.exe", "compile", *arguments], input=source, capture_output=True, cwd=work, env=env, timeout=3600)
+    compiled = run(["wine", "bbc.exe", "compile", *arguments], source, cwd=work, env=env, timeout=3600)
     return compiled, round(time.time() - start, 2)
 
 
 def _execute(work: Path, env, target: str, out: str, given: bytes):
     if target.startswith("windows"):
-        return subprocess.run(["wine", out], input=given, capture_output=True, cwd=work, env=env, timeout=600)
+        return run(["wine", out], given, cwd=work, env=env, timeout=600)
     (work / out).chmod(0o755)
-    return subprocess.run(["qemu-aarch64", str(work / out)], input=given, capture_output=True, cwd=work, timeout=600)
+    return run(["qemu-aarch64", str(work / out)], given, cwd=work, timeout=600)
 
 
 def check_case(work: Path, env, name, source, inputs, level, target, expected=None):
