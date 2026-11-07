@@ -672,9 +672,14 @@ def measure() -> dict:
         transactions = []
         for index, (record, store, before, after) in enumerate(EV.ledger().transactions):
             data = EV.before_store(store, before)
-            row = {"record": record.name, "store": store, "before": before, "after": after, "record_sha256": sha(record.read_bytes()),
-                   "mutations": len(parse_record(record.read_bytes())[1]),
-                   "kinds": sorted({names[kind] for kind, *_fields in parse_record(record.read_bytes())[1]})}
+            row = {"record": record.name, "store": store, "before": before, "after": after, "record_sha256": sha(record.read_bytes())}
+            if EV.is_batch(record):  # N0.4 (ADR-372): native batch text; xaxc edit parses it
+                lines = record.read_text().splitlines()
+                row["mutations"] = sum(line.split(" ", 1)[0] in ("define", "replace") for line in lines)
+                row["kinds"] = ["NativeBatch"]
+            else:
+                row["mutations"] = len(parse_record(record.read_bytes())[1])
+                row["kinds"] = sorted({names[kind] for kind, *_fields in parse_record(record.read_bytes())[1]})
             if data is None:
                 row["edit"] = "unavailable: git does not hold the earlier store"
                 transactions.append(row)

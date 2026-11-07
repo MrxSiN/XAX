@@ -1,5 +1,5 @@
 # The closure order around the stop (indices 541-543 here: edit for the case) and the view globals G_VCOUNT, G_BCOUNT.
-# Usage: probe_order.py <store with a module>
+# Usage: probe_order.py <store with a module> [closure positions]
 import sys
 from pathlib import Path
 import xax_compiler as X
@@ -16,7 +16,7 @@ def collect(read):
     order = read(16, count * 4)
     cids = [b"".join(w.to_bytes(8, "big") for w in order[k:k + 4]) for k in range(0, len(order), 4)]
     print("status", read(0, 2), "count", count)
-    for k in (541, 542, 543):
+    for k in [int(a) for a in sys.argv[2:]] or (541, 542, 543):
         if k < len(cids): print(k, cids[k].hex())
     g = read(GLOBALS, 64)
     print("VCOUNT", g[GV.G_VCOUNT], "BCOUNT", g[GV.G_BCOUNT])
