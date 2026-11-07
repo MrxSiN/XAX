@@ -965,6 +965,17 @@ The XAX JVM program now builds callbacks: JDK streams and comparators that call 
 - 98.7% of the 62 MB driver store is graph bodies. 83% of its 3.85 M block parameters are single-source: the deleted builders' DSL threaded every live variable through every block.
 - P1 (remove those parameters by graph-replacing transactions) is blocked by the edit engine's fixed preimage region. It reserves about 6 MiB per new object in 16 MiB, and a function replacement cascades through every caller up to the 2 MB driver main graph, so one transaction can rebuild only about 10 MB. Even 73 functions are refused (`DRIVER-EDIT-CAPACITY`). The next step is an edit-engine change that grows that region on demand, then a self-build and seed rotation.
 
+- *Followed by:* "P1 measured as a lowering-view pass; not adopted — 2026-11-07" below.
+
+#### P1 measured as a lowering-view pass; not adopted — 2026-11-07
+
+- A reference prototype of P1 (SCC form: a strongly connected set of block parameters whose outside arguments are one
+  value is that value) removes about 90% of the lowering views' block parameters and edge arguments on three compiler
+  stores (store writer 9,482 → 882, graph decoder 2,178 → 425, DEX JVM 41,245 → 3,225).
+- On the reference x86-64 register path the effect is mixed: `jsonmin` +8% bytes and +10% time, `uniqcount` −5% bytes
+  and −8% time ([p1_view_pass_2026-11-07.json](compiler/benchmarks/p1_view_pass_2026-11-07.json), MEASURED). P1 is
+  not added natively (ADR-385); the next forms to try are P1 on the frame path only, or live-range splitting.
+
 #### Self-hosting evidence re-run on the committed stores — 2026-11-05
 
 - `selfhost_x86_64_evidence.json` and `selfhost_closure_evidence.json` were stale: the CFG, graph-decoder and x86-64 backend stores changed in S15e.6i.2a after they were recorded. Both were re-run on Linux x86-64 with `XAX_REQUIRE_NATIVE=1`; every component's authority is `xax`.
