@@ -1,0 +1,226 @@
+# Ledger 0020: each block parameter's incoming arguments, listed once (blocks.awk, then ws64.awk).
+# Entered from `_aliases`' B42 (the end of the first-appearance pass) with its 17 values; leaves for B52 (the first
+# round's test) with word 9 = S and word 10 = A, two words the rounds carry but never read.
+#   n = G_VCOUNT; S and W are n + 2 words each, A is S[n + 1] + 1 words, all from the arena (H_ARENA, H_ARENA_END).
+#   Pass 1: for every block (G_BLIST order), edge and argument a, S[p + 1] += 1 for p = the target's parameter a.
+#   S[i] += S[i - 1] for i = 1 .. n + 1; W = S.
+#   Pass 2, in the same order: A[W[p]] = the argument; W[p] += 1.  So A[S[v] .. S[v + 1]) are the values every edge
+#   passes to parameter v, in the order the rounds' scan of every edge met them.
+# An exhausted arena gives NONE, as `_aliases`' own allocation does.
+
+# b0: S and W.  Words 17.. of b1: S, W, n, i, 2(n + 2).
+@H 0 0
+n0.0 constant 29360173 -> T5
+@LD n0.1 n0.0 p0.3 p0.5
+n0.2 constant 2 -> T5
+n0.3 add.wrap n0.1 n0.2 -> T5
+n0.4 add.wrap n0.3 n0.3 -> T5
+n0.5 constant 268435404 -> T5
+@LD n0.6 n0.5 p0.3 n0.1.R1
+n0.7 add.wrap n0.6 n0.4 -> T5
+@ST n0.8 n0.5 p0.3 n0.7 n0.6.R1
+n0.9 constant 268435405 -> T5
+@LD n0.10 n0.9 p0.3 n0.8
+n0.11 int.compare n0.7 n0.10 -> T6 [4]
+n0.12 add.wrap n0.6 n0.3 -> T5
+n0.13 constant 0 -> T5
+cbr n0.11 b1({V 0},n0.10.R1,{S 0},n0.6,n0.12,n0.1,n0.13,n0.4) b99({V 0},n0.10.R1)
+
+# b1, b2: S and W cleared.
+@H 1 5
+n1.0 int.compare p1.20 p1.21 -> T6 [3]
+cbr n1.0 b2({V 1},p1.5,{S 1},p1.17-21) b3({V 1},p1.5,{S 1},p1.17-19)
+@H 2 5
+n2.0 add.wrap p2.17 p2.20 -> T5
+n2.1 constant 0 -> T5
+@ST n2.2 n2.0 p2.3 n2.1 p2.5
+n2.3 constant 1 -> T5
+n2.4 add.wrap p2.20 n2.3 -> T5
+br b1({V 2},n2.2,{S 2},p2.17-19,n2.4,p2.21)
+
+# b3 .. b12: pass 1.  Words 17..: S, W, n, q, block count (b4); then edges, edge count, k (b6); then argument count,
+# the target's parameters, a (b10).
+@H 3 3
+n3.0 constant 29360176 -> T5
+@LD n3.1 n3.0 p3.3 p3.5
+n3.2 constant 0 -> T5
+br b4({V 3},n3.1.R1,{S 3},p3.17-19,n3.2,n3.1)
+@H 4 5
+n4.0 int.compare p4.20 p4.21 -> T6 [3]
+cbr n4.0 b5({V 4},p4.5,{S 4},p4.17-21) b9({V 4},p4.5,{S 4},p4.17-19)
+@H 5 5
+n5.0 constant 29360175 -> T5
+@LD n5.1 n5.0 p5.3 p5.5
+n5.2 add.wrap n5.1 p5.20 -> T5
+@LD n5.3 n5.2 p5.3 n5.1.R1
+n5.4 constant 13 -> T5
+n5.5 add.wrap n5.3 n5.4 -> T5
+@LD n5.6 n5.5 p5.3 n5.3.R1
+n5.7 constant 14 -> T5
+n5.8 add.wrap n5.3 n5.7 -> T5
+@LD n5.9 n5.8 p5.3 n5.6.R1
+n5.10 constant 0 -> T5
+br b6({V 5},n5.9.R1,{S 5},p5.17-21,n5.6,n5.9,n5.10)
+@H 6 8
+n6.0 int.compare p6.24 p6.23 -> T6 [3]
+cbr n6.0 b7({V 6},p6.5,{S 6},p6.17-24) b8({V 6},p6.5,{S 6},p6.17-24)
+@H 7 8
+n7.0 constant 3 -> T5
+n7.1 mul.wrap p7.24 n7.0 -> T5
+n7.2 add.wrap p7.22 n7.1 -> T5
+@LD n7.3 n7.2 p7.3 p7.5
+n7.4 constant 1 -> T5
+n7.5 add.wrap n7.2 n7.4 -> T5
+@LD n7.6 n7.5 p7.3 n7.3.R1
+n7.7 constant 5 -> T5
+n7.8 add.wrap n7.3 n7.7 -> T5
+@LD n7.9 n7.8 p7.3 n7.6.R1
+n7.10 constant 0 -> T5
+br b10({V 7},n7.9.R1,{S 7},p7.17-24,n7.6,n7.9,n7.10)
+@H 10 11
+n10.0 int.compare p10.27 p10.25 -> T6 [3]
+cbr n10.0 b11({V 10},p10.5,{S 10},p10.17-27) b12({V 10},p10.5,{S 10},p10.17-27)
+@H 11 11
+n11.0 add.wrap p11.26 p11.27 -> T5
+@LD n11.1 n11.0 p11.3 p11.5
+n11.2 add.wrap p11.17 n11.1 -> T5
+n11.3 constant 1 -> T5
+n11.4 add.wrap n11.2 n11.3 -> T5
+@LD n11.5 n11.4 p11.3 n11.1.R1
+n11.6 add.wrap n11.5 n11.3 -> T5
+@ST n11.7 n11.4 p11.3 n11.6 n11.5.R1
+n11.8 add.wrap p11.27 n11.3 -> T5
+br b10({V 11},n11.7,{S 11},p11.17-26,n11.8)
+@H 12 11
+n12.0 constant 1 -> T5
+n12.1 add.wrap p12.24 n12.0 -> T5
+br b6({V 12},p12.5,{S 12},p12.17-23,n12.1)
+@H 8 8
+n8.0 constant 1 -> T5
+n8.1 add.wrap p8.20 n8.0 -> T5
+br b4({V 8},p8.5,{S 8},p8.17-19,n8.1,p8.21)
+
+# b9, b13, b14: S[i] += S[i - 1].  Words 17..: S, W, n, i, n + 2.
+@H 9 3
+n9.0 constant 1 -> T5
+n9.1 constant 2 -> T5
+n9.2 add.wrap p9.19 n9.1 -> T5
+br b13({V 9},p9.5,{S 9},p9.17-19,n9.0,n9.2)
+@H 13 5
+n13.0 int.compare p13.20 p13.21 -> T6 [3]
+n13.1 constant 0 -> T5
+cbr n13.0 b14({V 13},p13.5,{S 13},p13.17-21) b15({V 13},p13.5,{S 13},p13.17-19,n13.1,p13.21)
+@H 14 5
+n14.0 add.wrap p14.17 p14.20 -> T5
+n14.1 constant 1 -> T5
+n14.2 sub.wrap n14.0 n14.1 -> T5
+@LD n14.3 n14.2 p14.3 p14.5
+@LD n14.4 n14.0 p14.3 n14.3.R1
+n14.5 add.wrap n14.4 n14.3 -> T5
+@ST n14.6 n14.0 p14.3 n14.5 n14.4.R1
+n14.7 add.wrap p14.20 n14.1 -> T5
+br b13({V 14},n14.6,{S 14},p14.17-19,n14.7,p14.21)
+
+# b15, b16: W = S.
+@H 15 5
+n15.0 int.compare p15.20 p15.21 -> T6 [3]
+cbr n15.0 b16({V 15},p15.5,{S 15},p15.17-21) b17({V 15},p15.5,{S 15},p15.17-19)
+@H 16 5
+n16.0 add.wrap p16.17 p16.20 -> T5
+@LD n16.1 n16.0 p16.3 p16.5
+n16.2 add.wrap p16.18 p16.20 -> T5
+@ST n16.3 n16.2 p16.3 n16.1 n16.1.R1
+n16.4 constant 1 -> T5
+n16.5 add.wrap p16.20 n16.4 -> T5
+br b15({V 16},n16.3,{S 16},p16.17-19,n16.5,p16.21)
+
+# b17: A.  Words 17.. of b18: S, W, A, q, block count.
+@H 17 3
+n17.0 add.wrap p17.17 p17.19 -> T5
+n17.1 constant 1 -> T5
+n17.2 add.wrap n17.0 n17.1 -> T5
+@LD n17.3 n17.2 p17.3 p17.5
+n17.4 add.wrap n17.3 n17.1 -> T5
+n17.5 constant 268435404 -> T5
+@LD n17.6 n17.5 p17.3 n17.3.R1
+n17.7 add.wrap n17.6 n17.4 -> T5
+@ST n17.8 n17.5 p17.3 n17.7 n17.6.R1
+n17.9 constant 268435405 -> T5
+@LD n17.10 n17.9 p17.3 n17.8
+n17.11 int.compare n17.7 n17.10 -> T6 [4]
+n17.12 constant 29360176 -> T5
+@LD n17.13 n17.12 p17.3 n17.10.R1
+n17.14 constant 0 -> T5
+cbr n17.11 b18({V 17},n17.13.R1,{S 17},p17.17,p17.18,n17.6,n17.14,n17.13) b99({V 17},n17.13.R1)
+
+# b18 .. b25: pass 2.  Words 17..: S, W, A, q, block count; edges, edge count, k; argument count, the target's
+# parameters, the arguments, a.
+@H 18 5
+n18.0 int.compare p18.20 p18.21 -> T6 [3]
+cbr n18.0 b19({V 18},p18.5,{S 18},p18.17-21) b30({V 18},p18.5,{S 18},p18.17,p18.19)
+@H 19 5
+n19.0 constant 29360175 -> T5
+@LD n19.1 n19.0 p19.3 p19.5
+n19.2 add.wrap n19.1 p19.20 -> T5
+@LD n19.3 n19.2 p19.3 n19.1.R1
+n19.4 constant 13 -> T5
+n19.5 add.wrap n19.3 n19.4 -> T5
+@LD n19.6 n19.5 p19.3 n19.3.R1
+n19.7 constant 14 -> T5
+n19.8 add.wrap n19.3 n19.7 -> T5
+@LD n19.9 n19.8 p19.3 n19.6.R1
+n19.10 constant 0 -> T5
+br b20({V 19},n19.9.R1,{S 19},p19.17-21,n19.6,n19.9,n19.10)
+@H 20 8
+n20.0 int.compare p20.24 p20.23 -> T6 [3]
+cbr n20.0 b21({V 20},p20.5,{S 20},p20.17-24) b22({V 20},p20.5,{S 20},p20.17-24)
+@H 21 8
+n21.0 constant 3 -> T5
+n21.1 mul.wrap p21.24 n21.0 -> T5
+n21.2 add.wrap p21.22 n21.1 -> T5
+@LD n21.3 n21.2 p21.3 p21.5
+n21.4 constant 1 -> T5
+n21.5 add.wrap n21.2 n21.4 -> T5
+@LD n21.6 n21.5 p21.3 n21.3.R1
+n21.7 constant 5 -> T5
+n21.8 add.wrap n21.3 n21.7 -> T5
+@LD n21.9 n21.8 p21.3 n21.6.R1
+n21.10 constant 2 -> T5
+n21.11 add.wrap n21.2 n21.10 -> T5
+@LD n21.12 n21.11 p21.3 n21.9.R1
+n21.13 constant 0 -> T5
+br b23({V 21},n21.12.R1,{S 21},p21.17-24,n21.6,n21.9,n21.12,n21.13)
+@H 23 12
+n23.0 int.compare p23.28 p23.25 -> T6 [3]
+cbr n23.0 b24({V 23},p23.5,{S 23},p23.17-28) b25({V 23},p23.5,{S 23},p23.17-28)
+@H 24 12
+n24.0 add.wrap p24.26 p24.28 -> T5
+@LD n24.1 n24.0 p24.3 p24.5
+n24.2 add.wrap p24.27 p24.28 -> T5
+@LD n24.3 n24.2 p24.3 n24.1.R1
+n24.4 add.wrap p24.18 n24.1 -> T5
+@LD n24.5 n24.4 p24.3 n24.3.R1
+n24.6 add.wrap p24.19 n24.5 -> T5
+@ST n24.7 n24.6 p24.3 n24.3 n24.5.R1
+n24.8 constant 1 -> T5
+n24.9 add.wrap n24.5 n24.8 -> T5
+@ST n24.10 n24.4 p24.3 n24.9 n24.7
+n24.11 add.wrap p24.28 n24.8 -> T5
+br b23({V 24},n24.10,{S 24},p24.17-27,n24.11)
+@H 25 12
+n25.0 constant 1 -> T5
+n25.1 add.wrap p25.24 n25.0 -> T5
+br b20({V 25},p25.5,{S 25},p25.17-23,n25.1)
+@H 22 8
+n22.0 constant 1 -> T5
+n22.1 add.wrap p22.20 n22.0 -> T5
+br b18({V 22},p22.5,{S 22},p22.17-19,n22.1,p22.21)
+
+# b30: on to the rounds, word 9 = S, word 10 = A.
+@H 30 2
+br B52({V 30},p30.5,p30.6-8,p30.17,p30.18,p30.11-16)
+
+# b99: the arena is exhausted.
+@X 99
+n99.0 constant 4294967295 -> T5
+ret n99.0 p99.0 p99.1 p99.2 p99.3 p99.4 p99.5
