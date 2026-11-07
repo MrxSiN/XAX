@@ -1855,3 +1855,13 @@ All emitted forms have no mandatory XAX runtime, allocator, libc, assembler, lin
 - **Matrix**: validator v2. Linux x86-64 R4→R3 and Android arm64 R4→R3; no other level changed.
 - **Provenance**: Linux ELF (x86-64, AArch64), PE32+, browser pages, and SPIR-V build through `xax_build.build`.
 - Full suite on Windows 11 x86-64, Python 3.12.10: **975 passed, 0 failed, 219 skipped**; every skip names an unavailable host tool (75 Linux x86-64, 34 Java, 20 native leaf, 10 Go, …). Native-host behaviour of the new mechanisms is UNVERIFIED until run on Linux x86-64.
+
+#### Step E closed: ledger 0020, P1 measured, the remaining limits planned — 2026-11-07
+
+- **Ledger 0020 (ADR-384):** the AArch64 program's `_aliases` reads per-parameter argument lists and `_intervals`
+  sizes its pool from liveness; BBC's `deep512active` builds on Android ARM64 and BBC's campaign passes 372 of 372.
+- **P1 (ADR-385):** measured as a lowering-view pass (about 90% of block parameters removable), mixed on the register
+  path (`jsonmin` slower, `uniqcount` faster); not added.
+- **Dynamic limits, packed bytes, `cycle` (ADR-386):** the `VCAP` census and the arena budget show that 2^20 values
+  need growable per-function tables; nothing declines at today's limits except BBC's hanoi -O0, which needs that and a
+  larger graph-body view. No transaction until a program needs one.

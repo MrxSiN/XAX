@@ -158,7 +158,12 @@ Steps B–D are recorded in `XAX_HANDOFF.md` ("BBC's `bbc.exe` built natively; C
 the committed store, each step's argument count); 370 of 372 checks, `deep512active` declining on android-arm64; B0–B6
 derived with no Python. Open from them: that AArch64 decline, hanoi -O0, device runs, an A/B benchmark.
 
-### Step E — the rest of the original plan
+### Step E — the rest of the original plan: done (2026-11-07, ADR-384 to ADR-386)
+
+- Outcome: ledger 0020 fixed the AArch64 decline of BBC's `deep512active` (ADR-384); P1 was measured and not added
+  (ADR-385); the limits below were measured and wait for a program that needs them (ADR-386). Open from here: BBC's
+  hanoi -O0 (growable per-function tables and a larger graph-body view), device runs.
+
 
 - **P1, redundant block-parameter elimination:** a native pass in the general view pipeline. Measure on the
   compiler's own build.
