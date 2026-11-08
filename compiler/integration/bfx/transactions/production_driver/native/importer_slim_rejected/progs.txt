@@ -1,0 +1,22 @@
+B15|P384|block stop
+B16|-|header
+B20|P401,P521|node node term
+B21|P552|header count node
+B25|P552,P670|node node term
+B26|P700|header count node node
+B27|-|header
+B30|P700,P822|term
+B33|P729,P918|node term
+B39|P1095|block
+B40|P1124|block
+B42|P1182|block
+B148|P4775|header count node node node
+B151|P4775,P4864|node node term
+B154|-|header count node
+B155|P4981|node node term
+B156|P5010|node node term
+B161|P5155|block cur:N9500001 block
+B162|P5184|block cur:N9500002 block
+B163|P5213|block
+B164|P5242|block
+B167|0|b0term cur:1 block cur:2 block cur:3 block cur:4 block cur:5 block cur:6 block cur:7 block

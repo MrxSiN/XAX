@@ -3870,3 +3870,12 @@ Superseded by [ADR-369](#adr-369--n03-growable-views-as-limit-bounded-checked-ac
 | Rationale | (1) The masked single block cost an x86-64 ADD 15 instructions (`seta`, the mask, a separate `test`/`jne`); with the branch first the compare fuses into the branch and the access needs no mask: 8. A failing instruction now touches no cell (it touched cell 0), and the tape is not observable after a failure either way. (2) It measured no gain under qemu. |
 | Evidence | (1) EXECUTED: BBC's 93-program campaign, 372 compiles, 488 runs; one mismatch (rand15 -O0 Windows) on an artifact byte-identical to one that passed, and three reruns passed: a transient Wine run (`integration/bfx/importer_split_evidence.json`). MEASURED under Wine, median of 7: mandelbrot 1,198 → 1,092 ms, factor 63 → 60, life 50 → 46. (2) MEASURED under qemu-aarch64, median of 5: mandelbrot 7,628 → 7,790 ms, factor 175 → 181, life 96 → 99. |
 | Limits | No device runs (Windows-native or Pixel). The importer's other handlers are unchanged. |
+
+## ADR-390 — hanoi -O0 needs VCAP 2^20: the importer cannot drop its pass-through views
+
+| Field | Record |
+|---|---|
+| Decision | BBC's importer keeps its nine block parameters. Hanoi -O0 remains a documented capacity limit until the general backend's per-value tables can be sized past 2^19 values. |
+| Rationale | The plan of ADR-389's follow-up was: (1) drop the three pass-through views from every decision block (620,000 → about 458,000 values for hanoi -O0), (2) raise `VCAP` from 2^18 to 2^19, (3) raise the semantic index region, the edit body limit and apply ledger 0021. Step 1 is rejected by the memory facts: a returned heap view needs its live base pointer, view and matching effect (`HEAP-VIEW-RETURN-WHOLE`), so the views must travel with their tokens. Without it the decision needs `VCAP` ≥ 620,000, i.e. 2^20: about 85 per-value tables × 2^20 words, about 89 M words, past the 80 M-word x86-64 arena, in a 2 GiB workspace that cannot grow (OI-52). |
+| Evidence | EXECUTED: the slimmed emitter (`integration/bfx/transactions/production_driver/native/importer_slim_rejected`) edits and verifies in `bbc.xax`; every decision it emits fails `xaxc verify` and `resolve` with `XAX.MEMORY.HEAP_VIEW` (a `,+.` program at -O0). |
+| Limits | Open routes, each a redesign: per-function tables sized by the function's value count instead of `VCAP` (about 50 functions hard-code `VCAP`); 32-bit table words; a memory-facts rule for views returned from a dominating block; or an importer that splits very large decisions into several functions. |
