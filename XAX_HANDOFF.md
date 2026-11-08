@@ -29,7 +29,7 @@
 
 <!-- xax-status:levels -->Replacement levels (generated from `XAX_REPLACEMENT_MATRIX.json`): R6: jvm, linux-aarch64, linux-x86_64; R3: android-arm64; R2: aarch64-baremetal, browser-web, windows-x86_64-pe; R1: gpu-spirv-cuda-metal-dxil, riscv64, wasm32-core, wasm32-wasi; R0: accelerator-simt-packet; no level yet: bsd-unix, dotnet-clr, macos-ios-apple, rtos-embedded-mcu.<!-- /xax-status:levels -->
 
-<!-- xax-status:bootstrap -->Bootstrap status (derived by `xax_selfhost.bootstrap_status` from `compiler/benchmarks/full_selfhost_evidence.json` and `compiler/benchmarks/python_free_seed_evidence.json`): whole production compiler: B0, B1, B2, B3, B4, B5, B6 established (derived from the Linux x86-64 production compiler, whose executed record covers every target and artifact `build` makes (S15g, ADR-358)); Linux x86-64 production compiler (`benchmarks/full_selfhost_evidence.json`): B0, B1, B2, B3, B4, B5, B6 hold, none do not; its seed requires Python: yes; S-step component fixed points are not B milestones (`XAX_SPEC.md` §16.5). Bootstrap seed: native-elf `compiler/bootstrap/seed/xaxc-linux-x86_64`, 33,161,530 bytes, requires Python: yes.<!-- /xax-status:bootstrap -->
+<!-- xax-status:bootstrap -->Bootstrap status (derived by `xax_selfhost.bootstrap_status` from `compiler/benchmarks/full_selfhost_evidence.json` and `compiler/benchmarks/python_free_seed_evidence.json`): whole production compiler: B0, B1, B2, B3, B4, B5, B6 established (derived from the Linux x86-64 production compiler, whose executed record covers every target and artifact `build` makes (S15g, ADR-358)); Linux x86-64 production compiler (`benchmarks/full_selfhost_evidence.json`): B0, B1, B2, B3, B4, B5, B6 hold, none do not; its seed requires Python: no; S-step component fixed points are not B milestones (`XAX_SPEC.md` §16.5). Bootstrap seed: native-elf `compiler/bootstrap/seed/xaxc-linux-x86_64`, 31,887,691 bytes, requires Python: no.<!-- /xax-status:bootstrap -->
 
 Sections below are dated; a later section supersedes an earlier figure. The current full-suite result is under "Multi-language performance rule" and later entries in `XAX_STATE.md`.
 
@@ -1642,7 +1642,75 @@ natively, and run the Android-first checks. Still open in the native workspace: 
   build's artifact, provenance and diagnostic with the new compiler as the driver, as with the old seed (run through a
   scratch shim that puts an `xaxc` executable in `NativeGeneralDriver`'s place; that class's own setup needs step D).
 - **Next:** step B, BBC's `bbc.exe` from the rebuilt driver. If a build declines at the container buffer's allocation
-  (the arena after the views), pack the container buffer too (ADR-381, Limits).
+  (the arena after the views), pack the container buffer too (ADR-381, Limits). (Done: see "BBC's `bbc.exe` built natively; C0 is the seed:
+  ledger 0019 — 2026-11-07".)
+
+## BBC's `bbc.exe` built natively; C0 is the seed: ledger 0019 — 2026-11-07 (ADR-382, ADR-383)
+
+- **Step B, `bbc.exe` from the production driver.** `rebuild.sh` on the post-0019 production driver gives
+  `bbc.xax` root `1a582526…` (72.3 MB, verified), and the seed builds `bbc.exe` in under 4 minutes. Three walls:
+  - **`VCAP`:** BBC's compile front (`51b36b76…`) inlined 2,434 leaf calls past 2^18 values. **Ledger 0019**
+    (ADR-383) inlines only while a view has at most 2^17 values (`native/0019`). xaxc1 ≠ xaxc2 (the compiler's own
+    largest functions keep some calls); xaxc2 = xaxc3 = `a9995432…` is the seed.
+  - **A stale layer:** the port's layer came from an older `bbc.xax`, so every compile's edit step was rejected
+    (`WORKSPACE-EXPECTED-ROOT`, the host request of 2026-10-21). `layer.sh` now takes the layer from the committed
+    `bbc.xax`.
+  - **The steps' argument counts:** resolve saw edit's `argc` (5 for 4). The step variants now call their own
+    count, as the old store did.
+  - Diagnosing: wine's relay log (`WINEDEBUG=+relay`, the bbc.exe thread's `ret=14…` calls) shows each step's
+    file I/O; `bbc bind` gives the edit record, and the Linux seed replays edit, resolve and build on it.
+- **Step C.** `integration/bfx/bbc.xax` is the rebuilt store; evidence
+  `integration/bfx/production_driver_evidence.json`; `COMPILE.md` has a dated section.
+  - `tools/check.py`: 93 programs, 370 of 372 compiles, 486 runs, no mismatch; error paths 1, 4, 4, 3, 3 with no
+    leftovers. `deep512active` declines on android-arm64 in the AArch64 general program (the seed's own build
+    declines too).
+  - Mandelbrot -O0 and hanoi -O1 (declined on 2026-11-05) build and run; hanoi -O0 still declines.
+  - `tools/bench.py` recorded build and run samples for six baseline programs. It is not an A/B run against the
+    old `bbc.exe`, which was not rebuilt.
+  - Capture wine output in files, not pipes: a wineserver a captured run starts inherits the pipe.
+- **Step D (ADR-382).** C0 of `bench_full_selfhost` is the pinned seed: neither the views profile nor the Python
+  reference lowers operation 77. `NativeGeneralDriver()` runs the seed, so the classes built on it run again.
+  - The bench now reads native batch records, keeps the corpus rows apart from the replay rows, and chains a replay
+    through a store git lacks (0018's two batches per store), as `evolve.sh replay` now does.
+  - **Result:** `full_selfhost_evidence.json` re-recorded with `XAX_REQUIRE_NATIVE=1` (95 minutes): C1 = C2 = C3 =
+    the seed, every snapshot the Python resolver's, 198 corpus cases agreeing, 66 ledger transactions replayed and
+    verified by C1. The derived status: **B0–B6 hold and the seed requires no Python.**
+  - Fixed with it: `test_the_record_decides_whether_the_seed_requires_python`, `test_the_raised_input_bound`, the
+    capacity test (256 MiB views since ledger 0005), the fixed-point test (C1 now equals C0), and the status test's
+    v1 replay checks.
+- BBC's docs (`docs/25_NATIVE_COMPILE.md`, `docs/05_STATUS.md`, `docs/08_BENCHMARKS.md`) and a new evidence report
+  follow on BBC's branch.
+- **Next:** the AArch64 decline of `deep512active` and hanoi -O0; Windows-native and Pixel runs of the new
+  artifacts; an A/B benchmark against the old `bbc.exe`; step E.
+- *Followed by:* "Deep nesting on AArch64, the old-vs-new benchmark and hanoi -O0's limits: ledger 0020 —
+  2026-11-07" below.
+
+## Deep nesting on AArch64, the old-vs-new benchmark and hanoi -O0's limits: ledger 0020 — 2026-11-07 (ADR-384)
+
+- **`deep512active` on Android ARM64.** Python-hosted, the native AArch64 program took 2,187 s on its snapshot and
+  then declined. gdb sampling with the image's function offsets put all 40 samples in `_aliases` (`adc7c672…`): every
+  round scanned every edge argument for every block parameter. Probing the stop state (arena cursor at `HEADER + 12`)
+  showed the decline: `_intervals` (`0952bb79…`) asked for a blocks × values range pool, 228.7 M words, past the
+  arena's end. **Ledger 0020** (`native/0020`, four stores: the driver, the request, `xax_aarch64_general.xax`,
+  `xax_android.xax`) lists each parameter's incoming arguments once and sizes the pool from liveness
+  (`@pool_bound`). The program builds the snapshot in 16 s. The request store equals `compiler_request` of the driver;
+  the seed's build is xaxc1 = xaxc2 = `439ddb0d…` (31,543,498 bytes), the new seed. Both seed records re-recorded.
+- **BBC rebuilt.** `rebuild.sh` from the new production driver (23 min 41 s; root `560978…`, 72.3 MB, verified),
+  `bbc.exe` by the new seed (5 min 12 s, 35,964,416 bytes). `tools/check.py`: **372 of 372 compiles**, 488 runs, no
+  mismatch, error paths 1, 4, 4, 3, 3; the campaign takes 4 min 50 s. `deep512active` builds on android-arm64 (3.5 s
+  / 6.9 s), `deep512`'s Android compile falls from 122 s to 0.5–0.7 s. Evidence:
+  `integration/bfx/production_driver_0020_evidence.json` (BBC: `evidence/production_driver_0020_2026-11-07.json`).
+- **Old vs new `bbc.exe`.** The old one was rebuilt from `bbc.xax` at `6417125` with the documented generic-SDK
+  recipes (16,007,680 bytes, not byte-identical to the baseline's `83404a20…`); `tools/bench.py` now takes several
+  arms and interleaves them. Where both build, the executables are byte-identical; the new `bbc.exe` builds 1.0–1.8×
+  slower; mandelbrot -O0 and hanoi -O1 build only with the new one (BBC: `evidence/old_new_benchmark_2026-11-07.json`,
+  `docs/08_BENCHMARKS.md`).
+- **hanoi -O0's limits.** Its decision graph is one 7.25 MB object (53,884 instructions; factor's O0 graph is 0.46 MB
+  for 3,878). The seed's own `verify` and `edit` decline the request store (exit 2): the graph decoder's body view is
+  4 MiB (`heap_view<4194304>` in `decode`'s signature and three `heap.view` buffers of the driver's main). Scaled from
+  factor, the view would hold about 54,000 blocks and 620,000 values, past `VCAP` (2^18); on AArch64 its liveness bit
+  sets alone (blocks × values / 64 words) would exceed the arena.
+- **Device runs:** still BLOCKED; no computer is connected to this session.
 
 ## Open issues
 
@@ -1666,3 +1734,38 @@ natively, and run the Android-first checks. Still open in the native workspace: 
 - First job on a Linux x86-64 host (OI-45): `PYTHONPATH=src python benchmarks/bench_selfhost_closure.py --write` and `benchmarks/bench_selfhost_x86_64.py --write` (they set `XAX_REQUIRE_NATIVE=1`), then the native self-hosting tests. Without Linux, `--bind-committed` refreshes only the host-independent fields and marks changed stores `native_rerun_required`.
 - New modules and tests: `src/xax_native.py` (authority, W^X, cache, `bootstrap_dir`), `tests/test_store_regeneration.py`, `tests/test_audit_remediation.py`, `tests/test_wheel_install.py`, `tests/test_hosted_build_provenance.py`.
 - Windows host: run tests with `PYTHONPATH=src;.;..` (semicolons). Skips are environment-only; none hides a failure.
+
+## Ledger 0022: constant folding and hoisted registers on x86-64 (2026-11-08)
+
+- The x86-64 register lowering's `basics` folds single-result `add.wrap`/`sub.wrap`/`mul.wrap`/`int.truncate`/
+  `int.zero.extend` nodes over constants (widths 8/16/32/64) into constants and erases them; the emit function now
+  saves the callee-saved register of every hoisted wide constant (a latent fault the fold exposed). ADR-388,
+  `compiler/bootstrap/evolution/native/0022`.
+- The first application of the fold alone (`d37ec08`) built a self-consistent but wrong compiler and was reverted
+  (`bbeb04e`); the cause was found by bisection. With both changes, the previous code generator's build of the
+  compiler and its own build agree byte for byte on `build`, `resolve` and `verify`.
+- Seed `510a794a…` (31,887,691 bytes); B0–B6 re-recorded (`full_selfhost_evidence.json`,
+  `python_free_seed_evidence.json`).
+- BBC: `bbc.xax` rebuilt (root `4026acc5…`), `bbc.exe` 36,302,848 bytes, 372 of 372 compiles and 488 runs pass
+  (`integration/bfx/production_driver_0022_evidence.json`). Under Wine, mandelbrot 1,147 ms (was 1,635 the day
+  before; brainfry's Windows output 1,250 in the same run). No rulebook win (build time, no device runs).
+- Open: hanoi -O0 (ADR-387, ledger 0021 prepared); the AArch64 backends have no fold yet.
+
+## BBC's importer bounds branch, the capacity word (ledger 0023) and the plan completed — 2026-11-08
+
+Supersedes the ledger-0022 section above for BBC's current driver.
+- **BBC's importer** (ADR-389) writes each ADD/MUL as a bounds branch and an access block; an x86-64 ADD is 8
+  instructions instead of 15. Under Wine: mandelbrot 1,198 → 1,092 ms, factor 63 → 60, life 50 → 46
+  (`integration/bfx/importer_split_evidence.json`). The same constant fold for AArch64 measured no gain under qemu
+  and stays a prototype (`native/0023-prototype`).
+- **Fewer block parameters rejected** (ADR-390): the decision's pass-through views must travel with their effects
+  (`HEAP-VIEW-RETURN-WHOLE`), so hanoi -O0 stays at about 620,000 values.
+- **Ledger 0023** (ADR-391): the per-view value capacity is a workspace word (globals slot 170) set by the x86-64,
+  AArch64 and JVM prologues to 262,144, read by the 18 functions that used `VCAP`. The compiler rebuilds itself and the
+  previous seed's outputs byte for byte. Seed `a35fd59f…` (31,903,131 bytes); B0–B6 re-recorded.
+- **BBC's driver** rebuilt after ledger 0023 (root `1e253130…`), 372 of 372 compiles, 488 runs, no mismatch
+  (`integration/bfx/production_driver_0023_evidence.json`).
+- **`XAX_CONTINUATION.md`** (the 2026-11-06 work plan, steps A–E) is complete and was removed; older sections that cite
+  it refer to that plan.
+- **Open:** OI-54 (hanoi -O0: the front-end regions, room for the tables, AArch64 liveness); device runs on Windows and
+  a Pixel (BLOCKED: emulated hosts only).

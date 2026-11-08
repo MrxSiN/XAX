@@ -28,7 +28,7 @@ supersedes an earlier figure, and a superseded entry is kept rather than rewritt
 
 ### Bootstrap levels
 
-<!-- xax-status:bootstrap -->Bootstrap status (derived by `xax_selfhost.bootstrap_status` from `compiler/benchmarks/full_selfhost_evidence.json` and `compiler/benchmarks/python_free_seed_evidence.json`): whole production compiler: B0, B1, B2, B3, B4, B5, B6 established (derived from the Linux x86-64 production compiler, whose executed record covers every target and artifact `build` makes (S15g, ADR-358)); Linux x86-64 production compiler (`benchmarks/full_selfhost_evidence.json`): B0, B1, B2, B3, B4, B5, B6 hold, none do not; its seed requires Python: yes; S-step component fixed points are not B milestones (`XAX_SPEC.md` §16.5). Bootstrap seed: native-elf `compiler/bootstrap/seed/xaxc-linux-x86_64`, 33,161,530 bytes, requires Python: yes.<!-- /xax-status:bootstrap -->
+<!-- xax-status:bootstrap -->Bootstrap status (derived by `xax_selfhost.bootstrap_status` from `compiler/benchmarks/full_selfhost_evidence.json` and `compiler/benchmarks/python_free_seed_evidence.json`): whole production compiler: B0, B1, B2, B3, B4, B5, B6 established (derived from the Linux x86-64 production compiler, whose executed record covers every target and artifact `build` makes (S15g, ADR-358)); Linux x86-64 production compiler (`benchmarks/full_selfhost_evidence.json`): B0, B1, B2, B3, B4, B5, B6 hold, none do not; its seed requires Python: no; S-step component fixed points are not B milestones (`XAX_SPEC.md` §16.5). Bootstrap seed: native-elf `compiler/bootstrap/seed/xaxc-linux-x86_64`, 31,887,691 bytes, requires Python: no.<!-- /xax-status:bootstrap -->
 
 ### Self-hosting
 
@@ -81,7 +81,7 @@ U1 — universal-replacement proof set: **in progress**. Step status is in `XAX_
 
 S — compiler migration ladder: **S0–S5 EXECUTED** on the production path (native XAX leaves on Linux x86-64 only; Python on every other host) and **S6 EXECUTED** with component fixed points for the RISC-V backend and the store verifier on RV64 under emulation (ADR-116–ADR-151). BLAKE3 also closes on RV64 (ADR-151). **S7a EXECUTED** (ADR-152): the x86-64 views backend is an XAX program with a native component fixed point on x86-64; it lowers every native helper except its own production image, which the bootstrap generator lowers (byte-identical by that fixed point). These are S-step component results, not B milestones (`XAX_SPEC.md` §16.5; ADR-177 renamed the earlier "B1–B4" wording). **S7b.1 EXECUTED** (ADR-179): on Linux x86-64 the XAX x86-64 views program decides its own target legality and writes the exact rejection diagnostic. **S7b.2 EXECUTED** (ADR-181): both views programs resolve references, place the target, find the entry, and produce the image record themselves. **S7b.3 EXECUTED** (ADR-182): the RISC-V views program decides its rejections too, so S7b is complete for the views profiles. **S8a EXECUTED** (ADR-183): every store-container rejection is decided by XAX with the exact diagnostic. **S8b.1 EXECUTED** (ADR-184): object envelopes and their CID check are decided by XAX on `get`. **S8b.2 EXECUTED** (ADR-185): graph-body syntax rejections are decided by XAX through the shared site mechanism. Next: S8c (resolution, typing, facts, and object verification). Since ADR-180, S3–S7a count as migrated for acceptance only (`XAX_SPEC.md` §16.5 condition 5); the ladder continues with S8–S15, and migration is reported as SH1. The typing store was stale against its builder until ADR-177 regenerated it; its native and emulated evidence was re-run on Linux x86-64 on 2026-10-07 and matches (OI-45, self-hosting half).
 
-<!-- xax-status:bootstrap -->Bootstrap status (derived by `xax_selfhost.bootstrap_status` from `compiler/benchmarks/full_selfhost_evidence.json` and `compiler/benchmarks/python_free_seed_evidence.json`): whole production compiler: B0, B1, B2, B3, B4, B5, B6 established (derived from the Linux x86-64 production compiler, whose executed record covers every target and artifact `build` makes (S15g, ADR-358)); Linux x86-64 production compiler (`benchmarks/full_selfhost_evidence.json`): B0, B1, B2, B3, B4, B5, B6 hold, none do not; its seed requires Python: yes; S-step component fixed points are not B milestones (`XAX_SPEC.md` §16.5). Bootstrap seed: native-elf `compiler/bootstrap/seed/xaxc-linux-x86_64`, 33,161,530 bytes, requires Python: yes.<!-- /xax-status:bootstrap -->
+<!-- xax-status:bootstrap -->Bootstrap status (derived by `xax_selfhost.bootstrap_status` from `compiler/benchmarks/full_selfhost_evidence.json` and `compiler/benchmarks/python_free_seed_evidence.json`): whole production compiler: B0, B1, B2, B3, B4, B5, B6 established (derived from the Linux x86-64 production compiler, whose executed record covers every target and artifact `build` makes (S15g, ADR-358)); Linux x86-64 production compiler (`benchmarks/full_selfhost_evidence.json`): B0, B1, B2, B3, B4, B5, B6 hold, none do not; its seed requires Python: no; S-step component fixed points are not B milestones (`XAX_SPEC.md` §16.5). Bootstrap seed: native-elf `compiler/bootstrap/seed/xaxc-linux-x86_64`, 31,887,691 bytes, requires Python: no.<!-- /xax-status:bootstrap -->
 
 Dated sections below are historical records: a figure in them (a ratio, a level, a test count) is current only if no later section supersedes it.
 
@@ -965,6 +965,17 @@ The XAX JVM program now builds callbacks: JDK streams and comparators that call 
 - 98.7% of the 62 MB driver store is graph bodies. 83% of its 3.85 M block parameters are single-source: the deleted builders' DSL threaded every live variable through every block.
 - P1 (remove those parameters by graph-replacing transactions) is blocked by the edit engine's fixed preimage region. It reserves about 6 MiB per new object in 16 MiB, and a function replacement cascades through every caller up to the 2 MB driver main graph, so one transaction can rebuild only about 10 MB. Even 73 functions are refused (`DRIVER-EDIT-CAPACITY`). The next step is an edit-engine change that grows that region on demand, then a self-build and seed rotation.
 
+- *Followed by:* "P1 measured as a lowering-view pass; not adopted — 2026-11-07" below.
+
+#### P1 measured as a lowering-view pass; not adopted — 2026-11-07
+
+- A reference prototype of P1 (SCC form: a strongly connected set of block parameters whose outside arguments are one
+  value is that value) removes about 90% of the lowering views' block parameters and edge arguments on three compiler
+  stores (store writer 9,482 → 882, graph decoder 2,178 → 425, DEX JVM 41,245 → 3,225).
+- On the reference x86-64 register path the effect is mixed: `jsonmin` +8% bytes and +10% time, `uniqcount` −5% bytes
+  and −8% time ([p1_view_pass_2026-11-07.json](compiler/benchmarks/p1_view_pass_2026-11-07.json), MEASURED). P1 is
+  not added natively (ADR-385); the next forms to try are P1 on the frame path only, or live-range splitting.
+
 #### Self-hosting evidence re-run on the committed stores — 2026-11-05
 
 - `selfhost_x86_64_evidence.json` and `selfhost_closure_evidence.json` were stale: the CFG, graph-decoder and x86-64 backend stores changed in S15e.6i.2a after they were recorded. Both were re-run on Linux x86-64 with `XAX_REQUIRE_NATIVE=1`; every component's authority is `xax`.
@@ -1844,3 +1855,48 @@ All emitted forms have no mandatory XAX runtime, allocator, libc, assembler, lin
 - **Matrix**: validator v2. Linux x86-64 R4→R3 and Android arm64 R4→R3; no other level changed.
 - **Provenance**: Linux ELF (x86-64, AArch64), PE32+, browser pages, and SPIR-V build through `xax_build.build`.
 - Full suite on Windows 11 x86-64, Python 3.12.10: **975 passed, 0 failed, 219 skipped**; every skip names an unavailable host tool (75 Linux x86-64, 34 Java, 20 native leaf, 10 Go, …). Native-host behaviour of the new mechanisms is UNVERIFIED until run on Linux x86-64.
+
+#### Step E closed: ledger 0020, P1 measured, the remaining limits planned — 2026-11-07
+
+- **Ledger 0020 (ADR-384):** the AArch64 program's `_aliases` reads per-parameter argument lists and `_intervals`
+  sizes its pool from liveness; BBC's `deep512active` builds on Android ARM64 and BBC's campaign passes 372 of 372.
+- **P1 (ADR-385):** measured as a lowering-view pass (about 90% of block parameters removable), mixed on the register
+  path (`jsonmin` slower, `uniqcount` faster); not added.
+- **Dynamic limits, packed bytes, `cycle` (ADR-386):** the `VCAP` census and the arena budget show that 2^20 values
+  need growable per-function tables; nothing declines at today's limits except BBC's hanoi -O0, which needs that and a
+  larger graph-body view. No transaction until a program needs one.
+
+## Ledger 0022: constant folding and hoisted registers on x86-64 (2026-11-08)
+
+- The x86-64 register lowering's `basics` folds single-result `add.wrap`/`sub.wrap`/`mul.wrap`/`int.truncate`/
+  `int.zero.extend` nodes over constants (widths 8/16/32/64) into constants and erases them; the emit function now
+  saves the callee-saved register of every hoisted wide constant (a latent fault the fold exposed). ADR-388,
+  `compiler/bootstrap/evolution/native/0022`.
+- The first application of the fold alone (`d37ec08`) built a self-consistent but wrong compiler and was reverted
+  (`bbeb04e`); the cause was found by bisection. With both changes, the previous code generator's build of the
+  compiler and its own build agree byte for byte on `build`, `resolve` and `verify`.
+- Seed `510a794a…` (31,887,691 bytes); B0–B6 re-recorded (`full_selfhost_evidence.json`,
+  `python_free_seed_evidence.json`).
+- BBC: `bbc.xax` rebuilt (root `4026acc5…`), `bbc.exe` 36,302,848 bytes, 372 of 372 compiles and 488 runs pass
+  (`integration/bfx/production_driver_0022_evidence.json`). Under Wine, mandelbrot 1,147 ms (was 1,635 the day
+  before; brainfry's Windows output 1,250 in the same run). No rulebook win (build time, no device runs).
+- Open: hanoi -O0 (ADR-387, ledger 0021 prepared); the AArch64 backends have no fold yet.
+
+## BBC's importer bounds branch, the capacity word (ledger 0023) and the plan completed — 2026-11-08
+
+Supersedes the ledger-0022 section above for BBC's current driver.
+- **BBC's importer** (ADR-389) writes each ADD/MUL as a bounds branch and an access block; an x86-64 ADD is 8
+  instructions instead of 15. Under Wine: mandelbrot 1,198 → 1,092 ms, factor 63 → 60, life 50 → 46
+  (`integration/bfx/importer_split_evidence.json`). The same constant fold for AArch64 measured no gain under qemu
+  and stays a prototype (`native/0023-prototype`).
+- **Fewer block parameters rejected** (ADR-390): the decision's pass-through views must travel with their effects
+  (`HEAP-VIEW-RETURN-WHOLE`), so hanoi -O0 stays at about 620,000 values.
+- **Ledger 0023** (ADR-391): the per-view value capacity is a workspace word (globals slot 170) set by the x86-64,
+  AArch64 and JVM prologues to 262,144, read by the 18 functions that used `VCAP`. The compiler rebuilds itself and the
+  previous seed's outputs byte for byte. Seed `a35fd59f…` (31,903,131 bytes); B0–B6 re-recorded.
+- **BBC's driver** rebuilt after ledger 0023 (root `1e253130…`), 372 of 372 compiles, 488 runs, no mismatch
+  (`integration/bfx/production_driver_0023_evidence.json`).
+- **`XAX_CONTINUATION.md`** (the 2026-11-06 work plan, steps A–E) is complete and was removed; older sections that cite
+  it refer to that plan.
+- **Open:** OI-54 (hanoi -O0: the front-end regions, room for the tables, AArch64 liveness); device runs on Windows and
+  a Pixel (BLOCKED: emulated hosts only).

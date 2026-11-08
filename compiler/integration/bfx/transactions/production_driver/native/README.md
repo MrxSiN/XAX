@@ -44,28 +44,32 @@ x86-64 seed (`33046fc4…`), so the Windows-hosted driver compiles exactly as th
 `tests/test_bbc_windows_host_port.py` replays the two steps with the seed. It starts from the production driver blob
 `fc32dfd8` (from git) and checks the roots and `verify`.
 
-## BBC's layer (in progress)
+## BBC's layer
 
-BBC's own layer (36 functions of the ledger-0003 staged record `../2_bbc_layer.edit`) goes on top in native batches.
+BBC's own layer goes on top in native batches. It comes from the committed `../../../bbc.xax` (2026-11-07): the first
+port took it from the ledger-0003 staged record `../2_bbc_layer.edit`, an older layer whose framing expected the host
+request of 2026-10-21, so every compile's edit step was rejected (`WORKSPACE-EXPECTED-ROOT`).
 
-- `remap.awk` rewrites a layer function's 0003 view for the target store:
-  - a layer function becomes `@L_<cid8>`, a driver entry variant `@V_<cid8>`;
-  - the old ported main becomes the new one (by CID);
-  - any other callee becomes the target store's handle for the same CID. All of them are unchanged since 0003.
-- **Batch 3a** supplies the layer's 32 declarations and types. It defines the 32 non-variant functions in call order
-  (`tsort`), with four distinct stubs in place of the driver entry variants. Then `replace` makes BBC's entry the
-  module's.
+- `layer.sh <bbc.xax> <W2 store> <work>` writes `layer_functions.batch`:
+  - `layer.py` finds the layer: what BBC's entry reaches before the driver (functions W2 holds, and the entry's
+    callees with 24 or more parameters: the driver entry and its four variants);
+  - each function's view goes through `portable.awk` (a layer function becomes `@L_<cid8>`, any other callee its
+    CID), callees before callers (`tsort`);
+  - then four `@STUB` places for the variants, `helpers.batch` (the compile steps' argument helpers and argument
+    counts), and BBC's entry, `entry.view`: the store's entry without the graph proof cache (its 64 MiB reservation,
+    passed to the step entries, is not carried).
+- **Batch 3a** supplies the layer's declarations and types (`layer_objects.batch`) and defines the layer, with four
+  distinct stubs in place of the driver entry variants. Then `replace` makes BBC's entry (the batch's last
+  definition) the module's.
 - `variants.sh` then replaces each stub with its variant, one batch each (`variant.awk` on that store's own main view):
   - all four variants reserve 17 of the 22 allocation sites with `MEM_RESERVE`/`PAGE_NOACCESS`;
-  - the three `compile` steps call their argument helper instead of `arg_copy`, and `SetLastError` instead of
-    `ExitProcess`.
+  - the three `compile` steps call their argument helper instead of `arg_copy`, their own argument count instead of
+    `argc` (resolve 4, edit and build 5: the main reads `argc` once), and `SetLastError` instead of `ExitProcess`.
   - One batch for all of it would exceed the driver's 16 MiB file view (`DRIVER-FILE-CAPACITY`).
-- **Result:** the store verifies (72.4 MB).
-- **`build` rejects it** (`NATIVE-CALL-ARITY`). BBC's frame-path functions call helpers that give back borrowed
-  views: F262 calls F644 with one `bits64` and three borrowed pointers. The general backend's frame path counts the
-  borrowed pointers as machine results; its register path, and function interfaces (ADR-101), elide them. The old
-  `bbc.exe` was lowered by the Python SDK, which inlined such sites. The fix belongs in the general backend: borrowed
-  views elided at frame-path call sites.
+- **Result** on the production driver after ledger 0019: root `1a582526…`, 72.3 MB, verified; it is now
+  `../../../bbc.xax`. The seed builds `bbc.exe` in under 4 minutes (35,956,736 bytes). On the way, `build` first
+  rejected the port (`NATIVE-CALL-ARITY`, fixed by ledger 0016), ran for hours (ledger 0017), filled the image buffer
+  (ledger 0018) and passed `VCAP` (ledger 0019).
 
 ## Rebuilding BBC's driver from any production driver
 

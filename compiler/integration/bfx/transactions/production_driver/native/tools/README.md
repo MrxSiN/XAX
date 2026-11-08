@@ -14,10 +14,15 @@ Run from `compiler/` with `PYTHONPATH=src:reference:.`. All run the XAX general 
 - `call_one.py <CID prefix> <out store> [source store]`: a PE entry that calls one function of a store with constant
   bits arguments and freshly VirtualAlloc'd views for each pointer/view/memory triple, to reproduce a per-function
   failure in isolation (then `audit.py` on the output).
-- `check.py <bbc.exe> <work dir> [case ...]`: BBC's checks outside BBC: `wine bbc.exe compile <target> <level> <out>`
-  for windows-x86_64 and android-arm64 at -O0/-O1, runs the result (wine / qemu-aarch64) and compares output bytes and
-  exit status with an independent interpreter. Needs `bbc-android-arm64.xax` and `bbc-windows-x86_64.xax` (in
-  `integration/bfx/`).
+- `check.py <bbc.exe> <work dir> [--bbc <BBC checkout>] [case ...]`: BBC's checks outside BBC. For 93 programs (pilot
+  programs, BBC's tests, both depth-512 programs, negative loops, 60 random programs, capacity cases) it runs
+  `wine bbc.exe compile <target> <level> <out>` for windows-x86_64 and android-arm64 at -O0/-O1, runs the result
+  (wine / qemu-aarch64) and compares output bytes and the exact exit status with an independent interpreter; then the
+  five compile error paths (exit status, no leftover files). Output goes through files, not pipes: wine's server and
+  services inherit a run's descriptors.
+- `bench.py <arm>[,<arm>...] <work dir> <out.json> <trials> <baseline record> <program.b> ...`: build and run times per
+  trial for one or more `bbc.exe` arms (`<name>=<path>`), all arms' trials in one shuffled order so they alternate, every
+  output checked against the hash BBC's baseline benchmark record holds for that source.
 
 Profiling a slow native run: `gdb -p <pid> -batch -ex "info registers rip"` a few times, find the mapping in
 `/proc/<pid>/maps`, subtract the mapping base and the SysV→Win64 thunk (16-byte aligned), and map the offset with

@@ -12,7 +12,8 @@
 # stores and appends one line per store: <record> <store> <before blob> <after blob>.  A blob is the git object id of
 # a store's bytes (git hash-object, or sha1sum of "blob <size>\0" and the bytes where git is absent), so earlier
 # stores are read back from the repository. `replay` takes each transaction's earlier store from git (or the committed
-# file while it still is that store), applies the record with xaxc edit, and compares the result with the recorded
+# file while it still is that store, or the store's previous replayed result when git lacks it: transactions chained in
+# one commit), applies the record with xaxc edit, and compares the result with the recorded
 # blob. XAXC names the compiler (default: the pinned seed).
 set -eu
 here=$(cd "$(dirname "$0")" && pwd)
@@ -88,13 +89,19 @@ replay() {
     awk '$1 !~ /^#/ && $1 != "baseline" && NF == 4' "$ledger" > "$work/transactions"
     while read -r name store before after; do
         [ -z "$only" ] || [ "$store" = "$only" ] || continue
+        made="$work/made-$(echo "$store" | tr / _)"  # this store's last replayed result
         if [ "$(blob "$bootstrap/$store")" = "$before" ]; then
             cp -- "$bootstrap/$store" "$work/before.xax"
-        elif ! git -C "$bootstrap" cat-file blob "$before" > "$work/before.xax" 2>/dev/null; then
+        elif git -C "$bootstrap" cat-file blob "$before" > "$work/before.xax" 2>/dev/null; then
+            :
+        elif [ -f "$made" ] && [ "$(blob "$made")" = "$before" ]; then
+            cp -- "$made" "$work/before.xax"  # a transaction chained in one commit: git holds only the chain's end
+        else
             echo "skip $name $store: the repository does not hold $before"
             continue
         fi
         if "$xaxc" edit "$work/before.xax" "$here/$name" "$work/after.xax" && [ "$(blob "$work/after.xax")" = "$after" ]; then
+            cp -- "$work/after.xax" "$made"
             echo "ok   $name $store"
         else
             echo "FAIL $name $store" >&2

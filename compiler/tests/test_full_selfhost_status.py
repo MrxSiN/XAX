@@ -56,7 +56,11 @@ class FullSelfhostStatusTests(unittest.TestCase):
                 row["outcomes"][generation] = ["rejected", *row["bootstrap_diagnostic"]]
         self.assertEqual(self.levels(closed) & {"B1", "B5", "B6"}, {"B1", "B5", "B6"})
         # S15d.4b (ADR-314): B6 follows C1's replay of the ledger: every transaction applied, both stores equal to the
-        # committed ones and verified, a structural transaction among them.
+        # committed ones and verified, a structural transaction among them (the v1 replay record, before W2).
+        v1 = {"transactions": [{"driver_edit": {"status": "image"}, "request_edit": {"status": "image"}}], "structural": True,
+              "driver_equals_committed": True, "request_equals_committed": True, "driver_verify": "image", "request_verify": "image"}
+        closed["evolution"] = v1
+        self.assertIn("B6", self.levels(closed))
         for change in (lambda e: e.update(structural=False), lambda e: e.update(driver_equals_committed=False),
                        lambda e: e.update(request_verify="rejected"), lambda e: e["transactions"][-1]["driver_edit"].update(status="failed"),
                        lambda e: e.update(transactions=[])):

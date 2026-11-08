@@ -1,0 +1,153 @@
+{
+ "format": "xax-p1-view-pass-measurement-v1",
+ "label": "MEASURED",
+ "date": "2026-11-07",
+ "host": {
+  "machine": "x86_64",
+  "platform": "Linux-6.18.44-fc-v310-x86_64-with-glibc2.39",
+  "python": "3.13.18"
+ },
+ "programs": {
+  "jsonmin": {
+   "input_bytes": 8390986,
+   "input_sha256": "baf6a5befd21ad104d519f770ce377d66b4ac867b6292e73b74729fe1f832f82",
+   "arms": {
+    "base": {
+     "artifact_bytes": 17616,
+     "artifact_sha256": "a4f7a2022b3495edba9708adb45c77b656a96938f82bf0da433e3a075ec6ec3e",
+     "wall_seconds_samples": [
+      0.027214,
+      0.026035,
+      0.029359,
+      0.022937,
+      0.027421,
+      0.029119,
+      0.029227,
+      0.025326,
+      0.025424,
+      0.026911,
+      0.023887,
+      0.026116,
+      0.02789,
+      0.024784,
+      0.025004,
+      0.024733,
+      0.026477,
+      0.025898,
+      0.037406,
+      0.02542,
+      0.024025
+     ],
+     "wall_seconds_median": 0.026035
+    },
+    "p1": {
+     "artifact_bytes": 18992,
+     "artifact_sha256": "dcef7874f94aefbe6f4653a04d3fde9c369081c91162fd95febe35ee8b990c7e",
+     "wall_seconds_samples": [
+      0.029967,
+      0.026113,
+      0.02938,
+      0.026345,
+      0.024672,
+      0.034123,
+      0.028741,
+      0.02361,
+      0.027279,
+      0.031855,
+      0.028573,
+      0.029992,
+      0.031879,
+      0.027501,
+      0.027556,
+      0.027272,
+      0.025887,
+      0.030125,
+      0.027893,
+      0.029636,
+      0.034968
+     ],
+     "wall_seconds_median": 0.028573
+    }
+   }
+  },
+  "uniqcount": {
+   "input_bytes": 1048560,
+   "input_sha256": "cf0d5b312a2fd9b2ce5318f3f3edbfa9a156f497ab321514e8c90229f0d48b0a",
+   "arms": {
+    "base": {
+     "artifact_bytes": 3847,
+     "artifact_sha256": "659cde15c8b131536e8feb6373dccc280f84626596e57db07fdea8cb8f788068",
+     "wall_seconds_samples": [
+      0.014031,
+      0.011774,
+      0.011154,
+      0.015879,
+      0.012901,
+      0.014422,
+      0.01292,
+      0.015924,
+      0.011758,
+      0.014491,
+      0.014009,
+      0.012437,
+      0.013377,
+      0.013555,
+      0.015457,
+      0.01355,
+      0.015071,
+      0.011894,
+      0.009513,
+      0.012117,
+      0.01154
+     ],
+     "wall_seconds_median": 0.013377
+    },
+    "p1": {
+     "artifact_bytes": 3645,
+     "artifact_sha256": "a4322b047de0b9d39c9c7a9806c969ffac49d8fbf8ace84195b3892172cffa74",
+     "wall_seconds_samples": [
+      0.014957,
+      0.011568,
+      0.009401,
+      0.011456,
+      0.013816,
+      0.010569,
+      0.013863,
+      0.011588,
+      0.014511,
+      0.014109,
+      0.011562,
+      0.022515,
+      0.012869,
+      0.014004,
+      0.014351,
+      0.013892,
+      0.012318,
+      0.011388,
+      0.010479,
+      0.009152,
+      0.009233
+     ],
+     "wall_seconds_median": 0.012318
+    }
+   }
+  }
+ },
+ "pass": "reference prototype only (not committed to xax_inline): _redundant_parameters, SCC form, run last in each simplify round",
+ "parameters_removed": {
+  "xax_store_writer.xax": [
+   9482,
+   882
+  ],
+  "xax_graph_decoder.xax": [
+   2178,
+   425
+  ],
+  "xax_dex_jvm.xax": [
+   41245,
+   3225
+  ],
+  "note": "block parameters in all lowering views before and after; edge arguments 13187 -> 1457, 4918 -> 2321, 47183 -> 4928"
+ },
+ "method": "compile_linux_executable(frontend='python') with the prototype in front of reference/ on PYTHONPATH; 21 trials per arm, arms alternating; every run's output and exit status equal the program's reference model"
+}

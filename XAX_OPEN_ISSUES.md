@@ -54,6 +54,7 @@ Only issues requiring implementation, target, ecosystem, or benchmark evidence a
 - [OI-51 — Windows native driver coverage and diagnostic parity](#oi-51--windows-native-driver-coverage-and-diagnostic-parity)
 - [OI-52 — 64-bit checked offsets and growable views (roadmap)](#oi-52--64-bit-checked-offsets-and-growable-views-roadmap)
 - [OI-53 — `xaxc verify` rejects byte-view widening](#oi-53--xaxc-verify-rejects-byte-view-widening)
+- [OI-54 — Function views past 2^18 values (BBC's hanoi -O0)](#oi-54--function-views-past-218-values-bbcs-hanoi--o0)
 
 ## OI-02 — Canonical object and graph-fragment granularity
 
@@ -824,3 +825,22 @@ with the native typing program and with the reference alone. The driver holds th
 same objects, so the difference is in the tables the driver builds for them. BBC's committed driver
 (`integration/bfx/bbc.xax`) fails native `verify` this way. Reproduction: `tests/test_native_verify_byte_view.py`
 (expected failure). Fix natively (a driver transaction), then lift the expected failure.
+
+## OI-54 — Function views past 2^18 values (BBC's hanoi -O0)
+
+**Status: OPEN (2026-11-08).** One function view holds at most 2^18 values. Since ledger 0023 (ADR-391) that capacity is
+a workspace word (globals slot 170) that the backend prologues set, not a constant in 18 functions; its value is
+still 262,144. BBC's hanoi at -O0 is one decision of about 620,000 values (7.25 MB, 54,000 blocks) and declines.
+
+What it still needs, in the order a build meets them (ADR-386, ADR-387, ADR-390):
+1. the semantic index's graph-stream region (3 M words at word 20 M, below regions at 23 M and 24 M), the edit
+   engine's 4 MiB body limit, and the graph decoder's 4 MiB body view (prepared as ledger 0021);
+2. room for the per-value tables: about 118 words per value of capacity in the x86-64 arena (80 M words, words
+   120 M–200 M), so the capacity and the arena boundary must follow the program rather than fixed regions;
+3. an AArch64 liveness that is not one bit per value per block (hanoi's would be about 4 GB).
+The decision's nine block parameters cannot shrink: the memory facts need each heap view to travel with its effect
+(`HEAP-VIEW-RETURN-WHOLE`, ADR-390).
+
+**Evidence that closes it.** BBC's hanoi -O0 builds for Windows x86-64 and Android ARM64 and matches the
+interpreter, with no fixed per-view capacity left in the driver.
+

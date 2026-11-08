@@ -47,6 +47,21 @@ def _reference(data: bytes, target) -> tuple[str, object]:
         return "rejected", error.diagnostic
 
 
+def _lists_growable_operations(data: bytes) -> bool:
+    """The store holds a target whose supported operations include ``growable.load.bits.le`` or
+    ``growable.store.bits.le`` (77, 78; ADR-371)."""
+    reader = X.StoreReader(data)
+    for item in reader.objects():
+        if item.kind == X.Kind.TARGET:
+            try:
+                operations = getattr(X.decode_native_target(item), "supported_operations", ())
+            except X.XaxError:
+                continue
+            if {77, 78} & set(operations):
+                return True
+    return False
+
+
 def _bootstrap_store_outcome(data: bytes):
     """The bootstrap container parser and object decoder (the XAX decoder unloaded): None, or the first diagnostic in
     the order the driver decides (the container, then each object in store order)."""
@@ -108,7 +123,15 @@ class DriverTests(unittest.TestCase):
             data = Path(path).read_bytes()
             with self.subTest(store=Path(path).name):
                 expected = _reference(data, target)
-                self.assertEqual(self.run_driver(data), expected)
+                outcome = self.run_driver(data)
+                if _lists_growable_operations(data):
+                    # ADR-371: these stores hold targets listing operations 77 and 78. This driver, frozen before
+                    # them, rejects the list as not canonical, or (the general driver store) a graph value tag its
+                    # decoder predates before it reaches the targets.
+                    self.assertEqual(outcome[0], "rejected")
+                    self.assertIn(outcome[1].rule, ("TARGET-OPERATIONS-CANONICAL", "GRAPH-VALUE-TAG"))
+                    continue
+                self.assertEqual(outcome, expected)
                 outcomes.add(expected[0])
         self.assertEqual(outcomes, {"image", "rejected"})
 

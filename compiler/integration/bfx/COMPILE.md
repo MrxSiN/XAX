@@ -525,3 +525,68 @@ engine and fully verified by the reference verifier: no native driver can edit t
 production verifier rejects its byte-view checked stores and BBC's own driver declines a store
 past 32 MiB (`DRIVER-FILE-CAPACITY`). With it, hanoi still declines in BBC's own `verify` (exit 2)
 while the production compiler builds it; see XAX_STATE.md.
+
+## BBC's driver is the production driver, built natively — 2026-11-07
+
+`bbc.xax` is now XAX's production driver after ledger 0019 plus only the Windows hosting layer, rebuilt by
+[transactions/production_driver/native/rebuild.sh](transactions/production_driver/native/rebuild.sh) with native
+batches (the pinned seed's `xaxc edit`; `xaxc verify` accepts it): root `1a582526…`, 72.3 MB. The pinned seed builds
+`bbc.exe` from it in 3 minutes 46 seconds (35,956,736 bytes). It replaces the generic-SDK build; the previous
+`bbc.xax` (with the graph proof cache) is in git history. Evidence:
+[production_driver_evidence.json](production_driver_evidence.json).
+
+What it took, after ledgers 0016–0018:
+- **The current layer.** The port's BBC layer had come from an older `bbc.xax`, whose framing still expected the
+  host request of 2026-10-21, so every compile's edit step was rejected (`WORKSPACE-EXPECTED-ROOT`). `layer.sh` now
+  takes the layer from the committed `bbc.xax`; BBC's entry is that store's entry without the proof cache.
+- **Each step's argument count.** The compile steps fake `argv` through their argument helpers; they now also give
+  the driver's main their own `argc` (resolve 4, edit and build 5), as the old store did.
+- **Ledger 0019 (ADR-383).** BBC's compile front inlined 2,434 leaf calls past `VCAP`; the inliner now stops at
+  2^17 values per view.
+
+Checks (wine 9.0 and qemu-aarch64 user mode on one Linux host; not Windows-native or device runs):
+- 93 programs at -O0/-O1 for both targets (`tools/check.py`): 370 of 372 compiles, 486 runs, no output or exit
+  mismatch. `deep512active` declines on android-arm64 (exit 5): the seed's own build of that decision declines too,
+  so the limit is the AArch64 general program's.
+- The error paths exit 1, 4, 4, 3, 3 and leave no files.
+- Mandelbrot at -O0 and hanoi at -O1, which declined in the 2026-11-05 baseline, build and run correctly. Hanoi at
+  -O0 still declines (exit 5).
+- *Superseded:* rebuilt after ledger 0020, `deep512active` builds on android-arm64; see "BBC's driver after ledger
+  0020" below.
+
+## BBC's driver after ledger 0020: deep nesting on Android ARM64 — 2026-11-07
+
+Ledger 0020 (ADR-384) changed the AArch64 general program in the production driver: `_aliases` reads each block
+parameter's incoming arguments from lists built once, and `_intervals` sizes its range pool from liveness. `bbc.xax`
+was rebuilt from the new production driver with `rebuild.sh` (23 min 41 s, root `560978…`, 72.3 MB, verified), and
+the new seed built `bbc.exe` from it in 5 min 12 s (35,964,416 bytes). Evidence:
+[production_driver_0020_evidence.json](production_driver_0020_evidence.json).
+
+Checks (wine 9.0 and qemu-aarch64 user mode on one Linux host; not Windows-native or device runs):
+- 93 programs at -O0/-O1 for both targets (`tools/check.py`): **372 of 372 compiles**, 488 runs, no output or exit
+  mismatch; the whole campaign takes 4 min 50 s.
+- `deep512active` builds and runs on android-arm64 (3.5 s at -O0, 6.9 s at -O1; it declined before), and `deep512`'s
+  Android compile takes 0.5–0.7 s instead of 122 s.
+- The error paths exit 1, 4, 4, 3, 3 and leave no files.
+- Hanoi at -O0 still declines: its decision graph (7.25 MB, about 54,000 blocks and 620,000 values) exceeds the graph
+  decoder's 4 MiB body view and `VCAP` (2^18 values per view).
+
+## BBC's driver after ledger 0022: constant folding on x86-64 — 2026-11-08
+
+Ledger 0022 (ADR-388) changed the x86-64 general program in the production driver: the register lowering folds pure
+integer nodes over constants, and a function saves the callee-saved register of every wide constant it hoists. This
+supersedes the ledger-0020 section above for current figures. `bbc.xax` was rebuilt from the new production driver
+with `rebuild.sh` (17 min 36 s, root `4026acc5…`, verified), and the new seed built `bbc.exe` from it in 3 min 49 s
+(36,302,848 bytes). Evidence: [production_driver_0022_evidence.json](production_driver_0022_evidence.json).
+
+Checks (wine 9.0 and qemu-aarch64 user mode on one Linux host; not Windows-native or device runs): `tools/check.py`'s
+93 programs at -O0/-O1 for both targets, **372 of 372 compiles**, 488 runs, no output or exit mismatch (4 min 1 s);
+the five error paths exit 1, 4, 4, 3, 3 and leave no files. Windows decisions are built by the new lowering; the
+Android ones are unchanged. Hanoi at -O0 still declines (ADR-387).
+
+## BBC's driver after ledger 0023: the value capacity is a word — 2026-11-08
+
+Ledger 0023 (ADR-391) made the per-view value capacity a workspace word; the compiler behaves as before. `bbc.xax`
+was rebuilt with `rebuild.sh` (18 min 41 s, root `1e253130…`, verified) and the seed built `bbc.exe` (36,319,232
+bytes); `tools/check.py`: 372 of 372 compiles, 488 runs, no mismatch, five error paths as expected. Evidence:
+[production_driver_0023_evidence.json](production_driver_0023_evidence.json).

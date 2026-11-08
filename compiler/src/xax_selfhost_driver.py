@@ -84,9 +84,6 @@ class NativeDriver:
     timeout = None  # seconds per process; None waits
 
     def __init__(self, image=None) -> None:
-        import os
-        import tempfile
-
         from xax_compiler import x86_64_views_exec_target
         from xax_x86_64_views import compile_x86_64_views, views_executable
 
@@ -94,7 +91,13 @@ class NativeDriver:
             reader, function = load_driver_program()
             image = compile_x86_64_views(reader, function.cid, x86_64_views_exec_target(), backend="xax")
         self.image = image
-        self.executable = views_executable(image)
+        self._install(views_executable(image))
+
+    def _install(self, executable: bytes) -> None:
+        import os
+        import tempfile
+
+        self.executable = executable
         self._directory = tempfile.TemporaryDirectory(prefix="xax-driver-")
         self.path = Path(self._directory.name) / "xax-driver"
         self.path.write_bytes(self.executable)
@@ -118,13 +121,21 @@ class NativeGeneralDriver(NativeDriver):
     ``xax_selfhost_evolution.INPUTS_LIMIT`` in the committed compiler (S15d.3, ADR-306)."""
 
     def __init__(self, image=None) -> None:
-        if image is None:
-            from xax_compiler import x86_64_views_exec_target
-            from xax_x86_64_views import compile_x86_64_views
+        """``image``: the driver as the views backend lowered it (``compile_x86_64_views``).  None (ADR-382): the pinned
+        seed, the compiler the driver store built itself into, checked against its pin (``xax_selfhost_seed``); the
+        views profile cannot lower the driver since it uses ``growable.load.bits.le`` (ledger 0009)."""
+        if image is not None:
+            super().__init__(image)
+            return
+        import hashlib
 
-            reader, function = load_driver_program(general=True)
-            image = compile_x86_64_views(reader, function.cid, x86_64_views_exec_target(), backend="xax")
-        super().__init__(image)
+        from xax_selfhost_seed import SEED_PATH, SEED_SHA256
+
+        executable = SEED_PATH.read_bytes()
+        if hashlib.sha256(executable).hexdigest() != SEED_SHA256:
+            raise RuntimeError(f"{SEED_PATH} is not the pinned seed {SEED_SHA256}")
+        self.image = None
+        self._install(executable)
 
     def run(self, store_path: str | Path, target_path: str | Path, output_path: str | Path) -> int:
         return self._process("lower", store_path, target_path, output_path)

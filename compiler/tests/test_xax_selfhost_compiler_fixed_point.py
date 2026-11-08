@@ -46,7 +46,7 @@ class CompilerFixedPointTests(unittest.TestCase):
             generation = output
         self.assertEqual(executables[1], executables[0])
         self.assertEqual(executables[2], executables[0])
-        self.assertNotEqual(executables[0], seed.executable)  # the optimizing backend's compiler, not the views backend's
+        self.assertEqual(executables[0], seed.executable)  # ADR-382: C0 is the pinned seed, this compiler's fixed point
 
         program, entry, program_target, _ = _status_program(lambda b: b.const(X.bits_type(32), 7))
         store, package, output = directory / "program.xax", directory / "target.xax", directory / "program.elf"
