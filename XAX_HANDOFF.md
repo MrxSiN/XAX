@@ -1750,3 +1750,22 @@ natively, and run the Android-first checks. Still open in the native workspace: 
   (`integration/bfx/production_driver_0022_evidence.json`). Under Wine, mandelbrot 1,147 ms (was 1,635 the day
   before; brainfry's Windows output 1,250 in the same run). No rulebook win (build time, no device runs).
 - Open: hanoi -O0 (ADR-387, ledger 0021 prepared); the AArch64 backends have no fold yet.
+
+## BBC's importer bounds branch, the capacity word (ledger 0023) and the plan completed — 2026-11-08
+
+Supersedes the ledger-0022 section above for BBC's current driver.
+- **BBC's importer** (ADR-389) writes each ADD/MUL as a bounds branch and an access block; an x86-64 ADD is 8
+  instructions instead of 15. Under Wine: mandelbrot 1,198 → 1,092 ms, factor 63 → 60, life 50 → 46
+  (`integration/bfx/importer_split_evidence.json`). The same constant fold for AArch64 measured no gain under qemu
+  and stays a prototype (`native/0023-prototype`).
+- **Fewer block parameters rejected** (ADR-390): the decision's pass-through views must travel with their effects
+  (`HEAP-VIEW-RETURN-WHOLE`), so hanoi -O0 stays at about 620,000 values.
+- **Ledger 0023** (ADR-391): the per-view value capacity is a workspace word (globals slot 170) set by the x86-64,
+  AArch64 and JVM prologues to 262,144, read by the 18 functions that used `VCAP`. The compiler rebuilds itself and the
+  previous seed's outputs byte for byte. Seed `a35fd59f…` (31,903,131 bytes); B0–B6 re-recorded.
+- **BBC's driver** rebuilt after ledger 0023 (root `1e253130…`), 372 of 372 compiles, 488 runs, no mismatch
+  (`integration/bfx/production_driver_0023_evidence.json`).
+- **`XAX_CONTINUATION.md`** (the 2026-11-06 work plan, steps A–E) is complete and was removed; older sections that cite
+  it refer to that plan.
+- **Open:** OI-54 (hanoi -O0: the front-end regions, room for the tables, AArch64 liveness); device runs on Windows and
+  a Pixel (BLOCKED: emulated hosts only).

@@ -30,6 +30,13 @@ offset ADD/MUL/CHECK/MOVE instructions emitted by BBC's `fold.bf`, and the impor
 decoder and `compile_bfx` transactions that implement them. Where older sections of this
 directory describe id `01`, its u32 count, power opcodes or the packer, they are historical.
 
+Current state (2026-11-08): `bbc.xax` is the production driver after ledger 0023 plus BBC's layer, whose importer
+writes each ADD/MUL as a bounds branch and an access block
+([importer_split](transactions/production_driver/native/importer_split/README.md)); see COMPILE.md's newest
+sections and [production_driver_0023_evidence.json](production_driver_0023_evidence.json). A rejected attempt to drop
+the decision's pass-through views is kept in
+[importer_slim_rejected](transactions/production_driver/native/importer_slim_rejected/README.md).
+
 [COMPILE.md](COMPILE.md) specifies the unified public interface and exact generic
 bootstrap recipe. `bbc compile` builds Android ARM64 and Windows x86-64
 executables from Brainfuck source with the native XAX driver and no Python at
