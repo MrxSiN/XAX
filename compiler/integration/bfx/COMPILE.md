@@ -570,3 +570,16 @@ Checks (wine 9.0 and qemu-aarch64 user mode on one Linux host; not Windows-nativ
 - The error paths exit 1, 4, 4, 3, 3 and leave no files.
 - Hanoi at -O0 still declines: its decision graph (7.25 MB, about 54,000 blocks and 620,000 values) exceeds the graph
   decoder's 4 MiB body view and `VCAP` (2^18 values per view).
+
+## BBC's driver after ledger 0022: constant folding on x86-64 — 2026-11-08
+
+Ledger 0022 (ADR-388) changed the x86-64 general program in the production driver: the register lowering folds pure
+integer nodes over constants, and a function saves the callee-saved register of every wide constant it hoists. This
+supersedes the ledger-0020 section above for current figures. `bbc.xax` was rebuilt from the new production driver
+with `rebuild.sh` (17 min 36 s, root `4026acc5…`, verified), and the new seed built `bbc.exe` from it in 3 min 49 s
+(36,302,848 bytes). Evidence: [production_driver_0022_evidence.json](production_driver_0022_evidence.json).
+
+Checks (wine 9.0 and qemu-aarch64 user mode on one Linux host; not Windows-native or device runs): `tools/check.py`'s
+93 programs at -O0/-O1 for both targets, **372 of 372 compiles**, 488 runs, no output or exit mismatch (4 min 1 s);
+the five error paths exit 1, 4, 4, 3, 3 and leave no files. Windows decisions are built by the new lowering; the
+Android ones are unchanged. Hanoi at -O0 still declines (ADR-387).
