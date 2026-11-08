@@ -583,3 +583,10 @@ Checks (wine 9.0 and qemu-aarch64 user mode on one Linux host; not Windows-nativ
 93 programs at -O0/-O1 for both targets, **372 of 372 compiles**, 488 runs, no output or exit mismatch (4 min 1 s);
 the five error paths exit 1, 4, 4, 3, 3 and leave no files. Windows decisions are built by the new lowering; the
 Android ones are unchanged. Hanoi at -O0 still declines (ADR-387).
+
+## BBC's driver after ledger 0023: the value capacity is a word — 2026-11-08
+
+Ledger 0023 (ADR-391) made the per-view value capacity a workspace word; the compiler behaves as before. `bbc.xax`
+was rebuilt with `rebuild.sh` (18 min 41 s, root `1e253130…`, verified) and the seed built `bbc.exe` (36,319,232
+bytes); `tools/check.py`: 372 of 372 compiles, 488 runs, no mismatch, five error paths as expected. Evidence:
+[production_driver_0023_evidence.json](production_driver_0023_evidence.json).
