@@ -29,7 +29,7 @@
 
 <!-- xax-status:levels -->Replacement levels (generated from `XAX_REPLACEMENT_MATRIX.json`): R6: jvm, linux-aarch64, linux-x86_64; R3: android-arm64; R2: aarch64-baremetal, browser-web, windows-x86_64-pe; R1: gpu-spirv-cuda-metal-dxil, riscv64, wasm32-core, wasm32-wasi; R0: accelerator-simt-packet; no level yet: bsd-unix, dotnet-clr, macos-ios-apple, rtos-embedded-mcu.<!-- /xax-status:levels -->
 
-<!-- xax-status:bootstrap -->Bootstrap status (derived by `xax_selfhost.bootstrap_status` from `compiler/benchmarks/full_selfhost_evidence.json` and `compiler/benchmarks/python_free_seed_evidence.json`): whole production compiler: B0, B1, B2, B3, B4, B5, B6 established (derived from the Linux x86-64 production compiler, whose executed record covers every target and artifact `build` makes (S15g, ADR-358)); Linux x86-64 production compiler (`benchmarks/full_selfhost_evidence.json`): B0, B1, B2, B3, B4, B5, B6 hold, none do not; its seed requires Python: no; S-step component fixed points are not B milestones (`XAX_SPEC.md` §16.5). Bootstrap seed: native-elf `compiler/bootstrap/seed/xaxc-linux-x86_64`, 31,543,498 bytes, requires Python: no.<!-- /xax-status:bootstrap -->
+<!-- xax-status:bootstrap -->Bootstrap status (derived by `xax_selfhost.bootstrap_status` from `compiler/benchmarks/full_selfhost_evidence.json` and `compiler/benchmarks/python_free_seed_evidence.json`): whole production compiler: B0, B1, B2, B3, B4, B5, B6 established (derived from the Linux x86-64 production compiler, whose executed record covers every target and artifact `build` makes (S15g, ADR-358)); Linux x86-64 production compiler (`benchmarks/full_selfhost_evidence.json`): B0, B1, B2, B3, B4, B5, B6 hold, none do not; its seed requires Python: no; S-step component fixed points are not B milestones (`XAX_SPEC.md` §16.5). Bootstrap seed: native-elf `compiler/bootstrap/seed/xaxc-linux-x86_64`, 31,887,691 bytes, requires Python: no.<!-- /xax-status:bootstrap -->
 
 Sections below are dated; a later section supersedes an earlier figure. The current full-suite result is under "Multi-language performance rule" and later entries in `XAX_STATE.md`.
 
@@ -1734,3 +1734,19 @@ natively, and run the Android-first checks. Still open in the native workspace: 
 - First job on a Linux x86-64 host (OI-45): `PYTHONPATH=src python benchmarks/bench_selfhost_closure.py --write` and `benchmarks/bench_selfhost_x86_64.py --write` (they set `XAX_REQUIRE_NATIVE=1`), then the native self-hosting tests. Without Linux, `--bind-committed` refreshes only the host-independent fields and marks changed stores `native_rerun_required`.
 - New modules and tests: `src/xax_native.py` (authority, W^X, cache, `bootstrap_dir`), `tests/test_store_regeneration.py`, `tests/test_audit_remediation.py`, `tests/test_wheel_install.py`, `tests/test_hosted_build_provenance.py`.
 - Windows host: run tests with `PYTHONPATH=src;.;..` (semicolons). Skips are environment-only; none hides a failure.
+
+## Ledger 0022: constant folding and hoisted registers on x86-64 (2026-11-08)
+
+- The x86-64 register lowering's `basics` folds single-result `add.wrap`/`sub.wrap`/`mul.wrap`/`int.truncate`/
+  `int.zero.extend` nodes over constants (widths 8/16/32/64) into constants and erases them; the emit function now
+  saves the callee-saved register of every hoisted wide constant (a latent fault the fold exposed). ADR-388,
+  `compiler/bootstrap/evolution/native/0022`.
+- The first application of the fold alone (`d37ec08`) built a self-consistent but wrong compiler and was reverted
+  (`bbeb04e`); the cause was found by bisection. With both changes, the previous code generator's build of the
+  compiler and its own build agree byte for byte on `build`, `resolve` and `verify`.
+- Seed `510a794a…` (31,887,691 bytes); B0–B6 re-recorded (`full_selfhost_evidence.json`,
+  `python_free_seed_evidence.json`).
+- BBC: `bbc.xax` rebuilt (root `4026acc5…`), `bbc.exe` 36,302,848 bytes, 372 of 372 compiles and 488 runs pass
+  (`integration/bfx/production_driver_0022_evidence.json`). Under Wine, mandelbrot 1,147 ms (was 1,635 the day
+  before; brainfry's Windows output 1,250 in the same run). No rulebook win (build time, no device runs).
+- Open: hanoi -O0 (ADR-387, ledger 0021 prepared); the AArch64 backends have no fold yet.
