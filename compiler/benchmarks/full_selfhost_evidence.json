@@ -2,7 +2,7 @@
   "format": "xax-full-selfhost-evidence-v1",
   "label": "EXECUTED",
   "adr": "ADR-285",
-  "host_nonsemantic": "Linux x86_64 Python 3.13.18",
+  "host_nonsemantic": "Linux x86_64 Python 3.14.4",
   "scope": {
     "name": "linux_x86_64_production_compiler",
     "compiler": "the general driver (xax_compiler_driver_general.xax): verify, inspect, resolve, resolve-trusted, build, lower, edit",
@@ -27,10 +27,10 @@
   "spec_revision": "XAX_SPEC.md \u00a716",
   "compiler": {
     "store": "xax_compiler_driver_general.xax",
-    "store_sha256": "d967c41df0516dde80e4dda6d49750daae69e1718d50f72505a72bab927a76ab",
-    "semantic_root": "766c2445b9cdf61b01619dc5c6fe22f15787702e484f00dcd23a0a37bda86b39",
-    "request_store_sha256": "cb17e2161ec4ac511ab8a4d481cc0d7c74b324751de8e203cf8e22449ef230f4",
-    "request_root": "653847b7dd32fe739796a661c100c823cb48150e66ba0eb35af21b1e25796921",
+    "store_sha256": "e14f76502008e87e12444cc87de731663192d6b92103663cad2f607992c5118b",
+    "semantic_root": "3f083d3874fa1d1744e995ca37b4621305cc4e366eaf20fc49d014f2bceba575",
+    "request_store_sha256": "0ae995552163a5e735222dcac2e6a3590510e8376547e801f379b52fa58afb13",
+    "request_root": "395184384726b6f8a02da066c3cefab9b5ed0002d7ac66283497d4e46ef8f3a5",
     "target_root": "28f1deec106cba698ccec0c1124346f2bef9199319cf928f5377975640f0c632",
     "resolver_identity": "xax-driver-resolver-v1",
     "policy_root": "15264515d69f8d9ed3287f17674e1d0e87809fd366832b905d9423121ec62540",
@@ -38,58 +38,58 @@
   },
   "seed": {
     "kind": "the pinned seed bootstrap/seed/xaxc-linux-x86_64 (ADR-286), checked against SEED_SHA256 (ADR-382)",
-    "sha256": "510a794a4e53c34b11b7cdd255d9ee8078c48c18d318eacc23b9bccab8fc2d19",
-    "bytes": 31887691,
+    "sha256": "a35fd59fc9effe08f58f6d1db0d2e951abbd56a065dc0dca729c9bc6f5ec793b",
+    "bytes": 31903131,
     "requires_python": false,
     "host_s_nonsemantic": 0.1
   },
   "references": {
-    "python_resolver_snapshot_sha256": "0fb73098b94d015e5172efefa24979ce08380b2e5b37aa686bbc5e1028173cae",
-    "python_resolve_s_nonsemantic": 166.1,
+    "python_resolver_snapshot_sha256": "d00034beb916d66a61face46f6ced862964b6e023d8feb614066671ba16438b6",
+    "python_resolve_s_nonsemantic": 125.5,
     "python_reference_compile": [
       "rejected",
       "XAX.NATIVE.UNSUPPORTED_OPERATION",
       "NATIVE-OP-LOWERED"
     ],
     "bootstrap_compile_kind": "the pinned seed (ADR-382)",
-    "bootstrap_compile_sha256": "510a794a4e53c34b11b7cdd255d9ee8078c48c18d318eacc23b9bccab8fc2d19",
-    "bootstrap_compile_bytes": 31887691,
-    "bootstrap_compile_s_nonsemantic": 187.2
+    "bootstrap_compile_sha256": "a35fd59fc9effe08f58f6d1db0d2e951abbd56a065dc0dca729c9bc6f5ec793b",
+    "bootstrap_compile_bytes": 31903131,
+    "bootstrap_compile_s_nonsemantic": 170.9
   },
   "generations": [
     {
       "generation": 1,
       "producer": "C0",
-      "producer_sha256": "510a794a4e53c34b11b7cdd255d9ee8078c48c18d318eacc23b9bccab8fc2d19",
+      "producer_sha256": "a35fd59fc9effe08f58f6d1db0d2e951abbd56a065dc0dca729c9bc6f5ec793b",
       "resolve": {
         "status": "image",
         "outputs": [
-          "0fb73098b94d015e5172efefa24979ce08380b2e5b37aa686bbc5e1028173cae"
+          "d00034beb916d66a61face46f6ced862964b6e023d8feb614066671ba16438b6"
         ],
-        "host_s_nonsemantic": 36.67,
-        "peak_rss_kib_nonsemantic": 5308332
+        "host_s_nonsemantic": 45.72,
+        "peak_rss_kib_nonsemantic": 5573864
       },
       "build": {
         "status": "image",
         "outputs": [
-          "510a794a4e53c34b11b7cdd255d9ee8078c48c18d318eacc23b9bccab8fc2d19",
-          "510a111401ae881a078cd7a14bf8465f9334e51907619aa5f57811f6e9e8ea57"
+          "a35fd59fc9effe08f58f6d1db0d2e951abbd56a065dc0dca729c9bc6f5ec793b",
+          "c40b94d865ecc07c18863fbd40af14a24aef6dad5a1b446cb00a2bfe34b0a8fa"
         ],
-        "host_s_nonsemantic": 160.92,
-        "peak_rss_kib_nonsemantic": 5308332
+        "host_s_nonsemantic": 173.41,
+        "peak_rss_kib_nonsemantic": 5573864
       },
-      "snapshot_sha256": "0fb73098b94d015e5172efefa24979ce08380b2e5b37aa686bbc5e1028173cae",
+      "snapshot_sha256": "d00034beb916d66a61face46f6ced862964b6e023d8feb614066671ba16438b6",
       "snapshot_equals_python_resolver": true,
-      "artifact_sha256": "510a794a4e53c34b11b7cdd255d9ee8078c48c18d318eacc23b9bccab8fc2d19",
-      "artifact_bytes": 31887691,
-      "provenance_sha256": "510a111401ae881a078cd7a14bf8465f9334e51907619aa5f57811f6e9e8ea57",
+      "artifact_sha256": "a35fd59fc9effe08f58f6d1db0d2e951abbd56a065dc0dca729c9bc6f5ec793b",
+      "artifact_bytes": 31903131,
+      "provenance_sha256": "c40b94d865ecc07c18863fbd40af14a24aef6dad5a1b446cb00a2bfe34b0a8fa",
       "provenance": {
-        "cid": "e357575cf2b93ce44885cb0dc5fdf9658522a37180220b934013150d0dbd8a10",
-        "snapshot_root": "e6741067591b84c761fb3d3de3936ccd1292878b62c1e7bdecdf48e0e7cf7162",
-        "request_root": "653847b7dd32fe739796a661c100c823cb48150e66ba0eb35af21b1e25796921",
+        "cid": "bbdb12bea41bce8cca1d476b90be81b0af186ceb843c0ab788106a47345b2b9a",
+        "snapshot_root": "3487af5b9e18a39a61c348875197dcf118a06d528fafb4ae2ad6def4c01997ca",
+        "request_root": "395184384726b6f8a02da066c3cefab9b5ed0002d7ac66283497d4e46ef8f3a5",
         "target_root": "28f1deec106cba698ccec0c1124346f2bef9199319cf928f5377975640f0c632",
         "profile_root": "9e3dd6a9aa3ff407ed694b8705c82fcc13c472b818f189a1a45a7825ac1a967e",
-        "artifact_digest_blake3": "468b9db2af22142f8c7db741e4c755e8ddf81f296086cabdcb50a42eb6c44bb0",
+        "artifact_digest_blake3": "babcd22f4d00c3d95bab4302435842420e3c40964d8e94d3d55c4d1190ea2c8f",
         "compiler_identity": "bc351ca3286fa3ff21d2b39e3ea374c3b0f01fb45a5e601d29c2dc08105ce117",
         "lowering_identity": "9dc8d0005a602a54b513fb90539525d8db5eefc9936a8d442b660b6e3c80ebd2"
       }
@@ -97,36 +97,36 @@
     {
       "generation": 2,
       "producer": "C1",
-      "producer_sha256": "510a794a4e53c34b11b7cdd255d9ee8078c48c18d318eacc23b9bccab8fc2d19",
+      "producer_sha256": "a35fd59fc9effe08f58f6d1db0d2e951abbd56a065dc0dca729c9bc6f5ec793b",
       "resolve": {
         "status": "image",
         "outputs": [
-          "0fb73098b94d015e5172efefa24979ce08380b2e5b37aa686bbc5e1028173cae"
+          "d00034beb916d66a61face46f6ced862964b6e023d8feb614066671ba16438b6"
         ],
-        "host_s_nonsemantic": 35.49,
-        "peak_rss_kib_nonsemantic": 5308332
+        "host_s_nonsemantic": 38.44,
+        "peak_rss_kib_nonsemantic": 5573864
       },
       "build": {
         "status": "image",
         "outputs": [
-          "510a794a4e53c34b11b7cdd255d9ee8078c48c18d318eacc23b9bccab8fc2d19",
-          "510a111401ae881a078cd7a14bf8465f9334e51907619aa5f57811f6e9e8ea57"
+          "a35fd59fc9effe08f58f6d1db0d2e951abbd56a065dc0dca729c9bc6f5ec793b",
+          "c40b94d865ecc07c18863fbd40af14a24aef6dad5a1b446cb00a2bfe34b0a8fa"
         ],
-        "host_s_nonsemantic": 159.6,
-        "peak_rss_kib_nonsemantic": 5308332
+        "host_s_nonsemantic": 168.93,
+        "peak_rss_kib_nonsemantic": 5573864
       },
-      "snapshot_sha256": "0fb73098b94d015e5172efefa24979ce08380b2e5b37aa686bbc5e1028173cae",
+      "snapshot_sha256": "d00034beb916d66a61face46f6ced862964b6e023d8feb614066671ba16438b6",
       "snapshot_equals_python_resolver": true,
-      "artifact_sha256": "510a794a4e53c34b11b7cdd255d9ee8078c48c18d318eacc23b9bccab8fc2d19",
-      "artifact_bytes": 31887691,
-      "provenance_sha256": "510a111401ae881a078cd7a14bf8465f9334e51907619aa5f57811f6e9e8ea57",
+      "artifact_sha256": "a35fd59fc9effe08f58f6d1db0d2e951abbd56a065dc0dca729c9bc6f5ec793b",
+      "artifact_bytes": 31903131,
+      "provenance_sha256": "c40b94d865ecc07c18863fbd40af14a24aef6dad5a1b446cb00a2bfe34b0a8fa",
       "provenance": {
-        "cid": "e357575cf2b93ce44885cb0dc5fdf9658522a37180220b934013150d0dbd8a10",
-        "snapshot_root": "e6741067591b84c761fb3d3de3936ccd1292878b62c1e7bdecdf48e0e7cf7162",
-        "request_root": "653847b7dd32fe739796a661c100c823cb48150e66ba0eb35af21b1e25796921",
+        "cid": "bbdb12bea41bce8cca1d476b90be81b0af186ceb843c0ab788106a47345b2b9a",
+        "snapshot_root": "3487af5b9e18a39a61c348875197dcf118a06d528fafb4ae2ad6def4c01997ca",
+        "request_root": "395184384726b6f8a02da066c3cefab9b5ed0002d7ac66283497d4e46ef8f3a5",
         "target_root": "28f1deec106cba698ccec0c1124346f2bef9199319cf928f5377975640f0c632",
         "profile_root": "9e3dd6a9aa3ff407ed694b8705c82fcc13c472b818f189a1a45a7825ac1a967e",
-        "artifact_digest_blake3": "468b9db2af22142f8c7db741e4c755e8ddf81f296086cabdcb50a42eb6c44bb0",
+        "artifact_digest_blake3": "babcd22f4d00c3d95bab4302435842420e3c40964d8e94d3d55c4d1190ea2c8f",
         "compiler_identity": "bc351ca3286fa3ff21d2b39e3ea374c3b0f01fb45a5e601d29c2dc08105ce117",
         "lowering_identity": "9dc8d0005a602a54b513fb90539525d8db5eefc9936a8d442b660b6e3c80ebd2"
       }
@@ -134,36 +134,36 @@
     {
       "generation": 3,
       "producer": "C2",
-      "producer_sha256": "510a794a4e53c34b11b7cdd255d9ee8078c48c18d318eacc23b9bccab8fc2d19",
+      "producer_sha256": "a35fd59fc9effe08f58f6d1db0d2e951abbd56a065dc0dca729c9bc6f5ec793b",
       "resolve": {
         "status": "image",
         "outputs": [
-          "0fb73098b94d015e5172efefa24979ce08380b2e5b37aa686bbc5e1028173cae"
+          "d00034beb916d66a61face46f6ced862964b6e023d8feb614066671ba16438b6"
         ],
-        "host_s_nonsemantic": 35.4,
-        "peak_rss_kib_nonsemantic": 5308332
+        "host_s_nonsemantic": 37.98,
+        "peak_rss_kib_nonsemantic": 5573864
       },
       "build": {
         "status": "image",
         "outputs": [
-          "510a794a4e53c34b11b7cdd255d9ee8078c48c18d318eacc23b9bccab8fc2d19",
-          "510a111401ae881a078cd7a14bf8465f9334e51907619aa5f57811f6e9e8ea57"
+          "a35fd59fc9effe08f58f6d1db0d2e951abbd56a065dc0dca729c9bc6f5ec793b",
+          "c40b94d865ecc07c18863fbd40af14a24aef6dad5a1b446cb00a2bfe34b0a8fa"
         ],
-        "host_s_nonsemantic": 160.76,
-        "peak_rss_kib_nonsemantic": 5308332
+        "host_s_nonsemantic": 168.96,
+        "peak_rss_kib_nonsemantic": 5573864
       },
-      "snapshot_sha256": "0fb73098b94d015e5172efefa24979ce08380b2e5b37aa686bbc5e1028173cae",
+      "snapshot_sha256": "d00034beb916d66a61face46f6ced862964b6e023d8feb614066671ba16438b6",
       "snapshot_equals_python_resolver": true,
-      "artifact_sha256": "510a794a4e53c34b11b7cdd255d9ee8078c48c18d318eacc23b9bccab8fc2d19",
-      "artifact_bytes": 31887691,
-      "provenance_sha256": "510a111401ae881a078cd7a14bf8465f9334e51907619aa5f57811f6e9e8ea57",
+      "artifact_sha256": "a35fd59fc9effe08f58f6d1db0d2e951abbd56a065dc0dca729c9bc6f5ec793b",
+      "artifact_bytes": 31903131,
+      "provenance_sha256": "c40b94d865ecc07c18863fbd40af14a24aef6dad5a1b446cb00a2bfe34b0a8fa",
       "provenance": {
-        "cid": "e357575cf2b93ce44885cb0dc5fdf9658522a37180220b934013150d0dbd8a10",
-        "snapshot_root": "e6741067591b84c761fb3d3de3936ccd1292878b62c1e7bdecdf48e0e7cf7162",
-        "request_root": "653847b7dd32fe739796a661c100c823cb48150e66ba0eb35af21b1e25796921",
+        "cid": "bbdb12bea41bce8cca1d476b90be81b0af186ceb843c0ab788106a47345b2b9a",
+        "snapshot_root": "3487af5b9e18a39a61c348875197dcf118a06d528fafb4ae2ad6def4c01997ca",
+        "request_root": "395184384726b6f8a02da066c3cefab9b5ed0002d7ac66283497d4e46ef8f3a5",
         "target_root": "28f1deec106cba698ccec0c1124346f2bef9199319cf928f5377975640f0c632",
         "profile_root": "9e3dd6a9aa3ff407ed694b8705c82fcc13c472b818f189a1a45a7825ac1a967e",
-        "artifact_digest_blake3": "468b9db2af22142f8c7db741e4c755e8ddf81f296086cabdcb50a42eb6c44bb0",
+        "artifact_digest_blake3": "babcd22f4d00c3d95bab4302435842420e3c40964d8e94d3d55c4d1190ea2c8f",
         "compiler_identity": "bc351ca3286fa3ff21d2b39e3ea374c3b0f01fb45a5e601d29c2dc08105ce117",
         "lowering_identity": "9dc8d0005a602a54b513fb90539525d8db5eefc9936a8d442b660b6e3c80ebd2"
       }
@@ -172,15 +172,15 @@
   "fixed_point": {
     "comparison": "raw executable bytes (SHA-256)",
     "artifacts": [
-      "510a794a4e53c34b11b7cdd255d9ee8078c48c18d318eacc23b9bccab8fc2d19",
-      "510a794a4e53c34b11b7cdd255d9ee8078c48c18d318eacc23b9bccab8fc2d19",
-      "510a794a4e53c34b11b7cdd255d9ee8078c48c18d318eacc23b9bccab8fc2d19"
+      "a35fd59fc9effe08f58f6d1db0d2e951abbd56a065dc0dca729c9bc6f5ec793b",
+      "a35fd59fc9effe08f58f6d1db0d2e951abbd56a065dc0dca729c9bc6f5ec793b",
+      "a35fd59fc9effe08f58f6d1db0d2e951abbd56a065dc0dca729c9bc6f5ec793b"
     ]
   },
   "empty_environment_run": {
     "environment": "empty (no PATH, no PYTHONPATH)",
     "status": "image",
-    "snapshot_sha256": "0fb73098b94d015e5172efefa24979ce08380b2e5b37aa686bbc5e1028173cae"
+    "snapshot_sha256": "d00034beb916d66a61face46f6ced862964b6e023d8feb614066671ba16438b6"
   },
   "executables_have_interpreter": {
     "C0": false,
@@ -6208,28 +6208,28 @@
         "C0": [
           "image",
           "04e8ad1677e292f16e1b8d3baefa49337a97531e2a67996775c790515a8048a0",
-          "6597844ae8341b11e3987209ba8b6c3c0e97026915753f24f78efa7ce61c7ea3"
+          "cc08f3395a0f8442a27f36c8f8cb46379b1973ca8f607af358aab196f664a40f"
         ],
         "C1": [
           "image",
           "04e8ad1677e292f16e1b8d3baefa49337a97531e2a67996775c790515a8048a0",
-          "6597844ae8341b11e3987209ba8b6c3c0e97026915753f24f78efa7ce61c7ea3"
+          "cc08f3395a0f8442a27f36c8f8cb46379b1973ca8f607af358aab196f664a40f"
         ],
         "C2": [
           "image",
           "04e8ad1677e292f16e1b8d3baefa49337a97531e2a67996775c790515a8048a0",
-          "6597844ae8341b11e3987209ba8b6c3c0e97026915753f24f78efa7ce61c7ea3"
+          "cc08f3395a0f8442a27f36c8f8cb46379b1973ca8f607af358aab196f664a40f"
         ],
         "C3": [
           "image",
           "04e8ad1677e292f16e1b8d3baefa49337a97531e2a67996775c790515a8048a0",
-          "6597844ae8341b11e3987209ba8b6c3c0e97026915753f24f78efa7ce61c7ea3"
+          "cc08f3395a0f8442a27f36c8f8cb46379b1973ca8f607af358aab196f664a40f"
         ]
       },
       "reference": [
         "image",
         "04e8ad1677e292f16e1b8d3baefa49337a97531e2a67996775c790515a8048a0",
-        "6597844ae8341b11e3987209ba8b6c3c0e97026915753f24f78efa7ce61c7ea3"
+        "cc08f3395a0f8442a27f36c8f8cb46379b1973ca8f607af358aab196f664a40f"
       ]
     },
     {
@@ -6240,28 +6240,28 @@
         "C0": [
           "image",
           "f555d961cdd579a66b4862c48dc0fe097886daf3de1ba0c676eef2387d505f02",
-          "5ba98819202f30d8c4a46768d46f388baf7c80b11ca0826e7dc55de562d03753"
+          "61adb70d552f4ea256ea916133129615aa679815a07d2f894c9c482af74ad031"
         ],
         "C1": [
           "image",
           "f555d961cdd579a66b4862c48dc0fe097886daf3de1ba0c676eef2387d505f02",
-          "5ba98819202f30d8c4a46768d46f388baf7c80b11ca0826e7dc55de562d03753"
+          "61adb70d552f4ea256ea916133129615aa679815a07d2f894c9c482af74ad031"
         ],
         "C2": [
           "image",
           "f555d961cdd579a66b4862c48dc0fe097886daf3de1ba0c676eef2387d505f02",
-          "5ba98819202f30d8c4a46768d46f388baf7c80b11ca0826e7dc55de562d03753"
+          "61adb70d552f4ea256ea916133129615aa679815a07d2f894c9c482af74ad031"
         ],
         "C3": [
           "image",
           "f555d961cdd579a66b4862c48dc0fe097886daf3de1ba0c676eef2387d505f02",
-          "5ba98819202f30d8c4a46768d46f388baf7c80b11ca0826e7dc55de562d03753"
+          "61adb70d552f4ea256ea916133129615aa679815a07d2f894c9c482af74ad031"
         ]
       },
       "reference": [
         "image",
         "f555d961cdd579a66b4862c48dc0fe097886daf3de1ba0c676eef2387d505f02",
-        "5ba98819202f30d8c4a46768d46f388baf7c80b11ca0826e7dc55de562d03753"
+        "61adb70d552f4ea256ea916133129615aa679815a07d2f894c9c482af74ad031"
       ]
     },
     {
@@ -6376,8 +6376,8 @@
           "outputs": [
             "1c5b96873831caefd450bf8686895b4341f328f723ab78adc6bd2606b16e21f9"
           ],
-          "host_s_nonsemantic": 36.21,
-          "peak_rss_kib_nonsemantic": 6120012
+          "host_s_nonsemantic": 38.2,
+          "peak_rss_kib_nonsemantic": 6246612
         },
         "equals_ledger": true,
         "verify": "image"
@@ -6397,8 +6397,8 @@
           "outputs": [
             "c1ced130bee3d0274cf845e1e056e742566924d75772d9091fd8a175ee89ab1a"
           ],
-          "host_s_nonsemantic": 36.46,
-          "peak_rss_kib_nonsemantic": 6120012
+          "host_s_nonsemantic": 38.62,
+          "peak_rss_kib_nonsemantic": 6246612
         },
         "equals_ledger": true,
         "verify": "image"
@@ -6418,8 +6418,8 @@
           "outputs": [
             "2c0839fa7e6032bc9df2388a2aa230553996f1b7f06fb3e9dc8b4245db751f10"
           ],
-          "host_s_nonsemantic": 35.65,
-          "peak_rss_kib_nonsemantic": 6120012
+          "host_s_nonsemantic": 37.54,
+          "peak_rss_kib_nonsemantic": 6246612
         },
         "equals_ledger": true,
         "verify": "image"
@@ -6439,8 +6439,8 @@
           "outputs": [
             "e0b44404ffa081f23a94bc1e30b5fe22e1a2b5c8f1fcfca4a6b1eae815df2526"
           ],
-          "host_s_nonsemantic": 36.56,
-          "peak_rss_kib_nonsemantic": 6120012
+          "host_s_nonsemantic": 37.76,
+          "peak_rss_kib_nonsemantic": 6246612
         },
         "equals_ledger": true,
         "verify": "image"
@@ -6460,8 +6460,8 @@
           "outputs": [
             "a025be68f27f33051fc6483b369a924a1734bb44806c78e2a2dbc01d30826245"
           ],
-          "host_s_nonsemantic": 4.61,
-          "peak_rss_kib_nonsemantic": 6120012
+          "host_s_nonsemantic": 4.94,
+          "peak_rss_kib_nonsemantic": 6246612
         },
         "equals_ledger": true,
         "verify": "image"
@@ -6481,8 +6481,8 @@
           "outputs": [
             "78e32eed8bb8086e71f48bb6d289796711a21f6ca7ed058fc8b8eceb601cc44b"
           ],
-          "host_s_nonsemantic": 2.0,
-          "peak_rss_kib_nonsemantic": 6120012
+          "host_s_nonsemantic": 2.11,
+          "peak_rss_kib_nonsemantic": 6246612
         },
         "equals_ledger": true,
         "verify": "image"
@@ -6502,8 +6502,8 @@
           "outputs": [
             "6bc97c7e8d529841e173347602f43fccab13b76de19772d366061aacaa83b102"
           ],
-          "host_s_nonsemantic": 16.05,
-          "peak_rss_kib_nonsemantic": 6120012
+          "host_s_nonsemantic": 16.5,
+          "peak_rss_kib_nonsemantic": 6246612
         },
         "equals_ledger": true,
         "verify": "image"
@@ -6523,8 +6523,8 @@
           "outputs": [
             "84964d1a37ca311e1b8d0b914bf872e9ce06e2fe24ae70b95067099725dee70d"
           ],
-          "host_s_nonsemantic": 36.47,
-          "peak_rss_kib_nonsemantic": 6120012
+          "host_s_nonsemantic": 37.93,
+          "peak_rss_kib_nonsemantic": 6246612
         },
         "equals_ledger": true,
         "verify": "image"
@@ -6544,8 +6544,8 @@
           "outputs": [
             "7c49d4a8cb4d70d8c68a42a825ce243f4467315fc23675e5d7f660704eb44d1f"
           ],
-          "host_s_nonsemantic": 36.06,
-          "peak_rss_kib_nonsemantic": 6120012
+          "host_s_nonsemantic": 37.93,
+          "peak_rss_kib_nonsemantic": 6246612
         },
         "equals_ledger": true,
         "verify": "image"
@@ -6565,8 +6565,8 @@
           "outputs": [
             "4d8db50e293eda4a91ff0f3cfe001a9c680232437612aa7aef7a335c2e336ca6"
           ],
-          "host_s_nonsemantic": 36.12,
-          "peak_rss_kib_nonsemantic": 6120012
+          "host_s_nonsemantic": 38.11,
+          "peak_rss_kib_nonsemantic": 6246612
         },
         "equals_ledger": true,
         "verify": "image"
@@ -6586,8 +6586,8 @@
           "outputs": [
             "a4aa9082525b3383a739c05c40166fb259a64947ed6be268586cbf7b8d44df6f"
           ],
-          "host_s_nonsemantic": 36.3,
-          "peak_rss_kib_nonsemantic": 6120012
+          "host_s_nonsemantic": 37.78,
+          "peak_rss_kib_nonsemantic": 6246612
         },
         "equals_ledger": true,
         "verify": "image"
@@ -6607,8 +6607,8 @@
           "outputs": [
             "536cfd2eec00fbe8ed3cfea94d974affd08ddd951f4da594dd440ab2648afa12"
           ],
-          "host_s_nonsemantic": 37.25,
-          "peak_rss_kib_nonsemantic": 6120012
+          "host_s_nonsemantic": 38.31,
+          "peak_rss_kib_nonsemantic": 6246612
         },
         "equals_ledger": true,
         "verify": "image"
@@ -6628,8 +6628,8 @@
           "outputs": [
             "14be65a52eaf784c3af3f77c25773751adc252d53ad7528c0affce98bbbac869"
           ],
-          "host_s_nonsemantic": 37.78,
-          "peak_rss_kib_nonsemantic": 6120012
+          "host_s_nonsemantic": 38.53,
+          "peak_rss_kib_nonsemantic": 6246612
         },
         "equals_ledger": true,
         "verify": "image"
@@ -6649,8 +6649,8 @@
           "outputs": [
             "5961ec1a2676b543e0a4dbe5f1111e95ee9c413e3d45c8d77fb480fe3e95913c"
           ],
-          "host_s_nonsemantic": 0.09,
-          "peak_rss_kib_nonsemantic": 6120012
+          "host_s_nonsemantic": 0.1,
+          "peak_rss_kib_nonsemantic": 6246612
         },
         "equals_ledger": true,
         "verify": "image"
@@ -6671,7 +6671,7 @@
             "acd95da62c9ab737d125cc008a408b01de415a3b1e0409b67adda878e624dc48"
           ],
           "host_s_nonsemantic": 0.04,
-          "peak_rss_kib_nonsemantic": 6120012
+          "peak_rss_kib_nonsemantic": 6246612
         },
         "equals_ledger": true,
         "verify": "image"
@@ -6691,8 +6691,8 @@
           "outputs": [
             "79bfa3ceb1bf89528fad7d1d98252fd097b6ceda309c5f9f91385d4e04da7942"
           ],
-          "host_s_nonsemantic": 38.28,
-          "peak_rss_kib_nonsemantic": 6120012
+          "host_s_nonsemantic": 38.8,
+          "peak_rss_kib_nonsemantic": 6246612
         },
         "equals_ledger": true,
         "verify": "image"
@@ -6712,8 +6712,8 @@
           "outputs": [
             "b4e68d468268b87fe483de3faaeb4d3d5e18215c6f5040a5014af9bf590af56a"
           ],
-          "host_s_nonsemantic": 37.54,
-          "peak_rss_kib_nonsemantic": 6120012
+          "host_s_nonsemantic": 38.49,
+          "peak_rss_kib_nonsemantic": 6246612
         },
         "equals_ledger": true,
         "verify": "image"
@@ -6733,8 +6733,8 @@
           "outputs": [
             "69db5159aa31a022f1fa4b9501a35fb35651fc1363cd7977f745255f2ec54158"
           ],
-          "host_s_nonsemantic": 0.05,
-          "peak_rss_kib_nonsemantic": 6120012
+          "host_s_nonsemantic": 0.06,
+          "peak_rss_kib_nonsemantic": 6246612
         },
         "equals_ledger": true,
         "verify": "image"
@@ -6754,8 +6754,8 @@
           "outputs": [
             "2f4b69462df01ec43c15b23c1f23a0a75acd37d7614ea7430b44caf33361b87a"
           ],
-          "host_s_nonsemantic": 2.49,
-          "peak_rss_kib_nonsemantic": 6120012
+          "host_s_nonsemantic": 2.53,
+          "peak_rss_kib_nonsemantic": 6246612
         },
         "equals_ledger": true,
         "verify": "image"
@@ -6775,8 +6775,8 @@
           "outputs": [
             "1681b1d1d62e9b93d515556a62b7368170964b8bc6ea236a047ba7c658515173"
           ],
-          "host_s_nonsemantic": 4.88,
-          "peak_rss_kib_nonsemantic": 6120012
+          "host_s_nonsemantic": 4.93,
+          "peak_rss_kib_nonsemantic": 6246612
         },
         "equals_ledger": true,
         "verify": "image"
@@ -6796,8 +6796,8 @@
           "outputs": [
             "da2796c46e3eb96f78dbd5b07571fa72ee6f611a33b06484326c1d40f40b28f6"
           ],
-          "host_s_nonsemantic": 2.02,
-          "peak_rss_kib_nonsemantic": 6120012
+          "host_s_nonsemantic": 2.05,
+          "peak_rss_kib_nonsemantic": 6246612
         },
         "equals_ledger": true,
         "verify": "image"
@@ -6817,8 +6817,8 @@
           "outputs": [
             "f0d6a93e4b606e2f4d9791976a517469058e97879ab8417be3f72dfde9ce3566"
           ],
-          "host_s_nonsemantic": 15.94,
-          "peak_rss_kib_nonsemantic": 6120012
+          "host_s_nonsemantic": 16.62,
+          "peak_rss_kib_nonsemantic": 6246612
         },
         "equals_ledger": true,
         "verify": "image"
@@ -6838,8 +6838,8 @@
           "outputs": [
             "c134b62e96a5197024b216ac732d6fa4c4d56b7b97c97d4decc4d6c96983eb8c"
           ],
-          "host_s_nonsemantic": 2.2,
-          "peak_rss_kib_nonsemantic": 6120012
+          "host_s_nonsemantic": 2.39,
+          "peak_rss_kib_nonsemantic": 6246612
         },
         "equals_ledger": true,
         "verify": "image"
@@ -6859,8 +6859,8 @@
           "outputs": [
             "258216f35574b05b215e25fb0cc53aad54aba7f5507d5fe258004cafdb85e122"
           ],
-          "host_s_nonsemantic": 37.57,
-          "peak_rss_kib_nonsemantic": 6120012
+          "host_s_nonsemantic": 38.45,
+          "peak_rss_kib_nonsemantic": 6246612
         },
         "equals_ledger": true,
         "verify": "image"
@@ -6880,8 +6880,8 @@
           "outputs": [
             "ce241b5ba274a5a4e526cdb73425af2758505e4aca4d7165d8d837f11f0e151c"
           ],
-          "host_s_nonsemantic": 36.91,
-          "peak_rss_kib_nonsemantic": 6120012
+          "host_s_nonsemantic": 38.85,
+          "peak_rss_kib_nonsemantic": 6246612
         },
         "equals_ledger": true,
         "verify": "image"
@@ -6902,7 +6902,7 @@
             "edf1abed022c677e40d0e9cd7b408f56708c0d529735cedacd93d62f10bf5cf4"
           ],
           "host_s_nonsemantic": 0.05,
-          "peak_rss_kib_nonsemantic": 6120012
+          "peak_rss_kib_nonsemantic": 6246612
         },
         "equals_ledger": true,
         "verify": "image"
@@ -6922,8 +6922,8 @@
           "outputs": [
             "df2cae7dd200d407ccf2592cee85b8c6da487196d7c0d05360250efd3d908205"
           ],
-          "host_s_nonsemantic": 2.43,
-          "peak_rss_kib_nonsemantic": 6120012
+          "host_s_nonsemantic": 2.53,
+          "peak_rss_kib_nonsemantic": 6246612
         },
         "equals_ledger": true,
         "verify": "image"
@@ -6943,8 +6943,8 @@
           "outputs": [
             "e2c3d97be91dcfeeb69a1540391ec301732832ca474bbbeb3c6b6c6b11fd6d93"
           ],
-          "host_s_nonsemantic": 4.67,
-          "peak_rss_kib_nonsemantic": 6120012
+          "host_s_nonsemantic": 4.95,
+          "peak_rss_kib_nonsemantic": 6246612
         },
         "equals_ledger": true,
         "verify": "image"
@@ -6964,8 +6964,8 @@
           "outputs": [
             "4b2ba51e86bb72d9e203bd4bf7c5b9e6ae75b00d305652e1e6e51f814c73abb9"
           ],
-          "host_s_nonsemantic": 1.95,
-          "peak_rss_kib_nonsemantic": 6120012
+          "host_s_nonsemantic": 2.11,
+          "peak_rss_kib_nonsemantic": 6246612
         },
         "equals_ledger": true,
         "verify": "image"
@@ -6985,8 +6985,8 @@
           "outputs": [
             "d5fd21675c41dc510b56cb53325a2e1e28b2c4ea648170e03e8af15db0182b22"
           ],
-          "host_s_nonsemantic": 15.84,
-          "peak_rss_kib_nonsemantic": 6120012
+          "host_s_nonsemantic": 16.78,
+          "peak_rss_kib_nonsemantic": 6246612
         },
         "equals_ledger": true,
         "verify": "image"
@@ -7006,8 +7006,8 @@
           "outputs": [
             "4de116619688c7d21472a0dfbd20c4e3ce1bb02e00697bb5d83d4e188c586c88"
           ],
-          "host_s_nonsemantic": 2.14,
-          "peak_rss_kib_nonsemantic": 6120012
+          "host_s_nonsemantic": 2.44,
+          "peak_rss_kib_nonsemantic": 6246612
         },
         "equals_ledger": true,
         "verify": "image"
@@ -7027,8 +7027,8 @@
           "outputs": [
             "278d99da061b581f62b26a54e8369b1c468cea79eb83f4d11e4ecf500d71045e"
           ],
-          "host_s_nonsemantic": 36.55,
-          "peak_rss_kib_nonsemantic": 6120012
+          "host_s_nonsemantic": 39.82,
+          "peak_rss_kib_nonsemantic": 6246612
         },
         "equals_ledger": true,
         "verify": "image"
@@ -7048,8 +7048,8 @@
           "outputs": [
             "e496fe3f9f276b5616e4c0cfa0224972a0d9202349141570bedbd1887ff19bcf"
           ],
-          "host_s_nonsemantic": 36.94,
-          "peak_rss_kib_nonsemantic": 6120012
+          "host_s_nonsemantic": 38.44,
+          "peak_rss_kib_nonsemantic": 6246612
         },
         "equals_ledger": true,
         "verify": "image"
@@ -7069,8 +7069,8 @@
           "outputs": [
             "d8622c12b41f0df3e0ce8786d9ce119907349fabdd5a66f6ec6e8ff4eb51d1ef"
           ],
-          "host_s_nonsemantic": 44.99,
-          "peak_rss_kib_nonsemantic": 6120012
+          "host_s_nonsemantic": 44.19,
+          "peak_rss_kib_nonsemantic": 6246612
         },
         "equals_ledger": true,
         "verify": "image"
@@ -7090,8 +7090,8 @@
           "outputs": [
             "12ba4900d9ab77780e170e63896ec32c35162ee720a20d81b7a8f9e6a43b1044"
           ],
-          "host_s_nonsemantic": 44.57,
-          "peak_rss_kib_nonsemantic": 6120012
+          "host_s_nonsemantic": 44.14,
+          "peak_rss_kib_nonsemantic": 6246612
         },
         "equals_ledger": true,
         "verify": "image"
@@ -7111,8 +7111,8 @@
           "outputs": [
             "f0f6e5e24c764e646401b7853bbb6f7e878f91838e6467d99d1ee8d18f3fd9c8"
           ],
-          "host_s_nonsemantic": 37.37,
-          "peak_rss_kib_nonsemantic": 6120012
+          "host_s_nonsemantic": 39.13,
+          "peak_rss_kib_nonsemantic": 6246612
         },
         "equals_ledger": true,
         "verify": "image"
@@ -7132,8 +7132,8 @@
           "outputs": [
             "65c002d2df82894d57ff081706913cc0d45b852eb475b7bbe5a6fcd5cb9235ac"
           ],
-          "host_s_nonsemantic": 36.64,
-          "peak_rss_kib_nonsemantic": 6120012
+          "host_s_nonsemantic": 37.62,
+          "peak_rss_kib_nonsemantic": 6246612
         },
         "equals_ledger": true,
         "verify": "image"
@@ -7153,8 +7153,8 @@
           "outputs": [
             "e01689ef92b64f6c6f32b9e8520779d07584cae06011ea16efd36b67fdd8e98e"
           ],
-          "host_s_nonsemantic": 4.9,
-          "peak_rss_kib_nonsemantic": 6120012
+          "host_s_nonsemantic": 4.93,
+          "peak_rss_kib_nonsemantic": 6246612
         },
         "equals_ledger": true,
         "verify": "image"
@@ -7174,8 +7174,8 @@
           "outputs": [
             "0583d87c061d7da5eb2632999177d2f661d47c6f7eff6d79672f8a15d0f84024"
           ],
-          "host_s_nonsemantic": 37.55,
-          "peak_rss_kib_nonsemantic": 6120012
+          "host_s_nonsemantic": 37.96,
+          "peak_rss_kib_nonsemantic": 6246612
         },
         "equals_ledger": true,
         "verify": "image"
@@ -7195,8 +7195,8 @@
           "outputs": [
             "751eccf5ba6637dfb5bc2597befb76b71bbdfbfec6897618e96b58f3340b579d"
           ],
-          "host_s_nonsemantic": 38.38,
-          "peak_rss_kib_nonsemantic": 6120012
+          "host_s_nonsemantic": 38.27,
+          "peak_rss_kib_nonsemantic": 6246612
         },
         "equals_ledger": true,
         "verify": "image"
@@ -7216,8 +7216,8 @@
           "outputs": [
             "13fd2389be2b9c7a09c3860799fbd6d4a0cf5cd4f184fedf2e4bc258b9091929"
           ],
-          "host_s_nonsemantic": 5.15,
-          "peak_rss_kib_nonsemantic": 6120012
+          "host_s_nonsemantic": 5.08,
+          "peak_rss_kib_nonsemantic": 6246612
         },
         "equals_ledger": true,
         "verify": "image"
@@ -7237,8 +7237,8 @@
           "outputs": [
             "e36e16cc463fb65f3e0c12b8f3b7aff860faf82ff4aa14b9c956d3f2a992e282"
           ],
-          "host_s_nonsemantic": 37.72,
-          "peak_rss_kib_nonsemantic": 6120012
+          "host_s_nonsemantic": 37.74,
+          "peak_rss_kib_nonsemantic": 6246612
         },
         "equals_ledger": true,
         "verify": "image"
@@ -7258,8 +7258,8 @@
           "outputs": [
             "555372ebf519d176319373313d87e8afbf5a20e49645c5d6cbd106d34aa552b4"
           ],
-          "host_s_nonsemantic": 37.27,
-          "peak_rss_kib_nonsemantic": 6120012
+          "host_s_nonsemantic": 38.59,
+          "peak_rss_kib_nonsemantic": 6246612
         },
         "equals_ledger": true,
         "verify": "image"
@@ -7279,8 +7279,8 @@
           "outputs": [
             "722ceebeb831703663e4d10b2292efbf36131e7a4ad2f0c387ebe68c73f354b9"
           ],
-          "host_s_nonsemantic": 37.61,
-          "peak_rss_kib_nonsemantic": 6120012
+          "host_s_nonsemantic": 38.71,
+          "peak_rss_kib_nonsemantic": 6246612
         },
         "equals_ledger": true,
         "verify": "image"
@@ -7300,8 +7300,8 @@
           "outputs": [
             "1d65868086676829e3dc2502a36fc04fe23e3cc1a4c7909a561ac57ebb6141c8"
           ],
-          "host_s_nonsemantic": 36.98,
-          "peak_rss_kib_nonsemantic": 6120012
+          "host_s_nonsemantic": 38.9,
+          "peak_rss_kib_nonsemantic": 6246612
         },
         "equals_ledger": true,
         "verify": "image"
@@ -7321,8 +7321,8 @@
           "outputs": [
             "b66687f8f2c0df50ff4e9ed0741a6aa79bac715e2e9e9388c9dd5348d2d4fffb"
           ],
-          "host_s_nonsemantic": 4.91,
-          "peak_rss_kib_nonsemantic": 6120012
+          "host_s_nonsemantic": 5.07,
+          "peak_rss_kib_nonsemantic": 6246612
         },
         "equals_ledger": true,
         "verify": "image"
@@ -7342,8 +7342,8 @@
           "outputs": [
             "bfba13c55784ad5885b2bea7497617f40050e0ae9198d077e9ebd3ee27723efb"
           ],
-          "host_s_nonsemantic": 37.46,
-          "peak_rss_kib_nonsemantic": 6120012
+          "host_s_nonsemantic": 39.01,
+          "peak_rss_kib_nonsemantic": 6246612
         },
         "equals_ledger": true,
         "verify": "image"
@@ -7363,8 +7363,8 @@
           "outputs": [
             "a6827c6aff0e38093a34ea8d5f989f05eb96099d6e5cf5a537fcc3af0518c326"
           ],
-          "host_s_nonsemantic": 38.16,
-          "peak_rss_kib_nonsemantic": 6120012
+          "host_s_nonsemantic": 39.11,
+          "peak_rss_kib_nonsemantic": 6246612
         },
         "equals_ledger": true,
         "verify": "image"
@@ -7384,8 +7384,8 @@
           "outputs": [
             "9932621ae9b4bf5ff0c86d2a1802fb1cf4c4a16b67caaf4492931fcaf80434b4"
           ],
-          "host_s_nonsemantic": 5.22,
-          "peak_rss_kib_nonsemantic": 6120012
+          "host_s_nonsemantic": 5.15,
+          "peak_rss_kib_nonsemantic": 6246612
         },
         "equals_ledger": true,
         "verify": "image"
@@ -7405,8 +7405,8 @@
           "outputs": [
             "ff19fc52f595e27f954be2a7d9ceab607f6080d5b402b5a2ea3cd7aefd509a29"
           ],
-          "host_s_nonsemantic": 37.85,
-          "peak_rss_kib_nonsemantic": 6120012
+          "host_s_nonsemantic": 38.23,
+          "peak_rss_kib_nonsemantic": 6246612
         },
         "equals_ledger": true,
         "verify": "image"
@@ -7426,8 +7426,8 @@
           "outputs": [
             "5d497c526f63617588605ffe64b358693afd7536aa32fb1f97139804135d8509"
           ],
-          "host_s_nonsemantic": 36.64,
-          "peak_rss_kib_nonsemantic": 6120012
+          "host_s_nonsemantic": 38.72,
+          "peak_rss_kib_nonsemantic": 6246612
         },
         "equals_ledger": true,
         "verify": "image"
@@ -7447,8 +7447,8 @@
           "outputs": [
             "fd4d0a6cbc057f3d6e4f74a937ac67ba6162dd594a8759daf193cc73ce644674"
           ],
-          "host_s_nonsemantic": 36.94,
-          "peak_rss_kib_nonsemantic": 6120012
+          "host_s_nonsemantic": 39.06,
+          "peak_rss_kib_nonsemantic": 6246612
         },
         "equals_ledger": true,
         "verify": "image"
@@ -7468,8 +7468,8 @@
           "outputs": [
             "4a9c52b2fa029a11e291768ea1e2992a5f16fcf51b8183b1cee769b83c9c81cb"
           ],
-          "host_s_nonsemantic": 37.52,
-          "peak_rss_kib_nonsemantic": 6120012
+          "host_s_nonsemantic": 39.07,
+          "peak_rss_kib_nonsemantic": 6246612
         },
         "equals_ledger": true,
         "verify": "image"
@@ -7489,8 +7489,8 @@
           "outputs": [
             "e538d9bf65e4db25671e61bdcfc2bc79bb25f01275bef1bcfb908508d737834e"
           ],
-          "host_s_nonsemantic": 5.08,
-          "peak_rss_kib_nonsemantic": 6120012
+          "host_s_nonsemantic": 5.31,
+          "peak_rss_kib_nonsemantic": 6246612
         },
         "equals_ledger": true,
         "verify": "image"
@@ -7510,8 +7510,8 @@
           "outputs": [
             "78bb515e48808b6d2b524eb3495bb670de3305ffbcd065432c72f66490a2178b"
           ],
-          "host_s_nonsemantic": 37.09,
-          "peak_rss_kib_nonsemantic": 6120012
+          "host_s_nonsemantic": 38.55,
+          "peak_rss_kib_nonsemantic": 6246612
         },
         "equals_ledger": true,
         "verify": "image"
@@ -7531,8 +7531,8 @@
           "outputs": [
             "22c1b09e591c99e5ab8f40ce3667af356dc2105ceb9a6f21bc8ac98a48030805"
           ],
-          "host_s_nonsemantic": 36.9,
-          "peak_rss_kib_nonsemantic": 6120012
+          "host_s_nonsemantic": 38.35,
+          "peak_rss_kib_nonsemantic": 6246612
         },
         "equals_ledger": true,
         "verify": "image"
@@ -7552,8 +7552,8 @@
           "outputs": [
             "6e47801e0911532813e9803d0173cf210c258e18bf347fc710fd70d910d9d5e7"
           ],
-          "host_s_nonsemantic": 4.82,
-          "peak_rss_kib_nonsemantic": 6120012
+          "host_s_nonsemantic": 4.89,
+          "peak_rss_kib_nonsemantic": 6246612
         },
         "equals_ledger": true,
         "verify": "image"
@@ -7573,8 +7573,8 @@
           "outputs": [
             "ea8e9f57b6fe28a67943a3ed2659c0dd2396ae3f27f3b936bd3c4f616365a46e"
           ],
-          "host_s_nonsemantic": 44.15,
-          "peak_rss_kib_nonsemantic": 6120012
+          "host_s_nonsemantic": 44.5,
+          "peak_rss_kib_nonsemantic": 6246612
         },
         "equals_ledger": true,
         "verify": "image"
@@ -7594,8 +7594,8 @@
           "outputs": [
             "f7c115a3505b206b2536c641fcd0a334b7808867e8f2f58c56017a0485aa82a6"
           ],
-          "host_s_nonsemantic": 44.17,
-          "peak_rss_kib_nonsemantic": 6120012
+          "host_s_nonsemantic": 44.67,
+          "peak_rss_kib_nonsemantic": 6246612
         },
         "equals_ledger": true,
         "verify": "image"
@@ -7615,8 +7615,8 @@
           "outputs": [
             "3058664172723f97302dc8d1d36f466801baff3b9900fcdbb24927da08ee9996"
           ],
-          "host_s_nonsemantic": 11.53,
-          "peak_rss_kib_nonsemantic": 6120012
+          "host_s_nonsemantic": 11.71,
+          "peak_rss_kib_nonsemantic": 6246612
         },
         "equals_ledger": true,
         "verify": "image"
@@ -7636,8 +7636,8 @@
           "outputs": [
             "3507f8c06c884f65c161cffc79bc944640deefdad7c3d897f1ff96f7072e0a64"
           ],
-          "host_s_nonsemantic": 37.38,
-          "peak_rss_kib_nonsemantic": 6120012
+          "host_s_nonsemantic": 37.97,
+          "peak_rss_kib_nonsemantic": 6246612
         },
         "equals_ledger": true,
         "verify": "image"
@@ -7657,8 +7657,8 @@
           "outputs": [
             "403e5b73083bd85c7fc7681a054456b23c9a60e00cb6f3f50644532d5e0aa087"
           ],
-          "host_s_nonsemantic": 37.75,
-          "peak_rss_kib_nonsemantic": 6120012
+          "host_s_nonsemantic": 37.97,
+          "peak_rss_kib_nonsemantic": 6246612
         },
         "equals_ledger": true,
         "verify": "image"
@@ -7678,8 +7678,8 @@
           "outputs": [
             "e001e7696182cb90558adc2e78ab47c815c5750f77b84efb5b75048c9bf8275d"
           ],
-          "host_s_nonsemantic": 4.82,
-          "peak_rss_kib_nonsemantic": 6120012
+          "host_s_nonsemantic": 4.91,
+          "peak_rss_kib_nonsemantic": 6246612
         },
         "equals_ledger": true,
         "verify": "image"
@@ -7699,8 +7699,8 @@
           "outputs": [
             "721703baa8a6d3a7b3a32b321caae34d93681cce700c72b77d51cd2e0c0c6e52"
           ],
-          "host_s_nonsemantic": 37.55,
-          "peak_rss_kib_nonsemantic": 6120012
+          "host_s_nonsemantic": 38.07,
+          "peak_rss_kib_nonsemantic": 6246612
         },
         "equals_ledger": true,
         "verify": "image"
@@ -7720,8 +7720,8 @@
           "outputs": [
             "1c3d8be0454557cea9c7b8c411cbc400bb4afe77921125d44f241f2e208307ae"
           ],
-          "host_s_nonsemantic": 37.77,
-          "peak_rss_kib_nonsemantic": 6120012
+          "host_s_nonsemantic": 38.23,
+          "peak_rss_kib_nonsemantic": 6246612
         },
         "equals_ledger": true,
         "verify": "image"
@@ -7741,8 +7741,8 @@
           "outputs": [
             "0e31075ee2ac7de0a2fd7dca8a26b1439ea3e9f12b635d260da8d07daafeda5f"
           ],
-          "host_s_nonsemantic": 4.88,
-          "peak_rss_kib_nonsemantic": 6120012
+          "host_s_nonsemantic": 4.87,
+          "peak_rss_kib_nonsemantic": 6246612
         },
         "equals_ledger": true,
         "verify": "image"
@@ -7762,8 +7762,8 @@
           "outputs": [
             "6f1bd124d4ab8bf7072bf74d58e5ff81da16c4d9672aef2a4a289b682fa36ca8"
           ],
-          "host_s_nonsemantic": 37.23,
-          "peak_rss_kib_nonsemantic": 6120012
+          "host_s_nonsemantic": 41.78,
+          "peak_rss_kib_nonsemantic": 6246612
         },
         "equals_ledger": true,
         "verify": "image"
@@ -7783,8 +7783,8 @@
           "outputs": [
             "1d5713f67c573aa0335b5c71fe6e54d3d5e6595291c77867345a56be8f36e4c5"
           ],
-          "host_s_nonsemantic": 37.63,
-          "peak_rss_kib_nonsemantic": 6120012
+          "host_s_nonsemantic": 39.46,
+          "peak_rss_kib_nonsemantic": 6246612
         },
         "equals_ledger": true,
         "verify": "image"
@@ -7804,8 +7804,8 @@
           "outputs": [
             "559fc453ac99ee1e06e2fd7dcf76e714c4c232414483e9a3c97ebc8526537429"
           ],
-          "host_s_nonsemantic": 2.3,
-          "peak_rss_kib_nonsemantic": 6120012
+          "host_s_nonsemantic": 2.41,
+          "peak_rss_kib_nonsemantic": 6246612
         },
         "equals_ledger": true,
         "verify": "image"
@@ -7825,8 +7825,8 @@
           "outputs": [
             "2ea8398af151d3f190be458c7bd30bb34f8201be0343fe63e454382b681b9f71"
           ],
-          "host_s_nonsemantic": 16.34,
-          "peak_rss_kib_nonsemantic": 6120012
+          "host_s_nonsemantic": 16.63,
+          "peak_rss_kib_nonsemantic": 6246612
         },
         "equals_ledger": true,
         "verify": "image"
@@ -7846,8 +7846,8 @@
           "outputs": [
             "99fe55e43f32096f61cfd5de177b82a7df9985a3e0b417b24c37ce45f158e471"
           ],
-          "host_s_nonsemantic": 37.06,
-          "peak_rss_kib_nonsemantic": 6120012
+          "host_s_nonsemantic": 38.35,
+          "peak_rss_kib_nonsemantic": 6246612
         },
         "equals_ledger": true,
         "verify": "image"
@@ -7867,8 +7867,8 @@
           "outputs": [
             "d967c41df0516dde80e4dda6d49750daae69e1718d50f72505a72bab927a76ab"
           ],
-          "host_s_nonsemantic": 37.74,
-          "peak_rss_kib_nonsemantic": 6120012
+          "host_s_nonsemantic": 38.53,
+          "peak_rss_kib_nonsemantic": 6246612
         },
         "equals_ledger": true,
         "verify": "image"
@@ -7888,8 +7888,8 @@
           "outputs": [
             "7384f3db2e4852781c03f72623732dd14dfc0cf8cc5c19bef268a14d7585990d"
           ],
-          "host_s_nonsemantic": 37.52,
-          "peak_rss_kib_nonsemantic": 6120012
+          "host_s_nonsemantic": 38.37,
+          "peak_rss_kib_nonsemantic": 6246612
         },
         "equals_ledger": true,
         "verify": "image"
@@ -7909,8 +7909,8 @@
           "outputs": [
             "cb17e2161ec4ac511ab8a4d481cc0d7c74b324751de8e203cf8e22449ef230f4"
           ],
-          "host_s_nonsemantic": 37.19,
-          "peak_rss_kib_nonsemantic": 6120012
+          "host_s_nonsemantic": 38.22,
+          "peak_rss_kib_nonsemantic": 6246612
         },
         "equals_ledger": true,
         "verify": "image"
@@ -7930,8 +7930,8 @@
           "outputs": [
             "11c20248a880b35b8ec6d5226fa208e2f6f808dd0f23f9b9453da1d427329774"
           ],
-          "host_s_nonsemantic": 4.98,
-          "peak_rss_kib_nonsemantic": 6120012
+          "host_s_nonsemantic": 4.94,
+          "peak_rss_kib_nonsemantic": 6246612
         },
         "equals_ledger": true,
         "verify": "image"
@@ -7951,25 +7951,781 @@
           "outputs": [
             "5f61f11e0ba112800cde0ed83ab4360fd2f984e0352dbffe9153c8eb59c45987"
           ],
-          "host_s_nonsemantic": 5.03,
-          "peak_rss_kib_nonsemantic": 6120012
+          "host_s_nonsemantic": 4.95,
+          "peak_rss_kib_nonsemantic": 6246612
+        },
+        "equals_ledger": true,
+        "verify": "image"
+      },
+      {
+        "record": "0023-capacity-word-01.batch",
+        "store": "xax_compiler_driver_general.xax",
+        "before": "c05ae9997276d12ea5d3eea1053989a3b8f66141",
+        "after": "7e6cbe6e2cd768e8e22d4a494deb1d27d44b1f8a",
+        "record_sha256": "5f0e9842014fcb5cc0967117b5c9866bb662cc3b5056f25580384a5b777f7892",
+        "mutations": 2,
+        "kinds": [
+          "NativeBatch"
+        ],
+        "edit": {
+          "status": "image",
+          "outputs": [
+            "30dca8e43a1a78411f96639cf4ecccd1d59154da64252371e4f5265c7f388cb2"
+          ],
+          "host_s_nonsemantic": 37.87,
+          "peak_rss_kib_nonsemantic": 6246612
+        },
+        "equals_ledger": true,
+        "verify": "image"
+      },
+      {
+        "record": "0023-capacity-word-01-request.batch",
+        "store": "seed/xax_compiler_request.xax",
+        "before": "7df55d69ecb4b0fe20b9be6492968110e1ffa976",
+        "after": "61c6fcf25e936a3db62598079e29b7e7b45ef03a",
+        "record_sha256": "2caf062891c0348a3bce638a2e2a729e05944581e7326b29ac4a1c12c7a8aeff",
+        "mutations": 2,
+        "kinds": [
+          "NativeBatch"
+        ],
+        "edit": {
+          "status": "image",
+          "outputs": [
+            "4ae82d5af4b8bb4fb328794aa1880ceafa52a560ceb8acaa9962e8671c8d637e"
+          ],
+          "host_s_nonsemantic": 38.13,
+          "peak_rss_kib_nonsemantic": 6246612
+        },
+        "equals_ledger": true,
+        "verify": "image"
+      },
+      {
+        "record": "0023-capacity-word-02.batch",
+        "store": "xax_compiler_driver_general.xax",
+        "before": "7e6cbe6e2cd768e8e22d4a494deb1d27d44b1f8a",
+        "after": "17c6d7390c6f7bdd614570248b9a52317b899b10",
+        "record_sha256": "c80eabf5abc0504effb9972ba6d9f487c60429a058dfda30f8c1540a51443a66",
+        "mutations": 2,
+        "kinds": [
+          "NativeBatch"
+        ],
+        "edit": {
+          "status": "image",
+          "outputs": [
+            "b5b6b4a76c9b8a2879806ce3a9a0a150a638cc9136fe6f70c7a4b82970926bce"
+          ],
+          "host_s_nonsemantic": 41.93,
+          "peak_rss_kib_nonsemantic": 6246612
+        },
+        "equals_ledger": true,
+        "verify": "image"
+      },
+      {
+        "record": "0023-capacity-word-02-request.batch",
+        "store": "seed/xax_compiler_request.xax",
+        "before": "61c6fcf25e936a3db62598079e29b7e7b45ef03a",
+        "after": "efc5d56a35f091e0ec0d4bfc993a8858875d811c",
+        "record_sha256": "010c026790202ecebbcdf0e20f23ee8a2b07e867078e474eb95121ef4dfff389",
+        "mutations": 2,
+        "kinds": [
+          "NativeBatch"
+        ],
+        "edit": {
+          "status": "image",
+          "outputs": [
+            "407be8b441a9ea993569bd9e90dd81ac713ceebfd4596c7cc9597da0bae869b6"
+          ],
+          "host_s_nonsemantic": 41.21,
+          "peak_rss_kib_nonsemantic": 6246612
+        },
+        "equals_ledger": true,
+        "verify": "image"
+      },
+      {
+        "record": "0023-capacity-word-03.batch",
+        "store": "xax_compiler_driver_general.xax",
+        "before": "17c6d7390c6f7bdd614570248b9a52317b899b10",
+        "after": "d0e06866a1ca34be1d73b23574dc13dc5b63218b",
+        "record_sha256": "14baedd7aeecd136ddb0c735350b7149b250cac092380b3db4c29beca3cd71d5",
+        "mutations": 2,
+        "kinds": [
+          "NativeBatch"
+        ],
+        "edit": {
+          "status": "image",
+          "outputs": [
+            "f1433b0305f6f13ffed12901155fb4a4a307dfc50f35d7ad32133e267599faab"
+          ],
+          "host_s_nonsemantic": 40.99,
+          "peak_rss_kib_nonsemantic": 6246612
+        },
+        "equals_ledger": true,
+        "verify": "image"
+      },
+      {
+        "record": "0023-capacity-word-03-request.batch",
+        "store": "seed/xax_compiler_request.xax",
+        "before": "efc5d56a35f091e0ec0d4bfc993a8858875d811c",
+        "after": "6171eb4f4f5bc6f31a65d8bdaabeb2fa0a01c08e",
+        "record_sha256": "1e2835c1454cc034bb21131a427caaf52776e8013be30523dfbd1fb9ce7d247b",
+        "mutations": 2,
+        "kinds": [
+          "NativeBatch"
+        ],
+        "edit": {
+          "status": "image",
+          "outputs": [
+            "fa0512cd2cfbef343bdb9e61123e76452743b89c4f6bdbe10200d97817c33706"
+          ],
+          "host_s_nonsemantic": 40.55,
+          "peak_rss_kib_nonsemantic": 6246612
+        },
+        "equals_ledger": true,
+        "verify": "image"
+      },
+      {
+        "record": "0023-capacity-word-04.batch",
+        "store": "xax_compiler_driver_general.xax",
+        "before": "d0e06866a1ca34be1d73b23574dc13dc5b63218b",
+        "after": "f303c81a3656c39cc0621de5209d1871d4810547",
+        "record_sha256": "c827923e73535edb82aee56c0dfaa1a1527e83294e6a2ffb96a84ff9e6c42f1c",
+        "mutations": 2,
+        "kinds": [
+          "NativeBatch"
+        ],
+        "edit": {
+          "status": "image",
+          "outputs": [
+            "ac24b9cccce0dd52e79d31e01e00a743d6afc44bd0fabc6000d49471c3d2c312"
+          ],
+          "host_s_nonsemantic": 38.15,
+          "peak_rss_kib_nonsemantic": 6246612
+        },
+        "equals_ledger": true,
+        "verify": "image"
+      },
+      {
+        "record": "0023-capacity-word-04-request.batch",
+        "store": "seed/xax_compiler_request.xax",
+        "before": "6171eb4f4f5bc6f31a65d8bdaabeb2fa0a01c08e",
+        "after": "382788bb2e949b645b5ee250a71bfeecce378895",
+        "record_sha256": "753ccb464c9c1495f9dc110462af80e9f9502e81bde6790b83dcf8dbf9452497",
+        "mutations": 2,
+        "kinds": [
+          "NativeBatch"
+        ],
+        "edit": {
+          "status": "image",
+          "outputs": [
+            "19c517bf89e15c9909f7b3cd6bcc671b50c7c784b5b01e5132038324ff1f554a"
+          ],
+          "host_s_nonsemantic": 38.1,
+          "peak_rss_kib_nonsemantic": 6246612
+        },
+        "equals_ledger": true,
+        "verify": "image"
+      },
+      {
+        "record": "0023-capacity-word-05.batch",
+        "store": "xax_compiler_driver_general.xax",
+        "before": "f303c81a3656c39cc0621de5209d1871d4810547",
+        "after": "4c627cefde378c4b39354dd8cb0856e510f7c59b",
+        "record_sha256": "8e5ab90e55bba74b5d9f0e3058a0ee7af53448011f02bbecd34cbe39a273ceec",
+        "mutations": 2,
+        "kinds": [
+          "NativeBatch"
+        ],
+        "edit": {
+          "status": "image",
+          "outputs": [
+            "546dbc5500a8ee84d1cb5f3b056fb8a184772962f7f14c251639f80377574357"
+          ],
+          "host_s_nonsemantic": 38.52,
+          "peak_rss_kib_nonsemantic": 6246612
+        },
+        "equals_ledger": true,
+        "verify": "image"
+      },
+      {
+        "record": "0023-capacity-word-05-request.batch",
+        "store": "seed/xax_compiler_request.xax",
+        "before": "382788bb2e949b645b5ee250a71bfeecce378895",
+        "after": "1bf841416b5e8eb6b6a57097524cc46799f0d063",
+        "record_sha256": "ec0511f2901faea9556faaad017c8d03c99b785c9cd3263ae645be5c4773588a",
+        "mutations": 2,
+        "kinds": [
+          "NativeBatch"
+        ],
+        "edit": {
+          "status": "image",
+          "outputs": [
+            "43872cbf7271988a988271437d0d7ef574107d9075ddf18c9fbcbee82bc624e9"
+          ],
+          "host_s_nonsemantic": 38.42,
+          "peak_rss_kib_nonsemantic": 6246612
+        },
+        "equals_ledger": true,
+        "verify": "image"
+      },
+      {
+        "record": "0023-capacity-word-06.batch",
+        "store": "xax_compiler_driver_general.xax",
+        "before": "4c627cefde378c4b39354dd8cb0856e510f7c59b",
+        "after": "8bd13b21e0aac970c76dcdab79c723e1a5bed485",
+        "record_sha256": "548dac08f0061daabcf95d64651233961dcaeecaafb15d87705f01d64e1dca3b",
+        "mutations": 2,
+        "kinds": [
+          "NativeBatch"
+        ],
+        "edit": {
+          "status": "image",
+          "outputs": [
+            "1b7ee13b6bac19e08a5dce9e8c500540a0136d4756543bc08ceebcb81a303128"
+          ],
+          "host_s_nonsemantic": 37.89,
+          "peak_rss_kib_nonsemantic": 6246612
+        },
+        "equals_ledger": true,
+        "verify": "image"
+      },
+      {
+        "record": "0023-capacity-word-06-request.batch",
+        "store": "seed/xax_compiler_request.xax",
+        "before": "1bf841416b5e8eb6b6a57097524cc46799f0d063",
+        "after": "dc1b2d418b8cc2760ad7ef9c7619bb28cecf7f8e",
+        "record_sha256": "c09be8da32ca1200ae23f1528cb8469b77e9b2133b75582ba93a8f3ec5d4f3ce",
+        "mutations": 2,
+        "kinds": [
+          "NativeBatch"
+        ],
+        "edit": {
+          "status": "image",
+          "outputs": [
+            "8e7d3327df40b58e88fd7cbf069f62756f7d0db3989ef3fe2437adc7ccfdd49d"
+          ],
+          "host_s_nonsemantic": 38.05,
+          "peak_rss_kib_nonsemantic": 6246612
+        },
+        "equals_ledger": true,
+        "verify": "image"
+      },
+      {
+        "record": "0023-capacity-word-07.batch",
+        "store": "xax_compiler_driver_general.xax",
+        "before": "8bd13b21e0aac970c76dcdab79c723e1a5bed485",
+        "after": "ed635aae2b90771cd603dddd4af752dceb70b6f5",
+        "record_sha256": "f255e9cf3439234f558a67a9bb2b729d3afbc5aef4db4a62e55301d7cdc2359e",
+        "mutations": 2,
+        "kinds": [
+          "NativeBatch"
+        ],
+        "edit": {
+          "status": "image",
+          "outputs": [
+            "670950c38c3e22418202121663617cd94be57152db221167871333001582a885"
+          ],
+          "host_s_nonsemantic": 38.02,
+          "peak_rss_kib_nonsemantic": 6246612
+        },
+        "equals_ledger": true,
+        "verify": "image"
+      },
+      {
+        "record": "0023-capacity-word-07-request.batch",
+        "store": "seed/xax_compiler_request.xax",
+        "before": "dc1b2d418b8cc2760ad7ef9c7619bb28cecf7f8e",
+        "after": "9a3f76ee05a653587cb93155e7b09db638a7dcda",
+        "record_sha256": "a3dc56c06d7a9a10b7121a523997097a548b82a1e0e990255ba15b4c5fe8f620",
+        "mutations": 2,
+        "kinds": [
+          "NativeBatch"
+        ],
+        "edit": {
+          "status": "image",
+          "outputs": [
+            "ee503a2dac1777762ef2899fe51951fc1e212f8943e711f02ff6b3217a3284de"
+          ],
+          "host_s_nonsemantic": 37.78,
+          "peak_rss_kib_nonsemantic": 6246612
+        },
+        "equals_ledger": true,
+        "verify": "image"
+      },
+      {
+        "record": "0023-capacity-word-08.batch",
+        "store": "xax_compiler_driver_general.xax",
+        "before": "ed635aae2b90771cd603dddd4af752dceb70b6f5",
+        "after": "6e2620e752d126266226f1827379ddabeca73726",
+        "record_sha256": "c914229a53363c2d068953081fd43d3b837ab7a99aeceec3aba6a743d70d9022",
+        "mutations": 2,
+        "kinds": [
+          "NativeBatch"
+        ],
+        "edit": {
+          "status": "image",
+          "outputs": [
+            "8ebeb1db9ab5508acc450d5702abf58501cfbde28ff1450d72150b91211f4e72"
+          ],
+          "host_s_nonsemantic": 39.26,
+          "peak_rss_kib_nonsemantic": 6246612
+        },
+        "equals_ledger": true,
+        "verify": "image"
+      },
+      {
+        "record": "0023-capacity-word-08-request.batch",
+        "store": "seed/xax_compiler_request.xax",
+        "before": "9a3f76ee05a653587cb93155e7b09db638a7dcda",
+        "after": "bf8d6c55f16c8b5564cce2486661818f08eb0d68",
+        "record_sha256": "9386eb00efbc8baaf7307e9948f66d775bd72f237aac0ee9f28495a261f82c38",
+        "mutations": 2,
+        "kinds": [
+          "NativeBatch"
+        ],
+        "edit": {
+          "status": "image",
+          "outputs": [
+            "0bc10c956437be289a3c0d362f8cf43b3821416e187e26a1a297a96be8ecf411"
+          ],
+          "host_s_nonsemantic": 39.45,
+          "peak_rss_kib_nonsemantic": 6246612
+        },
+        "equals_ledger": true,
+        "verify": "image"
+      },
+      {
+        "record": "0023-capacity-word-09.batch",
+        "store": "xax_compiler_driver_general.xax",
+        "before": "6e2620e752d126266226f1827379ddabeca73726",
+        "after": "4ba504775096a14e69b1aa057335116e984d77c9",
+        "record_sha256": "99704333629d9205c85d7ed4ed895b56656a2ebca0946ba9ffc15290eeaf900a",
+        "mutations": 2,
+        "kinds": [
+          "NativeBatch"
+        ],
+        "edit": {
+          "status": "image",
+          "outputs": [
+            "0ad640182db3f972f68353de8c3f12ebed270d15cbe01ac76dddf4c24a80acf4"
+          ],
+          "host_s_nonsemantic": 38.03,
+          "peak_rss_kib_nonsemantic": 6246612
+        },
+        "equals_ledger": true,
+        "verify": "image"
+      },
+      {
+        "record": "0023-capacity-word-09-request.batch",
+        "store": "seed/xax_compiler_request.xax",
+        "before": "bf8d6c55f16c8b5564cce2486661818f08eb0d68",
+        "after": "89ee21e3d5c4d2ce8b2d1d3d70f5731550f94175",
+        "record_sha256": "11874b5359610b9c33b8be191bd2f3a070487aa102d45eb4c8344fcf7c3861fd",
+        "mutations": 2,
+        "kinds": [
+          "NativeBatch"
+        ],
+        "edit": {
+          "status": "image",
+          "outputs": [
+            "4066c41f44fa238532d5096dae6ddce7b4728236502ead02c269659e07bd7d64"
+          ],
+          "host_s_nonsemantic": 38.05,
+          "peak_rss_kib_nonsemantic": 6246612
+        },
+        "equals_ledger": true,
+        "verify": "image"
+      },
+      {
+        "record": "0023-capacity-word-10.batch",
+        "store": "xax_compiler_driver_general.xax",
+        "before": "4ba504775096a14e69b1aa057335116e984d77c9",
+        "after": "3ee6d06b427c07bbcae6c7a1c875521f8cc1b932",
+        "record_sha256": "9d5ac3080d6186ca39ea41d15110d910d549abfe230ace200a7c7ad272d426b1",
+        "mutations": 2,
+        "kinds": [
+          "NativeBatch"
+        ],
+        "edit": {
+          "status": "image",
+          "outputs": [
+            "51e028d13d59865c4995c212b501fb6b6a28e0419368a19ea64750542f9daa67"
+          ],
+          "host_s_nonsemantic": 38.28,
+          "peak_rss_kib_nonsemantic": 6246612
+        },
+        "equals_ledger": true,
+        "verify": "image"
+      },
+      {
+        "record": "0023-capacity-word-10-request.batch",
+        "store": "seed/xax_compiler_request.xax",
+        "before": "89ee21e3d5c4d2ce8b2d1d3d70f5731550f94175",
+        "after": "ea339e8f15925364f51760ed6754a8a6e67d5c87",
+        "record_sha256": "ae7b30fb4986ac4c889d3d8710ab99f6ac2e4620dde96ad323e549f84dd63342",
+        "mutations": 2,
+        "kinds": [
+          "NativeBatch"
+        ],
+        "edit": {
+          "status": "image",
+          "outputs": [
+            "ffb2b2108906cced7699b364785823410429cc2cb19a72b6fb1dc35d6ee35a24"
+          ],
+          "host_s_nonsemantic": 38.4,
+          "peak_rss_kib_nonsemantic": 6246612
+        },
+        "equals_ledger": true,
+        "verify": "image"
+      },
+      {
+        "record": "0023-capacity-word-11.batch",
+        "store": "xax_compiler_driver_general.xax",
+        "before": "3ee6d06b427c07bbcae6c7a1c875521f8cc1b932",
+        "after": "6d73722f8673bdd229bc3fb483870d78730b6376",
+        "record_sha256": "4bb1bcf2bfca5951380e0c5db4a9b48664c3d32f15b8f77cf6af4b31321d0bf6",
+        "mutations": 2,
+        "kinds": [
+          "NativeBatch"
+        ],
+        "edit": {
+          "status": "image",
+          "outputs": [
+            "0805e153e750b5ed13697776e10a6af2580883d664e494d7bfc454e9fd41f979"
+          ],
+          "host_s_nonsemantic": 38.53,
+          "peak_rss_kib_nonsemantic": 6246612
+        },
+        "equals_ledger": true,
+        "verify": "image"
+      },
+      {
+        "record": "0023-capacity-word-11-request.batch",
+        "store": "seed/xax_compiler_request.xax",
+        "before": "ea339e8f15925364f51760ed6754a8a6e67d5c87",
+        "after": "dcb996b0896af27421062106745154a4c8e084af",
+        "record_sha256": "44b90915a1a80599e81199addcac676a46b4ba0f3ed1948198426962a0e41a89",
+        "mutations": 2,
+        "kinds": [
+          "NativeBatch"
+        ],
+        "edit": {
+          "status": "image",
+          "outputs": [
+            "cdba8c64408f30f88b287b644de2ee7b77841d1034a4978d6a2b10a6554473e0"
+          ],
+          "host_s_nonsemantic": 38.22,
+          "peak_rss_kib_nonsemantic": 6246612
+        },
+        "equals_ledger": true,
+        "verify": "image"
+      },
+      {
+        "record": "0023-capacity-word-12.batch",
+        "store": "xax_compiler_driver_general.xax",
+        "before": "6d73722f8673bdd229bc3fb483870d78730b6376",
+        "after": "203ca3acd6ef7f776ea7b703632faf679d98bcec",
+        "record_sha256": "5738e8b23fac06b94c8b36b7c4fbefce63c1643b8327737ccc4f736715309142",
+        "mutations": 2,
+        "kinds": [
+          "NativeBatch"
+        ],
+        "edit": {
+          "status": "image",
+          "outputs": [
+            "b85f4fb1beda1cee382435b1829ba69e4fcb3034a0d80b1d79cda3261de4eb71"
+          ],
+          "host_s_nonsemantic": 38.04,
+          "peak_rss_kib_nonsemantic": 6246612
+        },
+        "equals_ledger": true,
+        "verify": "image"
+      },
+      {
+        "record": "0023-capacity-word-12-request.batch",
+        "store": "seed/xax_compiler_request.xax",
+        "before": "dcb996b0896af27421062106745154a4c8e084af",
+        "after": "c788bb22db4d06351dee9c10f9ca5fd454d528dd",
+        "record_sha256": "c6d29b8d45feec4fe67ca64cb450080fe4fbf715e5f2848dc3f7e34b9e1463dc",
+        "mutations": 2,
+        "kinds": [
+          "NativeBatch"
+        ],
+        "edit": {
+          "status": "image",
+          "outputs": [
+            "c08d489c9e6bd7960931ef89de54ae1fdc0c602ad926f75e9d4253959c27e8d5"
+          ],
+          "host_s_nonsemantic": 38.26,
+          "peak_rss_kib_nonsemantic": 6246612
+        },
+        "equals_ledger": true,
+        "verify": "image"
+      },
+      {
+        "record": "0023-capacity-word-13.batch",
+        "store": "xax_compiler_driver_general.xax",
+        "before": "203ca3acd6ef7f776ea7b703632faf679d98bcec",
+        "after": "aa618a32e515049223f7dc7e10f9a899c21761fd",
+        "record_sha256": "2a11bb4820957b66095f49fd6eae3f2773ba6733ef82140d3c91a48a4608b189",
+        "mutations": 2,
+        "kinds": [
+          "NativeBatch"
+        ],
+        "edit": {
+          "status": "image",
+          "outputs": [
+            "36c688934c8043ea658c6b9268302d0793a8b57580e1b5724ae257a9d2b5e8f7"
+          ],
+          "host_s_nonsemantic": 38.46,
+          "peak_rss_kib_nonsemantic": 6246612
+        },
+        "equals_ledger": true,
+        "verify": "image"
+      },
+      {
+        "record": "0023-capacity-word-13-request.batch",
+        "store": "seed/xax_compiler_request.xax",
+        "before": "c788bb22db4d06351dee9c10f9ca5fd454d528dd",
+        "after": "ab9542505f3fcfc2d1697e3fc6fa8fbf8ede1eeb",
+        "record_sha256": "b9232b467c2c709b6540092d7a33839f6d70e5a7e1ad3e6e91bfa56446a502f4",
+        "mutations": 2,
+        "kinds": [
+          "NativeBatch"
+        ],
+        "edit": {
+          "status": "image",
+          "outputs": [
+            "c104d96f8db70b86083ae14cbb9978ee8c714b43434dffb02e7327e99370ff98"
+          ],
+          "host_s_nonsemantic": 38.6,
+          "peak_rss_kib_nonsemantic": 6246612
+        },
+        "equals_ledger": true,
+        "verify": "image"
+      },
+      {
+        "record": "0023-capacity-word-14.batch",
+        "store": "xax_compiler_driver_general.xax",
+        "before": "aa618a32e515049223f7dc7e10f9a899c21761fd",
+        "after": "7fef793f10e8fcf6a2054d3201375fb10635a094",
+        "record_sha256": "667d26b21b18a57d13e0ca2d15223db08ac495721f300ff477ca4b7197972dfe",
+        "mutations": 2,
+        "kinds": [
+          "NativeBatch"
+        ],
+        "edit": {
+          "status": "image",
+          "outputs": [
+            "da6011c7cb38048ab75949b12c7b972f9513877ec27120411a0a9cc4b7f7eff2"
+          ],
+          "host_s_nonsemantic": 38.25,
+          "peak_rss_kib_nonsemantic": 6246612
+        },
+        "equals_ledger": true,
+        "verify": "image"
+      },
+      {
+        "record": "0023-capacity-word-14-request.batch",
+        "store": "seed/xax_compiler_request.xax",
+        "before": "ab9542505f3fcfc2d1697e3fc6fa8fbf8ede1eeb",
+        "after": "6d3f37ef1180c8d63085b6031b619844e1b2bfdd",
+        "record_sha256": "6aba78876656d2650d23ea16dc46a3941aa73276dd8ed3434d9e964967986a15",
+        "mutations": 2,
+        "kinds": [
+          "NativeBatch"
+        ],
+        "edit": {
+          "status": "image",
+          "outputs": [
+            "0a86761f03b3c661f44d3710eb96c7a53079e86cfb11b594914565115d771d5c"
+          ],
+          "host_s_nonsemantic": 38.39,
+          "peak_rss_kib_nonsemantic": 6246612
+        },
+        "equals_ledger": true,
+        "verify": "image"
+      },
+      {
+        "record": "0023-capacity-word-15.batch",
+        "store": "xax_compiler_driver_general.xax",
+        "before": "7fef793f10e8fcf6a2054d3201375fb10635a094",
+        "after": "e9c8536f440494626969409bac3af0d499dea22a",
+        "record_sha256": "99901153c963ca668a77a03396f20c31b381a4210d7be3669490fc4c9e5d6110",
+        "mutations": 2,
+        "kinds": [
+          "NativeBatch"
+        ],
+        "edit": {
+          "status": "image",
+          "outputs": [
+            "534477d287e25c5d183d1d7bbea2e411f298c0025f456e49a15aa111f0f4d6dd"
+          ],
+          "host_s_nonsemantic": 38.67,
+          "peak_rss_kib_nonsemantic": 6246612
+        },
+        "equals_ledger": true,
+        "verify": "image"
+      },
+      {
+        "record": "0023-capacity-word-15-request.batch",
+        "store": "seed/xax_compiler_request.xax",
+        "before": "6d3f37ef1180c8d63085b6031b619844e1b2bfdd",
+        "after": "a97bf51d581c78ce6b72f4e31eb358e9a8852ee4",
+        "record_sha256": "28df13096c7621a5481bb3691866decc6a7ea01226a2bc2bb5b624d78aab0b65",
+        "mutations": 2,
+        "kinds": [
+          "NativeBatch"
+        ],
+        "edit": {
+          "status": "image",
+          "outputs": [
+            "ef4099cd2de8e258bb4a55b3de75fc0fc5c995a93950c3b00d2322513a579a24"
+          ],
+          "host_s_nonsemantic": 38.21,
+          "peak_rss_kib_nonsemantic": 6246612
+        },
+        "equals_ledger": true,
+        "verify": "image"
+      },
+      {
+        "record": "0023-capacity-word-16.batch",
+        "store": "xax_compiler_driver_general.xax",
+        "before": "e9c8536f440494626969409bac3af0d499dea22a",
+        "after": "8999b932ef1693efc5cf8289ce3a5e285aed8d42",
+        "record_sha256": "259be8d94b7defced655c9eb98009dca5ffa06f9d33e382d586d0a48ebd5e0ea",
+        "mutations": 2,
+        "kinds": [
+          "NativeBatch"
+        ],
+        "edit": {
+          "status": "image",
+          "outputs": [
+            "2fed273a81bd1f8deb8838713604b64930304ee90d3008cbf3e716d1559072aa"
+          ],
+          "host_s_nonsemantic": 38.72,
+          "peak_rss_kib_nonsemantic": 6246612
+        },
+        "equals_ledger": true,
+        "verify": "image"
+      },
+      {
+        "record": "0023-capacity-word-16-request.batch",
+        "store": "seed/xax_compiler_request.xax",
+        "before": "a97bf51d581c78ce6b72f4e31eb358e9a8852ee4",
+        "after": "4842aaf19c41b0da287c5162c56d7fd62fb96d8f",
+        "record_sha256": "76dc516f499bd1da9b52aa792e316a543a123e8eac09f2bd3dc00f204acacaf9",
+        "mutations": 2,
+        "kinds": [
+          "NativeBatch"
+        ],
+        "edit": {
+          "status": "image",
+          "outputs": [
+            "fdc31920febc28ae5fd4183c9925a4bfae1a10ed377b4f4a79c5daf225a5d860"
+          ],
+          "host_s_nonsemantic": 39.23,
+          "peak_rss_kib_nonsemantic": 6246612
+        },
+        "equals_ledger": true,
+        "verify": "image"
+      },
+      {
+        "record": "0023-capacity-word-17.batch",
+        "store": "xax_compiler_driver_general.xax",
+        "before": "8999b932ef1693efc5cf8289ce3a5e285aed8d42",
+        "after": "642cff353dd7d4eedeb502fa7e64276f6e060115",
+        "record_sha256": "ff24405496e69494af3ce91d8e8b87638934366da97c198e6a0153c5ad249138",
+        "mutations": 2,
+        "kinds": [
+          "NativeBatch"
+        ],
+        "edit": {
+          "status": "image",
+          "outputs": [
+            "1f95b06b44354d32c443f7456ad82dd554b87c899f9a470cdcd2e06a27d5cfce"
+          ],
+          "host_s_nonsemantic": 37.7,
+          "peak_rss_kib_nonsemantic": 6246612
+        },
+        "equals_ledger": true,
+        "verify": "image"
+      },
+      {
+        "record": "0023-capacity-word-17-request.batch",
+        "store": "seed/xax_compiler_request.xax",
+        "before": "4842aaf19c41b0da287c5162c56d7fd62fb96d8f",
+        "after": "38add3e749e81f25a76d890b053e7497ca6e5ffe",
+        "record_sha256": "ff98cc17139974cdb36c9603c47efd172f0dbbabf814f04caea53edbc08d9ab5",
+        "mutations": 2,
+        "kinds": [
+          "NativeBatch"
+        ],
+        "edit": {
+          "status": "image",
+          "outputs": [
+            "50a3fc9fea741dd5c6b5c76bce198f3c310c07bf0ffa1f0cbac4623d19b89344"
+          ],
+          "host_s_nonsemantic": 40.91,
+          "peak_rss_kib_nonsemantic": 6246612
+        },
+        "equals_ledger": true,
+        "verify": "image"
+      },
+      {
+        "record": "0023-capacity-word-18.batch",
+        "store": "xax_compiler_driver_general.xax",
+        "before": "642cff353dd7d4eedeb502fa7e64276f6e060115",
+        "after": "2189c5cb96231e81dbcb421eb02eae2eea87647a",
+        "record_sha256": "df04e8d340e969e6e3835cfcb9ee05b1b5e0d432be4e7eea0067c08090817947",
+        "mutations": 2,
+        "kinds": [
+          "NativeBatch"
+        ],
+        "edit": {
+          "status": "image",
+          "outputs": [
+            "e14f76502008e87e12444cc87de731663192d6b92103663cad2f607992c5118b"
+          ],
+          "host_s_nonsemantic": 41.36,
+          "peak_rss_kib_nonsemantic": 6246612
+        },
+        "equals_ledger": true,
+        "verify": "image"
+      },
+      {
+        "record": "0023-capacity-word-18-request.batch",
+        "store": "seed/xax_compiler_request.xax",
+        "before": "38add3e749e81f25a76d890b053e7497ca6e5ffe",
+        "after": "248b2e62b0a1ff28d782a4e2210078ed4d42a67f",
+        "record_sha256": "0fc62eb0d21f878a14717013fdd7a56c80b3de636bd73e21d8a60f966b838d63",
+        "mutations": 2,
+        "kinds": [
+          "NativeBatch"
+        ],
+        "edit": {
+          "status": "image",
+          "outputs": [
+            "0ae995552163a5e735222dcac2e6a3590510e8376547e801f379b52fa58afb13"
+          ],
+          "host_s_nonsemantic": 37.82,
+          "peak_rss_kib_nonsemantic": 6246612
         },
         "equals_ledger": true,
         "verify": "image"
       }
     ],
     "probe": {
-      "record_sha256": "0819efc1aff819daaead20728d235b5781c5ce5f6c4b4de8a3019807f1d8b068",
+      "record_sha256": "969907530e046cdee4d73d4eb022c1208cb06c4b55b72129956cb4ff43e24bce",
       "kinds": [
         "InsertPureNode"
       ],
       "edit": {
         "status": "image",
         "outputs": [
-          "4483ee69b2365208bfcb8669b1c1ff3cc2c1528bc420349d9954c2b8025a7ced"
+          "c4cd702f94c35b5d6a1ab734000a6088ec4eca7e5cd1a40ebaa26cd5ac1e8230"
         ],
-        "host_s_nonsemantic": 37.49,
-        "peak_rss_kib_nonsemantic": 6120012
+        "host_s_nonsemantic": 39.56,
+        "peak_rss_kib_nonsemantic": 6246612
       },
       "equals_reference": true,
       "verify": "image"
@@ -7993,10 +8749,14 @@
       "fallback_occurred": false,
       "fallback_reason": null
     },
-    "verification:hash": {
-      "component": "verification:hash",
-      "store_verification": "memoized",
-      "record": "verified-hash-9787bbcccc820d85771fe683947acdd3a59eb8e74b6f6598f5feacb425e4997b.bin"
+    "lowering:blake3-hash": {
+      "component": "lowering:blake3-hash",
+      "semantic_root": null,
+      "native_artifact_digest": null,
+      "requested_authority": "python",
+      "actual_authority": "python",
+      "fallback_occurred": false,
+      "fallback_reason": "lowered before the graph decoder the XAX backend reads can load (bootstrap order)"
     },
     "blake3-hash": {
       "component": "blake3-hash",
@@ -8007,10 +8767,14 @@
       "fallback_occurred": false,
       "fallback_reason": null
     },
-    "verification:store-decoder": {
-      "component": "verification:store-decoder",
-      "store_verification": "memoized",
-      "record": "verified-store-decoder-bf5bb337e0ca1114d16bb87586b7bc00aaf3d86f1f1c27cb50fea1433b517b4f.bin"
+    "lowering:store-decoder": {
+      "component": "lowering:store-decoder",
+      "semantic_root": null,
+      "native_artifact_digest": null,
+      "requested_authority": "python",
+      "actual_authority": "python",
+      "fallback_occurred": false,
+      "fallback_reason": "lowered before the graph decoder the XAX backend reads can load (bootstrap order)"
     },
     "store-decoder": {
       "component": "store-decoder",
@@ -8021,24 +8785,14 @@
       "fallback_occurred": false,
       "fallback_reason": null
     },
-    "verification:store-writer": {
-      "component": "verification:store-writer",
-      "store_verification": "memoized",
-      "record": "verified-store-writer-9b5810bdb734412fb1c337add782f53320a88d0b58863b198cf7bb54fb7dbefb.bin"
-    },
-    "store-writer": {
-      "component": "store-writer",
-      "semantic_root": "9c3acd2de08c1eceecd3cf1bde0a6cccc394864a66cfa617b0ba17b6cedb27c6",
-      "native_artifact_digest": "2d4a9e29b7bce014433522d4cb6dfa2de76b2cbafdfb67f95155bfc08ca285e2",
-      "requested_authority": "xax",
-      "actual_authority": "xax",
+    "lowering:graph-decoder": {
+      "component": "lowering:graph-decoder",
+      "semantic_root": null,
+      "native_artifact_digest": null,
+      "requested_authority": "python",
+      "actual_authority": "python",
       "fallback_occurred": false,
-      "fallback_reason": null
-    },
-    "verification:graph-decoder": {
-      "component": "verification:graph-decoder",
-      "store_verification": "memoized",
-      "record": "verified-graph-decoder-0fab5e3b7169fe2001597c5d40cdf1bcf882a46d58a138450d02cf652ab0ec50.bin"
+      "fallback_reason": "lowered before the graph decoder the XAX backend reads can load (bootstrap order)"
     },
     "graph-decoder": {
       "component": "graph-decoder",
@@ -8049,10 +8803,32 @@
       "fallback_occurred": false,
       "fallback_reason": null
     },
-    "verification:cfg": {
-      "component": "verification:cfg",
-      "store_verification": "memoized",
-      "record": "verified-cfg-f1975ba3ee5d7a9a2d9f41c2c6f85464f1f9ef9d1311306147b5bbf384602224.bin"
+    "lowering:x86-64-views-backend": {
+      "component": "lowering:x86-64-views-backend",
+      "semantic_root": null,
+      "native_artifact_digest": null,
+      "requested_authority": "python",
+      "actual_authority": "python",
+      "fallback_occurred": false,
+      "fallback_reason": "the XAX backend's own image is lowered by the bootstrap generator"
+    },
+    "x86-64-views-backend": {
+      "component": "x86-64-views-backend",
+      "semantic_root": "3024ab1c907799eae031cd8643a85dd8c66c2900e961f116305457ccf965b902",
+      "native_artifact_digest": "e56d99a79c527e72e00977a31e9ecd41202f7ec2ac7e694ceb39a75e653bfe7f",
+      "requested_authority": "xax",
+      "actual_authority": "xax",
+      "fallback_occurred": false,
+      "fallback_reason": null
+    },
+    "lowering:cfg": {
+      "component": "lowering:cfg",
+      "semantic_root": "852b583d5c5447ba5af47a74b5107a055aaab7891e9a4f8bb314f70cca664241",
+      "native_artifact_digest": "38ce7321dbf2abd1acae77b1014887091aa87bf881120350289692eeb5fcd77d",
+      "requested_authority": "xax",
+      "actual_authority": "xax",
+      "fallback_occurred": false,
+      "fallback_reason": null
     },
     "cfg": {
       "component": "cfg",
@@ -8063,10 +8839,14 @@
       "fallback_occurred": false,
       "fallback_reason": null
     },
-    "verification:typing": {
-      "component": "verification:typing",
-      "store_verification": "memoized",
-      "record": "verified-typing-33ae1bbe6ff6e9bbd65bc2189455f09e8a5c1ce370f20f74e83852e657a8cdae.bin"
+    "lowering:typing": {
+      "component": "lowering:typing",
+      "semantic_root": "140195313908255e20bbcc52c407d8a5ef57b7da285a744b03feea44b3150180",
+      "native_artifact_digest": "3ad607dc6b76518c4454c3187ceb06a937920a3d4309ca55b1325fa1c92cef6a",
+      "requested_authority": "xax",
+      "actual_authority": "xax",
+      "fallback_occurred": false,
+      "fallback_reason": null
     },
     "typing": {
       "component": "typing",
@@ -8077,10 +8857,14 @@
       "fallback_occurred": false,
       "fallback_reason": null
     },
-    "verification:store-verifier": {
-      "component": "verification:store-verifier",
-      "store_verification": "memoized",
-      "record": "verified-store-verifier-b3dd5437f53382f1785939439c339c37afcaf06436afeafa7cd9f4603771ef5e.bin"
+    "lowering:store-verifier": {
+      "component": "lowering:store-verifier",
+      "semantic_root": "0855ee44f9db404421f2df3143b2eee843dc68f5fa72da648221e9a52aae426d",
+      "native_artifact_digest": "3c9392cd69314c3569002d321337f62b80584587ebeae295eea0e050e1dfd029",
+      "requested_authority": "xax",
+      "actual_authority": "xax",
+      "fallback_occurred": false,
+      "fallback_reason": null
     },
     "store-verifier": {
       "component": "store-verifier",
@@ -8090,12 +8874,34 @@
       "actual_authority": "xax",
       "fallback_occurred": false,
       "fallback_reason": null,
-      "declined_inputs": 82191
+      "declined_inputs": 86250
     },
-    "verification:xax_x86_64_general": {
-      "component": "verification:xax_x86_64_general",
-      "store_verification": "memoized",
-      "record": "verified-xax_x86_64_general-a26a8424302169d2a3298df13d423292ca2b0814a33cf0c5f6f0f17f4c362340.bin"
+    "lowering:store-writer": {
+      "component": "lowering:store-writer",
+      "semantic_root": "9c3acd2de08c1eceecd3cf1bde0a6cccc394864a66cfa617b0ba17b6cedb27c6",
+      "native_artifact_digest": "2d4a9e29b7bce014433522d4cb6dfa2de76b2cbafdfb67f95155bfc08ca285e2",
+      "requested_authority": "xax",
+      "actual_authority": "xax",
+      "fallback_occurred": false,
+      "fallback_reason": null
+    },
+    "store-writer": {
+      "component": "store-writer",
+      "semantic_root": "9c3acd2de08c1eceecd3cf1bde0a6cccc394864a66cfa617b0ba17b6cedb27c6",
+      "native_artifact_digest": "2d4a9e29b7bce014433522d4cb6dfa2de76b2cbafdfb67f95155bfc08ca285e2",
+      "requested_authority": "xax",
+      "actual_authority": "xax",
+      "fallback_occurred": false,
+      "fallback_reason": null
+    },
+    "lowering:x86-64-general-frontend": {
+      "component": "lowering:x86-64-general-frontend",
+      "semantic_root": "b69530802deb2b142e89fba267999950be9d567ad980ab5da965866abc2b2105",
+      "native_artifact_digest": "0dc4e1dda77f60a82015f303208dce5c0feb020d79695f3f5ef82dd2360ef8ef",
+      "requested_authority": "xax",
+      "actual_authority": "xax",
+      "fallback_occurred": false,
+      "fallback_reason": null
     },
     "x86-64-general-frontend": {
       "component": "x86-64-general-frontend",
@@ -8106,10 +8912,14 @@
       "fallback_occurred": false,
       "fallback_reason": null
     },
-    "verification:riscv64-encoder": {
-      "component": "verification:riscv64-encoder",
-      "store_verification": "memoized",
-      "record": "verified-riscv64-encoder-0ca76281e40c3ec976a2f0d5ddcb5344b52fe6028cab93428d181a2c26b207df.bin"
+    "lowering:riscv64-encoder": {
+      "component": "lowering:riscv64-encoder",
+      "semantic_root": "2f1cdd6cea169e7ff788d43b7e11068ccf802a2b090ee918128e81b9f7b2884f",
+      "native_artifact_digest": "fffd2989c93f099ff65c140bfd12ed2ac1b613525ac6fa31d1298ce83597dbd3",
+      "requested_authority": "xax",
+      "actual_authority": "xax",
+      "fallback_occurred": false,
+      "fallback_reason": null
     },
     "riscv64-encoder": {
       "component": "riscv64-encoder",
@@ -8120,10 +8930,14 @@
       "fallback_occurred": false,
       "fallback_reason": null
     },
-    "verification:xax_riscv64_backend": {
-      "component": "verification:xax_riscv64_backend",
-      "store_verification": "memoized",
-      "record": "verified-xax_riscv64_backend-00c722f7cbd85ac55bd18b6ad35a43203487280d108a2bb34a8fd4e0b8c06ad1.bin"
+    "lowering:riscv64-backend": {
+      "component": "lowering:riscv64-backend",
+      "semantic_root": "a87d15799d6ad47d734118861133f271625d0927d39bb0d35007065b8dbd3b22",
+      "native_artifact_digest": "80d243f68383bbe6cded40d2a5927d52a29a17feab5a72608875708f7a992e15",
+      "requested_authority": "xax",
+      "actual_authority": "xax",
+      "fallback_occurred": false,
+      "fallback_reason": null
     },
     "riscv64-backend": {
       "component": "riscv64-backend",
@@ -8134,10 +8948,14 @@
       "fallback_occurred": false,
       "fallback_reason": null
     },
-    "verification:xax_aarch64_general": {
-      "component": "verification:xax_aarch64_general",
-      "store_verification": "memoized",
-      "record": "verified-xax_aarch64_general-f4e0a0a18a2c1873bdfba43354fd4d492b7ee8b20aacbfb40eaa083c72b41a75.bin"
+    "lowering:aarch64-general": {
+      "component": "lowering:aarch64-general",
+      "semantic_root": "63de2b1b90430c216a96edb36aae5d0a6e3bc413694b2fefff928402e83464c3",
+      "native_artifact_digest": "b6081ea65dff53064aa39e3cc5aabc2df63aaaaa73313382e6fbe9a5b72d2685",
+      "requested_authority": "xax",
+      "actual_authority": "xax",
+      "fallback_occurred": false,
+      "fallback_reason": null
     },
     "aarch64-general": {
       "component": "aarch64-general",
@@ -8148,10 +8966,14 @@
       "fallback_occurred": false,
       "fallback_reason": null
     },
-    "verification:xax_android_elf": {
-      "component": "verification:xax_android_elf",
-      "store_verification": "memoized",
-      "record": "verified-xax_android_elf-1f7f9245915cedc4b290ca47a5cc0b4bcbb9cadaccefb2de594cb074304bbd99.bin"
+    "lowering:android-elf": {
+      "component": "lowering:android-elf",
+      "semantic_root": "f48a64b049e5b45ecebe982bf4c5c8f19c4891799cca9418ec5216184e32e464",
+      "native_artifact_digest": "381fd4989b24f1d73144e891be535b2df5ba51ff9fa9fd0850bfb505399b2530",
+      "requested_authority": "xax",
+      "actual_authority": "xax",
+      "fallback_occurred": false,
+      "fallback_reason": null
     },
     "android-elf": {
       "component": "android-elf",
@@ -8162,10 +8984,14 @@
       "fallback_occurred": false,
       "fallback_reason": null
     },
-    "verification:xax_dex_bridge": {
-      "component": "verification:xax_dex_bridge",
-      "store_verification": "memoized",
-      "record": "verified-xax_dex_bridge-867bdaa0286ac10635fcf162503487f1727c85015f3db5ddedf8528322e8f648.bin"
+    "lowering:dex-bridge": {
+      "component": "lowering:dex-bridge",
+      "semantic_root": "f12fab81bbb72e0f6333f2b56e837e180060b54ddca3e18916d788d2d1200e70",
+      "native_artifact_digest": "2bdeaae3e07c19e144628121aa7e41fe043ff03a00b3023f31e5f1b260f862b3",
+      "requested_authority": "xax",
+      "actual_authority": "xax",
+      "fallback_occurred": false,
+      "fallback_reason": null
     },
     "dex-bridge": {
       "component": "dex-bridge",
@@ -8176,10 +9002,14 @@
       "fallback_occurred": false,
       "fallback_reason": null
     },
-    "verification:xax_android_rules": {
-      "component": "verification:xax_android_rules",
-      "store_verification": "memoized",
-      "record": "verified-xax_android_rules-cbc0d125abebfe5ecd1147676a843084fc37c2e3b60b6518c09ef6f46e52a091.bin"
+    "lowering:android-rules": {
+      "component": "lowering:android-rules",
+      "semantic_root": "2c8357458aad64c0bae81149aed2a665b31c635f25d4b03e891c442e1431ab04",
+      "native_artifact_digest": "48a076a1f111483a9191861d8998b890257d4c894db1c2022ab7049f917b7564",
+      "requested_authority": "xax",
+      "actual_authority": "xax",
+      "fallback_occurred": false,
+      "fallback_reason": null
     },
     "android-rules": {
       "component": "android-rules",
@@ -8190,10 +9020,14 @@
       "fallback_occurred": false,
       "fallback_reason": null
     },
-    "verification:xax_android_resources": {
-      "component": "verification:xax_android_resources",
-      "store_verification": "memoized",
-      "record": "verified-xax_android_resources-dea39e8ac49e5af6f4d65dcf2ddfe42713e192c6e8182641f8a81986fbc8217e.bin"
+    "lowering:android-resources": {
+      "component": "lowering:android-resources",
+      "semantic_root": "8ddea017fc9e996438c8bafb0fdee1b401476ca29d9775844abf959175681446",
+      "native_artifact_digest": "5b651c84d4e2e87796fca1c22f163754589d7db5e556cc5c8e2d536550894bfe",
+      "requested_authority": "xax",
+      "actual_authority": "xax",
+      "fallback_occurred": false,
+      "fallback_reason": null
     },
     "android-resources": {
       "component": "android-resources",
@@ -8204,10 +9038,14 @@
       "fallback_occurred": false,
       "fallback_reason": null
     },
-    "verification:xax_apk_container": {
-      "component": "verification:xax_apk_container",
-      "store_verification": "memoized",
-      "record": "verified-xax_apk_container-d01ab33a3fba4e43ebf8d22165265a97274bc1447e976200eaeb8783c4c15aaa.bin"
+    "lowering:apk-container": {
+      "component": "lowering:apk-container",
+      "semantic_root": "6086d2d04c8ca5b47103daf258148f3fc3bec0fa74652207453aa8f88e6ee5d3",
+      "native_artifact_digest": "75af2a00f04cdaf77b2cdc14b7161151f3bfac0ab28e2226ab68ddfa8ee81dd9",
+      "requested_authority": "xax",
+      "actual_authority": "xax",
+      "fallback_occurred": false,
+      "fallback_reason": null
     },
     "apk-container": {
       "component": "apk-container",
@@ -8218,10 +9056,14 @@
       "fallback_occurred": false,
       "fallback_reason": null
     },
-    "verification:xax_dex_jvm": {
-      "component": "verification:xax_dex_jvm",
-      "store_verification": "memoized",
-      "record": "verified-xax_dex_jvm-5815c98fb08970000a8a91ead248d4e1547ebfeb8ce53656ecaec699ecb67f9a.bin"
+    "lowering:dex-jvm": {
+      "component": "lowering:dex-jvm",
+      "semantic_root": "c164f77be8300ba6ac99df4cd0c83580b9376e360d5933783c33c5a60108d9fc",
+      "native_artifact_digest": "3cff70b2d2b98738e4832eddc8370d126cfdb3b347f2fb5a936213c601512c6d",
+      "requested_authority": "xax",
+      "actual_authority": "xax",
+      "fallback_occurred": false,
+      "fallback_reason": null
     },
     "dex-jvm": {
       "component": "dex-jvm",
@@ -8232,10 +9074,14 @@
       "fallback_occurred": false,
       "fallback_reason": null
     },
-    "verification:xax_dex_writer": {
-      "component": "verification:xax_dex_writer",
-      "store_verification": "memoized",
-      "record": "verified-xax_dex_writer-1bbfa455c68c6e51fd7a1479d387a069494925ab461d3fc156c82b701f25b4c7.bin"
+    "lowering:dex-writer": {
+      "component": "lowering:dex-writer",
+      "semantic_root": "5115e051acdc0736cf6106e985400ab678820f49ce95f89da25ee4a59d676f6e",
+      "native_artifact_digest": "855079a140bdba0dad6a2117e6b413bba5e982cdeb98002fe4a51b011e341a80",
+      "requested_authority": "xax",
+      "actual_authority": "xax",
+      "fallback_occurred": false,
+      "fallback_reason": null
     },
     "dex-writer": {
       "component": "dex-writer",
