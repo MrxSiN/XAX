@@ -1785,3 +1785,32 @@ Does not supersede an earlier section. An independent audit of both repositories
   byte-identical, checked by `tests/test_agent_instructions.py` (`AGENT.md` had lacked the seed-rotation rule).
 - **Not run on the audit host** (Windows, no Linux): the ledger tools, self-hosting evidence and every
   `XAX_REQUIRE_NATIVE=1` test. No R level, B level or performance figure changed.
+
+## Android R4 re-measured, ledger 0025 and the Windows stack probe — 2026-11-11 (ADR-394)
+
+Built on ledger 0024 (the x86-64 signed-compare fix, commit `8d83f98`).
+
+- **Android R4: FAIL, unchanged.** The counter was re-measured on the Pixel 8 Pro against the Java + NDK, Java and
+  Kotlin twins (`XAX_BENCHMARKS.md` §15.37): medians 168 / 166 / 167 / 162 ms, no arm significantly faster. An
+  `atrace` breakdown puts everything an arm's own code can touch inside about 7 ms of 150, the same on every arm. The
+  benchmark is framework-bound; the row needs a workload whose time is generated code before a compiler change can
+  show.
+- **Ledger 0025** (ADR-394, `bootstrap/evolution/native/0025`): the AArch64 register lowering no longer runs the
+  copies of an edge that leaves a loop before the test. BBC's mandelbrot on the Pixel: 0.928x the cycles, factor
+  0.911x (§15.38); executables 8% to 12% larger. Four stores; `evolve.sh check` passes; the self-build is a fixed
+  point (`fb31b03b…`, not rotated). `integration/bfx/bbc.xax` rebuilt (root `eabd31c1…`, 31 min 49 s), `bbc.exe`
+  built by the self-built compiler (4 min 55 s, SHA-256 `462d2cc2…`).
+- **First device runs of the native `bbc.exe`'s output**: 18 programs at -O0/-O1 for Android ARM64, 70 of 72 builds,
+  all 70 runs correct on the Pixel, before and after.
+- **OI-56 (new, OPEN):** the natively built `bbc.exe` does not start on Windows 11: a 78 KB frame with no stack
+  probe. Wine hides it. The measurements used a copy with its header's stack commit raised.
+- **Tests** (Linux x86-64, WSL 2, `XAX_REQUIRE_NATIVE=1`): the native AArch64 and Android self-hosting tests and
+  the Android tests on the 0025 stores (158 passed, 867 subtests); on the committed tree,
+  `test_xax_selfhost_general_build.py`, `test_store_regeneration.py`, `test_status_docs.py`,
+  `test_replacement_matrix.py` and the two AArch64 allocator tests: 114 passed, 91 skipped, 215 subtests passed.
+- **Not done:** seed rotation and the B-level records (a reviewed step, together with 0024); `tools/check.py` under
+  Wine and qemu (neither is on the host); BBC's Windows outputs; the Linux AArch64 `jsonmin` re-measurement;
+  the Windows seed.
+- **Next:** rotate the seed for 0024 and 0025 after review; fix OI-56 natively; share stubs between edges with equal
+  copies if size matters; the remaining measured AArch64 waste in BBC's loops is a zero extension after each byte
+  load (1.4% of mandelbrot's cycles by the same `nop` experiment) and the clear loop's load-subtract-store.

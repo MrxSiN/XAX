@@ -1,0 +1,173 @@
+{
+ "arms": {
+  "clang_ndk_java": {
+   "median_slice_ms": {
+    "ActivityThreadMain": 4.153,
+    "Choreographer#doFrame #": 34.43,
+    "activityResume": 12.857,
+    "activityStart": 14.478,
+    "bindApplication": 11.28,
+    "inflate": 2.536,
+    "performCreate:xax.counter.CounterActivity": 9.711,
+    "traversal": 29.975
+   },
+   "median_total_time_ms": 151.5,
+   "perform_create_minus_inflate_ms": [
+    6.488,
+    6.598,
+    7.972,
+    6.085,
+    7.091,
+    7.414,
+    6.12,
+    7.325,
+    9.775,
+    6.986,
+    12.601,
+    7.649
+   ],
+   "total_time_ms": [
+    151,
+    163,
+    146,
+    152,
+    133,
+    150,
+    148,
+    159,
+    164,
+    160,
+    152,
+    149
+   ]
+  },
+  "java_d8": {
+   "median_slice_ms": {
+    "ActivityThreadMain": 4.182,
+    "Choreographer#doFrame #": 32.494,
+    "activityResume": 13.295,
+    "activityStart": 14.33,
+    "bindApplication": 10.837,
+    "inflate": 2.427,
+    "performCreate:xax.counter.CounterActivity": 9.636,
+    "traversal": 27.867
+   },
+   "median_total_time_ms": 150.5,
+   "perform_create_minus_inflate_ms": [
+    7.37,
+    6.82,
+    6.554,
+    6.547,
+    7.287,
+    6.318,
+    7.384,
+    8.294,
+    6.063,
+    8.182,
+    6.358,
+    8.607
+   ],
+   "total_time_ms": [
+    154,
+    146,
+    145,
+    142,
+    157,
+    140,
+    150,
+    195,
+    149,
+    155,
+    151,
+    158
+   ]
+  },
+  "kotlin_r8": {
+   "median_slice_ms": {
+    "ActivityThreadMain": 4.485,
+    "Choreographer#doFrame #": 33.374,
+    "activityResume": 12.922,
+    "activityStart": 14.663,
+    "bindApplication": 10.979,
+    "inflate": 2.489,
+    "performCreate:xax.counter.CounterActivity": 10.219,
+    "traversal": 29.148
+   },
+   "median_total_time_ms": 146.0,
+   "perform_create_minus_inflate_ms": [
+    7.748,
+    7.798,
+    7.506,
+    6.052,
+    8.332,
+    6.452,
+    7.461,
+    10.879,
+    8.623,
+    9.561,
+    6.433,
+    5.995
+   ],
+   "total_time_ms": [
+    201,
+    186,
+    144,
+    139,
+    155,
+    156,
+    137,
+    133,
+    151,
+    135,
+    148,
+    135
+   ]
+  },
+  "xax": {
+   "median_slice_ms": {
+    "ActivityThreadMain": 5.068,
+    "Choreographer#doFrame #": 33.123,
+    "activityResume": 13.008,
+    "activityStart": 14.604,
+    "bindApplication": 10.667,
+    "inflate": 2.434,
+    "performCreate:xax.counter.CounterActivity": 9.367,
+    "traversal": 28.752
+   },
+   "median_total_time_ms": 152.0,
+   "perform_create_minus_inflate_ms": [
+    7.578,
+    6.45,
+    6.461,
+    6.987,
+    9.078,
+    6.172,
+    6.378,
+    6.838,
+    7.047,
+    9.817,
+    6.218,
+    6.776
+   ],
+   "total_time_ms": [
+    160,
+    164,
+    160,
+    134,
+    144,
+    163,
+    155,
+    155,
+    139,
+    149,
+    144,
+    148
+   ]
+  }
+ },
+ "date": "2026-11-11",
+ "device": "Pixel 8 Pro, google/husky/husky:17/CP4A.261105.040.A1/16581829, on battery, adb over Wi-Fi",
+ "format": "xax-android-counter-startup-trace-v1",
+ "label": "MEASURED",
+ "method": "per arm 12 cold starts in rotating rounds after install, speed compile and 3 warmups; atrace (am wm view dalvik) around each am start -W; durations of the app process's slices by name"
+}

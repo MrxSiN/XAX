@@ -590,3 +590,14 @@ Ledger 0023 (ADR-391) made the per-view value capacity a workspace word; the com
 was rebuilt with `rebuild.sh` (18 min 41 s, root `1e253130…`, verified) and the seed built `bbc.exe` (36,319,232
 bytes); `tools/check.py`: 372 of 372 compiles, 488 runs, no mismatch, five error paths as expected. Evidence:
 [production_driver_0023_evidence.json](production_driver_0023_evidence.json).
+
+## BBC's driver after ledger 0025: loop-exit copies on AArch64 — 2026-11-11
+
+Ledger 0025 (ADR-394) keeps the copies of an edge that leaves a loop out of the loop in the AArch64 register lowering.
+`bbc.xax` was rebuilt with `rebuild.sh` from the new production driver by the self-built compiler (31 min 49 s, root
+`eabd31c1…`, verified) and that compiler built `bbc.exe` (4 min 55 s, 36,319,744 bytes, SHA-256 `462d2cc2…`).
+Checks on hardware instead of emulators: `tools/device_bench.py` builds 18 programs at -O0/-O1 for Android ARM64 on
+Windows 11 and runs them on a Pixel 8 Pro: 70 of 72 builds (mandelbrot -O0 declines, as before), 70 runs matching.
+Mandelbrot runs in 0.928x the cycles of the ledger 0023 build's output. `tools/check.py` (Wine, qemu) was not run,
+and `bbc.exe` itself needs OI-56's workaround to start on Windows. Evidence:
+[loop_exit_copies_evidence.json](loop_exit_copies_evidence.json).

@@ -1001,6 +1001,72 @@ Same harness, arms, and XAX image (`049cf5ee…`) as §15.35, on an original Goo
 
 XAX is 0.898444x the fastest non-XAX arm, p < 1e-6: the lead holds on a second microarchitecture and kernel. A OnePlus One (`bacon`, Snapdragon 801) was also tried: it is 32-bit ARMv7 (`armeabi-v7a` only), so the AArch64 image gets `Exec format error`; XAX has no 32-bit ARM target.
 
+#### 15.37 Android counter cold start re-measured, with a start-up trace (MEASURED, 2026-11-11)
+
+Does not supersede §15.34: the cited evidence file is unchanged. Same harness, arms and toolchains as §15.34 on the
+same Pixel 8 Pro after a system update (`CP4A.261105.040.A1`, kernel `6.1.172`), on battery over Wi-Fi `adb`.
+
+| Arm | Median `TotalTime` (ms) | Stdev (ms) | Untracked launches |
+|---|---:|---:|---:|
+| XAX | 168.0 | 30.19 | 0 |
+| Java + NDK (`clang -O2`) | 166.0 | 30.44 | 0 |
+| Java (`javac` + `d8`) | 167.0 | 28.93 | 1 |
+| Kotlin (`kotlinc` + R8) | 162.0 | 30.15 | 0 |
+
+90 cold starts per arm in six blocks (`benchmarks/android_counter_twin_rerun_2026-11-11.json`). One Java launch was
+not tracked by Android, so the harness withholds its ratios; block medians rose from about 137 to 204 ms as the phone
+warmed (39 °C at the end), on every arm alike. XAX against each other arm, one-sided Mann-Whitney: p = 0.57, 0.67 and
+0.53 that XAX is faster, so no arm leads. A first run the same evening (medians 143.5 to 146 ms) lost 20 launches per
+arm while the screen was off and is not recorded. **Android R4: FAIL** (still a tie; XAX's median is 1.037x the
+fastest arm's).
+
+Where the time goes (`benchmarks/android_counter_startup_trace.py`, `atrace` slices of the app process, 12 cold
+starts per arm, medians in ms; `android_counter_startup_trace_2026-11-11.json`):
+
+| Slice | XAX | Java + NDK | Java | Kotlin |
+|---|---:|---:|---:|---:|
+| `bindApplication` | 10.67 | 11.28 | 10.84 | 10.98 |
+| `activityStart` | 14.60 | 14.48 | 14.33 | 14.66 |
+| of it `performCreate` | 9.37 | 9.71 | 9.64 | 10.22 |
+| of it `inflate` | 2.43 | 2.54 | 2.43 | 2.49 |
+| `activityResume` | 13.01 | 12.86 | 13.30 | 12.92 |
+| first frames (`Choreographer#doFrame`) | 33.12 | 34.43 | 32.49 | 33.37 |
+| `TotalTime` | 152.0 | 151.5 | 150.5 | 146.0 |
+
+Everything an arm's own code can touch is inside `performCreate` less `inflate`: 6.8, 7.2, 7.1 and 7.6 ms at the
+median, with the same floor on every arm (6.0 to 6.2 ms minimum), and most of that is the framework's own
+`Activity.onCreate` and window set-up. No slice separates the arms; the library load and the two 96- and 128-byte
+native functions are below what the trace resolves. The rest is process start, `bindApplication`, resume, the first
+frames and time outside the app process. No compiler change can move this benchmark by a measurable amount, so the
+Android row needs a workload whose time is XAX-generated code (§15.38 is one such measurement, not yet an R4 arm).
+
+#### 15.38 BBC's Android ARM64 executables on a Pixel 8 Pro, before and after ledger 0025 (ADR-394; MEASURED, 2026-11-11)
+
+The first device runs of executables built by the natively built `bbc.exe`. Before: the committed driver after
+ledger 0023. After: the driver after ledger 0025. Both compilers build on the Windows host; the executables run on
+the phone pinned to the Cortex-X3 core (`taskset 100`); brainfry `e55d457` (`bfnative --target linux-aarch64`) is the
+outside arm. Driver: `integration/bfx/transactions/production_driver/native/tools/device_bench.py`; evidence:
+`integration/bfx/loop_exit_copies_evidence.json` (raw samples).
+
+| Program (-O1) | Arm | Instructions (M) | Cycles (M) | Wall median (ms) | Bytes |
+|---|---|---:|---:|---:|---:|
+| mandelbrot | before | 11,992 | 2,863 | 1,171 | 67,944 |
+| | after | 10,568 | 2,656 | 1,119 | 74,572 |
+| | brainfry | 10,115 | 3,027 | 1,229 | 56,320 |
+| factor | before | 587.2 | 152.8 | 220 | 21,816 |
+| | after | 525.3 | 139.3 | 209 | 23,608 |
+| | brainfry | 525.5 | 164.1 | 215 | 19,008 |
+| life | before | 90.2 | 26.8 | 127 | 19,236 |
+| | after | 82.0 | 26.1 | 127 | 20,724 |
+| | brainfry | 62.7 | 24.1 | 120 | 15,152 |
+
+Instructions and cycles are user-mode `simpleperf stat` counts (median of three; the instruction counts repeat
+exactly); wall time is the median of 15 interleaved rounds and includes about 45 ms of process start. After ledger
+0025 BBC runs mandelbrot in 0.878x and factor in 0.849x brainfry's cycles; life still trails (1.086x). Correctness:
+18 programs at -O0 and -O1, 70 of 72 builds per compiler (mandelbrot -O0 declines in both) and every device run
+matches the expected output with exit 0. The host copy of `bbc.exe` has its stack commit patched (OI-56). One
+device, one session, on battery; not an R4 claim.
+
 ## Part III — Host setup
 
 ### Host setup for the full test and benchmark suite

@@ -1590,7 +1590,8 @@ class _Lowering:
         )
         # Copies for the taken edge run before the test when nothing the test or the
         # other path reads lives where they write: the branch then goes straight to its block.
-        if true_moves and true_target != following:
+        # Not for an edge that leaves a loop (ledger 0025): its copies would run on every pass.
+        if true_moves and true_target != following and self.depth.get(true_target, 0) >= self.depth.get(block_index, 0):
             written = {destination for destination, _source in true_moves}
             read = {source for _destination, source in false_moves if source[0] != "const"}
             read |= {self.location(value) for value in self.live_in[false_target] if value in self.intervals}

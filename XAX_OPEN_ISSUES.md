@@ -56,6 +56,7 @@ Only issues requiring implementation, target, ecosystem, or benchmark evidence a
 - [OI-53 — `xaxc verify` rejects byte-view widening](#oi-53--xaxc-verify-rejects-byte-view-widening)
 - [OI-54 — Function views past 2^18 values (BBC's hanoi -O0)](#oi-54--function-views-past-218-values-bbcs-hanoi--o0)
 - [OI-55 — Native x86-64 signed compares below 32 bits](#oi-55--native-x86-64-signed-compares-below-32-bits)
+- [OI-56 — PE images take large frames without a stack probe](#oi-56--pe-images-take-large-frames-without-a-stack-probe)
 
 ## OI-02 — Canonical object and graph-fragment granularity
 
@@ -868,3 +869,22 @@ compare below 32 bits.
 rebuilt and rotated Linux seed, BBC's driver rebuilt from it, and a Windows seed cut from it; then
 `tests/test_x86_64_narrow_signed_compare.py`'s cases executed through the native compiler on Linux and Windows,
 equal to the reference executor. Do not substitute a Python implementation.
+
+## OI-56 — PE images take large frames without a stack probe
+
+**Status: OPEN (2026-11-11).** The native x86-64 general backend allocates a PE function's frame with one
+`sub rsp, N`. Windows commits a thread's stack one guard page at a time, so a frame larger than a page that is first
+written below the guard page faults. The Python reference probes each page for the PE profile
+(`xax_x86_64._reserve_stack`); the native backend does not, and the PE header commits only 4 KiB of the 1 MiB
+reserve.
+
+Reproduced on Windows 11 (build 26300) with the `bbc.exe` the seed `a35fd59f…` builds from the committed
+`integration/bfx/bbc.xax` (36,319,232 bytes, SHA-256 `445b2fb2…`): every invocation, `bbc.exe compile windows-x86_64
+hello.exe < hello.bf` included, ends with exception `0xC0000005` at image offset `0x15e1817`, the first store after
+`sub rsp, 0x13038` (gdb: `mov [rsp+0x20], rcx`). Wine commits the whole stack, so the Wine campaigns pass. With
+`SizeOfStackCommit` set to `SizeOfStackReserve` in a copy's header the same file compiles and its outputs run on
+Windows 11 and on a Pixel 8 Pro; the 2026-11-11 device measurements use such a copy.
+
+**Evidence that closes it.** A native transaction that makes PE frames safe (page probes in the frame and register
+prologues as the reference emits them, or a header that commits the reserve), the Windows seed and `bbc.exe` rebuilt,
+and BBC's checks run on Windows itself, not under Wine.

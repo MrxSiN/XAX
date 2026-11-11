@@ -1,0 +1,831 @@
+{
+ "report": "android_device_benchmark",
+ "date": "2026-11-11",
+ "status": "MEASURED",
+ "scope": "bbc.exe built from XAX's production driver after ledger 0023 (before) and after ledger 0025 (after), building android-arm64 executables on a Windows 11 host and running them on a Pixel 8 Pro over adb; 18 programs at O0 and O1; brainfry e55d457 linux-aarch64 as the outside arm for mandelbrot, factor and life",
+ "method": "XAX compiler/integration/bfx/transactions/production_driver/native/tools/device_bench.py: output bytes and exit 0 of every built program compared with the expected output on the device; for the three compute programs, user-mode instructions and cycles from simpleperf stat (3 runs) and wall time over 15 interleaved rounds (device clock, includes process start), all pinned with taskset 100 (Cortex-X3)",
+ "limitations": [
+  "one device and session, on battery, adb over Wi-Fi",
+  "the host copy of each bbc.exe has SizeOfStackCommit raised to SizeOfStackReserve: as built it faults at start on Windows 11 (XAX OI-56)",
+  "mandelbrot O0 declines at build with both compilers"
+ ],
+ "xax": {
+  "before": "ledger 0023 (seed a35fd59f, integration/bfx/bbc.xax root 1e253130)",
+  "after": "ledger 0025 (self-built compiler fb31b03b, bbc.xax root eabd31c1)"
+ },
+ "bbc_exe_sha256": {
+  "before": "dd0447150bfb64cc3cab25c2f45d8156b035aa2c78566bf1a6ea05b6a60fa5f0",
+  "after": "462d2cc2e3bc1390ce64ff43f74612f6daf3cfd807a1b11ab824f0fbdcc14f42"
+ },
+ "programs": {
+  "binary_echo": {
+   "before-O0": {
+    "build_exit": 0,
+    "exe_bytes": 2024,
+    "exe_sha256": "f202ece990ddbd5646ae333b9a2a3564ea1519029c053f77e4c382e00d0253c5",
+    "run_exit": 0,
+    "output_matches": true
+   },
+   "before-O1": {
+    "build_exit": 0,
+    "exe_bytes": 2024,
+    "exe_sha256": "f202ece990ddbd5646ae333b9a2a3564ea1519029c053f77e4c382e00d0253c5",
+    "run_exit": 0,
+    "output_matches": true
+   },
+   "after-O0": {
+    "build_exit": 0,
+    "exe_bytes": 2024,
+    "exe_sha256": "f202ece990ddbd5646ae333b9a2a3564ea1519029c053f77e4c382e00d0253c5",
+    "run_exit": 0,
+    "output_matches": true
+   },
+   "after-O1": {
+    "build_exit": 0,
+    "exe_bytes": 2024,
+    "exe_sha256": "f202ece990ddbd5646ae333b9a2a3564ea1519029c053f77e4c382e00d0253c5",
+    "run_exit": 0,
+    "output_matches": true
+   }
+  },
+  "bottles": {
+   "before-O0": {
+    "build_exit": 0,
+    "exe_bytes": 76492,
+    "exe_sha256": "1c1ea22b3317f4d907d101e8498383bb53d56f7ecfa21f8d9fdf0d148021fdaf",
+    "run_exit": 0,
+    "output_matches": true
+   },
+   "before-O1": {
+    "build_exit": 0,
+    "exe_bytes": 26372,
+    "exe_sha256": "ca914a480939dda0094a8d6aa43fdc6d02560c9203de1e14d314b74b880d806f",
+    "run_exit": 0,
+    "output_matches": true
+   },
+   "after-O0": {
+    "build_exit": 0,
+    "exe_bytes": 78956,
+    "exe_sha256": "b999c6b52578a2dd3e31896b6fffd001f1b1bb4ddd88c6af900d61c07d773ef1",
+    "run_exit": 0,
+    "output_matches": true
+   },
+   "after-O1": {
+    "build_exit": 0,
+    "exe_bytes": 28340,
+    "exe_sha256": "35f13b7920d85a2da9ea36cad57ab49e49ecc3b7328ba26a9ee9dcfe1da943f7",
+    "run_exit": 0,
+    "output_matches": true
+   }
+  },
+  "checksum_four": {
+   "before-O0": {
+    "build_exit": 0,
+    "exe_bytes": 3056,
+    "exe_sha256": "449a9b2fdf4989f20cfac5d7ada4c74e6001fd7d0daa022d9160a479d6367006",
+    "run_exit": 0,
+    "output_matches": true
+   },
+   "before-O1": {
+    "build_exit": 0,
+    "exe_bytes": 2608,
+    "exe_sha256": "b742ab2b056aeeda3d5a1f2ef5f45f7cf001c85a5766c13f489225fb1516e01c",
+    "run_exit": 0,
+    "output_matches": true
+   },
+   "after-O0": {
+    "build_exit": 0,
+    "exe_bytes": 3056,
+    "exe_sha256": "449a9b2fdf4989f20cfac5d7ada4c74e6001fd7d0daa022d9160a479d6367006",
+    "run_exit": 0,
+    "output_matches": true
+   },
+   "after-O1": {
+    "build_exit": 0,
+    "exe_bytes": 2608,
+    "exe_sha256": "b742ab2b056aeeda3d5a1f2ef5f45f7cf001c85a5766c13f489225fb1516e01c",
+    "run_exit": 0,
+    "output_matches": true
+   }
+  },
+  "clear_set": {
+   "before-O0": {
+    "build_exit": 0,
+    "exe_bytes": 3964,
+    "exe_sha256": "e3b6e3f55c2804f9889519934b20bcfa48a8bf7f6fd648a7a89fc5bbf495edc8",
+    "run_exit": 0,
+    "output_matches": true
+   },
+   "before-O1": {
+    "build_exit": 0,
+    "exe_bytes": 2372,
+    "exe_sha256": "893384dacc10f03d9602490d6f510babe49831de930c65cfbaf1527c6adafaa9",
+    "run_exit": 0,
+    "output_matches": true
+   },
+   "after-O0": {
+    "build_exit": 0,
+    "exe_bytes": 3964,
+    "exe_sha256": "e3b6e3f55c2804f9889519934b20bcfa48a8bf7f6fd648a7a89fc5bbf495edc8",
+    "run_exit": 0,
+    "output_matches": true
+   },
+   "after-O1": {
+    "build_exit": 0,
+    "exe_bytes": 2376,
+    "exe_sha256": "f26c8cb2b289c6ac89e6e51be8c1db32d99ea4b0b98e82b4695e34dc319f7039",
+    "run_exit": 0,
+    "output_matches": true
+   }
+  },
+  "countdown_actions": {
+   "before-O0": {
+    "build_exit": 0,
+    "exe_bytes": 2644,
+    "exe_sha256": "fcc00a2033f5bc7bf3d3b8e62f0bde84b745eb6bcd72f8e152c24b15eaa554ca",
+    "run_exit": 0,
+    "output_matches": true
+   },
+   "before-O1": {
+    "build_exit": 0,
+    "exe_bytes": 2180,
+    "exe_sha256": "5ac49e9bd27e440b5c051c7770ebd51a3f4bd4ef16820389bfd3a6cfd2d2fba0",
+    "run_exit": 0,
+    "output_matches": true
+   },
+   "after-O0": {
+    "build_exit": 0,
+    "exe_bytes": 2668,
+    "exe_sha256": "948d2e7d815a1f61e3be0cf93a9a5c3cbfe8e1b8e0eca66472bf85a660835ac0",
+    "run_exit": 0,
+    "output_matches": true
+   },
+   "after-O1": {
+    "build_exit": 0,
+    "exe_bytes": 2212,
+    "exe_sha256": "b384279058410e70ebf9af65ed0e4335da80dc7b5e15520831da855b4e7530e7",
+    "run_exit": 0,
+    "output_matches": true
+   }
+  },
+  "empty": {
+   "before-O0": {
+    "build_exit": 0,
+    "exe_bytes": 1472,
+    "exe_sha256": "549530122b2ccf176b193b5feb77eb293111eb31f12ad50d502c53eff1ad5700",
+    "run_exit": 0,
+    "output_matches": true
+   },
+   "before-O1": {
+    "build_exit": 0,
+    "exe_bytes": 1472,
+    "exe_sha256": "549530122b2ccf176b193b5feb77eb293111eb31f12ad50d502c53eff1ad5700",
+    "run_exit": 0,
+    "output_matches": true
+   },
+   "after-O0": {
+    "build_exit": 0,
+    "exe_bytes": 1472,
+    "exe_sha256": "549530122b2ccf176b193b5feb77eb293111eb31f12ad50d502c53eff1ad5700",
+    "run_exit": 0,
+    "output_matches": true
+   },
+   "after-O1": {
+    "build_exit": 0,
+    "exe_bytes": 1472,
+    "exe_sha256": "549530122b2ccf176b193b5feb77eb293111eb31f12ad50d502c53eff1ad5700",
+    "run_exit": 0,
+    "output_matches": true
+   }
+  },
+  "factor": {
+   "before-O0": {
+    "build_exit": 0,
+    "exe_bytes": 83236,
+    "exe_sha256": "acfefc4604f8c9a6eb8370fb84b87ff5797cd9afaf7fb1e52c6211be71c2a0b2",
+    "run_exit": 0,
+    "output_matches": true
+   },
+   "before-O1": {
+    "build_exit": 0,
+    "exe_bytes": 21816,
+    "exe_sha256": "885265f70dcfa2ac3df47822ee2b62e49fa130f70a025acf5ad33eecc405a800",
+    "run_exit": 0,
+    "output_matches": true,
+    "instructions_user": [
+     587179379,
+     587179379,
+     587179379
+    ],
+    "cycles_user": [
+     153369189,
+     152842208,
+     152705473
+    ],
+    "wall_seconds_samples": [
+     0.244402,
+     0.213022,
+     0.242323,
+     0.192994,
+     0.241616,
+     0.28851,
+     0.233555,
+     0.215737,
+     0.241543,
+     0.247526,
+     0.215475,
+     0.205027,
+     0.214739,
+     0.209355,
+     0.219874
+    ],
+    "wall_seconds_median": 0.219874
+   },
+   "after-O0": {
+    "build_exit": 0,
+    "exe_bytes": 93396,
+    "exe_sha256": "2ade0e585983d8a81de46b57688c9e8830c229bd28ebd27cb20fe15a7ac81b63",
+    "run_exit": 0,
+    "output_matches": true
+   },
+   "after-O1": {
+    "build_exit": 0,
+    "exe_bytes": 23608,
+    "exe_sha256": "03f13013301be216cbcfaaff878e275b694e91db7e1240cd7087787461f131f8",
+    "run_exit": 0,
+    "output_matches": true,
+    "instructions_user": [
+     525326100,
+     525326100,
+     525326100
+    ],
+    "cycles_user": [
+     139630656,
+     139309792,
+     138732510
+    ],
+    "wall_seconds_samples": [
+     0.196958,
+     0.191519,
+     0.20314,
+     0.229219,
+     0.21169,
+     0.206947,
+     0.208739,
+     0.280048,
+     0.210654,
+     0.239054,
+     0.252288,
+     0.208662,
+     0.193203,
+     0.233072,
+     0.189796
+    ],
+    "wall_seconds_median": 0.208739
+   },
+   "brainfry": {
+    "exe_bytes": 19008,
+    "output_matches": true,
+    "instructions_user": [
+     525543147,
+     525543147,
+     525543147
+    ],
+    "cycles_user": [
+     164042184,
+     164269574,
+     164119097
+    ],
+    "wall_seconds_samples": [
+     0.200389,
+     0.223874,
+     0.207114,
+     0.227729,
+     0.216546,
+     0.25387,
+     0.288692,
+     0.221072,
+     0.212265,
+     0.249532,
+     0.205502,
+     0.21531,
+     0.2091,
+     0.208535,
+     0.207066
+    ],
+    "wall_seconds_median": 0.21531
+   }
+  },
+  "hello": {
+   "before-O0": {
+    "build_exit": 0,
+    "exe_bytes": 4836,
+    "exe_sha256": "ac3c271f5ef56396a8580fee223e1c94932b67dfa0c280093469447e6c31d6c3",
+    "run_exit": 0,
+    "output_matches": true
+   },
+   "before-O1": {
+    "build_exit": 0,
+    "exe_bytes": 4400,
+    "exe_sha256": "231be62283a4b5fb2bd45007ce04eda58baff123a5d5a3448a36bd6ff7558d32",
+    "run_exit": 0,
+    "output_matches": true
+   },
+   "after-O0": {
+    "build_exit": 0,
+    "exe_bytes": 4896,
+    "exe_sha256": "166cdb5646789d2499af0ba105befe6dd5e26e42a1bd5fc71dd149335facbf7e",
+    "run_exit": 0,
+    "output_matches": true
+   },
+   "after-O1": {
+    "build_exit": 0,
+    "exe_bytes": 4520,
+    "exe_sha256": "ab3112574cc500d985e34ff10592f9e6e2a827a9d9ca97208900e9d9d8e0e1d7",
+    "run_exit": 0,
+    "output_matches": true
+   }
+  },
+  "life": {
+   "before-O0": {
+    "build_exit": 0,
+    "exe_bytes": 53944,
+    "exe_sha256": "8831680e31ed05635d97accb2c0ab9885da7cd31ed4e539aa0ca34ed1f016f63",
+    "run_exit": 0,
+    "output_matches": true
+   },
+   "before-O1": {
+    "build_exit": 0,
+    "exe_bytes": 19236,
+    "exe_sha256": "55683bb93702bc847e883c79da692907ea4cc774fbce493e8b20ad08231be5ee",
+    "run_exit": 0,
+    "output_matches": true,
+    "instructions_user": [
+     90186937,
+     90186937,
+     90186937
+    ],
+    "cycles_user": [
+     26778722,
+     26785510,
+     26753039
+    ],
+    "wall_seconds_samples": [
+     0.08512,
+     0.117807,
+     0.143402,
+     0.112726,
+     0.127209,
+     0.157679,
+     0.11389,
+     0.13576,
+     0.129438,
+     0.121353,
+     0.127104,
+     0.148919,
+     0.138485,
+     0.13185,
+     0.109016
+    ],
+    "wall_seconds_median": 0.127209
+   },
+   "after-O0": {
+    "build_exit": 0,
+    "exe_bytes": 60036,
+    "exe_sha256": "50c477cbc341a611811887ac6784a76e17a088b2458040656bf62eb90585eebd",
+    "run_exit": 0,
+    "output_matches": true
+   },
+   "after-O1": {
+    "build_exit": 0,
+    "exe_bytes": 20724,
+    "exe_sha256": "204d223f93ba224cecd90c411782c9f961e07dd96ab15fa912d7c094c2d6fa4c",
+    "run_exit": 0,
+    "output_matches": true,
+    "instructions_user": [
+     81978510,
+     81978510,
+     81978510
+    ],
+    "cycles_user": [
+     26174050,
+     26127232,
+     26119830
+    ],
+    "wall_seconds_samples": [
+     0.097964,
+     0.137106,
+     0.116484,
+     0.12738,
+     0.166944,
+     0.166538,
+     0.115479,
+     0.126875,
+     0.125098,
+     0.123152,
+     0.149919,
+     0.122378,
+     0.150948,
+     0.175957,
+     0.129515
+    ],
+    "wall_seconds_median": 0.12738
+   },
+   "brainfry": {
+    "exe_bytes": 15152,
+    "output_matches": true,
+    "instructions_user": [
+     62705188,
+     62705188,
+     62705188
+    ],
+    "cycles_user": [
+     24056593,
+     24057985,
+     24053333
+    ],
+    "wall_seconds_samples": [
+     0.123331,
+     0.134514,
+     0.124127,
+     0.113802,
+     0.127924,
+     0.115521,
+     0.117545,
+     0.12631,
+     0.120465,
+     0.088231,
+     0.119542,
+     0.126132,
+     0.11609,
+     0.111475,
+     0.105628
+    ],
+    "wall_seconds_median": 0.119542
+   }
+  },
+  "mandelbrot": {
+   "before-O0": {
+    "build_exit": 5
+   },
+   "before-O1": {
+    "build_exit": 0,
+    "exe_bytes": 67944,
+    "exe_sha256": "2de8ba3348c92c09279ee5801d6229a739850eefc0e72243942e39a56c39aa44",
+    "run_exit": 0,
+    "output_matches": true,
+    "instructions_user": [
+     11992173786,
+     11992173786,
+     11992173786
+    ],
+    "cycles_user": [
+     2862778299,
+     2858222371,
+     2874351746
+    ],
+    "wall_seconds_samples": [
+     1.198233,
+     1.145648,
+     1.158352,
+     1.24123,
+     1.218823,
+     1.16259,
+     1.171411,
+     1.150891,
+     1.203563,
+     1.20099,
+     1.162271,
+     1.144285,
+     1.14029,
+     1.194765,
+     1.172692
+    ],
+    "wall_seconds_median": 1.171411
+   },
+   "after-O0": {
+    "build_exit": 5
+   },
+   "after-O1": {
+    "build_exit": 0,
+    "exe_bytes": 74572,
+    "exe_sha256": "5d797631d662f8ef7a0a53fc1e4b2dcc420c28d69d2c342da26d69a6bda69d92",
+    "run_exit": 0,
+    "output_matches": true,
+    "instructions_user": [
+     10568247514,
+     10568247514,
+     10568247514
+    ],
+    "cycles_user": [
+     2650105991,
+     2656382957,
+     2660041139
+    ],
+    "wall_seconds_samples": [
+     1.08359,
+     1.077717,
+     1.173895,
+     1.119194,
+     1.090076,
+     1.10026,
+     1.124831,
+     1.120707,
+     1.135695,
+     1.086171,
+     1.092673,
+     1.120929,
+     1.133414,
+     1.116476,
+     1.168983
+    ],
+    "wall_seconds_median": 1.119194
+   },
+   "brainfry": {
+    "exe_bytes": 56320,
+    "output_matches": true,
+    "instructions_user": [
+     10114913781,
+     10114913781,
+     10114913781
+    ],
+    "cycles_user": [
+     3026940392,
+     3025672590,
+     3029273761
+    ],
+    "wall_seconds_samples": [
+     1.22014,
+     1.204168,
+     1.228844,
+     1.206639,
+     1.211898,
+     1.239358,
+     1.254816,
+     1.251241,
+     1.235399,
+     1.218109,
+     1.215842,
+     1.220395,
+     1.259355,
+     1.248567,
+     1.322605
+    ],
+    "wall_seconds_median": 1.228844
+   }
+  },
+  "multi_transfer": {
+   "before-O0": {
+    "build_exit": 0,
+    "exe_bytes": 2876,
+    "exe_sha256": "ed6f77b78cdfaf404310a0c33ec1ae28be68557315931ab91fe018607a30f417",
+    "run_exit": 0,
+    "output_matches": true
+   },
+   "before-O1": {
+    "build_exit": 0,
+    "exe_bytes": 2380,
+    "exe_sha256": "6592f0b9b8ab816443ceb59524c344655660d728230f74730219545e546293df",
+    "run_exit": 0,
+    "output_matches": true
+   },
+   "after-O0": {
+    "build_exit": 0,
+    "exe_bytes": 2916,
+    "exe_sha256": "9891c52fd32f03077a450b757b07a8bd5862cff33934b972b2ce2a8a8b184f2f",
+    "run_exit": 0,
+    "output_matches": true
+   },
+   "after-O1": {
+    "build_exit": 0,
+    "exe_bytes": 2392,
+    "exe_sha256": "afe5a0ccab6eadcc84caec010e0558888cad04b1930c063d64b1dbafbb0fed9a",
+    "run_exit": 0,
+    "output_matches": true
+   }
+  },
+  "nested_count": {
+   "before-O0": {
+    "build_exit": 0,
+    "exe_bytes": 3100,
+    "exe_sha256": "316dcfa65efc26d0251f5b3eb5c2fe7b78ccd2fecbd6a2071d1b8178769bb90c",
+    "run_exit": 0,
+    "output_matches": true
+   },
+   "before-O1": {
+    "build_exit": 0,
+    "exe_bytes": 2400,
+    "exe_sha256": "778ffce0c25b4ac5148c924e99468b67ac1552817433a25cf59d6fa8d336df20",
+    "run_exit": 0,
+    "output_matches": true
+   },
+   "after-O0": {
+    "build_exit": 0,
+    "exe_bytes": 3100,
+    "exe_sha256": "316dcfa65efc26d0251f5b3eb5c2fe7b78ccd2fecbd6a2071d1b8178769bb90c",
+    "run_exit": 0,
+    "output_matches": true
+   },
+   "after-O1": {
+    "build_exit": 0,
+    "exe_bytes": 2400,
+    "exe_sha256": "778ffce0c25b4ac5148c924e99468b67ac1552817433a25cf59d6fa8d336df20",
+    "run_exit": 0,
+    "output_matches": true
+   }
+  },
+  "nested_math": {
+   "before-O0": {
+    "build_exit": 0,
+    "exe_bytes": 4052,
+    "exe_sha256": "e282aff31feb2bd6e9e7faf6d96c8b96529198ace79003764011066fb768d508",
+    "run_exit": 0,
+    "output_matches": true
+   },
+   "before-O1": {
+    "build_exit": 0,
+    "exe_bytes": 2568,
+    "exe_sha256": "147792a67402c08a75ce7c9f74c5cc93bec63a35845ebf6dcc6f363979514dcb",
+    "run_exit": 0,
+    "output_matches": true
+   },
+   "after-O0": {
+    "build_exit": 0,
+    "exe_bytes": 4052,
+    "exe_sha256": "e282aff31feb2bd6e9e7faf6d96c8b96529198ace79003764011066fb768d508",
+    "run_exit": 0,
+    "output_matches": true
+   },
+   "after-O1": {
+    "build_exit": 0,
+    "exe_bytes": 2568,
+    "exe_sha256": "147792a67402c08a75ce7c9f74c5cc93bec63a35845ebf6dcc6f363979514dcb",
+    "run_exit": 0,
+    "output_matches": true
+   }
+  },
+  "permit_flag": {
+   "before-O0": {
+    "build_exit": 0,
+    "exe_bytes": 3012,
+    "exe_sha256": "2f050d981aa8b9c897e99daeb1f67a02437221dee0b70fdfcb2007393933ecf8",
+    "run_exit": 0,
+    "output_matches": true
+   },
+   "before-O1": {
+    "build_exit": 0,
+    "exe_bytes": 2152,
+    "exe_sha256": "a6a5e9e666cccdadbe52b1af3e2568e42e5a53b6b76d3196fd654a6a3b408227",
+    "run_exit": 0,
+    "output_matches": true
+   },
+   "after-O0": {
+    "build_exit": 0,
+    "exe_bytes": 3012,
+    "exe_sha256": "2f050d981aa8b9c897e99daeb1f67a02437221dee0b70fdfcb2007393933ecf8",
+    "run_exit": 0,
+    "output_matches": true
+   },
+   "after-O1": {
+    "build_exit": 0,
+    "exe_bytes": 2152,
+    "exe_sha256": "a6a5e9e666cccdadbe52b1af3e2568e42e5a53b6b76d3196fd654a6a3b408227",
+    "run_exit": 0,
+    "output_matches": true
+   }
+  },
+  "scan": {
+   "before-O0": {
+    "build_exit": 0,
+    "exe_bytes": 2864,
+    "exe_sha256": "080131920c521d077ae8c7d31ff5b09a094aff3b27f3bca6edb6d153766ee370",
+    "run_exit": 0,
+    "output_matches": true
+   },
+   "before-O1": {
+    "build_exit": 0,
+    "exe_bytes": 2624,
+    "exe_sha256": "75e177c18bdbca3bd3e712f63d7ceaa67797023bf151e091a779a51993c92b8f",
+    "run_exit": 0,
+    "output_matches": true
+   },
+   "after-O0": {
+    "build_exit": 0,
+    "exe_bytes": 2888,
+    "exe_sha256": "11fa2d6dd71977210b819cc6a3f81ea410ec05ff2e70a212536ca5fab4289a78",
+    "run_exit": 0,
+    "output_matches": true
+   },
+   "after-O1": {
+    "build_exit": 0,
+    "exe_bytes": 2632,
+    "exe_sha256": "47adea66eb9a32e4a18b2bd75b7b3253457eed8830f04b08d4c9dab749557520",
+    "run_exit": 0,
+    "output_matches": true
+   }
+  },
+  "sierpinski": {
+   "before-O0": {
+    "build_exit": 0,
+    "exe_bytes": 7236,
+    "exe_sha256": "bd6e4c93a6573c8578d92bce8af986b4ff03ac1e44e6aa3633deeb3ec28a2f17",
+    "run_exit": 0,
+    "output_matches": true
+   },
+   "before-O1": {
+    "build_exit": 0,
+    "exe_bytes": 4020,
+    "exe_sha256": "190a956d2be6629ffc13183b1105efc86694c1e21933775d908c78dfd4359025",
+    "run_exit": 0,
+    "output_matches": true
+   },
+   "after-O0": {
+    "build_exit": 0,
+    "exe_bytes": 7444,
+    "exe_sha256": "63295a8324c195b3e4a527f3f4aca63bd3198f4bd4b138e08aecea5405d77375",
+    "run_exit": 0,
+    "output_matches": true
+   },
+   "after-O1": {
+    "build_exit": 0,
+    "exe_bytes": 4180,
+    "exe_sha256": "da95994f7b6bbee5d465ca3be4b47bab59abb33c89f686483b547ea68ba0a49c",
+    "run_exit": 0,
+    "output_matches": true
+   }
+  },
+  "transfer_repeat": {
+   "before-O0": {
+    "build_exit": 0,
+    "exe_bytes": 2568,
+    "exe_sha256": "e3b1b82c30d19942139ef10b74bc6853c15259f255869f4382d958413608cf34",
+    "run_exit": 0,
+    "output_matches": true
+   },
+   "before-O1": {
+    "build_exit": 0,
+    "exe_bytes": 2244,
+    "exe_sha256": "b9a775864e57427ba13ca152dc5c7b780c38e5f0ee0820db3aad4b63a0f480b3",
+    "run_exit": 0,
+    "output_matches": true
+   },
+   "after-O0": {
+    "build_exit": 0,
+    "exe_bytes": 2600,
+    "exe_sha256": "b02fae65e69ce3afa8e4c716534aa36eeab416eee2f7635b6103f13100715450",
+    "run_exit": 0,
+    "output_matches": true
+   },
+   "after-O1": {
+    "build_exit": 0,
+    "exe_bytes": 2252,
+    "exe_sha256": "060259abdeb2c958decbc940908d5701216c044661a7dc25b59e6662d6a9690c",
+    "run_exit": 0,
+    "output_matches": true
+   }
+  },
+  "wrap": {
+   "before-O0": {
+    "build_exit": 0,
+    "exe_bytes": 2212,
+    "exe_sha256": "8ca648128e3aa6a31a8436286ff49f6abd049a4d17064f4ee44b47fad0357a84",
+    "run_exit": 0,
+    "output_matches": true
+   },
+   "before-O1": {
+    "build_exit": 0,
+    "exe_bytes": 2332,
+    "exe_sha256": "d185cfc33c788efc647bba3cd60a7b2d909983a2a094f8879cb8793f7695e592",
+    "run_exit": 0,
+    "output_matches": true
+   },
+   "after-O0": {
+    "build_exit": 0,
+    "exe_bytes": 2212,
+    "exe_sha256": "8ca648128e3aa6a31a8436286ff49f6abd049a4d17064f4ee44b47fad0357a84",
+    "run_exit": 0,
+    "output_matches": true
+   },
+   "after-O1": {
+    "build_exit": 0,
+    "exe_bytes": 2332,
+    "exe_sha256": "d185cfc33c788efc647bba3cd60a7b2d909983a2a094f8879cb8793f7695e592",
+    "run_exit": 0,
+    "output_matches": true
+   }
+  }
+ },
+ "device": {
+  "ro.product.model": "Pixel 8 Pro",
+  "ro.build.fingerprint": "google/husky/husky:17/CP4A.261105.040.A1/16581829:user/release-keys",
+  "ro.soc.model": "Tensor G3",
+  "kernel": "6.1.172-android14-11-g8d0115b07367-ab16385437",
+  "battery": [
+   "  AC powered: false",
+   "  level: 60",
+   "  temperature: 363",
+   "  Capacity level: 2",
+   ""
+  ]
+ }
+}
