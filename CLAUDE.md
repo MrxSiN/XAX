@@ -37,3 +37,21 @@ Git workflow:
 - Pull request titles say what the change does in plain words, under about 70 characters ("General backend: limit prefetch to small views"). Never use the branch name (`Ccr 9a7d54f8 ss6wxl`, `Claude/...`), a "WIP" prefix, or a title cut off mid-word; spell out internal IDs (ADR, ledger, step numbers) only as a parenthetical after the plain description.
 - Pull request descriptions start with one or two sentences a newcomer can follow: what changed and why. Then a `## Changes` list with one plain line per commit or logical change, and an optional `## Details` section for technical depth. Never leave the description empty.
 - Commit and push to `main` as soon as each task is finished and its tests pass; do not hold finished work until a larger set is complete.
+
+## Engineering principles for compiler and semantic-graph changes
+
+SOLID, DRY, KISS, YAGNI, the Law of Demeter, the Boy Scout Rule and Separation of Concerns are context-sensitive design rules here, not a checklist and not a reason to make XAX object-oriented. They never override semantic correctness, safety, verified state integrity, explicit runtime behavior, the native authoring and ledger rules above, or evidence quality; where one conflicts with those, it loses. Report a violation only with its concrete engineering consequence, never from a line or class count.
+
+- SRP: prefer cohesive compiler passes, verifiers, services and target components. A shared semantic entity (a node, a type, a function) may take part in many analyses without violating SRP; do not split graph objects to satisfy it.
+- OCP: extend target, ABI, platform and library support through the established contracts (target descriptions, platform and ABI packages, semantic libraries). Do not build speculative extensibility frameworks.
+- LSP: require behavioral substitution only where an explicit contract exists (a native component standing in for its reference, a target package behind a profile), and there preserve types, effects, ownership and observable behavior. Add no inheritance to satisfy it.
+- ISP: use focused, bounded, capability-aware query, mutation and tool interfaces. Avoid dependencies a caller does not need, and avoid gratuitous micro-interfaces.
+- DIP: keep fundamental semantic meaning independent of concrete transports and backends where a stable abstraction boundary justifies it; the canonical graph never depends on MCP, a carrier or one target.
+- DRY: keep one authoritative representation of each semantic fact, piece of metadata and current-status value, and generate repeated summaries from it. Independent evidence is not duplication: keep a second oracle (the reference executor, an independent checker, a differential baseline) and keep historical records.
+- KISS: prefer the smallest sound mechanism, explicit invariants and a simple failure model (accept, reject with a diagnostic, or decline).
+- YAGNI: add no hypothetical kernel operation, compiler framework, protocol mechanism or target support that no current requirement needs. This applies most strongly to the semantic kernel.
+- Law of Demeter: respect meaningful module, package and repository boundaries (consume a public record, not another component's internals). Traversing the semantic graph is the work, not a violation.
+- Boy Scout Rule: make safe, local, tested improvements in the code a change touches. Never put an unrelated refactor into a correctness change.
+- Separation of Concerns: keep semantic state, verification, optimization, code generation, ABI and platform contracts, MCP transport and evidence separate.
+
+A lowering or optimization is checked against the reference executor's result, not only against another compiler's bytes: byte equality with the bootstrap proves a port, not the meaning. `AGENT.md` and `CLAUDE.md` are one policy in two files and must stay identical (`compiler/tests/test_agent_instructions.py`).
