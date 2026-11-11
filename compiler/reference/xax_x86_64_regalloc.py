@@ -304,13 +304,6 @@ def _eligible(graph, parameter_types, return_types, resolve) -> dict[ValueRef, i
                 return None
             if node.operation == Operation.ROTATE_RIGHT and _value_width(resolve, node.results[0]) not in (32, 64):
                 return None  # a native `ror` exists only at register widths
-            if (node.operation == Operation.INT_COMPARE and IntCompare(node.attributes[0]) in (IntCompare.SLT, IntCompare.SLE, IntCompare.SGT, IntCompare.SGE)
-                    and (_value_width(resolve, node.operand_types[0]) or 32) < 32):
-                # Registers hold zero-extended values and every compare here is 32 or 64 bits wide, so a signed
-                # predicate would miss the narrow sign bit.  The frame path sign-corrects it.
-                # ponytail: the whole function leaves the register path (and the frame path rejects some narrow operations);
-                # to keep it here, flip both operands' sign bit and emit the unsigned predicate.
-                return None
             if node.operation == Operation.CALL_DIRECT and _is_erased_proof_function(node.entity, resolve):
                 continue
             if node.operation in _CALLS:
@@ -1366,7 +1359,7 @@ def compile_register_resident(
             else:
                 fail("XAX.NATIVE.STARTUP", graph_object.cid.hex(), "LINUX-STARTUP-NAME", "argc|arg_length|arg_copy|envc|env_length|env_copy|auxv_value", name.decode("ascii", "replace"))
 
-        def emit_compare(position: int, left: ValueRef, right: ValueRef) -> None:
+        def emit_compare(position: int, left: ValueRef, right: ValueRef, kind: int) -> None:
             if left in compare_load or right in compare_load:
                 loaded, other = (left, right) if left in compare_load else (right, left)
                 base_value, index_value, scale, displacement = compare_load[loaded]
@@ -1379,6 +1372,17 @@ def compile_register_resident(
                 return
             value = immediate(right, widths[left])
             left_register = ensure(left, position)
+            if widths[left] < 32 and kind in (IntCompare.SLT, IntCompare.SLE, IntCompare.SGT, IntCompare.SGE):
+                # ADR-393: registers hold zero-extended values, so a 32-bit compare would miss a narrow sign bit.  Both
+                # operands go through r11 (the one register no value lives in), shifted until their sign bit is bit 31;
+                # the shifted right operand waits on the stack.  cmp sets the flags last: lea leaves them alone.
+                shift = bytes((0x41, 0xC1, 0xE3, 32 - widths[left]))  # shl r11d, 32 - width
+                to_r11 = lambda register: bytes((0x41 | (register >= 8) << 2, 0x89, 0xC3 | (register & 7) << 3))  # noqa: E731
+                emit(b"\x41\xbb" + value.to_bytes(4, "little") if value is not None else to_r11(ensure(right, position, {left})))
+                emit(shift + b"\x41\x53")  # push r11
+                emit(to_r11(left_register) + shift)
+                emit(bytes.fromhex("443b1c24" "488d642408"))  # cmp r11d, [rsp]; lea rsp, [rsp + 8]
+                return
             if value == 0:
                 emit(_test_register(left_register, widths[left]))  # same flags as cmp with zero
             elif value is not None:
@@ -1657,7 +1661,7 @@ def compile_register_resident(
                     ensure(right, node_index, {left})
                 register = acquire(node_index, {left, right})
                 emit(_zero32(register))
-                emit_compare(node_index, left, right)
+                emit_compare(node_index, left, right, node.attributes[0])
                 retire(node_index, left, right)
                 emit(_setcc_register(IntCompare(node.attributes[0]), register)[:-3 - (register >= 4)])
                 define(result, register)
@@ -1950,7 +1954,7 @@ def compile_register_resident(
             condition = terminator.values[0]
             if block_index in fused:
                 compare = block.nodes[fused[block_index]]
-                emit_compare(position, *compare.operands)
+                emit_compare(position, *compare.operands, compare.attributes[0])
                 if_false = _JUMP_IF_FALSE[IntCompare(compare.attributes[0])]
             elif block_index in branch_tables:
                 subject, table, _tree = branch_tables[block_index]
