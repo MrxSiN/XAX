@@ -3,8 +3,7 @@
 Run from `compiler/` with `PYTHONPATH=src:reference:.`. All run the XAX general program (Python-hosted native image of
 `bootstrap/xax_x86_64_general.xax`) or the seed; none of them decides anything the compiler decides.
 
-- `request.py <driver store> <request out>`: a PE build request for a store's module (its entry, its target), as
-  `compiler_request` makes one. Then `xaxc resolve <request> <snapshot>` and `xaxc build <snapshot> <exe> <provenance>`.
+- The build request is the committed `integration/bfx/bbc_request.xax` (`../README.md`); `request.py` is removed.
 - `audit.py <store with a module>`: per function, in closure (CID) order, the analysis status (analysed/ineligible) and
   the emission status (`code`, or `None` = the frame path declined). Works even when the whole run declines; the line
   after the last record is where the run stopped.

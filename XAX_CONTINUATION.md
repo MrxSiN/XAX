@@ -88,8 +88,8 @@ Then set `SEED_SHA256` and `SEED_SIZE` in `compiler/src/xax_selfhost_seed.py`, a
 
 ### 3. BBC
 
-Rebuild BBC's driver from the new production driver
-(`compiler/integration/bfx/transactions/production_driver/native/rebuild.sh`), rebuild `bbc.exe`, rerun BBC's
+Apply each new production batch to BBC's driver and to `bbc_request.xax`
+(`compiler/integration/bfx/transactions/production_driver/native/rebuild.sh <driver before> <batch> <store> <out>`), rebuild `bbc.exe`, rerun BBC's
 checks, and compare mandelbrot, life and factor with their previous bytes. Never patch a separate driver copy.
 
 ### 4. Evidence and the full suite

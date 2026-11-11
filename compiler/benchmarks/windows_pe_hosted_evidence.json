@@ -1,9 +1,9 @@
 {
   "claim": "EXECUTED",
-  "target": "d097451648daf413ae4bc8dd66d1276479cfc7216d1cd03c54786ff0c40c7252",
+  "target": "99480debf3b7af929fe19ccdf8da802c8fdec6f46b9e445d6319435f3964fedb",
   "entry": "5dfd27886c034ef5bc1ec63df442df2f4dc73703e1fc09653c0b060b6746252c",
   "pe_bytes": 2048,
-  "pe_sha256": "4b82c19a7611ae533321dea90fbb974f1167b46124f72e9be187905a3ab22bce",
+  "pe_sha256": "f65dacaa3cbcef79686c903841306772a4a9ab2d64b8b1319e6b288c3a328d91",
   "code_bytes": 636,
   "imports": [
     "kernel32.dll!ExitProcess",
@@ -19,7 +19,7 @@
   "host": {
     "system": "Windows",
     "release": "11",
-    "version": "10.0.26200",
+    "version": "10.0.26300",
     "machine": "AMD64",
     "processor": "AMD64 Family 25 Model 80 Stepping 0, AuthenticAMD"
   },
@@ -29,10 +29,10 @@
     "exit_code": 1339,
     "runs": 20,
     "process_wall_ns": {
-      "median": 16117500,
-      "p95": 16472500,
-      "min": 15715500,
-      "max": 34401600
+      "median": 28775350,
+      "p95": 39631200,
+      "min": 22966300,
+      "max": 40542400
     },
     "note": "wall time includes CreateProcess/loader/pipe overhead measured from Python subprocess; not a code-quality claim"
   },
@@ -40,7 +40,7 @@
     "claim": "EXECUTED",
     "entry": "b4d7e8ce2379d6ec3410b9727b099cc7205fa5a9fd55c642daf7c18efdbbf86c",
     "pe_bytes": 1536,
-    "pe_sha256": "7e1eb54a4d6b102f7ff8dff6aa9c47b88018d333e82018c9b69838b07be2f2a5",
+    "pe_sha256": "b1241b995c5f0d851b997f53ceb1fd60ab1c78749ae2e22dffab115e5ee45648",
     "code_bytes": 176,
     "imports": [
       "kernel32.dll!CloseHandle",

@@ -872,7 +872,12 @@ equal to the reference executor. Do not substitute a Python implementation.
 
 ## OI-56 — PE images take large frames without a stack probe
 
-**Status: OPEN (2026-11-11).** The native x86-64 general backend allocates a PE function's frame with one
+**Status: FIXED IN THE STORES (2026-11-12, ledger 0026, ADR-396); the seeds are not rebuilt yet.** PE images now
+commit their whole stack reserve, and the unpatched `bbc.exe` built from the new stores runs on Windows 11
+(`XAX_STATE.md`, 2026-11-12). Still open for closing: the Linux seed rotation (pending review together with ledgers
+0024 and 0025) and a Windows seed cut from it. The record of the defect follows.
+
+The native x86-64 general backend allocates a PE function's frame with one
 `sub rsp, N`. Windows commits a thread's stack one guard page at a time, so a frame larger than a page that is first
 written below the guard page faults. The Python reference probes each page for the PE profile
 (`xax_x86_64._reserve_stack`); the native backend does not, and the PE header commits only 4 KiB of the 1 MiB

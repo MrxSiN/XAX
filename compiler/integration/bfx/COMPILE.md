@@ -601,3 +601,13 @@ Windows 11 and runs them on a Pixel 8 Pro: 70 of 72 builds (mandelbrot -O0 decli
 Mandelbrot runs in 0.928x the cycles of the ledger 0023 build's output. `tools/check.py` (Wine, qemu) was not run,
 and `bbc.exe` itself needs OI-56's workaround to start on Windows. Evidence:
 [loop_exit_copies_evidence.json](loop_exit_copies_evidence.json).
+
+## BBC's driver after ledger 0026: the stack is committed; the rebuild is native — 2026-11-12
+
+Ledger 0026 (ADR-396, XAX OI-56) makes PE images commit their whole stack reserve. `bbc.xax` is the previous store
+with that batch applied by `rebuild.sh` (3 min 34 s, SHA-256 `b57f9044…`, verified), and
+[bbc_request.xax](bbc_request.xax) is its build request, kept the same way. The self-built compiler resolved and built
+`bbc.exe` from the request (36,323,328 bytes, SHA-256 `a4717ac8…`). It starts on Windows 11 as built: 18 programs at
+-O0 and -O1 for windows-x86_64, 36 of 36 builds and runs equal to the expected output. `rebuild.sh` no longer uses
+Python or awk ([transactions/production_driver/native/README.md](transactions/production_driver/native/README.md)).
+Android outputs were not re-run on a device.

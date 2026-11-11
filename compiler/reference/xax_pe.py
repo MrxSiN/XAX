@@ -20,7 +20,8 @@ FILE_ALIGNMENT = 0x200
 HEADERS_SIZE = 0x200
 # ponytail: fixed 1 MiB reserve/4 KiB commit stack, derive from the bounded
 # stack analysis once a hosted profile requests an exact budget.
-STACK_RESERVE, STACK_COMMIT = 0x100000, 0x1000
+# The whole reserve is committed: the native backend takes large frames without page probes (OI-56).
+STACK_RESERVE, STACK_COMMIT = 0x100000, 0x100000
 
 
 def _align(value: int, alignment: int) -> int:

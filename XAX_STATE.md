@@ -1961,3 +1961,31 @@ Built on ledger 0024 (the x86-64 signed-compare fix, commit `8d83f98`).
 - **Next:** rotate the seed for 0024 and 0025 after review; fix OI-56 natively; share stubs between edges with equal
   copies if size matters; the remaining measured AArch64 waste in BBC's loops is a zero extension after each byte
   load (1.4% of mandelbrot's cycles by the same `nop` experiment) and the clear loop's load-subtract-store.
+
+## OI-56 fixed in the stores: PE images commit their stack reserve (ledger 0026) — 2026-11-12 (ADR-396)
+
+- **Ledger 0026**: one constant of the native PE writer (`SizeOfStackCommit`, 4096 → 1048576, the reserve) in
+  `xax_x86_64_general.xax`, `xax_compiler_driver_general.xax` and `seed/xax_compiler_request.xax`, applied with
+  `evolve.sh apply` (the seed's `edit` and `verify`). `reference/xax_pe.py` has the same value so the reference stays
+  byte-equal with the native compiler; `benchmarks/windows_pe_hosted_evidence.json` was re-executed on Windows 11
+  for the new bytes.
+- **Self-build**: `selfbuild.sh` on the new request store, generations 1 and 2 byte-identical (31,907,179 bytes,
+  SHA-256 `7988e0d0…`).
+- **BBC**: `bbc.xax` (SHA-256 `b57f9044…`) is the committed store with the same batch applied by the new
+  `rebuild.sh`; the self-built compiler built `bbc.exe` from it (36,323,328 bytes, SHA-256 `a4717ac8…`). That file,
+  with its header as built, runs on Windows 11 (build 26300): 18 corpus programs at -O0 and -O1 for windows-x86_64,
+  36 of 36 builds and runs, every output equal to the expected bytes with exit 0 (standard input and output
+  redirected). One earlier run of a built `hello.exe` with the console's own handles did not return and was not
+  explained; the same program built again prints `Hello World!` with redirected handles.
+- **BBC's rebuild has no Python or awk**: `rebuild.sh` now applies a production batch to BBC's store with
+  `xaxc edit` and `verify`. Checked against the old rebuild: ledgers 0024 and 0025 applied to the ledger 0023
+  `bbc.xax` give the committed ledger 0025 `bbc.xax` byte for byte. `bbc_request.xax` is BBC's build request, kept
+  by the same batches (ledger 0026 applied to the request of the previous `bbc.xax` equals a request made for the new
+  one, byte for byte). Removed: `cids.py`, `port_main.awk`, `main_map.txt`, `variants.sh`, `variant.awk`, the layer
+  tools and `tools/request.py`.
+- **Language rule** (`CLAUDE.md`, `AGENT.md`): the repository is XAX; another language only where XAX cannot do it;
+  existing code in other languages is to be rewritten natively.
+- **Not done:** the Linux seed rotation (ledgers 0024 to 0026, one reviewed step) and the B-level records; the
+  Windows seed; BBC's Android outputs on a device with this `bbc.exe`; `tools/check.py`. `rebuild.sh` and
+  `evolve.sh` are still shell around `xaxc`; BBC's `tools/*.py` and the `importer_split` awk files remain.
+- **Next:** rotate the seed; cut a Windows seed from it and close OI-56; move the remaining tools to XAX.

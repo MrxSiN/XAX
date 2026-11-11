@@ -71,9 +71,34 @@ request of 2026-10-21, so every compile's edit step was rejected (`WORKSPACE-EXP
   rejected the port (`NATIVE-CALL-ARITY`, fixed by ledger 0016), ran for hours (ledger 0017), filled the image buffer
   (ledger 0018) and passed `VCAP` (ledger 0019).
 
-## Rebuilding BBC's driver from any production driver
+## Rebuilding BBC's driver after a production transaction (2026-11-12)
 
-`rebuild.sh <production driver store> <work directory>` runs every step with the seed and ends with `xaxc verify` of
+`rebuild.sh <production driver store before> <batch> <BBC driver store> <out>` applies one production ledger
+transaction to BBC's store: the transaction's own batch through `xaxc edit`, then `xaxc verify`. It rewrites only the
+batch's store handles (the root line; a production handle `F<n>` becomes the function's CID as an entity, or BBC's
+handle on the function line and in `replace`). The edit engine rebuilds every caller, so BBC's entry and its four
+driver entries follow without being named. It runs sh, grep, cut, sed, sort and `xaxc`; no Python and no awk.
+
+It replaces the from-scratch rebuild below, which needed `cids.py`, `port_main.awk`, `main_map.txt`, `variants.sh`
+and `variant.awk` (removed; they are in git history). Check that it makes the same store: ledgers 0024 (two
+transactions) and 0025 applied in order to the `bbc.xax` of ledger 0023 (blob `deca732e`) give the `bbc.xax` the old
+rebuild made after ledger 0025, byte for byte (SHA-256 `d01ec218…`), in 3.5 minutes per transaction where the old
+rebuild took 32.
+
+`../../../bbc_request.xax` is BBC's build request (the module's entry and PE target, as `compiler_request` makes one).
+Run `rebuild.sh` on it with the same batch, then `xaxc resolve bbc_request.xax <snapshot>` and `xaxc build <snapshot>
+bbc.exe <provenance>`. It replaces `tools/request.py`: ledger 0026 applied to the request of the previous `bbc.xax`
+equals the request made for the new one, byte for byte (SHA-256 `48099bcf…`).
+
+Ceiling: a batch that names the production entry itself declines (exit 2): BBC's entry is that function's Windows
+form. Such a transaction needs its own native batch for BBC's entry, written from BBC's view of it. The layer tools
+(`layer.sh`, `layer.py`, `portable.awk`, `cnorm.awk`, `vtypes.awk`, `dump_objects.py`) are removed too: a change to
+BBC's layer is a native batch on `bbc.xax`, written from `xaxc edit`'s view of the function. `tools/*.py` and the
+`importer_split` awk files are still Python and awk; nothing in the rebuild runs them.
+
+## Rebuilding BBC's driver from any production driver (superseded 2026-11-12)
+
+`rebuild.sh <production driver store> <work directory>` ran every step with the seed and ended with `xaxc verify` of
 `<work>/bbc.xax`:
 1. the Windows-host batch, with the entry ported by `port_main.awk`;
 2. the PE-target record;
