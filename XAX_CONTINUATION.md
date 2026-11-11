@@ -1,161 +1,120 @@
-# Continuation prompt: fix signed compares below 32 bits in the native x86-64 backend (OI-55)
+# Continuation prompt: rotate the seed after the native signed-compare fix (OI-55, ledger 0024)
 
-Resume work in the XAX repository on a Linux x86-64 host (WSL 2 on the user's Windows machine is the intended one).
-This file is a work plan, not a record of delivered work. Remove it when its steps are complete, as the previous
-continuation note was.
+Resume work in the XAX repository on a Linux x86-64 host. On the user's Windows machine that is WSL 2, distribution
+`Ubuntu-24.04` (user root): clone `/root/XAX`, virtual environment `/root/venv`, scratch files under `/root/work`.
+This file is a work plan, not a record of delivered work. Remove it when its steps are complete.
 
 ## Read first
 
-- `AGENT.md` (or `CLAUDE.md`; they are identical), in particular the native evolution, seed and BBC rules and the
-  engineering-principles section.
+- `AGENT.md` (or `CLAUDE.md`; they are identical), in particular the native evolution, seed and BBC rules.
 - `XAX_OPEN_ISSUES.md`, OI-55, and `XAX_DECISIONS.md`, ADR-392.
-- `docs/audits/2026-11-11-independent-audit.md`, finding 1 and section 9.
-- `docs/09_AI_PROTOCOL.md` §16 for views and batch text.
-- `compiler/bootstrap/evolution/native/0022/README.md` as the most recent example of a backend change written as
-  native batches.
+- `compiler/bootstrap/evolution/native/0024/README.md`: what ledger 0024 changed and why.
 
-## What is known
+## What is done (2026-11-11, WSL host)
 
-- The x86-64 general backend keeps `bits<N>` values zero-extended and compares them with a 32-bit or 64-bit `cmp`.
-  For N < 32, `int.compare` with `slt`, `sle`, `sgt` or `sge` therefore ignores the operand's sign bit. The reference
-  executor defines the predicate at the operand's own width.
-- The Python reference is fixed (ADR-392, commit `732fa43`): the frame path shifts both operands left by `32 - N`
-  before the compare, and `xax_x86_64_regalloc._eligible` sends a function with such a compare to the frame path.
-- The Windows seed `aa72234d…` reproduces the defect. The Linux production compiler (seed `a35fd59f…`, ledger 0023)
-  has not been run against it. It was accepted on byte equality with the bootstrap, so it is expected to fail.
-- No committed store holds a signed compare below 32 bits, so the compiler's own build does not depend on the
-  defect. A fix should leave the self-built compiler's behaviour on its own source unchanged.
-- `compiler/tests/test_xax_selfhost_general_build.py` skips x86-64 corpus cases that hold such a compare
-  (`x86_raw_corpus.has_narrow_signed_compare`). That edit was made on Windows and the test has never run with it.
+- The defect was reproduced on the production seed `a35fd59f…`: 128 of 240 probe programs
+  (`compiler/bootstrap/evolution/native/0024/probe.py`) differ from the reference executor, every signed predicate
+  at widths 5, 8, 16 and 24 in all eight forms.
+- Ledger 0024 is applied to `xax_compiler_driver_general.xax`, `seed/xax_compiler_request.xax` and
+  `xax_x86_64_general.xax` (six batches, `evolve.sh check` passes). The register path's `em_compare` and the frame
+  path's integer node function shift both operands left by `32 - N` before the 32-bit compare.
+- The Python reference emits the same bytes: the ADR-392 eligibility guard is removed and
+  `xax_x86_64_regalloc`'s `emit_compare` has the same sequence. Mirroring the guard natively was tried and dropped:
+  the frame path lowers only `win64-c` foreign calls, so a Linux process entry with such a compare was rejected.
+- `selfbuild.sh` reaches a fixed point: `xaxc1` = `xaxc2`, SHA-256
+  `1085c08a0138b342c801e7406c43d7ed853fddd8eecd96b882acff1e2214614c`, 31,907,019 bytes. The old seed and the new
+  compiler build the compiler to the same bytes.
+- With that compiler: 240 of 240 probe programs equal the reference executor; the raw-image corpus of
+  `tests/test_xax_selfhost_general_build.py` at `XAX_RAW_TRIALS=80` (720 subtests, 13 x86 cases with a narrow signed
+  compare, the OI-55 skip removed locally) equals the reference in bytes. The request store is `compiler_request` of
+  the driver store.
 
-## Rules that bind this work
+## What is not done
 
-- Compiler logic is changed only as canonical XAX graphs through native transactions: batch text from
-  `xaxc edit <store> <selector> <view>`, one batch per store, recorded with
-  `sh compiler/bootstrap/evolution/evolve.sh apply <batch> <store>`. Python may test and may serve as the reference.
-  It must not generate or implement the change.
-- Every production change is a transaction on both `xax_compiler_driver_general.xax` and
-  `seed/xax_compiler_request.xax`. Functions of the backend also live in `xax_x86_64_general.xax`; follow what
-  ledger 0022 did for which stores a backend function must change in.
-- Keep the driver's `main` within the general backend's limits (four machine parameters, four machine inputs per
-  call, nothing that inlines into `main`).
-- Do not rotate the seed, edit `SEED_SHA256`/`SEED_SIZE`, or push until the user has seen the transaction and the
-  results of step 5. Seed rotation is a reviewed change.
-- Evidence that claims XAX-hosted execution runs with `XAX_REQUIRE_NATIVE=1` and records `xax_native.AUTHORITY`.
-- Dated sections in the state, handoff, benchmark and decision documents are historical. Add new sections.
+The seed is **not rotated**: `compiler/bootstrap/seed/xaxc-linux-x86_64` is still `a35fd59f…`, the compiler before
+ledger 0024. Until step 1, everything that runs the pinned seed (`NativeGeneralDriver`, `evolve.sh` by default) has
+the defect, and `tests/test_xax_selfhost_general_build.py` keeps its OI-55 skip because the seed's bytes differ from
+the reference for a narrow signed compare.
+
+Not run or not finished on 2026-11-11, to be run in step 4:
+
+- `evolve.sh replay` had replayed 89 of 118 transactions without a failure when this note was written; the six 0024
+  transactions are the last ones. `tests/test_store_regeneration.py` passes.
+- `tests/test_native_large_image.py`, `tests/test_xax_selfhost_general_driver.py` and
+  `tests/test_xax_selfhost_x86_64_backend.py` did not finish within seven minutes each (two workers).
+- BBC's mandelbrot, life and factor were not rebuilt or compared.
+- The AArch64 backends were not examined for the same defect.
+
+Found on the way, not caused by ledger 0024: `tests/test_xax_selfhost_general_view.py` fails at commit `6bcaf77`
+(`test_jsonmin`, `test_executables_assembled_in_xax`, `test_random_programs`, `test_register_resident_analyses`:
+"S12c.2 analyses disagree" in `erased`, `uses`, `pinned`, `allocatable`, `hoisted`). The native `basics` folds
+constants since ledger 0022 and the reference's analysis audit does not. Record it as an open issue or fix the
+reference's audit; do not fold it into the OI-55 change.
+
+## Host notes
+
+- WSL has about 19 GB of memory. `pytest -n 12` on the self-hosting tests gets workers killed by the OOM killer; use
+  `-n 5` or fewer, and run `test_native_large_image.py` alone.
+- `xaxc edit` and `verify` on the driver or request store take one to three minutes each, a self-build about four
+  minutes per generation, a full `evolve.sh replay` about three hours. Never run two in the same directory.
+- On Linux `xax_build.build` and `compile_linux_executable` use the native front end by default. Pass
+  `frontend="python"` to exercise the Python reference itself (`probe.py reference` does).
+- To run a test against a compiler other than the pinned seed, load a pytest plugin that sets
+  `xax_selfhost_seed.SEED_PATH`, `SEED_SHA256` and `SEED_SIZE` before the tests import them (`-p <module>`).
 
 ## Steps
 
-### 1. Prepare the host
-
-Clone or open the repository inside the Linux filesystem (not under `/mnt`), check `git status` is clean and at or
-after `30af34d`, create a virtual environment and install `pytest`, `pytest-xdist` and `unicorn`. Confirm the seed
-runs and matches its pin:
-
-```sh
-sha256sum compiler/bootstrap/seed/xaxc-linux-x86_64
-sh compiler/bootstrap/evolution/evolve.sh check
-```
-
-### 2. Establish the baseline
-
-Run these before changing anything and keep the output:
-
-```sh
-cd compiler
-python -m pytest -q tests/test_x86_64_narrow_signed_compare.py tests/test_xax_selfhost_general_build.py \
-    tests/test_store_regeneration.py tests/test_status_docs.py
-```
-
-`test_xax_selfhost_general_build.py` is the test edited blind. If it fails for a reason other than OI-55, fix the
-test edit first and record what was wrong.
-
-### 3. Reproduce on the production compiler
-
-Build programs that contain a signed compare below 32 bits with the production seed and run them. Two routes:
-
-- A Linux executable: construct with `xax_construct.construct` (`"platform": "linux-x86_64"`), write the store, then
-  `xaxc build <store> <elf> <prov>` with the seed, and compare the exit status with `xax_compiler.execute` or a
-  hand-computed value. Operands must be run-time values (read from stdin or `linux.startup.argc`), or the constant
-  folder of ledger 0022 removes the compare.
-- The raw-image cases the general-build test skips: remove the skip locally and read which cases differ.
-
-Cover widths 5, 8, 16 and 24, all four signed predicates, and operand pairs with different signs. Record the
-failing cases. If the production compiler is already correct, stop: close OI-55 with that evidence, remove the skip
-from the test, and do not write a transaction.
-
-### 4. Write the native fix
-
-Find the functions that lower `int.compare` in the general backend: the register-resident path, its compare and
-branch fusion, the immediate and test-against-zero forms, and the frame path. Use function views
-(`xaxc edit <store> F<n> <view>`); ledger 0013 (single-use compare fusion) and 0022 (constant folding) touched the
-same area and name the functions.
-
-Choose the smallest sound change and say which one was chosen and why:
-
-- Preferred: where the backend selects a compare for a signed predicate at a width below 32, flip the sign bit of
-  both operands (`xor` with `1 << (N - 1)`) and emit the corresponding unsigned predicate. This is an exact
-  composition of operations the backend already lowers correctly at narrow widths, it keeps the function
-  register-resident, and it applies to every path.
-- Acceptable: mirror the reference (eligibility guard plus the frame-path shift). It is less code but sends such
-  functions to the frame path, which rejects narrow `udiv`, `urem` and rotates.
-
-If the preferred change is made natively, make the same change in the Python reference afterwards so the two agree
-in bytes again, and remove the `ponytail:` note in `xax_x86_64_regalloc._eligible`.
-
-Write the change as batch text, one batch per store, under `compiler/bootstrap/evolution/native/0024/` with a short
-README in the style of 0022. Apply with `evolve.sh apply`; it runs `xaxc edit` and `xaxc verify` and appends the
-ledger lines.
-
-### 5. Verify before rotating
+### 1. Rotate the seed (a reviewed change; the user asked to see it)
 
 ```sh
 sh compiler/bootstrap/evolution/evolve.sh check
-sh compiler/bootstrap/evolution/evolve.sh replay
 sh compiler/bootstrap/seed/selfbuild.sh /tmp/xax-selfbuild
+sha256sum /tmp/xax-selfbuild/xaxc1        # expect 1085c08a…2214614c, 31,907,019 bytes
+cd compiler/src && python -m xax_selfhost_seed rotate-seed
 ```
 
-Then, with the self-built compiler (`XAXC=/tmp/xax-selfbuild/xaxc1`):
+Then set `SEED_SHA256` and `SEED_SIZE` in `compiler/src/xax_selfhost_seed.py`, and confirm
+`python -m xax_selfhost_seed write-request` changes nothing.
 
-- the step 3 programs now equal the reference executor;
-- programs without such a compare build to the same bytes as with the old seed (the general-build corpus, BBC's
-  mandelbrot, life and factor);
-- the request store is still `compiler_request` of the driver store
-  (`python -m xax_selfhost_seed write-request` makes no change).
+### 2. Tests that follow the seed
 
-Stop here and show the user the batches, the ledger lines and these results.
-
-### 6. Rotate and follow through
-
-After the user agrees:
-
-- `python -m xax_selfhost_seed rotate-seed`, then update `SEED_SHA256` and `SEED_SIZE` in `xax_selfhost_seed.py`.
 - Remove the OI-55 skip from `tests/test_xax_selfhost_general_build.py` and
-  `x86_raw_corpus.has_narrow_signed_compare` if nothing else uses it.
-- Extend `tests/test_x86_64_narrow_signed_compare.py`, or add a Linux test beside it, so the same cases run through
-  the native compiler and are compared with `execute`.
-- Rebuild BBC's driver from the new production driver
-  (`compiler/integration/bfx/transactions/production_driver/native/rebuild.sh`), rebuild `bbc.exe` and rerun BBC's
-  checks. Never patch a separate driver copy.
+  `x86_raw_corpus.has_narrow_signed_compare` (nothing else uses it).
+- Add a Linux test beside `tests/test_x86_64_narrow_signed_compare.py` that builds programs with the native compiler
+  and compares their output with `execute`. `native/0024/probe.py` has the program shapes; it builds one executable
+  per width, kind and form (about two seconds each), so pack the kinds and forms of one width into one executable
+  before making it a test.
+- Run `python native/0024/probe.py <rotated seed>` once more and keep the count for the ADR.
+
+### 3. BBC
+
+Rebuild BBC's driver from the new production driver
+(`compiler/integration/bfx/transactions/production_driver/native/rebuild.sh`), rebuild `bbc.exe`, rerun BBC's
+checks, and compare mandelbrot, life and factor with their previous bytes. Never patch a separate driver copy.
+
+### 4. Evidence and the full suite
+
 - Re-record the self-hosting evidence (`benchmarks/bench_full_selfhost.py --write` and the Python-free seed record)
   under `XAX_REQUIRE_NATIVE=1`, then `python -m xax_status_docs --write` from `compiler/src`.
-- Run the full test suite on Linux.
+- `sh compiler/bootstrap/evolution/evolve.sh replay` to the end.
+- The full test suite on Linux, including the three files listed above.
 
-### 7. Record
+### 5. Record
 
-- A new ADR for the native change, and OI-55 closed with its evidence.
-- New dated sections in `XAX_STATE.md` and `XAX_HANDOFF.md`.
-- Remove this file.
-- Commit with the repository's git identity, no AI attribution, plain-language subjects, and push to `main`.
+- ADR-393 for the native change (`native/0024/README.md` already names it) and the reference change that replaced
+  ADR-392's guard; OI-55 closed with its evidence, or left open for the Windows seed alone.
+- New dated sections in `XAX_STATE.md` and `XAX_HANDOFF.md`; point ADR-392's "Limits" at ADR-393.
+- An open issue for the `test_xax_selfhost_general_view.py` failures above.
+- Remove this file. Commit with the repository's git identity, no AI attribution, and push to `main`.
 
-### 8. Windows seed (separate, afterwards)
+### 6. Windows seed (separate, afterwards)
 
 XAX-MCP pins `compiler/bootstrap/windows/xaxc-windows-x86_64.exe`, which keeps the defect until a Windows seed is cut
-from the fixed driver. That is its own task with its own evidence (`compiler/bootstrap/windows/README.md`,
-`seed.json`), and the XAX-MCP pin moves only after it. Do not claim the Windows side fixed from Linux results.
+from the fixed driver (`compiler/bootstrap/windows/README.md`, `seed.json`). The XAX-MCP pin moves only after it. Do
+not claim the Windows side fixed from Linux results.
 
 ## Done means
 
-OI-55's closing evidence exists: the ledger transaction, the rotated Linux seed that rebuilds itself byte for byte,
-BBC rebuilt from it, and the narrow signed-compare cases executed through the native compiler equal to the
+OI-55's closing evidence exists: the ledger transaction (done), the rotated Linux seed that rebuilds itself byte for
+byte, BBC rebuilt from it, and the narrow signed-compare cases executed through the native compiler equal to the
 reference executor. Anything not run is listed as not run.
