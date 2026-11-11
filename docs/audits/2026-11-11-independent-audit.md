@@ -247,3 +247,13 @@ Recorded after sections 1 to 8 were written; those sections are unchanged.
   No committed store contains a signed compare below 32 bits (scan of the frozen stores, the production driver, the
   MCP programs, the Windows helpers and the BFX programs: 0 nodes).
 - Findings 2 to 8 and 10: recorded only.
+- Test runs on the audit host (Windows, Python 3.12.10):
+  - Full suite, started before any change (`pytest -q -n 8`): 1,194 passed, 609 skipped, 2 failed, in 53 minutes.
+    `tests/test_wheel_install.py::WheelInstallTests::test_clean_install_has_every_module_and_store` passes when run
+    alone and failed only while files were being edited under it.
+    `tests/test_verified_component_store.py::VerifiedComponentStoreTests::test_reverify_switch_and_unusable_cache_always_verify`
+    fails with `0 != 1` on the unchanged commit `ed1961b` as well, so it is a host difference that predates this work;
+    its cause was not investigated (the test expects an unusable cache to force verification, and on this host
+    verification did not run).
+  - After the change, 15 files covering the x86-64 backends, PE, construct, the compiler core, status documents and
+    store regeneration: 245 passed, 129 skipped (Linux-only), 0 failed.
