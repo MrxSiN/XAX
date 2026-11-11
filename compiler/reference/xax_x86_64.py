@@ -467,6 +467,10 @@ def _cmp_registers(left: int, right: int, width: int) -> bytes:
     return prefix + b"\x39" + bytes((0xC0 | ((right & 7) << 3) | (left & 7),))
 
 
+def _shl32(register: int, amount: int) -> bytes:
+    return (b"A" if register >= 8 else b"") + bytes((0xC1, 0xE0 | (register & 7), amount))
+
+
 def _setcc(kind: IntCompare) -> bytes:
     opcode = {
         IntCompare.EQ: 0x94, IntCompare.NE: 0x95,
@@ -1990,6 +1994,9 @@ def _compile_function(
                 width = decode_bits_width(resolve(node.operand_types[0]))
                 assembler.emit(_load(target.result_register, value_slot(node.operands[0]), 8 if width == 64 else 4))
                 assembler.emit(_load(target.scratch_registers[0], value_slot(node.operands[1]), 8 if width == 64 else 4))
+                if width < 32 and IntCompare(node.attributes[0]) in (IntCompare.SLT, IntCompare.SLE, IntCompare.SGT, IntCompare.SGE):
+                    # Slots hold zero-extended values: move the narrow sign bit to bit 31 so the 32-bit compare sees it.
+                    assembler.emit(_shl32(target.result_register, 32 - width) + _shl32(target.scratch_registers[0], 32 - width))
                 assembler.emit(_cmp_registers(target.result_register, target.scratch_registers[0], width))
                 assembler.emit(_setcc(IntCompare(node.attributes[0])))
                 assembler.emit(_store(target.result_register, value_slot(result_ref)))

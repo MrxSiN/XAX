@@ -304,6 +304,13 @@ def _eligible(graph, parameter_types, return_types, resolve) -> dict[ValueRef, i
                 return None
             if node.operation == Operation.ROTATE_RIGHT and _value_width(resolve, node.results[0]) not in (32, 64):
                 return None  # a native `ror` exists only at register widths
+            if (node.operation == Operation.INT_COMPARE and IntCompare(node.attributes[0]) in (IntCompare.SLT, IntCompare.SLE, IntCompare.SGT, IntCompare.SGE)
+                    and (_value_width(resolve, node.operand_types[0]) or 32) < 32):
+                # Registers hold zero-extended values and every compare here is 32 or 64 bits wide, so a signed
+                # predicate would miss the narrow sign bit.  The frame path sign-corrects it.
+                # ponytail: the whole function leaves the register path (and the frame path rejects some narrow operations);
+                # to keep it here, flip both operands' sign bit and emit the unsigned predicate.
+                return None
             if node.operation == Operation.CALL_DIRECT and _is_erased_proof_function(node.entity, resolve):
                 continue
             if node.operation in _CALLS:

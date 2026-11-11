@@ -57,6 +57,10 @@ matches their task:
 | [`16_CONFORMANCE_EXAMPLES.md`](16_CONFORMANCE_EXAMPLES.md) | How an implementation demonstrates conformance; reference examples |
 | [`17_BENCHMARKS_ROADMAP.md`](17_BENCHMARKS_ROADMAP.md) | The benchmark specification and the staged implementation roadmap |
 
+## Audits
+
+[`audits/`](audits/) holds dated, non-normative audit records.
+
 ## Proposals
 
 [`proposals/`](proposals/) holds design proposals that are not yet normative.

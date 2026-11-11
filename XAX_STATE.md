@@ -1916,3 +1916,19 @@ already current; the full self-hosting record still described the previous seed 
 - `xax_selfhost.bootstrap_status` derives B0–B6 as holding for the Linux x86-64 and whole production compiler. The
   generated status blocks now report the current seed size, 31,903,131 bytes.
 - Validation: `pytest tests/test_status_docs.py tests/test_full_selfhost_status.py` — **7 passed**.
+
+## Independent audit: x86-64 signed compares below 32 bits (2026-11-11)
+
+Does not supersede an earlier section. An independent audit of both repositories is recorded in
+[`docs/audits/2026-11-11-independent-audit.md`](docs/audits/2026-11-11-independent-audit.md).
+
+- **Defect found and fixed in the reference** (ADR-392): the Python x86-64 general backend compared `bits<N>`, N < 32,
+  as 32-bit values, so the four signed predicates were wrong. The frame path now sign-corrects them and the register
+  allocator leaves such functions to it. `tests/test_x86_64_narrow_signed_compare.py` checks every predicate at six
+  widths against the reference executor (EXECUTED on Windows x86-64).
+- **Native compilers unchanged** (OI-55, OPEN): the Windows seed reproduces the defect; the Linux production compiler
+  was not run on the audit host and is expected to share it. No committed store contains such a compare.
+- **Agent instructions**: `AGENT.md` and `CLAUDE.md` gained a shared engineering-principles section and are now
+  byte-identical, checked by `tests/test_agent_instructions.py` (`AGENT.md` had lacked the seed-rotation rule).
+- **Not run on the audit host** (Windows, no Linux): the ledger tools, self-hosting evidence and every
+  `XAX_REQUIRE_NATIVE=1` test. No R level, B level or performance figure changed.

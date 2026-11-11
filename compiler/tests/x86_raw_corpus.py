@@ -126,6 +126,19 @@ def _function(rng, ops, objects: list, fault: str | None, depth: int = 0):
     return function, params
 
 
+def has_narrow_signed_compare(reader) -> bool:
+    """Whether a store holds an ``int.compare`` with a signed predicate on operands below 32 bits.  The native x86-64
+    general backend still lowers it as the bootstrap did before ADR-392 (OI-55), so byte comparisons leave it out."""
+    from xax_compiler import Kind, _parse_graph, decode_bits_width
+
+    signed = (IntCompare.SLT, IntCompare.SLE, IntCompare.SGT, IntCompare.SGE)
+    return any(
+        node.operation == Operation.INT_COMPARE and node.attributes[0] in signed and decode_bits_width(reader.get(node.operand_types[0])) < 32
+        for item in reader.objects() if item.kind == Kind.GRAPH_FRAGMENT
+        for block in _parse_graph(item, reader.get).blocks for node in block.nodes
+    )
+
+
 def x86_raw_case(rng: random.Random):
     """``(reader, entry, target, name)``; a program the verifier rejects is drawn again."""
     while True:

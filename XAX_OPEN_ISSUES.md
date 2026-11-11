@@ -55,6 +55,7 @@ Only issues requiring implementation, target, ecosystem, or benchmark evidence a
 - [OI-52 — 64-bit checked offsets and growable views (roadmap)](#oi-52--64-bit-checked-offsets-and-growable-views-roadmap)
 - [OI-53 — `xaxc verify` rejects byte-view widening](#oi-53--xaxc-verify-rejects-byte-view-widening)
 - [OI-54 — Function views past 2^18 values (BBC's hanoi -O0)](#oi-54--function-views-past-218-values-bbcs-hanoi--o0)
+- [OI-55 — Native x86-64 signed compares below 32 bits](#oi-55--native-x86-64-signed-compares-below-32-bits)
 
 ## OI-02 — Canonical object and graph-fragment granularity
 
@@ -844,3 +845,26 @@ The decision's nine block parameters cannot shrink: the memory facts need each h
 **Evidence that closes it.** BBC's hanoi -O0 builds for Windows x86-64 and Android ARM64 and matches the
 interpreter, with no fixed per-view capacity left in the driver.
 
+## OI-55 — Native x86-64 signed compares below 32 bits
+
+**Status: OPEN (2026-11-11).** The native x86-64 general backend compares zero-extended `bits<N>` values, N < 32,
+with a 32-bit `cmp`, so `int.compare` with `slt`, `sle`, `sgt` or `sge` ignores the operand's sign bit. A verified
+program then computes a wrong flag with no diagnostic. The Python reference backend had the same defect and is fixed
+(ADR-392).
+
+Reproduced on the Windows seed `compiler/bootstrap/windows/xaxc-windows-x86_64.exe` (SHA-256 `aa72234d…ab79`), the
+compiler XAX-MCP pins: a PE program that truncates two stdin words to `bits<8>`, compares them and exits with the
+zero-extended flag returns 0 for `0xF1 slt 0x03`; the reference executor gives 1. 40 of 441 single-operation probes
+fail, all signed predicates at widths 8 and 16
+([audit](docs/audits/2026-11-11-independent-audit.md), finding 1). The Linux production compiler (ledger 0023) was not
+run: the audit host has no Linux. It was accepted on byte equality with the bootstrap, so it is expected to fail the
+same probes.
+
+No committed store is affected: the frozen compiler stores, the production driver and the MCP programs hold no signed
+compare below 32 bits.
+
+**Evidence that closes it.** A ledger transaction on `xax_compiler_driver_general.xax` and
+`seed/xax_compiler_request.xax` that sign-corrects these compares (or sends the function to a corrected path), the
+rebuilt and rotated Linux seed, BBC's driver rebuilt from it, and a Windows seed cut from it; then
+`tests/test_x86_64_narrow_signed_compare.py`'s cases executed through the native compiler on Linux and Windows,
+equal to the reference executor. Do not substitute a Python implementation.
