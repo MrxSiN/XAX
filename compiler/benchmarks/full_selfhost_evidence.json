@@ -27,10 +27,10 @@
   "spec_revision": "XAX_SPEC.md \u00a716",
   "compiler": {
     "store": "xax_compiler_driver_general.xax",
-    "store_sha256": "609034c7ab169d5e511e613fecded5eab511e696f0fbaf5da20651fadb755f6c",
-    "semantic_root": "2a972890e9049c0d07da70ca61fc3a92b8f542f0520d808452481f018f3e4acb",
-    "request_store_sha256": "cabd5c7409e709920ed11bbee99edd238af85ccefddebe3d416e3807c64f3436",
-    "request_root": "d712ba66bbe8b147d6acd49fab8bc32165460857f8b45be0c430426b2aff197e",
+    "store_sha256": "9b4806bcf79574ad32f9707dd5a92784208d40d2057d00c681c1b1bbdd455a94",
+    "semantic_root": "cd798cebe5928d302da343f5d966ab5b368b56f5416cf85c389e6ac7e7681b47",
+    "request_store_sha256": "a9ba5498eda4e80ac90e32df3b8265dc36718998832eb4f5b375696ca92d1619",
+    "request_root": "4d8bfbd8ee04f75e30697b5e1357e05f0259658410c5856ce845bb783ab1c634",
     "target_root": "28f1deec106cba698ccec0c1124346f2bef9199319cf928f5377975640f0c632",
     "resolver_identity": "xax-driver-resolver-v1",
     "policy_root": "15264515d69f8d9ed3287f17674e1d0e87809fd366832b905d9423121ec62540",
@@ -38,58 +38,58 @@
   },
   "seed": {
     "kind": "the pinned seed bootstrap/seed/xaxc-linux-x86_64 (ADR-286), checked against SEED_SHA256 (ADR-382)",
-    "sha256": "fb31b03ba7e0947a4714b1e1a2029bf84742925d4116919aae16b483a70abb6b",
+    "sha256": "7988e0d0cbbbd04f8a3846ea319daf5ca3ed09104dab223acac9937a2e2fade9",
     "bytes": 31907179,
     "requires_python": false,
-    "host_s_nonsemantic": 0.1
+    "host_s_nonsemantic": 0.0
   },
   "references": {
-    "python_resolver_snapshot_sha256": "18b6f80126ab240a79ddf06777d9c1f90003e21d64181eaf281ef1b5f2874875",
-    "python_resolve_s_nonsemantic": 262.1,
+    "python_resolver_snapshot_sha256": "71949f8b4c2a941e43ed918a7af58f44bd3b47125b2b3b8fabcc964ad0349d47",
+    "python_resolve_s_nonsemantic": 221.3,
     "python_reference_compile": [
       "rejected",
       "XAX.NATIVE.UNSUPPORTED_OPERATION",
       "NATIVE-OP-LOWERED"
     ],
     "bootstrap_compile_kind": "the pinned seed (ADR-382)",
-    "bootstrap_compile_sha256": "fb31b03ba7e0947a4714b1e1a2029bf84742925d4116919aae16b483a70abb6b",
+    "bootstrap_compile_sha256": "7988e0d0cbbbd04f8a3846ea319daf5ca3ed09104dab223acac9937a2e2fade9",
     "bootstrap_compile_bytes": 31907179,
-    "bootstrap_compile_s_nonsemantic": 282.4
+    "bootstrap_compile_s_nonsemantic": 220.2
   },
   "generations": [
     {
       "generation": 1,
       "producer": "C0",
-      "producer_sha256": "fb31b03ba7e0947a4714b1e1a2029bf84742925d4116919aae16b483a70abb6b",
+      "producer_sha256": "7988e0d0cbbbd04f8a3846ea319daf5ca3ed09104dab223acac9937a2e2fade9",
       "resolve": {
         "status": "image",
         "outputs": [
-          "18b6f80126ab240a79ddf06777d9c1f90003e21d64181eaf281ef1b5f2874875"
+          "71949f8b4c2a941e43ed918a7af58f44bd3b47125b2b3b8fabcc964ad0349d47"
         ],
-        "host_s_nonsemantic": 38.41,
-        "peak_rss_kib_nonsemantic": 5158840
+        "host_s_nonsemantic": 37.76,
+        "peak_rss_kib_nonsemantic": 5131096
       },
       "build": {
         "status": "image",
         "outputs": [
-          "fb31b03ba7e0947a4714b1e1a2029bf84742925d4116919aae16b483a70abb6b",
-          "b41db2b2854428365f8eda53c9149c882026b22b15f8d50a3fe874fe7437e430"
+          "7988e0d0cbbbd04f8a3846ea319daf5ca3ed09104dab223acac9937a2e2fade9",
+          "d19a9a3c60dc0590e13f51f535f755b7b20f676ed0f8c4123c339bcb0111f198"
         ],
-        "host_s_nonsemantic": 200.58,
-        "peak_rss_kib_nonsemantic": 5158840
+        "host_s_nonsemantic": 174.1,
+        "peak_rss_kib_nonsemantic": 5131096
       },
-      "snapshot_sha256": "18b6f80126ab240a79ddf06777d9c1f90003e21d64181eaf281ef1b5f2874875",
+      "snapshot_sha256": "71949f8b4c2a941e43ed918a7af58f44bd3b47125b2b3b8fabcc964ad0349d47",
       "snapshot_equals_python_resolver": true,
-      "artifact_sha256": "fb31b03ba7e0947a4714b1e1a2029bf84742925d4116919aae16b483a70abb6b",
+      "artifact_sha256": "7988e0d0cbbbd04f8a3846ea319daf5ca3ed09104dab223acac9937a2e2fade9",
       "artifact_bytes": 31907179,
-      "provenance_sha256": "b41db2b2854428365f8eda53c9149c882026b22b15f8d50a3fe874fe7437e430",
+      "provenance_sha256": "d19a9a3c60dc0590e13f51f535f755b7b20f676ed0f8c4123c339bcb0111f198",
       "provenance": {
-        "cid": "e0085be9b040de58049f2b70c858f8ac5ca9c6df00bc2cd325f84cf71e3cfa5d",
-        "snapshot_root": "42f3836d83c014f20b823cdd1f845d430af3dcbcfd581c400dd1e5fd9ec205a8",
-        "request_root": "d712ba66bbe8b147d6acd49fab8bc32165460857f8b45be0c430426b2aff197e",
+        "cid": "f9d23e30ba941e2cf252af7d2f1e03f1f1ede9a453eae6b10d7a3a2309c348e5",
+        "snapshot_root": "993b4246db99b5a6c4da3411ac9f7666b0fc0512355db5917f9134c001202fd7",
+        "request_root": "4d8bfbd8ee04f75e30697b5e1357e05f0259658410c5856ce845bb783ab1c634",
         "target_root": "28f1deec106cba698ccec0c1124346f2bef9199319cf928f5377975640f0c632",
         "profile_root": "9e3dd6a9aa3ff407ed694b8705c82fcc13c472b818f189a1a45a7825ac1a967e",
-        "artifact_digest_blake3": "d4864907aedf62f53243f698f555e769faa7647199b7aaae4ddef30c7fa3a6b5",
+        "artifact_digest_blake3": "a7ec61ec990af5c90ce6e7bb054753d551218551acb7b2c64b343da0a7aaffb9",
         "compiler_identity": "bc351ca3286fa3ff21d2b39e3ea374c3b0f01fb45a5e601d29c2dc08105ce117",
         "lowering_identity": "9dc8d0005a602a54b513fb90539525d8db5eefc9936a8d442b660b6e3c80ebd2"
       }
@@ -97,36 +97,36 @@
     {
       "generation": 2,
       "producer": "C1",
-      "producer_sha256": "fb31b03ba7e0947a4714b1e1a2029bf84742925d4116919aae16b483a70abb6b",
+      "producer_sha256": "7988e0d0cbbbd04f8a3846ea319daf5ca3ed09104dab223acac9937a2e2fade9",
       "resolve": {
         "status": "image",
         "outputs": [
-          "18b6f80126ab240a79ddf06777d9c1f90003e21d64181eaf281ef1b5f2874875"
+          "71949f8b4c2a941e43ed918a7af58f44bd3b47125b2b3b8fabcc964ad0349d47"
         ],
-        "host_s_nonsemantic": 42.41,
-        "peak_rss_kib_nonsemantic": 5158840
+        "host_s_nonsemantic": 38.44,
+        "peak_rss_kib_nonsemantic": 5131096
       },
       "build": {
         "status": "image",
         "outputs": [
-          "fb31b03ba7e0947a4714b1e1a2029bf84742925d4116919aae16b483a70abb6b",
-          "b41db2b2854428365f8eda53c9149c882026b22b15f8d50a3fe874fe7437e430"
+          "7988e0d0cbbbd04f8a3846ea319daf5ca3ed09104dab223acac9937a2e2fade9",
+          "d19a9a3c60dc0590e13f51f535f755b7b20f676ed0f8c4123c339bcb0111f198"
         ],
-        "host_s_nonsemantic": 191.66,
-        "peak_rss_kib_nonsemantic": 5158840
+        "host_s_nonsemantic": 174.96,
+        "peak_rss_kib_nonsemantic": 5131096
       },
-      "snapshot_sha256": "18b6f80126ab240a79ddf06777d9c1f90003e21d64181eaf281ef1b5f2874875",
+      "snapshot_sha256": "71949f8b4c2a941e43ed918a7af58f44bd3b47125b2b3b8fabcc964ad0349d47",
       "snapshot_equals_python_resolver": true,
-      "artifact_sha256": "fb31b03ba7e0947a4714b1e1a2029bf84742925d4116919aae16b483a70abb6b",
+      "artifact_sha256": "7988e0d0cbbbd04f8a3846ea319daf5ca3ed09104dab223acac9937a2e2fade9",
       "artifact_bytes": 31907179,
-      "provenance_sha256": "b41db2b2854428365f8eda53c9149c882026b22b15f8d50a3fe874fe7437e430",
+      "provenance_sha256": "d19a9a3c60dc0590e13f51f535f755b7b20f676ed0f8c4123c339bcb0111f198",
       "provenance": {
-        "cid": "e0085be9b040de58049f2b70c858f8ac5ca9c6df00bc2cd325f84cf71e3cfa5d",
-        "snapshot_root": "42f3836d83c014f20b823cdd1f845d430af3dcbcfd581c400dd1e5fd9ec205a8",
-        "request_root": "d712ba66bbe8b147d6acd49fab8bc32165460857f8b45be0c430426b2aff197e",
+        "cid": "f9d23e30ba941e2cf252af7d2f1e03f1f1ede9a453eae6b10d7a3a2309c348e5",
+        "snapshot_root": "993b4246db99b5a6c4da3411ac9f7666b0fc0512355db5917f9134c001202fd7",
+        "request_root": "4d8bfbd8ee04f75e30697b5e1357e05f0259658410c5856ce845bb783ab1c634",
         "target_root": "28f1deec106cba698ccec0c1124346f2bef9199319cf928f5377975640f0c632",
         "profile_root": "9e3dd6a9aa3ff407ed694b8705c82fcc13c472b818f189a1a45a7825ac1a967e",
-        "artifact_digest_blake3": "d4864907aedf62f53243f698f555e769faa7647199b7aaae4ddef30c7fa3a6b5",
+        "artifact_digest_blake3": "a7ec61ec990af5c90ce6e7bb054753d551218551acb7b2c64b343da0a7aaffb9",
         "compiler_identity": "bc351ca3286fa3ff21d2b39e3ea374c3b0f01fb45a5e601d29c2dc08105ce117",
         "lowering_identity": "9dc8d0005a602a54b513fb90539525d8db5eefc9936a8d442b660b6e3c80ebd2"
       }
@@ -134,36 +134,36 @@
     {
       "generation": 3,
       "producer": "C2",
-      "producer_sha256": "fb31b03ba7e0947a4714b1e1a2029bf84742925d4116919aae16b483a70abb6b",
+      "producer_sha256": "7988e0d0cbbbd04f8a3846ea319daf5ca3ed09104dab223acac9937a2e2fade9",
       "resolve": {
         "status": "image",
         "outputs": [
-          "18b6f80126ab240a79ddf06777d9c1f90003e21d64181eaf281ef1b5f2874875"
+          "71949f8b4c2a941e43ed918a7af58f44bd3b47125b2b3b8fabcc964ad0349d47"
         ],
-        "host_s_nonsemantic": 40.82,
-        "peak_rss_kib_nonsemantic": 5158840
+        "host_s_nonsemantic": 37.3,
+        "peak_rss_kib_nonsemantic": 5131096
       },
       "build": {
         "status": "image",
         "outputs": [
-          "fb31b03ba7e0947a4714b1e1a2029bf84742925d4116919aae16b483a70abb6b",
-          "b41db2b2854428365f8eda53c9149c882026b22b15f8d50a3fe874fe7437e430"
+          "7988e0d0cbbbd04f8a3846ea319daf5ca3ed09104dab223acac9937a2e2fade9",
+          "d19a9a3c60dc0590e13f51f535f755b7b20f676ed0f8c4123c339bcb0111f198"
         ],
-        "host_s_nonsemantic": 190.35,
-        "peak_rss_kib_nonsemantic": 5158840
+        "host_s_nonsemantic": 178.39,
+        "peak_rss_kib_nonsemantic": 5131096
       },
-      "snapshot_sha256": "18b6f80126ab240a79ddf06777d9c1f90003e21d64181eaf281ef1b5f2874875",
+      "snapshot_sha256": "71949f8b4c2a941e43ed918a7af58f44bd3b47125b2b3b8fabcc964ad0349d47",
       "snapshot_equals_python_resolver": true,
-      "artifact_sha256": "fb31b03ba7e0947a4714b1e1a2029bf84742925d4116919aae16b483a70abb6b",
+      "artifact_sha256": "7988e0d0cbbbd04f8a3846ea319daf5ca3ed09104dab223acac9937a2e2fade9",
       "artifact_bytes": 31907179,
-      "provenance_sha256": "b41db2b2854428365f8eda53c9149c882026b22b15f8d50a3fe874fe7437e430",
+      "provenance_sha256": "d19a9a3c60dc0590e13f51f535f755b7b20f676ed0f8c4123c339bcb0111f198",
       "provenance": {
-        "cid": "e0085be9b040de58049f2b70c858f8ac5ca9c6df00bc2cd325f84cf71e3cfa5d",
-        "snapshot_root": "42f3836d83c014f20b823cdd1f845d430af3dcbcfd581c400dd1e5fd9ec205a8",
-        "request_root": "d712ba66bbe8b147d6acd49fab8bc32165460857f8b45be0c430426b2aff197e",
+        "cid": "f9d23e30ba941e2cf252af7d2f1e03f1f1ede9a453eae6b10d7a3a2309c348e5",
+        "snapshot_root": "993b4246db99b5a6c4da3411ac9f7666b0fc0512355db5917f9134c001202fd7",
+        "request_root": "4d8bfbd8ee04f75e30697b5e1357e05f0259658410c5856ce845bb783ab1c634",
         "target_root": "28f1deec106cba698ccec0c1124346f2bef9199319cf928f5377975640f0c632",
         "profile_root": "9e3dd6a9aa3ff407ed694b8705c82fcc13c472b818f189a1a45a7825ac1a967e",
-        "artifact_digest_blake3": "d4864907aedf62f53243f698f555e769faa7647199b7aaae4ddef30c7fa3a6b5",
+        "artifact_digest_blake3": "a7ec61ec990af5c90ce6e7bb054753d551218551acb7b2c64b343da0a7aaffb9",
         "compiler_identity": "bc351ca3286fa3ff21d2b39e3ea374c3b0f01fb45a5e601d29c2dc08105ce117",
         "lowering_identity": "9dc8d0005a602a54b513fb90539525d8db5eefc9936a8d442b660b6e3c80ebd2"
       }
@@ -172,15 +172,15 @@
   "fixed_point": {
     "comparison": "raw executable bytes (SHA-256)",
     "artifacts": [
-      "fb31b03ba7e0947a4714b1e1a2029bf84742925d4116919aae16b483a70abb6b",
-      "fb31b03ba7e0947a4714b1e1a2029bf84742925d4116919aae16b483a70abb6b",
-      "fb31b03ba7e0947a4714b1e1a2029bf84742925d4116919aae16b483a70abb6b"
+      "7988e0d0cbbbd04f8a3846ea319daf5ca3ed09104dab223acac9937a2e2fade9",
+      "7988e0d0cbbbd04f8a3846ea319daf5ca3ed09104dab223acac9937a2e2fade9",
+      "7988e0d0cbbbd04f8a3846ea319daf5ca3ed09104dab223acac9937a2e2fade9"
     ]
   },
   "empty_environment_run": {
     "environment": "empty (no PATH, no PYTHONPATH)",
     "status": "image",
-    "snapshot_sha256": "18b6f80126ab240a79ddf06777d9c1f90003e21d64181eaf281ef1b5f2874875"
+    "snapshot_sha256": "71949f8b4c2a941e43ed918a7af58f44bd3b47125b2b3b8fabcc964ad0349d47"
   },
   "executables_have_interpreter": {
     "C0": false,
@@ -4659,29 +4659,29 @@
       "outcomes": {
         "C0": [
           "image",
-          "4b82c19a7611ae533321dea90fbb974f1167b46124f72e9be187905a3ab22bce",
-          "d2e9bd2622d36ad13f7e7f72e91eced4d44fd71a67ad2641a5e018a4ca5c5ba6"
+          "f65dacaa3cbcef79686c903841306772a4a9ab2d64b8b1319e6b288c3a328d91",
+          "c4d9ead4f0429eaae8131cc3eec2640a14901e3cd8fe4f185f20bde63e3c8dcc"
         ],
         "C1": [
           "image",
-          "4b82c19a7611ae533321dea90fbb974f1167b46124f72e9be187905a3ab22bce",
-          "d2e9bd2622d36ad13f7e7f72e91eced4d44fd71a67ad2641a5e018a4ca5c5ba6"
+          "f65dacaa3cbcef79686c903841306772a4a9ab2d64b8b1319e6b288c3a328d91",
+          "c4d9ead4f0429eaae8131cc3eec2640a14901e3cd8fe4f185f20bde63e3c8dcc"
         ],
         "C2": [
           "image",
-          "4b82c19a7611ae533321dea90fbb974f1167b46124f72e9be187905a3ab22bce",
-          "d2e9bd2622d36ad13f7e7f72e91eced4d44fd71a67ad2641a5e018a4ca5c5ba6"
+          "f65dacaa3cbcef79686c903841306772a4a9ab2d64b8b1319e6b288c3a328d91",
+          "c4d9ead4f0429eaae8131cc3eec2640a14901e3cd8fe4f185f20bde63e3c8dcc"
         ],
         "C3": [
           "image",
-          "4b82c19a7611ae533321dea90fbb974f1167b46124f72e9be187905a3ab22bce",
-          "d2e9bd2622d36ad13f7e7f72e91eced4d44fd71a67ad2641a5e018a4ca5c5ba6"
+          "f65dacaa3cbcef79686c903841306772a4a9ab2d64b8b1319e6b288c3a328d91",
+          "c4d9ead4f0429eaae8131cc3eec2640a14901e3cd8fe4f185f20bde63e3c8dcc"
         ]
       },
       "reference": [
         "image",
-        "4b82c19a7611ae533321dea90fbb974f1167b46124f72e9be187905a3ab22bce",
-        "d2e9bd2622d36ad13f7e7f72e91eced4d44fd71a67ad2641a5e018a4ca5c5ba6"
+        "f65dacaa3cbcef79686c903841306772a4a9ab2d64b8b1319e6b288c3a328d91",
+        "c4d9ead4f0429eaae8131cc3eec2640a14901e3cd8fe4f185f20bde63e3c8dcc"
       ]
     },
     {
@@ -4691,29 +4691,29 @@
       "outcomes": {
         "C0": [
           "image",
-          "7e1eb54a4d6b102f7ff8dff6aa9c47b88018d333e82018c9b69838b07be2f2a5",
-          "e5c546dac394639d8d5dda8fa1ba079a6024d811df0bc3d69c1c3401d522736e"
+          "b1241b995c5f0d851b997f53ceb1fd60ab1c78749ae2e22dffab115e5ee45648",
+          "433416001c1ae281e34ba18ef1c41a746a0831373fb0239c12e39d93b6fe4d5d"
         ],
         "C1": [
           "image",
-          "7e1eb54a4d6b102f7ff8dff6aa9c47b88018d333e82018c9b69838b07be2f2a5",
-          "e5c546dac394639d8d5dda8fa1ba079a6024d811df0bc3d69c1c3401d522736e"
+          "b1241b995c5f0d851b997f53ceb1fd60ab1c78749ae2e22dffab115e5ee45648",
+          "433416001c1ae281e34ba18ef1c41a746a0831373fb0239c12e39d93b6fe4d5d"
         ],
         "C2": [
           "image",
-          "7e1eb54a4d6b102f7ff8dff6aa9c47b88018d333e82018c9b69838b07be2f2a5",
-          "e5c546dac394639d8d5dda8fa1ba079a6024d811df0bc3d69c1c3401d522736e"
+          "b1241b995c5f0d851b997f53ceb1fd60ab1c78749ae2e22dffab115e5ee45648",
+          "433416001c1ae281e34ba18ef1c41a746a0831373fb0239c12e39d93b6fe4d5d"
         ],
         "C3": [
           "image",
-          "7e1eb54a4d6b102f7ff8dff6aa9c47b88018d333e82018c9b69838b07be2f2a5",
-          "e5c546dac394639d8d5dda8fa1ba079a6024d811df0bc3d69c1c3401d522736e"
+          "b1241b995c5f0d851b997f53ceb1fd60ab1c78749ae2e22dffab115e5ee45648",
+          "433416001c1ae281e34ba18ef1c41a746a0831373fb0239c12e39d93b6fe4d5d"
         ]
       },
       "reference": [
         "image",
-        "7e1eb54a4d6b102f7ff8dff6aa9c47b88018d333e82018c9b69838b07be2f2a5",
-        "e5c546dac394639d8d5dda8fa1ba079a6024d811df0bc3d69c1c3401d522736e"
+        "b1241b995c5f0d851b997f53ceb1fd60ab1c78749ae2e22dffab115e5ee45648",
+        "433416001c1ae281e34ba18ef1c41a746a0831373fb0239c12e39d93b6fe4d5d"
       ]
     },
     {
@@ -4883,29 +4883,29 @@
       "outcomes": {
         "C0": [
           "image",
-          "b1f9603539d8da03aaff5f0d5150d96b14eb3fd9c1135c57df99b97b89008a8a",
-          "d795568964207277dc0fc241cba9a729523ba4712d1b4fc15bc8cabd36f38765"
+          "02abebd74d7f27dd3682654ca0f3978357c29c6343b2e6531372008a9d2ad358",
+          "0ad379b7ae2e7d49cf8c64f3fd62838f841c52f5d8f7a31fd6d77226a64f934f"
         ],
         "C1": [
           "image",
-          "b1f9603539d8da03aaff5f0d5150d96b14eb3fd9c1135c57df99b97b89008a8a",
-          "d795568964207277dc0fc241cba9a729523ba4712d1b4fc15bc8cabd36f38765"
+          "02abebd74d7f27dd3682654ca0f3978357c29c6343b2e6531372008a9d2ad358",
+          "0ad379b7ae2e7d49cf8c64f3fd62838f841c52f5d8f7a31fd6d77226a64f934f"
         ],
         "C2": [
           "image",
-          "b1f9603539d8da03aaff5f0d5150d96b14eb3fd9c1135c57df99b97b89008a8a",
-          "d795568964207277dc0fc241cba9a729523ba4712d1b4fc15bc8cabd36f38765"
+          "02abebd74d7f27dd3682654ca0f3978357c29c6343b2e6531372008a9d2ad358",
+          "0ad379b7ae2e7d49cf8c64f3fd62838f841c52f5d8f7a31fd6d77226a64f934f"
         ],
         "C3": [
           "image",
-          "b1f9603539d8da03aaff5f0d5150d96b14eb3fd9c1135c57df99b97b89008a8a",
-          "d795568964207277dc0fc241cba9a729523ba4712d1b4fc15bc8cabd36f38765"
+          "02abebd74d7f27dd3682654ca0f3978357c29c6343b2e6531372008a9d2ad358",
+          "0ad379b7ae2e7d49cf8c64f3fd62838f841c52f5d8f7a31fd6d77226a64f934f"
         ]
       },
       "reference": [
         "image",
-        "b1f9603539d8da03aaff5f0d5150d96b14eb3fd9c1135c57df99b97b89008a8a",
-        "d795568964207277dc0fc241cba9a729523ba4712d1b4fc15bc8cabd36f38765"
+        "02abebd74d7f27dd3682654ca0f3978357c29c6343b2e6531372008a9d2ad358",
+        "0ad379b7ae2e7d49cf8c64f3fd62838f841c52f5d8f7a31fd6d77226a64f934f"
       ]
     },
     {
@@ -4947,29 +4947,29 @@
       "outcomes": {
         "C0": [
           "image",
-          "4adeefcede8230d4ae662aed6faeb28dc7c9e80bff871ee3801cea4e13512001",
-          "2bdfdaf978327f8d89c934e9604df5f73cbea3c6271bdf08f8ec22b58b342b74"
+          "1d6190be5bb7af7836b22fd1bb299fc7e62d050322abce62648cc5544eac5f61",
+          "070f0b798940436e57479c97109d212f8ac5521b0f869b5fcaff10190dc96b9d"
         ],
         "C1": [
           "image",
-          "4adeefcede8230d4ae662aed6faeb28dc7c9e80bff871ee3801cea4e13512001",
-          "2bdfdaf978327f8d89c934e9604df5f73cbea3c6271bdf08f8ec22b58b342b74"
+          "1d6190be5bb7af7836b22fd1bb299fc7e62d050322abce62648cc5544eac5f61",
+          "070f0b798940436e57479c97109d212f8ac5521b0f869b5fcaff10190dc96b9d"
         ],
         "C2": [
           "image",
-          "4adeefcede8230d4ae662aed6faeb28dc7c9e80bff871ee3801cea4e13512001",
-          "2bdfdaf978327f8d89c934e9604df5f73cbea3c6271bdf08f8ec22b58b342b74"
+          "1d6190be5bb7af7836b22fd1bb299fc7e62d050322abce62648cc5544eac5f61",
+          "070f0b798940436e57479c97109d212f8ac5521b0f869b5fcaff10190dc96b9d"
         ],
         "C3": [
           "image",
-          "4adeefcede8230d4ae662aed6faeb28dc7c9e80bff871ee3801cea4e13512001",
-          "2bdfdaf978327f8d89c934e9604df5f73cbea3c6271bdf08f8ec22b58b342b74"
+          "1d6190be5bb7af7836b22fd1bb299fc7e62d050322abce62648cc5544eac5f61",
+          "070f0b798940436e57479c97109d212f8ac5521b0f869b5fcaff10190dc96b9d"
         ]
       },
       "reference": [
         "image",
-        "4adeefcede8230d4ae662aed6faeb28dc7c9e80bff871ee3801cea4e13512001",
-        "2bdfdaf978327f8d89c934e9604df5f73cbea3c6271bdf08f8ec22b58b342b74"
+        "1d6190be5bb7af7836b22fd1bb299fc7e62d050322abce62648cc5544eac5f61",
+        "070f0b798940436e57479c97109d212f8ac5521b0f869b5fcaff10190dc96b9d"
       ]
     },
     {
@@ -5555,29 +5555,29 @@
       "outcomes": {
         "C0": [
           "image",
-          "aa418cb521486798db7f35b3b80d4e831a3dbfeb6469f1a4887e5809291d4b42",
-          "ed98f656303de86f27aa227eb566f5c3262fd6f543b1d267b4de23b39e66692c"
+          "d197ac9ed5f6bed34bf99ead3726661012a20d89b98070a08fbfeecb99df794f",
+          "ac2a608e02009e20915d1838223da4f48a8a95825ea6b029eaba55561acda28d"
         ],
         "C1": [
           "image",
-          "aa418cb521486798db7f35b3b80d4e831a3dbfeb6469f1a4887e5809291d4b42",
-          "ed98f656303de86f27aa227eb566f5c3262fd6f543b1d267b4de23b39e66692c"
+          "d197ac9ed5f6bed34bf99ead3726661012a20d89b98070a08fbfeecb99df794f",
+          "ac2a608e02009e20915d1838223da4f48a8a95825ea6b029eaba55561acda28d"
         ],
         "C2": [
           "image",
-          "aa418cb521486798db7f35b3b80d4e831a3dbfeb6469f1a4887e5809291d4b42",
-          "ed98f656303de86f27aa227eb566f5c3262fd6f543b1d267b4de23b39e66692c"
+          "d197ac9ed5f6bed34bf99ead3726661012a20d89b98070a08fbfeecb99df794f",
+          "ac2a608e02009e20915d1838223da4f48a8a95825ea6b029eaba55561acda28d"
         ],
         "C3": [
           "image",
-          "aa418cb521486798db7f35b3b80d4e831a3dbfeb6469f1a4887e5809291d4b42",
-          "ed98f656303de86f27aa227eb566f5c3262fd6f543b1d267b4de23b39e66692c"
+          "d197ac9ed5f6bed34bf99ead3726661012a20d89b98070a08fbfeecb99df794f",
+          "ac2a608e02009e20915d1838223da4f48a8a95825ea6b029eaba55561acda28d"
         ]
       },
       "reference": [
         "image",
-        "aa418cb521486798db7f35b3b80d4e831a3dbfeb6469f1a4887e5809291d4b42",
-        "ed98f656303de86f27aa227eb566f5c3262fd6f543b1d267b4de23b39e66692c"
+        "d197ac9ed5f6bed34bf99ead3726661012a20d89b98070a08fbfeecb99df794f",
+        "ac2a608e02009e20915d1838223da4f48a8a95825ea6b029eaba55561acda28d"
       ]
     },
     {
@@ -5587,29 +5587,29 @@
       "outcomes": {
         "C0": [
           "image",
-          "857d1f36cea3b2e9acc1c4172f02114a548e2ed37dda5c6c965a161402dce5df",
-          "d3f7b947f0719368514063c8148a42a24f2f9855f41d0382a10801b5160bed73"
+          "b49566a3be1e94630b8998fd9099d7474d97b364da3b82ab6a3a50e43ab5d0c3",
+          "d079fe052c2b2b496defd28b501d7f18dfc7c3f505a4c2e12e0ed0052aa6de62"
         ],
         "C1": [
           "image",
-          "857d1f36cea3b2e9acc1c4172f02114a548e2ed37dda5c6c965a161402dce5df",
-          "d3f7b947f0719368514063c8148a42a24f2f9855f41d0382a10801b5160bed73"
+          "b49566a3be1e94630b8998fd9099d7474d97b364da3b82ab6a3a50e43ab5d0c3",
+          "d079fe052c2b2b496defd28b501d7f18dfc7c3f505a4c2e12e0ed0052aa6de62"
         ],
         "C2": [
           "image",
-          "857d1f36cea3b2e9acc1c4172f02114a548e2ed37dda5c6c965a161402dce5df",
-          "d3f7b947f0719368514063c8148a42a24f2f9855f41d0382a10801b5160bed73"
+          "b49566a3be1e94630b8998fd9099d7474d97b364da3b82ab6a3a50e43ab5d0c3",
+          "d079fe052c2b2b496defd28b501d7f18dfc7c3f505a4c2e12e0ed0052aa6de62"
         ],
         "C3": [
           "image",
-          "857d1f36cea3b2e9acc1c4172f02114a548e2ed37dda5c6c965a161402dce5df",
-          "d3f7b947f0719368514063c8148a42a24f2f9855f41d0382a10801b5160bed73"
+          "b49566a3be1e94630b8998fd9099d7474d97b364da3b82ab6a3a50e43ab5d0c3",
+          "d079fe052c2b2b496defd28b501d7f18dfc7c3f505a4c2e12e0ed0052aa6de62"
         ]
       },
       "reference": [
         "image",
-        "857d1f36cea3b2e9acc1c4172f02114a548e2ed37dda5c6c965a161402dce5df",
-        "d3f7b947f0719368514063c8148a42a24f2f9855f41d0382a10801b5160bed73"
+        "b49566a3be1e94630b8998fd9099d7474d97b364da3b82ab6a3a50e43ab5d0c3",
+        "d079fe052c2b2b496defd28b501d7f18dfc7c3f505a4c2e12e0ed0052aa6de62"
       ]
     },
     {
@@ -6208,28 +6208,28 @@
         "C0": [
           "image",
           "04e8ad1677e292f16e1b8d3baefa49337a97531e2a67996775c790515a8048a0",
-          "63256b226f8de36a3a0f79539a13e336036f63d0d5ca3910f96d27fae9e4480f"
+          "e4da665e8c0c792f75ec050b2c2cd874f6f150550d6ad3b59ef76a34d1f7fccd"
         ],
         "C1": [
           "image",
           "04e8ad1677e292f16e1b8d3baefa49337a97531e2a67996775c790515a8048a0",
-          "63256b226f8de36a3a0f79539a13e336036f63d0d5ca3910f96d27fae9e4480f"
+          "e4da665e8c0c792f75ec050b2c2cd874f6f150550d6ad3b59ef76a34d1f7fccd"
         ],
         "C2": [
           "image",
           "04e8ad1677e292f16e1b8d3baefa49337a97531e2a67996775c790515a8048a0",
-          "63256b226f8de36a3a0f79539a13e336036f63d0d5ca3910f96d27fae9e4480f"
+          "e4da665e8c0c792f75ec050b2c2cd874f6f150550d6ad3b59ef76a34d1f7fccd"
         ],
         "C3": [
           "image",
           "04e8ad1677e292f16e1b8d3baefa49337a97531e2a67996775c790515a8048a0",
-          "63256b226f8de36a3a0f79539a13e336036f63d0d5ca3910f96d27fae9e4480f"
+          "e4da665e8c0c792f75ec050b2c2cd874f6f150550d6ad3b59ef76a34d1f7fccd"
         ]
       },
       "reference": [
         "image",
         "04e8ad1677e292f16e1b8d3baefa49337a97531e2a67996775c790515a8048a0",
-        "63256b226f8de36a3a0f79539a13e336036f63d0d5ca3910f96d27fae9e4480f"
+        "e4da665e8c0c792f75ec050b2c2cd874f6f150550d6ad3b59ef76a34d1f7fccd"
       ]
     },
     {
@@ -6240,28 +6240,28 @@
         "C0": [
           "image",
           "f555d961cdd579a66b4862c48dc0fe097886daf3de1ba0c676eef2387d505f02",
-          "df45c4cd654079730a1512a95e6f5bf845952fe30697e625da683e26b6f842cb"
+          "2e4079114dbe0baf4d552f57c3d70f199b92dbc710e87de085e6a5e2ee50c69f"
         ],
         "C1": [
           "image",
           "f555d961cdd579a66b4862c48dc0fe097886daf3de1ba0c676eef2387d505f02",
-          "df45c4cd654079730a1512a95e6f5bf845952fe30697e625da683e26b6f842cb"
+          "2e4079114dbe0baf4d552f57c3d70f199b92dbc710e87de085e6a5e2ee50c69f"
         ],
         "C2": [
           "image",
           "f555d961cdd579a66b4862c48dc0fe097886daf3de1ba0c676eef2387d505f02",
-          "df45c4cd654079730a1512a95e6f5bf845952fe30697e625da683e26b6f842cb"
+          "2e4079114dbe0baf4d552f57c3d70f199b92dbc710e87de085e6a5e2ee50c69f"
         ],
         "C3": [
           "image",
           "f555d961cdd579a66b4862c48dc0fe097886daf3de1ba0c676eef2387d505f02",
-          "df45c4cd654079730a1512a95e6f5bf845952fe30697e625da683e26b6f842cb"
+          "2e4079114dbe0baf4d552f57c3d70f199b92dbc710e87de085e6a5e2ee50c69f"
         ]
       },
       "reference": [
         "image",
         "f555d961cdd579a66b4862c48dc0fe097886daf3de1ba0c676eef2387d505f02",
-        "df45c4cd654079730a1512a95e6f5bf845952fe30697e625da683e26b6f842cb"
+        "2e4079114dbe0baf4d552f57c3d70f199b92dbc710e87de085e6a5e2ee50c69f"
       ]
     },
     {
@@ -6376,8 +6376,8 @@
           "outputs": [
             "1c5b96873831caefd450bf8686895b4341f328f723ab78adc6bd2606b16e21f9"
           ],
-          "host_s_nonsemantic": 40.36,
-          "peak_rss_kib_nonsemantic": 5442232
+          "host_s_nonsemantic": 36.96,
+          "peak_rss_kib_nonsemantic": 6112676
         },
         "equals_ledger": true,
         "verify": "image"
@@ -6397,8 +6397,8 @@
           "outputs": [
             "c1ced130bee3d0274cf845e1e056e742566924d75772d9091fd8a175ee89ab1a"
           ],
-          "host_s_nonsemantic": 39.07,
-          "peak_rss_kib_nonsemantic": 5442232
+          "host_s_nonsemantic": 37.26,
+          "peak_rss_kib_nonsemantic": 6112676
         },
         "equals_ledger": true,
         "verify": "image"
@@ -6418,8 +6418,8 @@
           "outputs": [
             "2c0839fa7e6032bc9df2388a2aa230553996f1b7f06fb3e9dc8b4245db751f10"
           ],
-          "host_s_nonsemantic": 40.21,
-          "peak_rss_kib_nonsemantic": 5442232
+          "host_s_nonsemantic": 37.38,
+          "peak_rss_kib_nonsemantic": 6112676
         },
         "equals_ledger": true,
         "verify": "image"
@@ -6439,8 +6439,8 @@
           "outputs": [
             "e0b44404ffa081f23a94bc1e30b5fe22e1a2b5c8f1fcfca4a6b1eae815df2526"
           ],
-          "host_s_nonsemantic": 40.93,
-          "peak_rss_kib_nonsemantic": 5442232
+          "host_s_nonsemantic": 37.23,
+          "peak_rss_kib_nonsemantic": 6112676
         },
         "equals_ledger": true,
         "verify": "image"
@@ -6460,8 +6460,8 @@
           "outputs": [
             "a025be68f27f33051fc6483b369a924a1734bb44806c78e2a2dbc01d30826245"
           ],
-          "host_s_nonsemantic": 5.52,
-          "peak_rss_kib_nonsemantic": 5442232
+          "host_s_nonsemantic": 4.79,
+          "peak_rss_kib_nonsemantic": 6112676
         },
         "equals_ledger": true,
         "verify": "image"
@@ -6481,8 +6481,8 @@
           "outputs": [
             "78e32eed8bb8086e71f48bb6d289796711a21f6ca7ed058fc8b8eceb601cc44b"
           ],
-          "host_s_nonsemantic": 2.25,
-          "peak_rss_kib_nonsemantic": 5442232
+          "host_s_nonsemantic": 2.05,
+          "peak_rss_kib_nonsemantic": 6112676
         },
         "equals_ledger": true,
         "verify": "image"
@@ -6502,8 +6502,8 @@
           "outputs": [
             "6bc97c7e8d529841e173347602f43fccab13b76de19772d366061aacaa83b102"
           ],
-          "host_s_nonsemantic": 18.22,
-          "peak_rss_kib_nonsemantic": 5442232
+          "host_s_nonsemantic": 16.38,
+          "peak_rss_kib_nonsemantic": 6112676
         },
         "equals_ledger": true,
         "verify": "image"
@@ -6523,8 +6523,8 @@
           "outputs": [
             "84964d1a37ca311e1b8d0b914bf872e9ce06e2fe24ae70b95067099725dee70d"
           ],
-          "host_s_nonsemantic": 41.25,
-          "peak_rss_kib_nonsemantic": 5442232
+          "host_s_nonsemantic": 37.61,
+          "peak_rss_kib_nonsemantic": 6112676
         },
         "equals_ledger": true,
         "verify": "image"
@@ -6544,8 +6544,8 @@
           "outputs": [
             "7c49d4a8cb4d70d8c68a42a825ce243f4467315fc23675e5d7f660704eb44d1f"
           ],
-          "host_s_nonsemantic": 41.05,
-          "peak_rss_kib_nonsemantic": 5442232
+          "host_s_nonsemantic": 37.18,
+          "peak_rss_kib_nonsemantic": 6112676
         },
         "equals_ledger": true,
         "verify": "image"
@@ -6565,8 +6565,8 @@
           "outputs": [
             "4d8db50e293eda4a91ff0f3cfe001a9c680232437612aa7aef7a335c2e336ca6"
           ],
-          "host_s_nonsemantic": 41.17,
-          "peak_rss_kib_nonsemantic": 5442232
+          "host_s_nonsemantic": 37.24,
+          "peak_rss_kib_nonsemantic": 6112676
         },
         "equals_ledger": true,
         "verify": "image"
@@ -6586,8 +6586,8 @@
           "outputs": [
             "a4aa9082525b3383a739c05c40166fb259a64947ed6be268586cbf7b8d44df6f"
           ],
-          "host_s_nonsemantic": 39.78,
-          "peak_rss_kib_nonsemantic": 5442232
+          "host_s_nonsemantic": 37.24,
+          "peak_rss_kib_nonsemantic": 6112676
         },
         "equals_ledger": true,
         "verify": "image"
@@ -6607,8 +6607,8 @@
           "outputs": [
             "536cfd2eec00fbe8ed3cfea94d974affd08ddd951f4da594dd440ab2648afa12"
           ],
-          "host_s_nonsemantic": 41.31,
-          "peak_rss_kib_nonsemantic": 5442232
+          "host_s_nonsemantic": 38.2,
+          "peak_rss_kib_nonsemantic": 6112676
         },
         "equals_ledger": true,
         "verify": "image"
@@ -6628,8 +6628,8 @@
           "outputs": [
             "14be65a52eaf784c3af3f77c25773751adc252d53ad7528c0affce98bbbac869"
           ],
-          "host_s_nonsemantic": 40.55,
-          "peak_rss_kib_nonsemantic": 5442232
+          "host_s_nonsemantic": 37.81,
+          "peak_rss_kib_nonsemantic": 6112676
         },
         "equals_ledger": true,
         "verify": "image"
@@ -6649,8 +6649,8 @@
           "outputs": [
             "5961ec1a2676b543e0a4dbe5f1111e95ee9c413e3d45c8d77fb480fe3e95913c"
           ],
-          "host_s_nonsemantic": 0.1,
-          "peak_rss_kib_nonsemantic": 5442232
+          "host_s_nonsemantic": 0.09,
+          "peak_rss_kib_nonsemantic": 6112676
         },
         "equals_ledger": true,
         "verify": "image"
@@ -6671,7 +6671,7 @@
             "acd95da62c9ab737d125cc008a408b01de415a3b1e0409b67adda878e624dc48"
           ],
           "host_s_nonsemantic": 0.04,
-          "peak_rss_kib_nonsemantic": 5442232
+          "peak_rss_kib_nonsemantic": 6112676
         },
         "equals_ledger": true,
         "verify": "image"
@@ -6691,8 +6691,8 @@
           "outputs": [
             "79bfa3ceb1bf89528fad7d1d98252fd097b6ceda309c5f9f91385d4e04da7942"
           ],
-          "host_s_nonsemantic": 40.79,
-          "peak_rss_kib_nonsemantic": 5442232
+          "host_s_nonsemantic": 37.91,
+          "peak_rss_kib_nonsemantic": 6112676
         },
         "equals_ledger": true,
         "verify": "image"
@@ -6712,8 +6712,8 @@
           "outputs": [
             "b4e68d468268b87fe483de3faaeb4d3d5e18215c6f5040a5014af9bf590af56a"
           ],
-          "host_s_nonsemantic": 40.38,
-          "peak_rss_kib_nonsemantic": 5442232
+          "host_s_nonsemantic": 38.26,
+          "peak_rss_kib_nonsemantic": 6112676
         },
         "equals_ledger": true,
         "verify": "image"
@@ -6733,8 +6733,8 @@
           "outputs": [
             "69db5159aa31a022f1fa4b9501a35fb35651fc1363cd7977f745255f2ec54158"
           ],
-          "host_s_nonsemantic": 0.06,
-          "peak_rss_kib_nonsemantic": 5442232
+          "host_s_nonsemantic": 0.05,
+          "peak_rss_kib_nonsemantic": 6112676
         },
         "equals_ledger": true,
         "verify": "image"
@@ -6754,8 +6754,8 @@
           "outputs": [
             "2f4b69462df01ec43c15b23c1f23a0a75acd37d7614ea7430b44caf33361b87a"
           ],
-          "host_s_nonsemantic": 2.67,
-          "peak_rss_kib_nonsemantic": 5442232
+          "host_s_nonsemantic": 2.47,
+          "peak_rss_kib_nonsemantic": 6112676
         },
         "equals_ledger": true,
         "verify": "image"
@@ -6775,8 +6775,8 @@
           "outputs": [
             "1681b1d1d62e9b93d515556a62b7368170964b8bc6ea236a047ba7c658515173"
           ],
-          "host_s_nonsemantic": 5.29,
-          "peak_rss_kib_nonsemantic": 5442232
+          "host_s_nonsemantic": 4.85,
+          "peak_rss_kib_nonsemantic": 6112676
         },
         "equals_ledger": true,
         "verify": "image"
@@ -6796,8 +6796,8 @@
           "outputs": [
             "da2796c46e3eb96f78dbd5b07571fa72ee6f611a33b06484326c1d40f40b28f6"
           ],
-          "host_s_nonsemantic": 2.23,
-          "peak_rss_kib_nonsemantic": 5442232
+          "host_s_nonsemantic": 2.06,
+          "peak_rss_kib_nonsemantic": 6112676
         },
         "equals_ledger": true,
         "verify": "image"
@@ -6817,8 +6817,8 @@
           "outputs": [
             "f0d6a93e4b606e2f4d9791976a517469058e97879ab8417be3f72dfde9ce3566"
           ],
-          "host_s_nonsemantic": 17.53,
-          "peak_rss_kib_nonsemantic": 5442232
+          "host_s_nonsemantic": 16.53,
+          "peak_rss_kib_nonsemantic": 6112676
         },
         "equals_ledger": true,
         "verify": "image"
@@ -6838,8 +6838,8 @@
           "outputs": [
             "c134b62e96a5197024b216ac732d6fa4c4d56b7b97c97d4decc4d6c96983eb8c"
           ],
-          "host_s_nonsemantic": 2.5,
-          "peak_rss_kib_nonsemantic": 5442232
+          "host_s_nonsemantic": 2.38,
+          "peak_rss_kib_nonsemantic": 6112676
         },
         "equals_ledger": true,
         "verify": "image"
@@ -6859,8 +6859,8 @@
           "outputs": [
             "258216f35574b05b215e25fb0cc53aad54aba7f5507d5fe258004cafdb85e122"
           ],
-          "host_s_nonsemantic": 40.83,
-          "peak_rss_kib_nonsemantic": 5442232
+          "host_s_nonsemantic": 37.65,
+          "peak_rss_kib_nonsemantic": 6112676
         },
         "equals_ledger": true,
         "verify": "image"
@@ -6880,8 +6880,8 @@
           "outputs": [
             "ce241b5ba274a5a4e526cdb73425af2758505e4aca4d7165d8d837f11f0e151c"
           ],
-          "host_s_nonsemantic": 40.19,
-          "peak_rss_kib_nonsemantic": 5442232
+          "host_s_nonsemantic": 38.2,
+          "peak_rss_kib_nonsemantic": 6112676
         },
         "equals_ledger": true,
         "verify": "image"
@@ -6901,8 +6901,8 @@
           "outputs": [
             "edf1abed022c677e40d0e9cd7b408f56708c0d529735cedacd93d62f10bf5cf4"
           ],
-          "host_s_nonsemantic": 0.06,
-          "peak_rss_kib_nonsemantic": 5442232
+          "host_s_nonsemantic": 0.05,
+          "peak_rss_kib_nonsemantic": 6112676
         },
         "equals_ledger": true,
         "verify": "image"
@@ -6922,8 +6922,8 @@
           "outputs": [
             "df2cae7dd200d407ccf2592cee85b8c6da487196d7c0d05360250efd3d908205"
           ],
-          "host_s_nonsemantic": 2.56,
-          "peak_rss_kib_nonsemantic": 5442232
+          "host_s_nonsemantic": 2.43,
+          "peak_rss_kib_nonsemantic": 6112676
         },
         "equals_ledger": true,
         "verify": "image"
@@ -6943,8 +6943,8 @@
           "outputs": [
             "e2c3d97be91dcfeeb69a1540391ec301732832ca474bbbeb3c6b6c6b11fd6d93"
           ],
-          "host_s_nonsemantic": 5.08,
-          "peak_rss_kib_nonsemantic": 5442232
+          "host_s_nonsemantic": 4.85,
+          "peak_rss_kib_nonsemantic": 6112676
         },
         "equals_ledger": true,
         "verify": "image"
@@ -6964,8 +6964,8 @@
           "outputs": [
             "4b2ba51e86bb72d9e203bd4bf7c5b9e6ae75b00d305652e1e6e51f814c73abb9"
           ],
-          "host_s_nonsemantic": 2.11,
-          "peak_rss_kib_nonsemantic": 5442232
+          "host_s_nonsemantic": 1.99,
+          "peak_rss_kib_nonsemantic": 6112676
         },
         "equals_ledger": true,
         "verify": "image"
@@ -6985,8 +6985,8 @@
           "outputs": [
             "d5fd21675c41dc510b56cb53325a2e1e28b2c4ea648170e03e8af15db0182b22"
           ],
-          "host_s_nonsemantic": 17.21,
-          "peak_rss_kib_nonsemantic": 5442232
+          "host_s_nonsemantic": 16.33,
+          "peak_rss_kib_nonsemantic": 6112676
         },
         "equals_ledger": true,
         "verify": "image"
@@ -7006,8 +7006,8 @@
           "outputs": [
             "4de116619688c7d21472a0dfbd20c4e3ce1bb02e00697bb5d83d4e188c586c88"
           ],
-          "host_s_nonsemantic": 2.56,
-          "peak_rss_kib_nonsemantic": 5442232
+          "host_s_nonsemantic": 2.29,
+          "peak_rss_kib_nonsemantic": 6112676
         },
         "equals_ledger": true,
         "verify": "image"
@@ -7027,8 +7027,8 @@
           "outputs": [
             "278d99da061b581f62b26a54e8369b1c468cea79eb83f4d11e4ecf500d71045e"
           ],
-          "host_s_nonsemantic": 40.25,
-          "peak_rss_kib_nonsemantic": 5442232
+          "host_s_nonsemantic": 38.22,
+          "peak_rss_kib_nonsemantic": 6112676
         },
         "equals_ledger": true,
         "verify": "image"
@@ -7048,8 +7048,8 @@
           "outputs": [
             "e496fe3f9f276b5616e4c0cfa0224972a0d9202349141570bedbd1887ff19bcf"
           ],
-          "host_s_nonsemantic": 42.14,
-          "peak_rss_kib_nonsemantic": 5442232
+          "host_s_nonsemantic": 37.95,
+          "peak_rss_kib_nonsemantic": 6112676
         },
         "equals_ledger": true,
         "verify": "image"
@@ -7069,8 +7069,8 @@
           "outputs": [
             "d8622c12b41f0df3e0ce8786d9ce119907349fabdd5a66f6ec6e8ff4eb51d1ef"
           ],
-          "host_s_nonsemantic": 49.55,
-          "peak_rss_kib_nonsemantic": 5442232
+          "host_s_nonsemantic": 44.69,
+          "peak_rss_kib_nonsemantic": 6112676
         },
         "equals_ledger": true,
         "verify": "image"
@@ -7090,8 +7090,8 @@
           "outputs": [
             "12ba4900d9ab77780e170e63896ec32c35162ee720a20d81b7a8f9e6a43b1044"
           ],
-          "host_s_nonsemantic": 49.61,
-          "peak_rss_kib_nonsemantic": 5442232
+          "host_s_nonsemantic": 44.4,
+          "peak_rss_kib_nonsemantic": 6112676
         },
         "equals_ledger": true,
         "verify": "image"
@@ -7111,8 +7111,8 @@
           "outputs": [
             "f0f6e5e24c764e646401b7853bbb6f7e878f91838e6467d99d1ee8d18f3fd9c8"
           ],
-          "host_s_nonsemantic": 56.9,
-          "peak_rss_kib_nonsemantic": 5442232
+          "host_s_nonsemantic": 38.39,
+          "peak_rss_kib_nonsemantic": 6112676
         },
         "equals_ledger": true,
         "verify": "image"
@@ -7132,8 +7132,8 @@
           "outputs": [
             "65c002d2df82894d57ff081706913cc0d45b852eb475b7bbe5a6fcd5cb9235ac"
           ],
-          "host_s_nonsemantic": 56.08,
-          "peak_rss_kib_nonsemantic": 5442232
+          "host_s_nonsemantic": 38.46,
+          "peak_rss_kib_nonsemantic": 6112676
         },
         "equals_ledger": true,
         "verify": "image"
@@ -7153,8 +7153,8 @@
           "outputs": [
             "e01689ef92b64f6c6f32b9e8520779d07584cae06011ea16efd36b67fdd8e98e"
           ],
-          "host_s_nonsemantic": 6.81,
-          "peak_rss_kib_nonsemantic": 5442232
+          "host_s_nonsemantic": 4.99,
+          "peak_rss_kib_nonsemantic": 6112676
         },
         "equals_ledger": true,
         "verify": "image"
@@ -7174,8 +7174,8 @@
           "outputs": [
             "0583d87c061d7da5eb2632999177d2f661d47c6f7eff6d79672f8a15d0f84024"
           ],
-          "host_s_nonsemantic": 51.25,
-          "peak_rss_kib_nonsemantic": 5442232
+          "host_s_nonsemantic": 38.78,
+          "peak_rss_kib_nonsemantic": 6112676
         },
         "equals_ledger": true,
         "verify": "image"
@@ -7195,8 +7195,8 @@
           "outputs": [
             "751eccf5ba6637dfb5bc2597befb76b71bbdfbfec6897618e96b58f3340b579d"
           ],
-          "host_s_nonsemantic": 46.24,
-          "peak_rss_kib_nonsemantic": 5442232
+          "host_s_nonsemantic": 38.63,
+          "peak_rss_kib_nonsemantic": 6112676
         },
         "equals_ledger": true,
         "verify": "image"
@@ -7216,8 +7216,8 @@
           "outputs": [
             "13fd2389be2b9c7a09c3860799fbd6d4a0cf5cd4f184fedf2e4bc258b9091929"
           ],
-          "host_s_nonsemantic": 5.6,
-          "peak_rss_kib_nonsemantic": 5442232
+          "host_s_nonsemantic": 5.19,
+          "peak_rss_kib_nonsemantic": 6112676
         },
         "equals_ledger": true,
         "verify": "image"
@@ -7237,8 +7237,8 @@
           "outputs": [
             "e36e16cc463fb65f3e0c12b8f3b7aff860faf82ff4aa14b9c956d3f2a992e282"
           ],
-          "host_s_nonsemantic": 40.36,
-          "peak_rss_kib_nonsemantic": 5442232
+          "host_s_nonsemantic": 38.13,
+          "peak_rss_kib_nonsemantic": 6112676
         },
         "equals_ledger": true,
         "verify": "image"
@@ -7258,8 +7258,8 @@
           "outputs": [
             "555372ebf519d176319373313d87e8afbf5a20e49645c5d6cbd106d34aa552b4"
           ],
-          "host_s_nonsemantic": 40.12,
-          "peak_rss_kib_nonsemantic": 5442232
+          "host_s_nonsemantic": 38.53,
+          "peak_rss_kib_nonsemantic": 6112676
         },
         "equals_ledger": true,
         "verify": "image"
@@ -7279,8 +7279,8 @@
           "outputs": [
             "722ceebeb831703663e4d10b2292efbf36131e7a4ad2f0c387ebe68c73f354b9"
           ],
-          "host_s_nonsemantic": 40.5,
-          "peak_rss_kib_nonsemantic": 5442232
+          "host_s_nonsemantic": 38.97,
+          "peak_rss_kib_nonsemantic": 6112676
         },
         "equals_ledger": true,
         "verify": "image"
@@ -7300,8 +7300,8 @@
           "outputs": [
             "1d65868086676829e3dc2502a36fc04fe23e3cc1a4c7909a561ac57ebb6141c8"
           ],
-          "host_s_nonsemantic": 39.94,
-          "peak_rss_kib_nonsemantic": 5442232
+          "host_s_nonsemantic": 38.81,
+          "peak_rss_kib_nonsemantic": 6112676
         },
         "equals_ledger": true,
         "verify": "image"
@@ -7321,8 +7321,8 @@
           "outputs": [
             "b66687f8f2c0df50ff4e9ed0741a6aa79bac715e2e9e9388c9dd5348d2d4fffb"
           ],
-          "host_s_nonsemantic": 5.52,
-          "peak_rss_kib_nonsemantic": 5442232
+          "host_s_nonsemantic": 5.24,
+          "peak_rss_kib_nonsemantic": 6112676
         },
         "equals_ledger": true,
         "verify": "image"
@@ -7342,8 +7342,8 @@
           "outputs": [
             "bfba13c55784ad5885b2bea7497617f40050e0ae9198d077e9ebd3ee27723efb"
           ],
-          "host_s_nonsemantic": 40.79,
-          "peak_rss_kib_nonsemantic": 5442232
+          "host_s_nonsemantic": 38.58,
+          "peak_rss_kib_nonsemantic": 6112676
         },
         "equals_ledger": true,
         "verify": "image"
@@ -7363,8 +7363,8 @@
           "outputs": [
             "a6827c6aff0e38093a34ea8d5f989f05eb96099d6e5cf5a537fcc3af0518c326"
           ],
-          "host_s_nonsemantic": 41.89,
-          "peak_rss_kib_nonsemantic": 5442232
+          "host_s_nonsemantic": 38.66,
+          "peak_rss_kib_nonsemantic": 6112676
         },
         "equals_ledger": true,
         "verify": "image"
@@ -7384,8 +7384,8 @@
           "outputs": [
             "9932621ae9b4bf5ff0c86d2a1802fb1cf4c4a16b67caaf4492931fcaf80434b4"
           ],
-          "host_s_nonsemantic": 5.64,
-          "peak_rss_kib_nonsemantic": 5442232
+          "host_s_nonsemantic": 5.31,
+          "peak_rss_kib_nonsemantic": 6112676
         },
         "equals_ledger": true,
         "verify": "image"
@@ -7405,8 +7405,8 @@
           "outputs": [
             "ff19fc52f595e27f954be2a7d9ceab607f6080d5b402b5a2ea3cd7aefd509a29"
           ],
-          "host_s_nonsemantic": 41.22,
-          "peak_rss_kib_nonsemantic": 5442232
+          "host_s_nonsemantic": 38.23,
+          "peak_rss_kib_nonsemantic": 6112676
         },
         "equals_ledger": true,
         "verify": "image"
@@ -7426,8 +7426,8 @@
           "outputs": [
             "5d497c526f63617588605ffe64b358693afd7536aa32fb1f97139804135d8509"
           ],
-          "host_s_nonsemantic": 41.49,
-          "peak_rss_kib_nonsemantic": 5442232
+          "host_s_nonsemantic": 38.3,
+          "peak_rss_kib_nonsemantic": 6112676
         },
         "equals_ledger": true,
         "verify": "image"
@@ -7447,8 +7447,8 @@
           "outputs": [
             "fd4d0a6cbc057f3d6e4f74a937ac67ba6162dd594a8759daf193cc73ce644674"
           ],
-          "host_s_nonsemantic": 41.65,
-          "peak_rss_kib_nonsemantic": 5442232
+          "host_s_nonsemantic": 38.75,
+          "peak_rss_kib_nonsemantic": 6112676
         },
         "equals_ledger": true,
         "verify": "image"
@@ -7468,8 +7468,8 @@
           "outputs": [
             "4a9c52b2fa029a11e291768ea1e2992a5f16fcf51b8183b1cee769b83c9c81cb"
           ],
-          "host_s_nonsemantic": 40.98,
-          "peak_rss_kib_nonsemantic": 5442232
+          "host_s_nonsemantic": 38.79,
+          "peak_rss_kib_nonsemantic": 6112676
         },
         "equals_ledger": true,
         "verify": "image"
@@ -7489,8 +7489,8 @@
           "outputs": [
             "e538d9bf65e4db25671e61bdcfc2bc79bb25f01275bef1bcfb908508d737834e"
           ],
-          "host_s_nonsemantic": 5.55,
-          "peak_rss_kib_nonsemantic": 5442232
+          "host_s_nonsemantic": 5.42,
+          "peak_rss_kib_nonsemantic": 6112676
         },
         "equals_ledger": true,
         "verify": "image"
@@ -7510,8 +7510,8 @@
           "outputs": [
             "78bb515e48808b6d2b524eb3495bb670de3305ffbcd065432c72f66490a2178b"
           ],
-          "host_s_nonsemantic": 40.7,
-          "peak_rss_kib_nonsemantic": 5442232
+          "host_s_nonsemantic": 38.36,
+          "peak_rss_kib_nonsemantic": 6112676
         },
         "equals_ledger": true,
         "verify": "image"
@@ -7531,8 +7531,8 @@
           "outputs": [
             "22c1b09e591c99e5ab8f40ce3667af356dc2105ceb9a6f21bc8ac98a48030805"
           ],
-          "host_s_nonsemantic": 40.37,
-          "peak_rss_kib_nonsemantic": 5442232
+          "host_s_nonsemantic": 38.2,
+          "peak_rss_kib_nonsemantic": 6112676
         },
         "equals_ledger": true,
         "verify": "image"
@@ -7552,8 +7552,8 @@
           "outputs": [
             "6e47801e0911532813e9803d0173cf210c258e18bf347fc710fd70d910d9d5e7"
           ],
-          "host_s_nonsemantic": 5.16,
-          "peak_rss_kib_nonsemantic": 5442232
+          "host_s_nonsemantic": 4.99,
+          "peak_rss_kib_nonsemantic": 6112676
         },
         "equals_ledger": true,
         "verify": "image"
@@ -7573,8 +7573,8 @@
           "outputs": [
             "ea8e9f57b6fe28a67943a3ed2659c0dd2396ae3f27f3b936bd3c4f616365a46e"
           ],
-          "host_s_nonsemantic": 47.77,
-          "peak_rss_kib_nonsemantic": 5442232
+          "host_s_nonsemantic": 45.06,
+          "peak_rss_kib_nonsemantic": 6112676
         },
         "equals_ledger": true,
         "verify": "image"
@@ -7594,8 +7594,8 @@
           "outputs": [
             "f7c115a3505b206b2536c641fcd0a334b7808867e8f2f58c56017a0485aa82a6"
           ],
-          "host_s_nonsemantic": 47.39,
-          "peak_rss_kib_nonsemantic": 5442232
+          "host_s_nonsemantic": 45.44,
+          "peak_rss_kib_nonsemantic": 6112676
         },
         "equals_ledger": true,
         "verify": "image"
@@ -7615,8 +7615,8 @@
           "outputs": [
             "3058664172723f97302dc8d1d36f466801baff3b9900fcdbb24927da08ee9996"
           ],
-          "host_s_nonsemantic": 12.84,
-          "peak_rss_kib_nonsemantic": 5442232
+          "host_s_nonsemantic": 11.63,
+          "peak_rss_kib_nonsemantic": 6112676
         },
         "equals_ledger": true,
         "verify": "image"
@@ -7636,8 +7636,8 @@
           "outputs": [
             "3507f8c06c884f65c161cffc79bc944640deefdad7c3d897f1ff96f7072e0a64"
           ],
-          "host_s_nonsemantic": 40.42,
-          "peak_rss_kib_nonsemantic": 5442232
+          "host_s_nonsemantic": 38.21,
+          "peak_rss_kib_nonsemantic": 6112676
         },
         "equals_ledger": true,
         "verify": "image"
@@ -7657,8 +7657,8 @@
           "outputs": [
             "403e5b73083bd85c7fc7681a054456b23c9a60e00cb6f3f50644532d5e0aa087"
           ],
-          "host_s_nonsemantic": 41.0,
-          "peak_rss_kib_nonsemantic": 5442232
+          "host_s_nonsemantic": 38.53,
+          "peak_rss_kib_nonsemantic": 6112676
         },
         "equals_ledger": true,
         "verify": "image"
@@ -7678,8 +7678,8 @@
           "outputs": [
             "e001e7696182cb90558adc2e78ab47c815c5750f77b84efb5b75048c9bf8275d"
           ],
-          "host_s_nonsemantic": 5.11,
-          "peak_rss_kib_nonsemantic": 5442232
+          "host_s_nonsemantic": 5.01,
+          "peak_rss_kib_nonsemantic": 6112676
         },
         "equals_ledger": true,
         "verify": "image"
@@ -7699,8 +7699,8 @@
           "outputs": [
             "721703baa8a6d3a7b3a32b321caae34d93681cce700c72b77d51cd2e0c0c6e52"
           ],
-          "host_s_nonsemantic": 40.84,
-          "peak_rss_kib_nonsemantic": 5442232
+          "host_s_nonsemantic": 38.72,
+          "peak_rss_kib_nonsemantic": 6112676
         },
         "equals_ledger": true,
         "verify": "image"
@@ -7720,8 +7720,8 @@
           "outputs": [
             "1c3d8be0454557cea9c7b8c411cbc400bb4afe77921125d44f241f2e208307ae"
           ],
-          "host_s_nonsemantic": 40.28,
-          "peak_rss_kib_nonsemantic": 5442232
+          "host_s_nonsemantic": 38.84,
+          "peak_rss_kib_nonsemantic": 6112676
         },
         "equals_ledger": true,
         "verify": "image"
@@ -7741,8 +7741,8 @@
           "outputs": [
             "0e31075ee2ac7de0a2fd7dca8a26b1439ea3e9f12b635d260da8d07daafeda5f"
           ],
-          "host_s_nonsemantic": 5.41,
-          "peak_rss_kib_nonsemantic": 5442232
+          "host_s_nonsemantic": 4.98,
+          "peak_rss_kib_nonsemantic": 6112676
         },
         "equals_ledger": true,
         "verify": "image"
@@ -7762,8 +7762,8 @@
           "outputs": [
             "6f1bd124d4ab8bf7072bf74d58e5ff81da16c4d9672aef2a4a289b682fa36ca8"
           ],
-          "host_s_nonsemantic": 42.03,
-          "peak_rss_kib_nonsemantic": 5442232
+          "host_s_nonsemantic": 38.63,
+          "peak_rss_kib_nonsemantic": 6112676
         },
         "equals_ledger": true,
         "verify": "image"
@@ -7783,8 +7783,8 @@
           "outputs": [
             "1d5713f67c573aa0335b5c71fe6e54d3d5e6595291c77867345a56be8f36e4c5"
           ],
-          "host_s_nonsemantic": 41.98,
-          "peak_rss_kib_nonsemantic": 5442232
+          "host_s_nonsemantic": 38.64,
+          "peak_rss_kib_nonsemantic": 6112676
         },
         "equals_ledger": true,
         "verify": "image"
@@ -7804,8 +7804,8 @@
           "outputs": [
             "559fc453ac99ee1e06e2fd7dcf76e714c4c232414483e9a3c97ebc8526537429"
           ],
-          "host_s_nonsemantic": 2.45,
-          "peak_rss_kib_nonsemantic": 5442232
+          "host_s_nonsemantic": 2.27,
+          "peak_rss_kib_nonsemantic": 6112676
         },
         "equals_ledger": true,
         "verify": "image"
@@ -7825,8 +7825,8 @@
           "outputs": [
             "2ea8398af151d3f190be458c7bd30bb34f8201be0343fe63e454382b681b9f71"
           ],
-          "host_s_nonsemantic": 18.26,
-          "peak_rss_kib_nonsemantic": 5442232
+          "host_s_nonsemantic": 16.74,
+          "peak_rss_kib_nonsemantic": 6112676
         },
         "equals_ledger": true,
         "verify": "image"
@@ -7846,8 +7846,8 @@
           "outputs": [
             "99fe55e43f32096f61cfd5de177b82a7df9985a3e0b417b24c37ce45f158e471"
           ],
-          "host_s_nonsemantic": 41.64,
-          "peak_rss_kib_nonsemantic": 5442232
+          "host_s_nonsemantic": 38.44,
+          "peak_rss_kib_nonsemantic": 6112676
         },
         "equals_ledger": true,
         "verify": "image"
@@ -7867,8 +7867,8 @@
           "outputs": [
             "d967c41df0516dde80e4dda6d49750daae69e1718d50f72505a72bab927a76ab"
           ],
-          "host_s_nonsemantic": 40.99,
-          "peak_rss_kib_nonsemantic": 5442232
+          "host_s_nonsemantic": 38.53,
+          "peak_rss_kib_nonsemantic": 6112676
         },
         "equals_ledger": true,
         "verify": "image"
@@ -7888,8 +7888,8 @@
           "outputs": [
             "7384f3db2e4852781c03f72623732dd14dfc0cf8cc5c19bef268a14d7585990d"
           ],
-          "host_s_nonsemantic": 40.98,
-          "peak_rss_kib_nonsemantic": 5442232
+          "host_s_nonsemantic": 38.5,
+          "peak_rss_kib_nonsemantic": 6112676
         },
         "equals_ledger": true,
         "verify": "image"
@@ -7909,8 +7909,8 @@
           "outputs": [
             "cb17e2161ec4ac511ab8a4d481cc0d7c74b324751de8e203cf8e22449ef230f4"
           ],
-          "host_s_nonsemantic": 40.54,
-          "peak_rss_kib_nonsemantic": 5442232
+          "host_s_nonsemantic": 38.92,
+          "peak_rss_kib_nonsemantic": 6112676
         },
         "equals_ledger": true,
         "verify": "image"
@@ -7930,8 +7930,8 @@
           "outputs": [
             "11c20248a880b35b8ec6d5226fa208e2f6f808dd0f23f9b9453da1d427329774"
           ],
-          "host_s_nonsemantic": 5.21,
-          "peak_rss_kib_nonsemantic": 5442232
+          "host_s_nonsemantic": 5.1,
+          "peak_rss_kib_nonsemantic": 6112676
         },
         "equals_ledger": true,
         "verify": "image"
@@ -7951,8 +7951,8 @@
           "outputs": [
             "5f61f11e0ba112800cde0ed83ab4360fd2f984e0352dbffe9153c8eb59c45987"
           ],
-          "host_s_nonsemantic": 5.24,
-          "peak_rss_kib_nonsemantic": 5442232
+          "host_s_nonsemantic": 4.95,
+          "peak_rss_kib_nonsemantic": 6112676
         },
         "equals_ledger": true,
         "verify": "image"
@@ -7972,8 +7972,8 @@
           "outputs": [
             "30dca8e43a1a78411f96639cf4ecccd1d59154da64252371e4f5265c7f388cb2"
           ],
-          "host_s_nonsemantic": 40.59,
-          "peak_rss_kib_nonsemantic": 5442232
+          "host_s_nonsemantic": 38.42,
+          "peak_rss_kib_nonsemantic": 6112676
         },
         "equals_ledger": true,
         "verify": "image"
@@ -7993,8 +7993,8 @@
           "outputs": [
             "4ae82d5af4b8bb4fb328794aa1880ceafa52a560ceb8acaa9962e8671c8d637e"
           ],
-          "host_s_nonsemantic": 41.14,
-          "peak_rss_kib_nonsemantic": 5442232
+          "host_s_nonsemantic": 38.89,
+          "peak_rss_kib_nonsemantic": 6112676
         },
         "equals_ledger": true,
         "verify": "image"
@@ -8014,8 +8014,8 @@
           "outputs": [
             "b5b6b4a76c9b8a2879806ce3a9a0a150a638cc9136fe6f70c7a4b82970926bce"
           ],
-          "host_s_nonsemantic": 44.3,
-          "peak_rss_kib_nonsemantic": 5442232
+          "host_s_nonsemantic": 41.91,
+          "peak_rss_kib_nonsemantic": 6112676
         },
         "equals_ledger": true,
         "verify": "image"
@@ -8035,8 +8035,8 @@
           "outputs": [
             "407be8b441a9ea993569bd9e90dd81ac713ceebfd4596c7cc9597da0bae869b6"
           ],
-          "host_s_nonsemantic": 44.26,
-          "peak_rss_kib_nonsemantic": 5442232
+          "host_s_nonsemantic": 42.06,
+          "peak_rss_kib_nonsemantic": 6112676
         },
         "equals_ledger": true,
         "verify": "image"
@@ -8056,8 +8056,8 @@
           "outputs": [
             "f1433b0305f6f13ffed12901155fb4a4a307dfc50f35d7ad32133e267599faab"
           ],
-          "host_s_nonsemantic": 43.54,
-          "peak_rss_kib_nonsemantic": 5442232
+          "host_s_nonsemantic": 41.63,
+          "peak_rss_kib_nonsemantic": 6112676
         },
         "equals_ledger": true,
         "verify": "image"
@@ -8077,8 +8077,8 @@
           "outputs": [
             "fa0512cd2cfbef343bdb9e61123e76452743b89c4f6bdbe10200d97817c33706"
           ],
-          "host_s_nonsemantic": 43.26,
-          "peak_rss_kib_nonsemantic": 5442232
+          "host_s_nonsemantic": 41.11,
+          "peak_rss_kib_nonsemantic": 6112676
         },
         "equals_ledger": true,
         "verify": "image"
@@ -8098,8 +8098,8 @@
           "outputs": [
             "ac24b9cccce0dd52e79d31e01e00a743d6afc44bd0fabc6000d49471c3d2c312"
           ],
-          "host_s_nonsemantic": 40.83,
-          "peak_rss_kib_nonsemantic": 5442232
+          "host_s_nonsemantic": 38.74,
+          "peak_rss_kib_nonsemantic": 6112676
         },
         "equals_ledger": true,
         "verify": "image"
@@ -8119,8 +8119,8 @@
           "outputs": [
             "19c517bf89e15c9909f7b3cd6bcc671b50c7c784b5b01e5132038324ff1f554a"
           ],
-          "host_s_nonsemantic": 42.31,
-          "peak_rss_kib_nonsemantic": 5442232
+          "host_s_nonsemantic": 38.3,
+          "peak_rss_kib_nonsemantic": 6112676
         },
         "equals_ledger": true,
         "verify": "image"
@@ -8140,8 +8140,8 @@
           "outputs": [
             "546dbc5500a8ee84d1cb5f3b056fb8a184772962f7f14c251639f80377574357"
           ],
-          "host_s_nonsemantic": 41.57,
-          "peak_rss_kib_nonsemantic": 5442232
+          "host_s_nonsemantic": 38.25,
+          "peak_rss_kib_nonsemantic": 6112676
         },
         "equals_ledger": true,
         "verify": "image"
@@ -8161,8 +8161,8 @@
           "outputs": [
             "43872cbf7271988a988271437d0d7ef574107d9075ddf18c9fbcbee82bc624e9"
           ],
-          "host_s_nonsemantic": 41.77,
-          "peak_rss_kib_nonsemantic": 5442232
+          "host_s_nonsemantic": 38.52,
+          "peak_rss_kib_nonsemantic": 6112676
         },
         "equals_ledger": true,
         "verify": "image"
@@ -8182,8 +8182,8 @@
           "outputs": [
             "1b7ee13b6bac19e08a5dce9e8c500540a0136d4756543bc08ceebcb81a303128"
           ],
-          "host_s_nonsemantic": 42.07,
-          "peak_rss_kib_nonsemantic": 5442232
+          "host_s_nonsemantic": 38.62,
+          "peak_rss_kib_nonsemantic": 6112676
         },
         "equals_ledger": true,
         "verify": "image"
@@ -8203,8 +8203,8 @@
           "outputs": [
             "8e7d3327df40b58e88fd7cbf069f62756f7d0db3989ef3fe2437adc7ccfdd49d"
           ],
-          "host_s_nonsemantic": 41.3,
-          "peak_rss_kib_nonsemantic": 5442232
+          "host_s_nonsemantic": 38.31,
+          "peak_rss_kib_nonsemantic": 6112676
         },
         "equals_ledger": true,
         "verify": "image"
@@ -8224,8 +8224,8 @@
           "outputs": [
             "670950c38c3e22418202121663617cd94be57152db221167871333001582a885"
           ],
-          "host_s_nonsemantic": 44.59,
-          "peak_rss_kib_nonsemantic": 5442232
+          "host_s_nonsemantic": 38.9,
+          "peak_rss_kib_nonsemantic": 6112676
         },
         "equals_ledger": true,
         "verify": "image"
@@ -8245,8 +8245,8 @@
           "outputs": [
             "ee503a2dac1777762ef2899fe51951fc1e212f8943e711f02ff6b3217a3284de"
           ],
-          "host_s_nonsemantic": 41.07,
-          "peak_rss_kib_nonsemantic": 5442232
+          "host_s_nonsemantic": 38.7,
+          "peak_rss_kib_nonsemantic": 6112676
         },
         "equals_ledger": true,
         "verify": "image"
@@ -8266,8 +8266,8 @@
           "outputs": [
             "8ebeb1db9ab5508acc450d5702abf58501cfbde28ff1450d72150b91211f4e72"
           ],
-          "host_s_nonsemantic": 42.27,
-          "peak_rss_kib_nonsemantic": 5442232
+          "host_s_nonsemantic": 39.67,
+          "peak_rss_kib_nonsemantic": 6112676
         },
         "equals_ledger": true,
         "verify": "image"
@@ -8287,8 +8287,8 @@
           "outputs": [
             "0bc10c956437be289a3c0d362f8cf43b3821416e187e26a1a297a96be8ecf411"
           ],
-          "host_s_nonsemantic": 41.99,
-          "peak_rss_kib_nonsemantic": 5442232
+          "host_s_nonsemantic": 39.95,
+          "peak_rss_kib_nonsemantic": 6112676
         },
         "equals_ledger": true,
         "verify": "image"
@@ -8308,8 +8308,8 @@
           "outputs": [
             "0ad640182db3f972f68353de8c3f12ebed270d15cbe01ac76dddf4c24a80acf4"
           ],
-          "host_s_nonsemantic": 40.7,
-          "peak_rss_kib_nonsemantic": 5442232
+          "host_s_nonsemantic": 38.44,
+          "peak_rss_kib_nonsemantic": 6112676
         },
         "equals_ledger": true,
         "verify": "image"
@@ -8329,8 +8329,8 @@
           "outputs": [
             "4066c41f44fa238532d5096dae6ddce7b4728236502ead02c269659e07bd7d64"
           ],
-          "host_s_nonsemantic": 40.27,
-          "peak_rss_kib_nonsemantic": 5442232
+          "host_s_nonsemantic": 38.13,
+          "peak_rss_kib_nonsemantic": 6112676
         },
         "equals_ledger": true,
         "verify": "image"
@@ -8350,8 +8350,8 @@
           "outputs": [
             "51e028d13d59865c4995c212b501fb6b6a28e0419368a19ea64750542f9daa67"
           ],
-          "host_s_nonsemantic": 40.87,
-          "peak_rss_kib_nonsemantic": 5442232
+          "host_s_nonsemantic": 38.56,
+          "peak_rss_kib_nonsemantic": 6112676
         },
         "equals_ledger": true,
         "verify": "image"
@@ -8371,8 +8371,8 @@
           "outputs": [
             "ffb2b2108906cced7699b364785823410429cc2cb19a72b6fb1dc35d6ee35a24"
           ],
-          "host_s_nonsemantic": 40.65,
-          "peak_rss_kib_nonsemantic": 5442232
+          "host_s_nonsemantic": 38.62,
+          "peak_rss_kib_nonsemantic": 6112676
         },
         "equals_ledger": true,
         "verify": "image"
@@ -8392,8 +8392,8 @@
           "outputs": [
             "0805e153e750b5ed13697776e10a6af2580883d664e494d7bfc454e9fd41f979"
           ],
-          "host_s_nonsemantic": 40.8,
-          "peak_rss_kib_nonsemantic": 5442232
+          "host_s_nonsemantic": 38.29,
+          "peak_rss_kib_nonsemantic": 6112676
         },
         "equals_ledger": true,
         "verify": "image"
@@ -8413,8 +8413,8 @@
           "outputs": [
             "cdba8c64408f30f88b287b644de2ee7b77841d1034a4978d6a2b10a6554473e0"
           ],
-          "host_s_nonsemantic": 41.28,
-          "peak_rss_kib_nonsemantic": 5442232
+          "host_s_nonsemantic": 38.81,
+          "peak_rss_kib_nonsemantic": 6112676
         },
         "equals_ledger": true,
         "verify": "image"
@@ -8434,8 +8434,8 @@
           "outputs": [
             "b85f4fb1beda1cee382435b1829ba69e4fcb3034a0d80b1d79cda3261de4eb71"
           ],
-          "host_s_nonsemantic": 41.29,
-          "peak_rss_kib_nonsemantic": 5442232
+          "host_s_nonsemantic": 38.62,
+          "peak_rss_kib_nonsemantic": 6112676
         },
         "equals_ledger": true,
         "verify": "image"
@@ -8455,8 +8455,8 @@
           "outputs": [
             "c08d489c9e6bd7960931ef89de54ae1fdc0c602ad926f75e9d4253959c27e8d5"
           ],
-          "host_s_nonsemantic": 40.07,
-          "peak_rss_kib_nonsemantic": 5442232
+          "host_s_nonsemantic": 38.73,
+          "peak_rss_kib_nonsemantic": 6112676
         },
         "equals_ledger": true,
         "verify": "image"
@@ -8476,8 +8476,8 @@
           "outputs": [
             "36c688934c8043ea658c6b9268302d0793a8b57580e1b5724ae257a9d2b5e8f7"
           ],
-          "host_s_nonsemantic": 38.77,
-          "peak_rss_kib_nonsemantic": 5442232
+          "host_s_nonsemantic": 38.72,
+          "peak_rss_kib_nonsemantic": 6112676
         },
         "equals_ledger": true,
         "verify": "image"
@@ -8497,8 +8497,8 @@
           "outputs": [
             "c104d96f8db70b86083ae14cbb9978ee8c714b43434dffb02e7327e99370ff98"
           ],
-          "host_s_nonsemantic": 38.07,
-          "peak_rss_kib_nonsemantic": 5442232
+          "host_s_nonsemantic": 38.73,
+          "peak_rss_kib_nonsemantic": 6112676
         },
         "equals_ledger": true,
         "verify": "image"
@@ -8518,8 +8518,8 @@
           "outputs": [
             "da6011c7cb38048ab75949b12c7b972f9513877ec27120411a0a9cc4b7f7eff2"
           ],
-          "host_s_nonsemantic": 38.5,
-          "peak_rss_kib_nonsemantic": 5442232
+          "host_s_nonsemantic": 38.28,
+          "peak_rss_kib_nonsemantic": 6112676
         },
         "equals_ledger": true,
         "verify": "image"
@@ -8539,8 +8539,8 @@
           "outputs": [
             "0a86761f03b3c661f44d3710eb96c7a53079e86cfb11b594914565115d771d5c"
           ],
-          "host_s_nonsemantic": 38.19,
-          "peak_rss_kib_nonsemantic": 5442232
+          "host_s_nonsemantic": 38.59,
+          "peak_rss_kib_nonsemantic": 6112676
         },
         "equals_ledger": true,
         "verify": "image"
@@ -8560,8 +8560,8 @@
           "outputs": [
             "534477d287e25c5d183d1d7bbea2e411f298c0025f456e49a15aa111f0f4d6dd"
           ],
-          "host_s_nonsemantic": 38.04,
-          "peak_rss_kib_nonsemantic": 5442232
+          "host_s_nonsemantic": 38.93,
+          "peak_rss_kib_nonsemantic": 6112676
         },
         "equals_ledger": true,
         "verify": "image"
@@ -8581,8 +8581,8 @@
           "outputs": [
             "ef4099cd2de8e258bb4a55b3de75fc0fc5c995a93950c3b00d2322513a579a24"
           ],
-          "host_s_nonsemantic": 37.82,
-          "peak_rss_kib_nonsemantic": 5442232
+          "host_s_nonsemantic": 38.52,
+          "peak_rss_kib_nonsemantic": 6112676
         },
         "equals_ledger": true,
         "verify": "image"
@@ -8602,8 +8602,8 @@
           "outputs": [
             "2fed273a81bd1f8deb8838713604b64930304ee90d3008cbf3e716d1559072aa"
           ],
-          "host_s_nonsemantic": 38.43,
-          "peak_rss_kib_nonsemantic": 5442232
+          "host_s_nonsemantic": 39.05,
+          "peak_rss_kib_nonsemantic": 6112676
         },
         "equals_ledger": true,
         "verify": "image"
@@ -8623,8 +8623,8 @@
           "outputs": [
             "fdc31920febc28ae5fd4183c9925a4bfae1a10ed377b4f4a79c5daf225a5d860"
           ],
-          "host_s_nonsemantic": 38.44,
-          "peak_rss_kib_nonsemantic": 5442232
+          "host_s_nonsemantic": 39.13,
+          "peak_rss_kib_nonsemantic": 6112676
         },
         "equals_ledger": true,
         "verify": "image"
@@ -8644,8 +8644,8 @@
           "outputs": [
             "1f95b06b44354d32c443f7456ad82dd554b87c899f9a470cdcd2e06a27d5cfce"
           ],
-          "host_s_nonsemantic": 37.58,
-          "peak_rss_kib_nonsemantic": 5442232
+          "host_s_nonsemantic": 38.46,
+          "peak_rss_kib_nonsemantic": 6112676
         },
         "equals_ledger": true,
         "verify": "image"
@@ -8665,8 +8665,8 @@
           "outputs": [
             "50a3fc9fea741dd5c6b5c76bce198f3c310c07bf0ffa1f0cbac4623d19b89344"
           ],
-          "host_s_nonsemantic": 37.88,
-          "peak_rss_kib_nonsemantic": 5442232
+          "host_s_nonsemantic": 38.8,
+          "peak_rss_kib_nonsemantic": 6112676
         },
         "equals_ledger": true,
         "verify": "image"
@@ -8686,8 +8686,8 @@
           "outputs": [
             "e14f76502008e87e12444cc87de731663192d6b92103663cad2f607992c5118b"
           ],
-          "host_s_nonsemantic": 37.96,
-          "peak_rss_kib_nonsemantic": 5442232
+          "host_s_nonsemantic": 38.57,
+          "peak_rss_kib_nonsemantic": 6112676
         },
         "equals_ledger": true,
         "verify": "image"
@@ -8707,8 +8707,8 @@
           "outputs": [
             "0ae995552163a5e735222dcac2e6a3590510e8376547e801f379b52fa58afb13"
           ],
-          "host_s_nonsemantic": 39.57,
-          "peak_rss_kib_nonsemantic": 5442232
+          "host_s_nonsemantic": 38.47,
+          "peak_rss_kib_nonsemantic": 6112676
         },
         "equals_ledger": true,
         "verify": "image"
@@ -8728,8 +8728,8 @@
           "outputs": [
             "94df36eb548ff6c2e06f0f3dc08e5c7be059df4f1a4f4b33eec3104d23fd209e"
           ],
-          "host_s_nonsemantic": 39.15,
-          "peak_rss_kib_nonsemantic": 5442232
+          "host_s_nonsemantic": 38.74,
+          "peak_rss_kib_nonsemantic": 6112676
         },
         "equals_ledger": true,
         "verify": "image"
@@ -8749,8 +8749,8 @@
           "outputs": [
             "1594fd898ce9d34fee1c785640f7f51a6541d7ff5211713ac9841ee3a4868102"
           ],
-          "host_s_nonsemantic": 38.97,
-          "peak_rss_kib_nonsemantic": 5442232
+          "host_s_nonsemantic": 38.79,
+          "peak_rss_kib_nonsemantic": 6112676
         },
         "equals_ledger": true,
         "verify": "image"
@@ -8770,8 +8770,8 @@
           "outputs": [
             "78657b75b448ecc1dc68c61df7e97a9a8fe6afd04f3bde0910c9174b14aba49e"
           ],
-          "host_s_nonsemantic": 5.08,
-          "peak_rss_kib_nonsemantic": 5442232
+          "host_s_nonsemantic": 4.99,
+          "peak_rss_kib_nonsemantic": 6112676
         },
         "equals_ledger": true,
         "verify": "image"
@@ -8791,8 +8791,8 @@
           "outputs": [
             "3a2646a5ed71025d10b5cbc2e8db840efd809836e16c5c35437f8f6f9ef07513"
           ],
-          "host_s_nonsemantic": 39.43,
-          "peak_rss_kib_nonsemantic": 5442232
+          "host_s_nonsemantic": 38.67,
+          "peak_rss_kib_nonsemantic": 6112676
         },
         "equals_ledger": true,
         "verify": "image"
@@ -8812,8 +8812,8 @@
           "outputs": [
             "b17214ef10a0f89e0a5fb584ff2039048e6ed2d7eaab68b3a93e9fc634976cd1"
           ],
-          "host_s_nonsemantic": 39.33,
-          "peak_rss_kib_nonsemantic": 5442232
+          "host_s_nonsemantic": 38.95,
+          "peak_rss_kib_nonsemantic": 6112676
         },
         "equals_ledger": true,
         "verify": "image"
@@ -8834,7 +8834,7 @@
             "c4d12808bda97623ce00ecc1f9959ae5a1817d536bc29d3fb43c7f9aec44d9ce"
           ],
           "host_s_nonsemantic": 5.22,
-          "peak_rss_kib_nonsemantic": 5442232
+          "peak_rss_kib_nonsemantic": 6112676
         },
         "equals_ledger": true,
         "verify": "image"
@@ -8854,8 +8854,8 @@
           "outputs": [
             "609034c7ab169d5e511e613fecded5eab511e696f0fbaf5da20651fadb755f6c"
           ],
-          "host_s_nonsemantic": 38.75,
-          "peak_rss_kib_nonsemantic": 5442232
+          "host_s_nonsemantic": 38.21,
+          "peak_rss_kib_nonsemantic": 6112676
         },
         "equals_ledger": true,
         "verify": "image"
@@ -8875,8 +8875,8 @@
           "outputs": [
             "cabd5c7409e709920ed11bbee99edd238af85ccefddebe3d416e3807c64f3436"
           ],
-          "host_s_nonsemantic": 38.29,
-          "peak_rss_kib_nonsemantic": 5442232
+          "host_s_nonsemantic": 38.62,
+          "peak_rss_kib_nonsemantic": 6112676
         },
         "equals_ledger": true,
         "verify": "image"
@@ -8897,7 +8897,7 @@
             "f7120bba4a90c3766d36e1c2bed977870a665c9ea08d9e5a03f3224bddce6d96"
           ],
           "host_s_nonsemantic": 2.15,
-          "peak_rss_kib_nonsemantic": 5442232
+          "peak_rss_kib_nonsemantic": 6112676
         },
         "equals_ledger": true,
         "verify": "image"
@@ -8917,25 +8917,88 @@
           "outputs": [
             "b6de4c73b823be1b71ac109ad28d0b2a378874ec422ecf4b7468346231094044"
           ],
-          "host_s_nonsemantic": 16.55,
-          "peak_rss_kib_nonsemantic": 5442232
+          "host_s_nonsemantic": 16.58,
+          "peak_rss_kib_nonsemantic": 6112676
+        },
+        "equals_ledger": true,
+        "verify": "image"
+      },
+      {
+        "record": "0026-pe-commit-stack-reserve-x86-64.batch",
+        "store": "xax_x86_64_general.xax",
+        "before": "524f0de15eb2419cd8e45aea1679e3665cafc20d",
+        "after": "654ab04d33f28e6ed41939c58dfed603fbbe1dc7",
+        "record_sha256": "99870983e9129fde6a8e18effa38adc88634da1689763ea5518497e00ab22a06",
+        "mutations": 0,
+        "kinds": [
+          "NativeBatch"
+        ],
+        "edit": {
+          "status": "image",
+          "outputs": [
+            "96eb3f17c0d4d8edb1969875d6b64dd8ed9afd074d31be57b8ad3aa35e2920c8"
+          ],
+          "host_s_nonsemantic": 4.87,
+          "peak_rss_kib_nonsemantic": 6112676
+        },
+        "equals_ledger": true,
+        "verify": "image"
+      },
+      {
+        "record": "0026-pe-commit-stack-reserve.batch",
+        "store": "xax_compiler_driver_general.xax",
+        "before": "f653edd62663428452f87374ac13ee2e70843bf2",
+        "after": "7ed6a0617612e016b6aa7f975bd200d9ba26c5fb",
+        "record_sha256": "06ccb3601a1683e6856322121925b6208f3aa8a09e21df3546873525971be2ea",
+        "mutations": 0,
+        "kinds": [
+          "NativeBatch"
+        ],
+        "edit": {
+          "status": "image",
+          "outputs": [
+            "9b4806bcf79574ad32f9707dd5a92784208d40d2057d00c681c1b1bbdd455a94"
+          ],
+          "host_s_nonsemantic": 38.61,
+          "peak_rss_kib_nonsemantic": 6112676
+        },
+        "equals_ledger": true,
+        "verify": "image"
+      },
+      {
+        "record": "0026-pe-commit-stack-reserve-request.batch",
+        "store": "seed/xax_compiler_request.xax",
+        "before": "835e8ce02e003634c7a649681acc2c563f50a78a",
+        "after": "fa987394c3f4701411ff360be5f92bd733c11f36",
+        "record_sha256": "42ba27ef2442a452d76d2abfea95d6a01f289a2c061c70919951309b3d7788ec",
+        "mutations": 0,
+        "kinds": [
+          "NativeBatch"
+        ],
+        "edit": {
+          "status": "image",
+          "outputs": [
+            "a9ba5498eda4e80ac90e32df3b8265dc36718998832eb4f5b375696ca92d1619"
+          ],
+          "host_s_nonsemantic": 38.81,
+          "peak_rss_kib_nonsemantic": 6112676
         },
         "equals_ledger": true,
         "verify": "image"
       }
     ],
     "probe": {
-      "record_sha256": "1f15abc6c5fbbc12458a852f3a32145201fa2a19873f19d6e1979f161de39ad1",
+      "record_sha256": "c97f75906e92b60eeaaf243a3c6a9abda3a13859bcaa475ea861c453229d01da",
       "kinds": [
         "InsertPureNode"
       ],
       "edit": {
         "status": "image",
         "outputs": [
-          "7e6353fdedb387326932230c7bc0f6ff30bae77598f3c5030076fde360e3e852"
+          "ea4df45c577ac53be9c7a67349f6205fc46c198e66aa9c3ba17cf3d7f23d218b"
         ],
-        "host_s_nonsemantic": 38.3,
-        "peak_rss_kib_nonsemantic": 5442232
+        "host_s_nonsemantic": 38.23,
+        "peak_rss_kib_nonsemantic": 6112676
       },
       "equals_reference": true,
       "verify": "image"
@@ -8962,7 +9025,7 @@
     "verification:hash": {
       "component": "verification:hash",
       "store_verification": "memoized",
-      "record": "verified-hash-d8c6d32e51e4a9b39311da9356f9887350ac84294884b991ae69ad8403282bca.bin"
+      "record": "verified-hash-aaf3db1c49baeb8b5cd9783b0c0d20c985439bc15747b85d2823909dce492d18.bin"
     },
     "blake3-hash": {
       "component": "blake3-hash",
@@ -8976,7 +9039,7 @@
     "verification:store-decoder": {
       "component": "verification:store-decoder",
       "store_verification": "memoized",
-      "record": "verified-store-decoder-c29beeb64596aa368460a4731c98221b49babb172b29055ea37812beff391458.bin"
+      "record": "verified-store-decoder-5ef7e5e72c0f082e32183d4028cbbeb191baf9848cffe581c62fc659ddc39f7a.bin"
     },
     "store-decoder": {
       "component": "store-decoder",
@@ -8990,7 +9053,7 @@
     "verification:store-writer": {
       "component": "verification:store-writer",
       "store_verification": "memoized",
-      "record": "verified-store-writer-256683ffb9f16330e6c132efbcca2c4f214b4557ce3e637b13ce62047190931c.bin"
+      "record": "verified-store-writer-d5e45f6d52a3666af6351908e8a6fc95ca673c6def6f04696a0292e3bd4b51f0.bin"
     },
     "store-writer": {
       "component": "store-writer",
@@ -9004,7 +9067,7 @@
     "verification:graph-decoder": {
       "component": "verification:graph-decoder",
       "store_verification": "memoized",
-      "record": "verified-graph-decoder-267b1444ecde8f464efd662c9a72ba23aa5b80232f9e6ddeb31cee365957fc51.bin"
+      "record": "verified-graph-decoder-de5830445ffb2751dacd7eadf73deb7c48414c6fc44efeb624f9a86f3236dd9b.bin"
     },
     "graph-decoder": {
       "component": "graph-decoder",
@@ -9018,7 +9081,7 @@
     "verification:cfg": {
       "component": "verification:cfg",
       "store_verification": "memoized",
-      "record": "verified-cfg-0d3943acb8bcfab0853cd5b244fedbf20449317b5e971d64db397bfe131d014d.bin"
+      "record": "verified-cfg-f20e3729de99464423d16b2d23daeeb25b9182905eda1f37ad0159b667226e1a.bin"
     },
     "cfg": {
       "component": "cfg",
@@ -9032,7 +9095,7 @@
     "verification:typing": {
       "component": "verification:typing",
       "store_verification": "memoized",
-      "record": "verified-typing-8cbcb619114218579475707ca2de4613de2c3f43be28262bfd8403577a9ab1e8.bin"
+      "record": "verified-typing-5dc123eb9d3bee28232f827617d2710602d6b63743bf04175aad314182346996.bin"
     },
     "typing": {
       "component": "typing",
@@ -9046,7 +9109,7 @@
     "verification:store-verifier": {
       "component": "verification:store-verifier",
       "store_verification": "memoized",
-      "record": "verified-store-verifier-0b3c24faea5ffef63ba386e926a76318026c591fba07a2f54e057c647d757e93.bin"
+      "record": "verified-store-verifier-f1af28418622418ec3aaac614b221492321a1b31ac5e5ff4520b427023f6ca4a.bin"
     },
     "store-verifier": {
       "component": "store-verifier",
@@ -9056,26 +9119,16 @@
       "actual_authority": "xax",
       "fallback_occurred": false,
       "fallback_reason": null,
-      "declined_inputs": 83188
-    },
-    "verification:xax_x86_64_general": {
-      "component": "verification:xax_x86_64_general",
-      "store_verification": "memoized",
-      "record": "verified-xax_x86_64_general-aef51e3ca73a84808de0eee4d025316588ae0fa7b13117ba284e12bb580f0fc9.bin"
+      "declined_inputs": 86163
     },
     "x86-64-general-frontend": {
       "component": "x86-64-general-frontend",
-      "semantic_root": "a95bba618acab58d12232670103cab1b9af24f29ca5619c316301114abf9507d",
-      "native_artifact_digest": "8f5933431460f43f8850754847d9d117379040a639916924e9e2c12bd656aba2",
+      "semantic_root": "920ec40f26bf81dafde4c722ae7e412a651da3ffde8054153cf2be07095e648b",
+      "native_artifact_digest": "83c02f1973e7c43fc81d9ec5e8a7977e4a2a66b5899a73fa90d8bde54a13d8a4",
       "requested_authority": "xax",
       "actual_authority": "xax",
       "fallback_occurred": false,
       "fallback_reason": null
-    },
-    "verification:riscv64-encoder": {
-      "component": "verification:riscv64-encoder",
-      "store_verification": "memoized",
-      "record": "verified-riscv64-encoder-d4544112a9f7eb17a0e4c3293980734a68d05d17cacc1f3a41bd25ad90475534.bin"
     },
     "riscv64-encoder": {
       "component": "riscv64-encoder",
@@ -9086,11 +9139,6 @@
       "fallback_occurred": false,
       "fallback_reason": null
     },
-    "verification:xax_riscv64_backend": {
-      "component": "verification:xax_riscv64_backend",
-      "store_verification": "memoized",
-      "record": "verified-xax_riscv64_backend-c88b868370ac728d2260a825e3991f0a1d78d4e390073c709e19789831914502.bin"
-    },
     "riscv64-backend": {
       "component": "riscv64-backend",
       "semantic_root": "a87d15799d6ad47d734118861133f271625d0927d39bb0d35007065b8dbd3b22",
@@ -9099,11 +9147,6 @@
       "actual_authority": "xax",
       "fallback_occurred": false,
       "fallback_reason": null
-    },
-    "verification:xax_aarch64_general": {
-      "component": "verification:xax_aarch64_general",
-      "store_verification": "memoized",
-      "record": "verified-xax_aarch64_general-8b347c97834496b5713ba645de76693cd8bbff4fde449aabc102a29518b1a7fd.bin"
     },
     "aarch64-general": {
       "component": "aarch64-general",
@@ -9114,11 +9157,6 @@
       "fallback_occurred": false,
       "fallback_reason": null
     },
-    "verification:xax_android_elf": {
-      "component": "verification:xax_android_elf",
-      "store_verification": "memoized",
-      "record": "verified-xax_android_elf-c6cb5ff0f7bd676c0b7823d597dceffab20ac36a4a9a3d77be03e9e145550e93.bin"
-    },
     "android-elf": {
       "component": "android-elf",
       "semantic_root": "f48a64b049e5b45ecebe982bf4c5c8f19c4891799cca9418ec5216184e32e464",
@@ -9127,11 +9165,6 @@
       "actual_authority": "xax",
       "fallback_occurred": false,
       "fallback_reason": null
-    },
-    "verification:xax_dex_bridge": {
-      "component": "verification:xax_dex_bridge",
-      "store_verification": "memoized",
-      "record": "verified-xax_dex_bridge-38d0c43011ebd13aff232e39499647e9576c3c627d12d964b966a9d6ab009ce9.bin"
     },
     "dex-bridge": {
       "component": "dex-bridge",

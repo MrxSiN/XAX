@@ -2079,3 +2079,30 @@ rotation for ledger 0026 is the next step.
   lead has to come from the insert loop or start-up), a quieter host, or further workloads. No workload or
   competitor was dropped.
 - The matrix test file is unchanged; `python -m xax_status_docs --write` regenerated the status blocks.
+
+## Linux seed rotated to ledger 0026 — 2026-11-12
+
+Built and run on commit `b2df99d`; committed on top of `745e801`, which changes no store, ledger line or seed. The seed is again the compiler of the committed request.
+
+- **Seed:** `compiler/bootstrap/seed/xaxc-linux-x86_64` is now `7988e0d0…2fade9`, 31,907,179 bytes (was `fb31b03b…`,
+  the same size). `selfbuild.sh` from `fb31b03b…`: two generations byte-identical, equal to `rotate-seed`'s result
+  and to the hash the ledger 0026 record and the Windows seed's record name. `evolve.sh check` passes.
+  `write-request` leaves the request store unchanged.
+- **Correction to the section before this one:** its "`write-request` changes nothing" was not checked on the ledger
+  0025 tree: the command had stopped on a missing module path and printed nothing that was read. It is checked here,
+  on the ledger 0026 tree.
+- **OI-55 cases:** `native/0024/probe.py`: 240 of 240 programs equal the reference executor.
+  `native/0024/narrow_signed_compare.xax` builds to the same bytes as before (`39baf88c…`) and exits 0.
+- **BBC:** the seed resolves `integration/bfx/bbc_request.xax` and builds `bbc.exe`: `a4717ac8…`, 36,323,328 bytes,
+  the file the ledger 0026 section ran on Windows 11. Nothing of BBC was run again here.
+- **Evidence:** `benchmarks/full_selfhost_evidence.json` and `python_free_seed_evidence.json` re-recorded under
+  `XAX_REQUIRE_NATIVE=1`; status blocks regenerated.
+- **Tests** (Linux x86-64, WSL 2, `XAX_REQUIRE_NATIVE=1`, four workers, `XAX_RAW_TRIALS=80`):
+  `test_python_free_seed.py`, `test_store_regeneration.py`, `test_xax_selfhost_general_build.py`,
+  `test_xax_selfhost_general_driver.py`, `test_xax_selfhost_x86_64_backend.py`,
+  `test_x86_64_narrow_signed_compare.py`, `test_status_docs.py`, `test_agent_instructions.py` and
+  `test_replacement_matrix.py`: 125 passed, 93 skipped, 4,845 subtests passed. The whole suite was not run again
+  on this tree; its last run is the section before this one (ledger 0025).
+- **Ledger replay:** `evolve.sh replay` with the new seed: 125 of 125 transactions give their recorded stores (58 min).
+- **Not done:** OI-55's cases as PE programs through the Windows seed; the XAX-MCP pin; `tools/check.py`; OI-57;
+  the AArch64 backends were not examined for OI-55's defect.

@@ -875,7 +875,7 @@ equal to the reference executor. Do not substitute a Python implementation.
 
 ## OI-56 — PE images take large frames without a stack probe
 
-**Status: FIXED IN THE STORES AND IN THE WINDOWS SEED (2026-11-12, ledger 0026, ADR-396, ADR-397); the Linux seed is not rotated yet.** The Windows seed is rebuilt from the fixed driver and builds itself on Windows 11 (`compiler/benchmarks/windows_selfhost_evidence.json`). Earlier status: PE images now
+**Status: FIXED IN THE STORES AND IN THE WINDOWS SEED (2026-11-12, ledger 0026, ADR-396, ADR-397); the Linux seed is rotated to it (`7988e0d0…`, 2026-11-12).** The Windows seed is rebuilt from the fixed driver and builds itself on Windows 11 (`compiler/benchmarks/windows_selfhost_evidence.json`). Earlier status: PE images now
 commit their whole stack reserve, and the unpatched `bbc.exe` built from the new stores runs on Windows 11
 (`XAX_STATE.md`, 2026-11-12). Still open for closing: the Linux seed rotation (pending review together with ledgers
 0024 and 0025). The record of the defect follows.
