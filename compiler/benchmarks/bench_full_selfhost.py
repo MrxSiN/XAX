@@ -710,7 +710,7 @@ def measure() -> dict:
         replayed = [*transactions, probed]
         evolution = {"format": "xax-evolution-replay-v2", "replayed_by": "C1",
                      "baseline": "the frozen stores (bootstrap/evolution/LEDGER baselines, ADR-361)",
-                     "ledger_heads_equal_committed": bool(EV.check()), "transactions": transactions, "probe": probed,
+                     "ledger_heads_equal_committed": subprocess.run(["sh", str(EV.EVOLUTION_DIRECTORY / "evolve.sh"), "check"], capture_output=True).returncode == 0, "transactions": transactions, "probe": probed,
                      "structural": any(set(item["kinds"]) & {names[kind] for kind in STRUCTURAL} for item in replayed)}
 
     def elf_interpreter(path: Path) -> bool:

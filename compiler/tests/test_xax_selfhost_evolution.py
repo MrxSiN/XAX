@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import platform
 import shutil
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -85,14 +86,14 @@ class EvolutionTests(unittest.TestCase):
         try:
             lines = EV.apply(record, [EV.DRIVER_STORE])
             ledger = EV.ledger()
-            heads = EV.check()
         finally:
             EV.BOOTSTRAP, EV.EVOLUTION_DIRECTORY, EV.LEDGER_PATH = saved
         made = (bootstrap / EV.DRIVER_STORE).read_bytes()
         self.assertEqual(made, EV.replay_reference(record, reader.data))
         self.assertEqual(lines, [f"{record.name} {EV.DRIVER_STORE} {baseline} {EV.blob_id(made)}"])
         self.assertEqual(len(ledger.transactions), 1)
-        self.assertEqual(heads[EV.DRIVER_STORE], EV.blob_id(made))
+        check = subprocess.run(["sh", str(EV.EVOLUTION_DIRECTORY / "evolve.sh"), "check", str(bootstrap)], capture_output=True, text=True)
+        self.assertEqual(check.returncode, 0, check.stderr)
         self.assertEqual((bootstrap / "evolution" / record.name).read_bytes(), record.read_bytes())
 
     def test_the_raised_input_bound(self):

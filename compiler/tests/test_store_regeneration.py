@@ -8,6 +8,10 @@ recorded, where the repository still holds that earlier store; each frozen store
 derived from the driver store, and the helper generators that unit tests compile make the very functions the frozen
 driver holds.  On Linux x86-64 ``test_xax_selfhost_evolution`` replays the ledger with ``xaxc edit`` itself.
 """
+import platform
+import subprocess
+import sys
+
 import pytest
 
 import xax_compiler
@@ -24,9 +28,11 @@ def test_every_committed_self_hosting_store_is_frozen():
     assert stores | {EV.REQUEST_STORE, "m14_selfhost_compiler.xax"} == set(FROZEN)
 
 
+@pytest.mark.skipif(not (sys.platform.startswith("linux") and platform.machine().lower() in ("x86_64", "amd64")),
+                    reason="the native ledger program and the seed that builds it are Linux x86-64 executables")
 def test_ledger_chains_end_at_the_committed_stores():
-    heads = EV.check()
-    assert set(heads) == set(FROZEN)
+    check = subprocess.run(["sh", str(EV.EVOLUTION_DIRECTORY / "evolve.sh"), "check"], capture_output=True, text=True)
+    assert check.returncode == 0, check.stderr
     for record, store, _before, _after in TRANSACTIONS:
         assert record.is_file(), f"{record.name} ({store}) is missing from bootstrap/evolution"
 

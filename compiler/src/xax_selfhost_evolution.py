@@ -28,7 +28,8 @@ Adding a transaction (Linux x86-64; no Python runs inside the compiler)::
 copies the record into ``evolution/``, runs ``xaxc edit`` and then ``xaxc verify`` on each named store, replaces the
 store and appends its line.  A change to the production compiler names ``xax_compiler_driver_general.xax`` and
 ``seed/xax_compiler_request.xax`` (the request store must stay ``xax_selfhost_compiler.compiler_request`` of the driver
-store); rebuild with ``bootstrap/seed/selfbuild.sh``.  ``python -m xax_selfhost_evolution check`` checks the chains.
+store); rebuild with ``bootstrap/seed/selfbuild.sh``.  ``sh bootstrap/evolution/evolve.sh check`` checks the chains with the
+native ledger program (``bootstrap/evolution/ledger``).
 """
 
 from __future__ import annotations
@@ -101,16 +102,6 @@ def frozen_stores() -> list[str]:
     return sorted(ledger().baselines)
 
 
-def check() -> dict[str, str]:
-    """``store -> blob`` after checking that every chain is well formed and ends at the committed store."""
-    heads = ledger().heads()
-    for store, head in heads.items():
-        actual = blob_id(store_path(store).read_bytes())
-        if actual != head:
-            raise ValueError(f"{store}: the committed store is {actual}; its ledger chain ends at {head}")
-    return heads
-
-
 def stored_blob(blob: str) -> bytes | None:
     """A store's bytes from the repository's object database, or None where git or the object is unavailable."""
     git = shutil.which("git")
@@ -168,7 +159,10 @@ def apply(record: Path, stores: list[str], compiler: Path = SEED_COMPILER) -> li
     data = Path(record).read_bytes()
     if data[:2] != b"R ":  # a batch (native text) is checked by xaxc edit itself
         parse_record(data)
-    heads = check()
+    heads = ledger().heads()
+    for store in stores:
+        if store in heads and blob_id(store_path(store).read_bytes()) != heads[store]:
+            raise ValueError(f"{store} is not its ledger chain's end")
     target = EVOLUTION_DIRECTORY / Path(record).name
     if target.exists() and target.read_bytes() != data:
         raise ValueError(f"{target.name} already names another record")
@@ -196,10 +190,6 @@ def apply(record: Path, stores: list[str], compiler: Path = SEED_COMPILER) -> li
 
 
 def main(arguments: list[str]) -> int:
-    if arguments == ["check"]:
-        for store, head in sorted(check().items()):
-            print(head, store)
-        return 0
     if len(arguments) >= 3 and arguments[0] == "apply":
         compiler = SEED_COMPILER
         if "--compiler" in arguments:
@@ -209,7 +199,7 @@ def main(arguments: list[str]) -> int:
         for line in apply(Path(arguments[1]), arguments[2:], compiler):
             print(line)
         return 0
-    raise SystemExit("usage: python -m xax_selfhost_evolution check | apply <record> <store>... [--compiler <xaxc>]")
+    raise SystemExit("usage: python -m xax_selfhost_evolution apply <record> <store>... [--compiler <xaxc>]")
 
 
 if __name__ == "__main__":

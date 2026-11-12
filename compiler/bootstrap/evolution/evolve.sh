@@ -3,7 +3,7 @@
 #
 #   sh evolve.sh apply <record> <store> [<store> ...]   add one transaction to the ledger
 #   sh evolve.sh replay [<store>]                          replay the ledger's transactions with xaxc edit
-#   sh evolve.sh check                                     every store's chain ends at the committed store
+#   sh evolve.sh check [<bootstrap>]                       every store's chain ends at the committed store (native)
 #
 # A record is an XAXEDIT1 edit record or a batch (text whose first word is R: the root, a function, then edits,
 # `define` and `replace`, docs/09_AI_PROTOCOL.md section 16), the form native authoring writes. <store> is a path
@@ -36,17 +36,13 @@ head_of() {  # the ledger chain end of store $1
         if ($3 != h) { print "BROKEN"; exit } h = $4 } END { print h }' "$ledger"
 }
 
-stores() { awk '$1 == "baseline" { print $2 }' "$ledger"; }
-
-check() {
-    status=0
-    for store in $(stores); do
-        want=$(head_of "$store")
-        [ "$want" != BROKEN ] || { echo "$store: the chain is broken" >&2; status=1; continue; }
-        have=$(blob "$bootstrap/$store")
-        [ "$have" = "$want" ] || { echo "$store: committed $have, the chain ends at $want" >&2; status=1; }
-    done
-    return $status
+check() {  # the native ledger program (ledger/README.md) on bootstrap directory $1 (default: this one)
+    work=$(mktemp -d "${TMPDIR:-/tmp}/xax-check.XXXXXX")
+    trap 'rm -rf "$work"' EXIT
+    "$xaxc" resolve "$here/ledger/xax_ledger.xax" "$work/snapshot.xax" || die "xaxc resolve of the ledger program failed"
+    "$xaxc" build "$work/snapshot.xax" "$work/xax_ledger" "$work/provenance" || die "xaxc build of the ledger program failed"
+    chmod 755 "$work/xax_ledger"
+    "$work/xax_ledger" "${1:-$bootstrap}"
 }
 
 apply() {
@@ -116,6 +112,6 @@ command=${1:-}
 case "$command" in
     apply) apply "$@" ;;
     replay) replay "$@" ;;
-    check) check && echo "every chain ends at its committed store" ;;
-    *) die "usage: evolve.sh apply <record> <store>... | replay [<store>] | check" ;;
+    check) check "$@" && echo "every chain ends at its committed store" ;;
+    *) die "usage: evolve.sh apply <record> <store>... | replay [<store>] | check [<bootstrap>]" ;;
 esac
