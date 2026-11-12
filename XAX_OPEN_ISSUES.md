@@ -913,3 +913,44 @@ is not caused by ledger 0024 or the seed rotation. Not established: whether ever
 **Evidence that closes it.** The audit and the native analyses compared on the same graph (the reference folding
 as `basics` does, or the comparison made after folding on both sides), and the file passing under
 `XAX_REQUIRE_NATIVE=1`; or the audit replaced by a native check under the repository's language rule.
+
+## OI-58 — Windows x86-64 code generation on the `chains` walk (R4 blocker for `windows-x86_64-pe`)
+
+**Status: OPEN (2026-11-12).** On Windows 11 (Ryzen 9 5900HS) the XAX arm of
+`compiler/benchmarks/windows_chains` is behind a C twin with the same data layout (`chains_soa.c`, `gcc -O2`);
+the numbers are in `compiler/benchmarks/windows_chains_soa_evidence.json`. Found while looking for the cause, all
+measured with `xbench.exe` on that host:
+
+1. **Frame slots that the inner loop reads and writes.** `_loop_parameter_slots`
+   (`compiler/reference/xax_x86_64_regalloc.py`, and its native twin) gives a frame slot to a loop parameter that
+   its block only forwards, when some block of the class is under register pressure. It asks for a loop made only
+   of member blocks, and the outer lookup loop is one. It does not ask whether a non-member block on a deeper cycle
+   uses the value: the walk's visit block increments `steps`, so every step loads and stores the slot. Win64 meets
+   this where SysV does not, because the pressure limit is the length of the allocatable tuple: argument registers,
+   one scratch, the result register and `CALLEE_SAVED`. That is 14 registers on Win64. On SysV `rsi` and `rdi` are
+   in it twice (as argument registers and in `CALLEE_SAVED`), so the limit is 16 for the same 14 registers and the
+   same loop is not counted as under pressure. The committed batch avoids it in the program: the block
+   before the walk uses `steps` (`bit.or` with itself), and `found` is read by dominance instead of passed along.
+2. **The prefetch pass matches one shape only.** `xax_prefetch.prefetch_next_iteration` (ADR-211) needs the raw
+   bucket load among the arguments of the edge into the walk and the walk's first block on the cycle. A masked head
+   (the mask proves the walk's loads in bounds, so they carry no check) or a walk entered at the visit block gets no
+   prefetch. The committed batch passes the raw head in an unused parameter to keep it.
+3. **Loop layout.** The backend closes the walk on the link test (`visit; advance; test; jne`), gcc on the key
+   compare (`advance; test; je exit; visit; jne`). In one C program, gcc's own loop ran in 102 to 104 ms and the
+   backend's order in 117 to 120 ms. A back edge that needs copies goes through an out-of-line stub: 123 to 133 ms
+   against 108 to 110 ms inline, in the same test.
+4. **Placement matters more than any of these.** The same instructions at another address differ by up to 25%:
+   moving only the out-of-line stubs by 2 to 12 bytes (dead padding, loop bytes unchanged) took a C-hosted copy of
+   the loop from 107-111 ms to 122-141 ms, and removing the stub from the hot path did not help (134 ms). The fast
+   placements are not understood. A comparison on this workload therefore needs more than one build of each arm
+   before a few percent can be called a lead.
+
+With 1 and 2 worked around in the program the XAX arm went from about 134-155 ms to about 121-136 ms (two runs,
+rustc 134-142 ms, the C twin 105-112 ms, the C twin with the same prefetch written by hand 93-103 ms).
+
+Not established: why some placements are fast; whether the Linux row's `chains` result (OI-37) has the same
+sensitivity; whether a deeper prefetch (the next lookup's second and third node; 8 to 15% in a C prototype) holds
+on other processors.
+
+**Evidence that closes it.** Native transactions (with the reference following) for the slot rule at least, the workload batch without its two workarounds, and a recorded comparison in which the
+XAX arm leads every arm including `chains_soa.c`, repeated over more than one placement of each arm.

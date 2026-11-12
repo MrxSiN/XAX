@@ -13,10 +13,19 @@ xaxc-windows-x86_64.exe resolve request.xax snapshot.xax
 xaxc-windows-x86_64.exe build snapshot.xax chains.exe chains.provenance
 ```
 
-`chains.exe` is 2,560 bytes (SHA-256 `318c36d586f62e761b89158ab73515b28e612712722a72ec3eee8d7794401211`) and writes `1048576 9437420\r\n` with exit 0 on Windows 11.
+`chains.exe` is 2,560 bytes (SHA-256 `90e48100e0e15a7e3e3d301868369aee2855715af18bab412bd5c9825a147889`) and writes `1048576 9437420
+` with exit 0 on Windows 11.
+
+Since 2026-11-12 the function differs from the Linux view in the lookup walk (`XAX_OPEN_ISSUES.md`, OI-58): links
+are masked with 2097151 and the key and link views hold 2^21 slots, so the walk's loads are proven in bounds and
+carry no check; the raw bucket head is passed in an unused parameter, which keeps the next-lookup prefetch
+(ADR-211); `steps` is used in the block before the walk and `found` is read by dominance, which keeps both out of
+frame slots on Win64. The inserts, the lookups and the output are the same. The first form is in git history
+(`318c36d5…`).
 
 `chains.c` and `chains.rs` are the baseline arms (C and Rust by definition): the Linux twins with the same host
-calls changed and the same output bytes. Built with `gcc -O2`, `gcc -O3` (MinGW-W64 16.2.0) and
+calls changed and the same output bytes. `chains_soa.c` is a third: C with the XAX arm's data layout (two arrays,
+32-bit slot numbers), no mask and no bounds check. It is the fastest arm, so it is in the comparison. Built with `gcc -O2`, `gcc -O3` (MinGW-W64 16.2.0) and
 `rustc -C opt-level=3 -C panic=abort -C codegen-units=1` (1.99.1), each writes the same 17 bytes.
 
 ## Harness and measurement
@@ -32,8 +41,16 @@ each as 20 decimal digits.
 xbench.exe chains.exe c-O2.exe c-O3.exe rust.exe >NUL 2>samples.txt
 ```
 
-`samples_run1.txt` to `samples_run4.txt` are four runs on Windows 11 (2026-11-12);
-`../windows_chains_evidence.json` holds run 1 as samples. Result: XAX is at parity with `rustc -O3` (median ratio
-1.019, 0.960, 1.028, 0.978 over the four runs) and about 0.63x `gcc`. That is not a lead, so R4 is withheld.
-XAX has the smallest file (2,560 bytes against 62,598 and 126,464) and the smallest peak working set (21.8 MB
-against 26.3 and 22.7).
+`samples_run5.txt` to `samples_run8.txt` are four runs of the six arms on Windows 11 (2026-11-12, the current
+batch); `../windows_chains_soa_evidence.json` holds run 5 as samples:
+
+```text
+xbench.exe chains.exe c-O2.exe c-O3.exe rust.exe soa-O2.exe soa-O3.exe >NUL 2>samples.txt
+```
+
+Result: the XAX arm (median 122 to 132 ms) leads `rustc -O3` (0.87x to 0.92x) and is behind the C twin with its
+own data layout (1.19x to 1.26x of the faster `chains_soa.c` build). That is not a lead, so R4 is withheld;
+`XAX_OPEN_ISSUES.md` OI-58 has the causes. XAX has the smallest file (2,560 bytes against 62,598 and 126,464).
+
+`samples_run1.txt` to `samples_run4.txt` are the earlier four-arm runs of the first batch
+(`../windows_chains_evidence.json`): parity with `rustc -O3` (0.96x to 1.03x).

@@ -2106,3 +2106,24 @@ Built and run on commit `b2df99d`; committed on top of `745e801`, which changes 
 - **Ledger replay:** `evolve.sh replay` with the new seed: 125 of 125 transactions give their recorded stores (58 min).
 - **Not done:** OI-55's cases as PE programs through the Windows seed; the XAX-MCP pin; `tools/check.py`; OI-57;
   the AArch64 backends were not examined for OI-55's defect.
+
+## Windows chains: improved batch, a faster C arm, R4 still withheld — 2026-11-12
+
+Built and run on Windows 11 with the Windows seed (`e2f68c00…`), on commit `cdf7eb5`. No store, ledger line or seed changes.
+
+- **Workload batch:** `compiler/benchmarks/windows_chains/chains.batch` is rewritten in the lookup walk (masked
+  links over 2^21-slot views, raw bucket head kept for the prefetch, `steps` and `found` kept out of frame slots).
+  `chains.exe` is `90e48100…`, 2,560 bytes, same output.
+- **New arm:** `chains_soa.c`, C with the XAX arm's data layout. It is the fastest arm and is now in the comparison.
+- **Measurement** (`compiler/benchmarks/windows_chains_soa_evidence.json`, four runs of six arms): XAX median 122
+  to 132 ms; `rustc -O3` 135 to 152 ms (XAX 0.87x to 0.92x); `chains_soa.c` 97 to 112 ms (XAX 1.19x to 1.26x).
+  The matrix row stays R3 with `competitive` false; it now points at this record.
+- **Causes:** `XAX_OPEN_ISSUES.md` OI-58: the allocator's loop-slot rule puts `steps` in a frame slot on Win64, the
+  prefetch pass matches one program shape, the walk closes on the link test, and code placement alone moves the
+  result by up to 25%.
+- **Supersedes** the result of "Windows R4 measured and withheld" above (parity with rustc): that record stays as
+  the first batch's measurement.
+- **Not done:** the backend changes OI-58 names (native transactions, then both seeds and BBC); R5 and R6 on
+  Windows, which the matrix cannot derive while R4 is unmet; a second workload; a quiet host.
+- **Tests:** `tests/test_replacement_matrix.py` and `tests/test_status_docs.py` pass (19) on Windows; nothing else
+  was run.
