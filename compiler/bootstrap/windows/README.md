@@ -61,7 +61,7 @@ diagnostic, 2 a decline, 3 a usage or I/O failure. Run `verify` on a candidate b
 
 ## Limits
 
-- The Linux seed in `../seed` is still the ledger 0023 build; this seed is ahead of it until that one is rotated.
+- The Linux seed in `../seed` is the ledger 0025 build (rotated 2026-11-12); this seed is one transaction ahead of it.
 - All runs here had standard input and output redirected. One earlier run of a program this compiler built, started
   with the console's own handles, did not return and is not explained (`XAX_STATE.md`, 2026-11-12).
 - The store and request are not committed: they are one `edit` away from `bbc.xax` and `bbc_request.xax`.

@@ -2063,3 +2063,19 @@ rotation for ledger 0026 is the next step.
   made again; no test was rerun on the ledger 0026 tree except those named in the commit.
 - **Next:** rotate the seed to ledger 0026 and re-record; run OI-55's cases as PE programs and close it; OI-57; a native runner for
   `narrow_signed_compare.xax` and the other checks as the Python tests are replaced.
+
+## Windows R4 measured and withheld: chains is at parity with rustc — 2026-11-12
+
+- **Workload**: `compiler/benchmarks/windows_chains/`: the OI-37 chains program for Windows PE as a native batch,
+  built by the Windows seed (2,560 bytes); C and Rust baseline twins (`gcc -O2`, `gcc -O3`, `rustc -O3`).
+- **Harness**: `xbench`, an XAX program (native batch, six new kernel32 declarations supplied as objects):
+  CreateProcessA, QueryPerformanceCounter, exit status, peak working set; 34 rotating rounds, 31 samples per arm.
+- **Result** (`compiler/benchmarks/windows_chains_evidence.json`, Windows 11, Ryzen 9 5900HS, ordinary load): XAX
+  median 0.1426 s, rustc 0.1399 s, gcc 0.223 s. XAX over rustc is 1.019 in the recorded run and 0.960, 1.028, 0.978
+  in three repeats: parity within noise. The validator recomputes `competitive` false; the row stays R3.
+- **R5 and R6 on Windows are not started.** The validator derives levels in order, so neither can be reached while
+  R4 is withheld; their evidence fields could still be recorded.
+- **To reach R4**: a real code-generation lead over rustc on this workload (the walk loop is memory-bound, so the
+  lead has to come from the insert loop or start-up), a quieter host, or further workloads. No workload or
+  competitor was dropped.
+- The matrix test file is unchanged; `python -m xax_status_docs --write` regenerated the status blocks.

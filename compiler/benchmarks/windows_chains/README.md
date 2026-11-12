@@ -19,5 +19,21 @@ xaxc-windows-x86_64.exe build snapshot.xax chains.exe chains.provenance
 calls changed and the same output bytes. Built with `gcc -O2`, `gcc -O3` (MinGW-W64 16.2.0) and
 `rustc -C opt-level=3 -C panic=abort -C codegen-units=1` (1.99.1), each writes the same 17 bytes.
 
-No measurement is recorded yet: timing through a shell is dominated by process start-up noise. R4 needs a
-process-timing harness (to be an XAX program) and raw samples.
+## Harness and measurement
+
+`xbench.batch` is the timing harness, an XAX program made the same way (a batch on `bbc.xax`; `xbench.exe` is 3,584
+bytes). It supplies six kernel32 declarations as objects (`CreateProcessA`, `WaitForSingleObject`,
+`QueryPerformanceCounter`, `GetExitCodeProcess`, `K32GetProcessMemoryInfo`, `CloseHandle`). It runs each program
+named on its command line once per round for 34 rounds, rotating the order by one each round, and writes one line
+per run to standard error: arm number, QueryPerformanceCounter ticks (100 ns), exit status, peak working set bytes,
+each as 20 decimal digits.
+
+```text
+xbench.exe chains.exe c-O2.exe c-O3.exe rust.exe >NUL 2>samples.txt
+```
+
+`samples_run1.txt` to `samples_run4.txt` are four runs on Windows 11 (2026-11-12);
+`../windows_chains_evidence.json` holds run 1 as samples. Result: XAX is at parity with `rustc -O3` (median ratio
+1.019, 0.960, 1.028, 0.978 over the four runs) and about 0.63x `gcc`. That is not a lead, so R4 is withheld.
+XAX has the smallest file (2,560 bytes against 62,598 and 126,464) and the smallest peak working set (21.8 MB
+against 26.3 and 22.7).

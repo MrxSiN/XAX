@@ -68,7 +68,7 @@ Generated from [`XAX_REPLACEMENT_MATRIX.json`](XAX_REPLACEMENT_MATRIX.json). "â€
 | x86-64 Linux | `linux-x86_64` | R6 | Native ELF executables. Faster than the fastest C/Rust build on three apps (ADR-212). An AI maintained one app through semantic transactions (ADR-213). `xb64` is 100% XAX (ADR-210). |
 | AArch64 Linux | `linux-aarch64` | R6 | Native ELF executables. On two Pixel phones, jsonmin beats NDK clang and rustc (ADR-254). An AI maintained it on-device (ADR-258). `xcksum` is 100% XAX and matches toybox cksum (ADR-258). |
 | JVM | `jvm` | R6 | Direct class files and JARs calling the JDK. jsonmin runs 0.87x javac (ADR-212). An AI maintained it through one transaction (ADR-209). `xwc` is 100% XAX and matches GNU wc (ADR-257). |
-| x86-64 Windows | `windows-x86_64-pe` | R3 | Native PE32+ executables run on Windows 11. The production compiler runs there and builds itself byte for byte (ADR-397). No performance comparison yet. |
+| x86-64 Windows | `windows-x86_64-pe` | R3 | Native PE32+ executables run on Windows 11. The production compiler runs there and builds itself byte for byte (ADR-397). Measured against gcc and rustc on one workload: parity with rustc, not ahead (R4 withheld). |
 | Android (arm64-v8a) | `android-arm64` | R3 | Signed APKs with DEX, JNI and libxposed modules, run on Pixel 8 Pro. Cold start ties the Java and Kotlin versions, so the row stays at R3 (ADR-253). R5 maintenance is recorded (ADR-255). |
 | AArch64 bare metal | `aarch64-baremetal` | R2 | Bare-metal images with a QEMU board package; run under QEMU only. |
 | Browser (WebAssembly + generated glue) | `browser-web` | R2 | WebAssembly page with generated JavaScript glue; four DOM bindings run. |

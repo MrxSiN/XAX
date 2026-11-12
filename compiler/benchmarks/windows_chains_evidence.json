@@ -1,0 +1,42 @@
+{
+  "format": "xax-windows-chains-evidence-v1",
+  "evidence_label": "MEASURED",
+  "date": "2026-11-12",
+  "workload": "chained hash table: 1048576 xorshift64 inserts into 65536 buckets, then 1048576 successful lookups walking chains; the XAX arm is the struct-of-arrays form (compiler/benchmarks/windows_chains/chains.batch)",
+  "output": "1048576 9437420\r\n",
+  "host": {
+    "os": "Windows 11 Pro 10.0.26300",
+    "cpu": "AMD Ryzen 9 5900HS",
+    "memory_gib": 39,
+    "gcc": "gcc.exe (MinGW-W64 x86_64-ucrt-posix-seh, built by Brecht Sanders, r3) 16.2.0",
+    "rustc": "rustc 1.99.1 (58cf8f9c3 2026-10-13)",
+    "xaxc": "compiler/bootstrap/windows/xaxc-windows-x86_64.exe e2f68c00a8dee67490929b173469e383853564254ed80b3a7a5e8188d8c50122",
+    "load": "a laptop in ordinary use; other processes were running"
+  },
+  "method": {
+    "harness": "xbench.exe, an XAX program (compiler/benchmarks/windows_chains/xbench.batch): CreateProcessA with inherited handles, QueryPerformanceCounter before the call and after WaitForSingleObject, GetExitCodeProcess, K32GetProcessMemoryInfo PeakWorkingSetSize",
+    "timer": "QueryPerformanceCounter, 10000000 ticks per second",
+    "schedule": "34 rounds; each round runs every arm once, the arm order rotating by one per round; the first 3 rounds are warm-up and are not in the samples",
+    "repetitions": 31,
+    "warmup_runs": 3,
+    "child_output": "standard output to the null device",
+    "c_flags": {"gcc-O2": "gcc -O2", "gcc-O3": "gcc -O3"},
+    "rust_flags": {"rustc-O3": "rustc -C opt-level=3 -C panic=abort -C codegen-units=1"},
+    "raw": "compiler/benchmarks/windows_chains/samples_run1.txt (arm, ticks, exit status, peak working set bytes per line; arms 1 xax, 2 gcc-O2, 3 gcc-O3, 4 rustc-O3)",
+    "recorded_by": "samples copied from the harness output by a one-off shell command; no committed script",
+    "performance_rule": "XAX_BENCHMARKS.md 15.0 (ADR-207): XAX median over the fastest non-XAX median; R4 needs <= 0.9999x and a significant advantage"
+  },
+  "results": {
+    "xax-soa": {"file_bytes": 2560, "sha256": "318c36d586f62e761b89158ab73515b28e612712722a72ec3eee8d7794401211", "peak_working_set_bytes_max": 21803008, "wall_seconds_samples": [0.1339885, 0.1394509, 0.2056853, 0.1336098, 0.1276618, 0.1810363, 0.1777444, 0.1236938, 0.1309843, 0.1199802, 0.1629150, 0.1435418, 0.1404061, 0.1129808, 0.1396613, 0.1599616, 0.1506683, 0.1650287, 0.1317348, 0.1475866, 0.1439112, 0.2038619, 0.1441796, 0.1490563, 0.1849343, 0.1297125, 0.1345859, 0.1355232, 0.2655056, 0.1426051, 0.1253507]},
+    "gcc-O2": {"file_bytes": 62598, "peak_working_set_bytes_max": 26316800, "wall_seconds_samples": [0.2438277, 0.2190402, 0.2410145, 0.1930781, 0.1972466, 0.2431469, 0.2566128, 0.1736299, 0.2056112, 0.1744650, 0.2873997, 0.1886990, 0.2291599, 0.2574463, 0.2328635, 0.2400493, 0.1916594, 0.2723747, 0.2499680, 0.2119697, 0.2969945, 0.2276039, 0.2052910, 0.2538291, 0.2724629, 0.1993873, 0.2215940, 0.2936434, 0.3015898, 0.1926146, 0.1951160]},
+    "gcc-O3": {"file_bytes": 62598, "peak_working_set_bytes_max": 26345472, "wall_seconds_samples": [0.2725006, 0.2349926, 0.2287961, 0.2830939, 0.2399197, 0.2041897, 0.3013021, 0.2193269, 0.1978353, 0.2129715, 0.2583188, 0.2154438, 0.2317475, 0.2571241, 0.2153232, 0.2232935, 0.2557629, 0.2390876, 0.1901373, 0.2123256, 0.2834249, 0.2305186, 0.2119762, 0.1995146, 0.1837557, 0.2009195, 0.1946205, 0.2312350, 0.3065254, 0.1779741, 0.1998273]},
+    "rustc-O3": {"file_bytes": 126464, "peak_working_set_bytes_max": 22708224, "wall_seconds_samples": [0.1383818, 0.1464014, 0.2233157, 0.1192473, 0.1399428, 0.1225959, 0.2692486, 0.1180713, 0.1186764, 0.2025133, 0.1139219, 0.1639429, 0.1412443, 0.2125068, 0.1785100, 0.1527679, 0.1279976, 0.1405488, 0.1462317, 0.1538706, 0.1288198, 0.1264147, 0.1597650, 0.1248708, 0.1999789, 0.1210664, 0.1266495, 0.1308526, 0.2663104, 0.1381294, 0.1231026]}
+  },
+  "medians_seconds_run1": {"xax-soa": 0.1426051, "gcc-O2": 0.2291599, "gcc-O3": 0.2232935, "rustc-O3": 0.1399428},
+  "repeat_runs": {
+    "note": "three more runs of the same command, raw files samples_run2.txt to samples_run4.txt; XAX median over rustc median",
+    "ratios_xax_over_rustc": {"run1": 1.0190, "run2": 0.9596, "run3": 1.0278, "run4": 0.9783}
+  },
+  "exit_statuses": "every run of every arm in all four runs exited 0",
+  "verdict": "R4 withheld: XAX is at parity with rustc -O3 within run-to-run noise (0.96x to 1.03x) and about 0.63x gcc. XAX has the smallest file and the smallest peak working set."
+}
