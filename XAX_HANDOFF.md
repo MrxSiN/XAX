@@ -27,7 +27,7 @@
 
 ## Current repository state
 
-<!-- xax-status:levels -->Replacement levels (generated from `XAX_REPLACEMENT_MATRIX.json`): R6: jvm, linux-aarch64, linux-x86_64; R3: android-arm64; R2: aarch64-baremetal, browser-web, windows-x86_64-pe; R1: gpu-spirv-cuda-metal-dxil, riscv64, wasm32-core, wasm32-wasi; R0: accelerator-simt-packet; no level yet: bsd-unix, dotnet-clr, macos-ios-apple, rtos-embedded-mcu.<!-- /xax-status:levels -->
+<!-- xax-status:levels -->Replacement levels (generated from `XAX_REPLACEMENT_MATRIX.json`): R6: jvm, linux-aarch64, linux-x86_64; R3: android-arm64, windows-x86_64-pe; R2: aarch64-baremetal, browser-web; R1: gpu-spirv-cuda-metal-dxil, riscv64, wasm32-core, wasm32-wasi; R0: accelerator-simt-packet; no level yet: bsd-unix, dotnet-clr, macos-ios-apple, rtos-embedded-mcu.<!-- /xax-status:levels -->
 
 <!-- xax-status:bootstrap -->Bootstrap status (derived by `xax_selfhost.bootstrap_status` from `compiler/benchmarks/full_selfhost_evidence.json` and `compiler/benchmarks/python_free_seed_evidence.json`): whole production compiler: B0, B1, B2, B3, B4, B5, B6 established (derived from the Linux x86-64 production compiler, whose executed record covers every target and artifact `build` makes (S15g, ADR-358)); Linux x86-64 production compiler (`benchmarks/full_selfhost_evidence.json`): B0, B1, B2, B3, B4, B5, B6 hold, none do not; its seed requires Python: no; S-step component fixed points are not B milestones (`XAX_SPEC.md` §16.5). Bootstrap seed: native-elf `compiler/bootstrap/seed/xaxc-linux-x86_64`, 31,903,131 bytes, requires Python: no.<!-- /xax-status:bootstrap -->
 
@@ -1860,3 +1860,13 @@ Built on ledger 0024 (the x86-64 signed-compare fix, commit `8d83f98`).
   XAX-MCP's pin of the Windows seed (its own repository). The two entry batches must be rewritten when `bbc.xax`
   changes (three handles and the root).
 - **Next:** the Windows row of the replacement matrix: R3 with this compiler as the workload, then R4 to R6.
+
+## Windows row at R3: the compiler is the practical application — 2026-11-12
+
+- `XAX_REPLACEMENT_MATRIX.json`: `windows-x86_64-pe` `practical_application` is EXECUTED on
+  `compiler/benchmarks/windows_selfhost_evidence.json` (the production compiler on Windows 11: files, 3.5 GiB of
+  lazily committed views, a byte-identical self-build). The validator derives R3; status blocks regenerated.
+- `tests/test_replacement_matrix.py`: the over-claim case expected the Windows row at R2; it now expects R3 (one
+  string in an existing Python test; the test is the validator's own and has no native form yet).
+- **Not done:** R4 needs raw-sample measurements on this host against C and one non-C toolchain (gcc and rustc are
+  installed); R5 and R6 need a maintenance cycle and an XAX-only application run on Windows.

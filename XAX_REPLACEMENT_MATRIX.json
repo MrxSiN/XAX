@@ -5,8 +5,8 @@
     {
       "id": "windows-x86_64-pe",
       "name": "x86-64 Windows",
-      "summary": "Native PE32+ executables run on Windows 11, with Win64 calls, threads and DLL imports.",
-      "level": "R2",
+      "summary": "Native PE32+ executables run on Windows 11. The production compiler runs there and builds itself byte for byte (ADR-397). No performance comparison yet.",
+      "level": "R3",
       "runtime_requirement": "none; kernel32 imports only where the program declares foreign calls",
       "fields": {
         "semantic_expressibility": [
@@ -59,13 +59,18 @@
           "EXECUTED",
           "compiler/benchmarks/windows_pe_hosted_evidence.json"
         ],
+        "practical_application": [
+          "EXECUTED",
+          "compiler/benchmarks/windows_selfhost_evidence.json"
+        ],
         "autonomous_maintenance": [
           "PROTOTYPE",
           "compiler/benchmarks/m6_workspace_smoke.json"
         ]
       },
       "blockers": [
-        "kernel32 packages cover 12 calls including a Win64 callback and linear thread-handle lifecycle; no files, sockets, or PE exports",
+        "R3 scope: one application, the compiler itself (file I/O through msvcrt, 3.5 GiB of lazily committed views, kernel32 calls), every run with redirected standard handles; one console-handle run of a built program did not return and is unexplained",
+        "kernel32 packages cover 12 calls including a Win64 callback and linear thread-handle lifecycle; the compiler's file adapters are its own hosting layer, not a package; no sockets or PE exports",
         "float/aggregate functions still use the legacy allocator or frame path (ADR-095)",
         "record links / pointer_rebase executed under Wine only (ADR-098), not on a Windows host",
         "C baseline only under Wine with a start-up-bound fixture (ADR-100); no Windows-host or run-time-bound comparison",

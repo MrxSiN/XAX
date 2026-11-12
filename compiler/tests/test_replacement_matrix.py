@@ -22,7 +22,7 @@ class ReplacementMatrixTests(unittest.TestCase):
         row["fields"]["simd"] = "EXECUTED"
         row["fields"]["memory"] = ["MEASURED", "no/such/file.json"]
         errors = validate(bad, ROOT)
-        self.assertIn("windows-x86_64-pe: claimed R4 but evidence supports R2", errors)
+        self.assertIn("windows-x86_64-pe: claimed R4 but evidence supports R3", errors)
         self.assertIn("windows-x86_64-pe.simd: bare label EXECUTED needs evidence", errors)
         self.assertIn("windows-x86_64-pe.memory: missing evidence no/such/file.json", errors)
 
