@@ -2127,3 +2127,23 @@ Built and run on Windows 11 with the Windows seed (`e2f68c00…`), on commit `cd
   Windows, which the matrix cannot derive while R4 is unmet; a second workload; a quiet host.
 - **Tests:** `tests/test_replacement_matrix.py` and `tests/test_status_docs.py` pass (19) on Windows; nothing else
   was run.
+
+## Windows maintenance cycle recorded on xbench (R5 evidence; R6 not yet) — 2026-11-12
+
+Run on Windows 11 with the Windows seed (`e2f68c00…`) only, on commit `f114fb4`. No store, ledger line or seed changes.
+
+- **Application:** `xbench`, the timing harness of `compiler/benchmarks/windows_chains` (4 functions, root `eb64f934…`).
+- **Cycle** (`compiler/benchmarks/r5_windows_xbench_maintenance_evidence.json`, `compiler/benchmarks/windows_xbench`):
+  request "50 rounds per arm instead of 34"; three views read through `xaxc edit` (11,357 bytes); one edit,
+  `const N23 50` (an 83-byte batch); `verify` exit 0; new root `3b945072…`; rebuilt with `resolve` and `build`
+  (3,584 bytes before and after). The same batch on the new store is rejected (`WORKSPACE-EXPECTED-ROOT`).
+- **Tests:** one arm gives 34 lines before and 50 after; three arms 102 and 150; a child's exit status 7 is reported
+  in every line; line format and rotation unchanged. The checks were shell commands.
+- **Benchmark:** child time reported by each generation for the same program, three alternating runs: 0.109 s before,
+  0.101 s after; run medians ranged 0.096 to 0.140 s, so no difference is shown, and none is expected.
+- **Matrix:** `autonomous_maintenance` is EXECUTED with this record; `xax_only_application` is PROTOTYPE: the
+  application's logic, compiler and both releases are XAX, its tests are not. The row stays R3: R5 and R6 are not
+  derived while R4 is unmet.
+- **Not done:** tests for `xbench` written in XAX; generation 1 adopted as the committed `xbench.batch`; the backend
+  changes of OI-58.
+- **Tests:** `tests/test_replacement_matrix.py` and `tests/test_status_docs.py` pass (19) on Windows.
