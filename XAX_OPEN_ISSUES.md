@@ -916,7 +916,7 @@ as `basics` does, or the comparison made after folding on both sides), and the f
 
 ## OI-58 — Windows x86-64 code generation on the `chains` walk (R4 blocker for `windows-x86_64-pe`)
 
-**Status: OPEN (2026-11-12).** On Windows 11 (Ryzen 9 5900HS) the XAX arm of
+**Status: OPEN (2026-11-12); a fix of item 1 was tried and dropped (2026-11-13, OI-59).** On Windows 11 (Ryzen 9 5900HS) the XAX arm of
 `compiler/benchmarks/windows_chains` is behind a C twin with the same data layout (`chains_soa.c`, `gcc -O2`);
 the numbers are in `compiler/benchmarks/windows_chains_soa_evidence.json`. Found while looking for the cause, all
 measured with `xbench.exe` on that host:
@@ -954,3 +954,36 @@ on other processors.
 
 **Evidence that closes it.** Native transactions (with the reference following) for the slot rule at least, the workload batch without its two workarounds, and a recorded comparison in which the
 XAX arm leads every arm including `chains_soa.c`, repeated over more than one placement of each arm.
+
+## OI-59 — The reference register path miscompiles nested loops that carry several values
+
+**Status: OPEN (2026-11-13).** Found while trying to fix OI-58 item 1. The Python reference's register-resident lowering
+(`compiler/reference/xax_x86_64_regalloc.py`) returns wrong results for a family of Linux x86-64 functions:
+
+```text
+entry(a, b, c, d): k values made from the arguments with add/sub/mul/xor/and/or
+outer(i:b32, c:b64, v1..vk):   a few temporaries from the v's; br inner(0, c + t, v1..vk)
+inner(j:b32, c:b64, w1..wk):   c' = c op w_r (one or two r); j + 1 < n ? inner(j + 1, c', w..) : after(i, c', w..)
+after(i:b32, c:b64, x1..xk):   up to two x_m replaced by x_m op c; i + 1 < m ? outer(i + 1, c, x'..) : exit(c, x'..)
+exit(c, y1..yk):               fold c and every y with add/sub/mul/xor/and/or; return it
+```
+
+With loop bounds from 1 to 5, the reference executor and the executable from `compile_linux_executable` disagree for
+15 of 180 random programs (k from 10 to 21), and with k fixed for 0 of 40 at k = 4 and 6, 15 at 8, 11 at 10, 6 at 12,
+5 at 14, 4 at 16 and 18, and 1 at 20. The fault is not new: the same programs fail with the reference as committed.
+For one of them (seed 3 of the scratch generator: 5 blocks, 15 parameters per loop block, 13 allocatable registers,
+frame slots for 8 classes that span the outer, inner and after blocks) the executor gives 11300724383845621993 and the
+reference's executable 18346752532277601106.
+
+The production compiler as committed (seed `7988e0d0…`) builds that program correctly, with other bytes than the
+reference. Ledger 0027, a change to the loop-slot rule that also made the native decisions equal the reference's on it,
+made the native compiler emit the reference's bytes, and the compiler it built itself then rejected a correctly
+Ed25519-signed package (`TRUST-SIGNATURE-REQUIRED`, both Ed25519 rows of `bench_full_selfhost`'s corpus; B3 lost).
+Ledger 0027 was therefore not committed.
+
+Not established: which decision is wrong (slots, edge spills, pins or the edge copies), and why the committed native
+compiler differs from the reference here although the seed-following tests find them equal on their corpus.
+
+**Evidence that closes it.** The reference fixed and a differential over this family (and the existing random corpus)
+equal to the reference executor; the native compiler checked against the same family; then OI-58 item 1 can be
+retried.

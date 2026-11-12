@@ -2147,3 +2147,26 @@ Run on Windows 11 with the Windows seed (`e2f68c00…`) only, on commit `f114fb4
 - **Not done:** tests for `xbench` written in XAX; generation 1 adopted as the committed `xbench.batch`; the backend
   changes of OI-58.
 - **Tests:** `tests/test_replacement_matrix.py` and `tests/test_status_docs.py` pass (19) on Windows.
+
+## Ledger 0027 (loop-slot rule) tried and dropped; OI-59 found — 2026-11-13
+
+Worked on top of `65bce1e`. Nothing of the attempt is committed: no store, ledger line, seed or BBC change.
+
+- **Attempt:** a native batch per store (x86-64 backend, driver, request) that makes `loop_slots` reject a slot class
+  written by a cyclic block holding no member (OI-58 item 1), with the same rule in the reference. The first form read
+  a reachability matrix the function no longer has (ADR-365) and disagreed with the reference on `chains-soa`; the
+  second used the per-block cycle flags and agreed with it.
+- **What worked:** the Linux self-build reached a fixed point at the third generation (`ca87a63c…`, 31,511,387 bytes);
+  the Windows seed cut from the rebuilt `bbc.xax` reached its fixed point on Windows 11 (`851776f3…`); the Windows
+  `chains` walk kept `steps` in a register without the program's workaround; 125 seed-following tests passed.
+- **Why it was dropped:** the new compiler rejects a correctly Ed25519-signed package (`TRUST-SIGNATURE-REQUIRED`) where
+  the committed seed and the reference accept it: B3 is lost in `bench_full_selfhost`'s record. A scratch differential
+  over nested loops then showed that the reference register path already miscompiles such functions, and that the
+  change made the native compiler emit the reference's bytes for them (`XAX_OPEN_ISSUES.md` OI-59).
+- **Windows chains** with the change: 1.17x to 1.41x the C twin (`chains_soa.c`), 0.77x to 0.94x rustc, the same as
+  the committed batch with its workaround; R4 stays withheld (OI-58).
+- **Host change:** WSL 2 (Ubuntu-24.04-D) now has clang 18.1.3 (apt) and rustc 1.97.0 (rustup), the versions of the
+  host that recorded `oi37_chains_evidence.json`.
+- **Repository on Windows:** `compiler/bootstrap/evolution/LEDGER` (file) and `compiler/bootstrap/evolution/ledger/`
+  (directory) collide on a case-insensitive file system; a Windows checkout shows `LEDGER` deleted.
+- **Next:** OI-59 (the reference fault, then the native compiler against the same family), then OI-58.
