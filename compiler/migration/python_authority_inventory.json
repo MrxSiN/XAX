@@ -302,10 +302,6 @@
       "class": "G",
       "note": "Builder of the store verifier's rendering phase (its rejections as the bootstrap's diagnostics, verify_store's order) and the host's reference rendering for tests (S15b.1, ADR-288)."
     },
-    "xax_selfhost_render_types.py": {
-      "class": "G",
-      "note": "Builder of the driver's type and constant rejection renderer (S15b.2, ADR-289)."
-    },
     "xax_selfhost_general_rejects.py": {
       "class": "G",
       "note": "Builder of the general x86-64 program's code generation rejections with the bootstrap's diagnostics (S15b.4, ADR-294)."
@@ -388,10 +384,6 @@
     "xax_selfhost_general_frame.py": {
       "class": "G",
       "note": "Builder of the S12f frame lowering in the general x86-64 backend store (ADR-275)."
-    },
-    "xax_selfhost_general_legacy.py": {
-      "class": "G",
-      "note": "Builder of the S12f.4 legacy register path in the general x86-64 backend store (ADR-280)."
     },
     "xax_selfhost_writer.py": {
       "class": "G",
@@ -531,10 +523,6 @@
       "class": "G",
       "note": "Builder of the S15e.2 AArch64 program store: the bundle and the ELF image (ADR-315)."
     },
-    "xax_selfhost_aarch64_legacy.py": {
-      "class": "G",
-      "note": "Builder of the S15f.4 AArch64 legacy register path in the AArch64 program store (ADR-325)."
-    },
     "xax_selfhost_aarch64_lower.py": {
       "class": "G",
       "note": "Builder of the S15e.2 AArch64 lowering views in the AArch64 program store (ADR-315)."
@@ -559,10 +547,6 @@
       "class": "G",
       "note": "Builder of the canonical S15e.5 JVM program store; front end, class file and JAR (ADR-327-ADR-331)."
     },
-    "xax_selfhost_jvm_callback.py": {
-      "class": "G",
-      "note": "Builder of the S15e.5e callbacks in the JVM program store (ADR-331)."
-    },
     "xax_selfhost_jvm_class.py": {
       "class": "G",
       "note": "Builder of the S15e.5 class-file buffers and constant pool in the JVM program store (ADR-327)."
@@ -574,14 +558,6 @@
     "xax_selfhost_jvm_emit.py": {
       "class": "G",
       "note": "Builder of the S15e.5 edge copies, layout and blocks in the JVM program store (ADR-327)."
-    },
-    "xax_selfhost_jvm_foreign.py": {
-      "class": "G",
-      "note": "Builder of the S15e.5c references and platform calls in the JVM program store (ADR-329, ADR-330)."
-    },
-    "xax_selfhost_jvm_lower.py": {
-      "class": "G",
-      "note": "Builder of the S15e.5 node lowering in the JVM program store (ADR-327)."
     },
     "xax_selfhost_jvm_method.py": {
       "class": "G",
@@ -598,10 +574,6 @@
       "components": [
         "android-backend"
       ]
-    },
-    "xax_selfhost_jvm_memory.py": {
-      "class": "G",
-      "note": "Builder of the S15e.5g-S15e.5i memory and general profiles and the threaded launcher in the JVM program store (ADR-337, ADR-338)."
     },
     "xax_selfhost_android.py": {
       "class": "G",
