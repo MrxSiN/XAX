@@ -6,12 +6,13 @@ declaration it called, makes the very same store."""
 from __future__ import annotations
 
 import platform
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
 
 import xax_compiler as X
-import xax_selfhost_evolution as EV
+from xax_selfhost_seed import SEED_PATH
 from xax_linux import linux_api
 
 
@@ -28,7 +29,7 @@ class ObjectFormTests(unittest.TestCase):
             store.write_bytes(reader.data)
             for n in range(len([o for o in reader.objects() if o.kind == X.Kind.FUNCTION])):
                 selector.write_text(f"F{n}")
-                self.assertEqual(EV.run_compiler(EV.SEED_COMPILER, "edit", store, selector, view), 0)
+                self.assertEqual(subprocess.run([SEED_PATH, "edit", store, selector, view]).returncode, 0)
                 text = view.read_text()
                 if f"entity={declaration.cid.hex()}" in text:
                     break
@@ -39,7 +40,7 @@ class ObjectFormTests(unittest.TestCase):
             batch.write_text(f"R {reader.root_cid.hex()}\nF{n}\ndefine @decl\nobject {int(declaration.kind)} 0x{declaration.body.hex()}\nend\n"
                              f"define @f\n{body}\nend\nreplace F{n} @f\n")
             out = work / "out.xax"
-            self.assertEqual(EV.run_compiler(EV.SEED_COMPILER, "edit", store, batch, out), 0)
+            self.assertEqual(subprocess.run([SEED_PATH, "edit", store, batch, out]).returncode, 0)
             self.assertEqual(out.read_bytes(), reader.data)
 
 

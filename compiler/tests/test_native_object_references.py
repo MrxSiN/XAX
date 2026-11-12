@@ -10,12 +10,13 @@ seed's ``xaxc edit``, it turns A into exactly B.
 from __future__ import annotations
 
 import platform
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
 
 import xax_compiler as X
-import xax_selfhost_evolution as EV
+from xax_selfhost_seed import SEED_PATH
 from xax_compiler import Operation, Permission, bits_type, memory_effect_type, pointer_type, stack_owner_type, x86_64_linux_exec_target
 from xax_graph_builder import GraphBuilder, program_store
 from xax_linux import linux_api
@@ -69,7 +70,7 @@ class ObjectReferenceTests(unittest.TestCase):
                 return functions.index(cid)
 
             selector.write_text(f"F{handle(store_b, after, callee_b.cid)}")
-            self.assertEqual(EV.run_compiler(EV.SEED_COMPILER, "edit", store_b, selector, view), 0)
+            self.assertEqual(subprocess.run([SEED_PATH, "edit", store_b, selector, view]).returncode, 0)
             body = "\n".join(view.read_text().splitlines()[2:])
             supplied = []
             for name, obj in (("owner", OWNER), ("memory", MEM), ("pointer", POINTER)):
@@ -81,7 +82,7 @@ class ObjectReferenceTests(unittest.TestCase):
             batch = work / "batch"
             batch.write_text(f"R {before.root_cid.hex()}\nF{n}\n" + "".join(supplied) + f"define @f\n{body}\nend\nreplace F{n} @f\n")
             out = work / "out.xax"
-            self.assertEqual(EV.run_compiler(EV.SEED_COMPILER, "edit", store_a, batch, out), 0)
+            self.assertEqual(subprocess.run([SEED_PATH, "edit", store_a, batch, out]).returncode, 0)
             self.assertEqual(out.read_bytes(), after.data)
 
 

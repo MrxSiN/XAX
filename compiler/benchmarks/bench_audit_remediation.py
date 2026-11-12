@@ -45,11 +45,13 @@ def canonical_state() -> dict:
     """The typing store's identity, and whether every frozen store is its evolution ledger's chain end (ADR-361; until W2
     each store was rebuilt from its Python builder here)."""
     import xax_compiler
-    import xax_selfhost_evolution as EV
 
     typing = importlib.import_module("xax_selfhost_typing").STORE_PATH.read_bytes()
-    heads = EV.ledger().heads()
-    stores = {store: EV.blob_id(EV.store_path(store).read_bytes()) == head for store, head in sorted(heads.items())}
+    bootstrap = REPO / "compiler" / "bootstrap"
+    check = subprocess.run(["sh", str(bootstrap / "evolution" / "evolve.sh"), "check"], capture_output=True, text=True)
+    failed = {Path(line).resolve() for line in check.stderr.splitlines()}
+    baselines = [line.split()[1] for line in (bootstrap / "evolution" / "LEDGER").read_text().splitlines() if line.startswith("baseline ")]
+    stores = {store: (bootstrap / store).resolve() not in failed for store in sorted(baselines)}
     return {
         "typing_root": xax_compiler.StoreReader(typing).root_cid.hex(),
         "typing_digest_sha256": hashlib.sha256(typing).hexdigest(),

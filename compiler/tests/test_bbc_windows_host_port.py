@@ -15,7 +15,7 @@ import unittest
 from pathlib import Path
 
 import xax_compiler as X
-import xax_selfhost_evolution as EV
+from xax_selfhost_seed import SEED_PATH
 
 HERE = Path(__file__).resolve().parents[1]
 PORT = HERE / "integration" / "bfx" / "transactions" / "production_driver" / "native"
@@ -38,10 +38,10 @@ class WindowsHostPortTests(unittest.TestCase):
             store.write_bytes(data)
             for step, (name, root) in enumerate(zip(("1_windows_host.batch", "2_pe_target.edit"), ROOTS)):
                 out = work / f"step{step}.xax"
-                self.assertEqual(EV.run_compiler(EV.SEED_COMPILER, "edit", store, PORT / name, out), 0, name)
+                self.assertEqual(subprocess.run([SEED_PATH, "edit", store, PORT / name, out]).returncode, 0, name)
                 self.assertEqual(X.StoreReader(out.read_bytes()).root_cid.hex(), root, name)
                 store = out
-            self.assertEqual(EV.run_compiler(EV.SEED_COMPILER, "verify", store, work / "verify"), 0)
+            self.assertEqual(subprocess.run([SEED_PATH, "verify", store, work / "verify"]).returncode, 0)
 
 
 if __name__ == "__main__":

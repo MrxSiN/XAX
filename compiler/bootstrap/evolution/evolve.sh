@@ -4,6 +4,7 @@
 #   sh evolve.sh apply <record> <store> [<store> ...]   add one transaction to the ledger
 #   sh evolve.sh replay [<store>]                          replay the ledger's transactions with xaxc edit
 #   sh evolve.sh check [<bootstrap>]                       every store's chain ends at the committed store
+#   sh evolve.sh ledger <command> <argument>...            run the ledger program (ledger/README.md) itself
 #
 # A record is an XAXEDIT1 edit record or a batch (text whose first word is R: the root, a function, then edits,
 # `define` and `replace`, docs/09_AI_PROTOCOL.md section 16), the form native authoring writes. <store> is a path
@@ -93,6 +94,7 @@ command=${1:-}
 case "$command" in
     apply) apply "$@" ;;
     replay) replay "$@" ;;
+    ledger) "$tool" "$@" ;;
     check) "$tool" check "${1:-$bootstrap}" && echo "every chain ends at its committed store" ;;
-    *) die "usage: evolve.sh apply <record> <store>... | replay [<store>] | check [<bootstrap>]" ;;
+    *) die "usage: evolve.sh apply <record> <store>... | replay [<store>] | check [<bootstrap>] | ledger <command> <argument>..." ;;
 esac

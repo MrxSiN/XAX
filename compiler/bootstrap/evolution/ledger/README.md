@@ -16,7 +16,7 @@ xax_ledger blob <file>                the file's git blob id (SHA-1 of "blob <si
                                       exit 3 when the file cannot be read
 ```
 
-It replaced the Python `xax_selfhost_evolution.check` and, in `evolve.sh`, the shell check loop, the awk chain lookup,
+It replaced the Python `xax_selfhost_evolution` module (removed) and, in `evolve.sh`, the shell check loop, the awk chain lookup,
 the awk transaction filter and `git hash-object`/`sha1sum` for blob ids.
 
 Limits: the ledger at most 1 MiB, a file at most 256 MiB, a path at most 64 KiB; a missing argument traps (the

@@ -11,12 +11,13 @@ compiler miscompiled its own verifier; the views backend that lowers ``verify_st
 from __future__ import annotations
 
 import platform
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
 
 import xax_compiler as X
-import xax_selfhost_evolution as EV
+from xax_selfhost_seed import SEED_PATH
 from xax_compiler import Operation, Permission, bits_type, heap_view_type, pointer_type, x86_64_linux_exec_target
 from xax_graph_builder import GraphBuilder, program_store
 from xax_linux import linux_api
@@ -52,7 +53,7 @@ class ByteViewWideningTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             store = Path(directory) / "s.xax"
             store.write_bytes(widened_store().data)
-            self.assertEqual(EV.run_compiler(EV.SEED_COMPILER, "verify", store, Path(directory) / "report"), 0)
+            self.assertEqual(subprocess.run([SEED_PATH, "verify", store, Path(directory) / "report"]).returncode, 0)
 
 
 if __name__ == "__main__":

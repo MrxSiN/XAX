@@ -29,6 +29,28 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 BOOTSTRAP = HERE.parent / "bootstrap"
+
+
+def blob_id(data: bytes) -> str:
+    """The git object id of ``data`` as a blob."""
+    return hashlib.sha1(b"blob %d\0" % len(data) + data).hexdigest()
+
+
+def probe_record(reader) -> bytes:
+    """A structural transaction on a driver store that the ledger does not record: one constant (the type and value of
+    the function's first constant) inserted before the first node of the driver function's first block that has
+    nodes.  C1 applies it to the committed store, so ordinary evolution (B6) is shown on the frozen store even while
+    the ledger holds no structural transaction."""
+    import xax_compiler as X
+    from xax_selfhost_edit import INSERT_NODE, edit_record
+
+    module = next(item for item in reader.objects() if item.kind == X.Kind.MODULE)
+    main = next(reader.get(cid) for cid in module.references if reader.get(cid).kind == X.Kind.FUNCTION)
+    graph = X._parse_graph(reader.get(main.references[X.Cursor(main.body, "").uleb()]), reader.get)
+    constant = next(node for block in graph.blocks for node in block.nodes if node.operation == X.Operation.CONSTANT)
+    block = next(index for index, item in enumerate(graph.blocks) if item.nodes)
+    value = int.from_bytes(constant.entity.body[2:], "little")
+    return edit_record([(INSERT_NODE, main.cid, block, 0, 0, X.Operation.CONSTANT, (), constant.results[0], value, ())])
 EVIDENCE = HERE / "full_selfhost_evidence.json"
 sys.path.insert(0, str(HERE.parent / "tests"))
 sys.path.insert(0, str(HERE.parent))
@@ -664,19 +686,25 @@ def measure() -> dict:
     # one) and must make the store the ledger records, which its ``verify`` accepts.  No builder baseline exists.
     evolution = None
     if len(executables) > 1:
-        import xax_selfhost_evolution as EV
-        from xax_selfhost_edit import STRUCTURAL, parse_record
+        from xax_selfhost_edit import STRUCTURAL, apply_reference, parse_record
+
+        evolve = BOOTSTRAP / "evolution" / "evolve.sh"
+        listed = subprocess.run(["sh", str(evolve), "ledger", "transactions", str(BOOTSTRAP)], capture_output=True, text=True, check=True)
+        ledger = [(BOOTSTRAP / "evolution" / name, store, before, after) for name, store, before, after in (line.split() for line in listed.stdout.splitlines())]
 
         names = {1: "SetOperation", 2: "SetConstant", 3: "ReplaceReference", 4: "ReplaceUse", 5: "DeleteNode", 6: "InsertPureNode",
                  7: "SetResultType", 8: "DisconnectEdgeArgument", 9: "ConnectEdgeArgument"}
         transactions = []
         made = {}  # store -> (blob, bytes) of C1's last replayed result: the start of a chained transaction git lacks
-        for index, (record, store, before, after) in enumerate(EV.ledger().transactions):
-            data = EV.before_store(store, before)
+        for index, (record, store, before, after) in enumerate(ledger):
+            data = (BOOTSTRAP / store).read_bytes()
+            if blob_id(data) != before:  # git's copy of an earlier store
+                fetched = subprocess.run(["git", "cat-file", "blob", before], cwd=BOOTSTRAP, capture_output=True, check=False)
+                data = fetched.stdout if fetched.returncode == 0 and blob_id(fetched.stdout) == before else None
             if data is None and made.get(store, (None,))[0] == before:
                 data = made[store][1]
             row = {"record": record.name, "store": store, "before": before, "after": after, "record_sha256": sha(record.read_bytes())}
-            if EV.is_batch(record):  # N0.4 (ADR-372): native batch text; xaxc edit parses it
+            if record.read_bytes()[:2] == b"R ":  # N0.4 (ADR-372): native batch text; xaxc edit parses it
                 lines = record.read_text().splitlines()
                 row["mutations"] = sum(line.split(" ", 1)[0] in ("define", "replace") for line in lines)
                 row["kinds"] = ["NativeBatch"]
@@ -691,26 +719,26 @@ def measure() -> dict:
             path.write_bytes(data)
             result = run(executables[1], ["edit", path, record, output], [output])
             row["edit"] = {key: value for key, value in result.items() if key != "_data"}
-            row["equals_ledger"] = result["status"] == "image" and EV.blob_id(output.read_bytes()) == after
+            row["equals_ledger"] = result["status"] == "image" and blob_id(output.read_bytes()) == after
             if result["status"] == "image":
-                made[store] = (EV.blob_id(output.read_bytes()), output.read_bytes())
+                made[store] = (blob_id(output.read_bytes()), output.read_bytes())
                 row["verify"] = run(executables[1], ["verify", output, verified], [verified])["status"]
             transactions.append(row)
         # A structural transaction the ledger does not record, applied by C1 to the committed driver store: its store
         # must equal the Python reference engine's and verify (``probe_record``).
         committed = X.StoreReader(GENERAL_STORE_PATH.read_bytes())
         probe = directory / "evolve-probe.edit"
-        probe.write_bytes(EV.probe_record(committed))
+        probe.write_bytes(probe_record(committed))
         output, verified = directory / "evolve-probe.xax", directory / "evolve-probe.bin"
         result = run(executables[1], ["edit", GENERAL_STORE_PATH, probe, output], [output])
         probed = {"record_sha256": sha(probe.read_bytes()), "kinds": sorted({names[kind] for kind, *_fields in parse_record(probe.read_bytes())[1]}),
                   "edit": {key: value for key, value in result.items() if key != "_data"}}
-        probed["equals_reference"] = result["status"] == "image" and output.read_bytes() == EV.replay_reference(probe, committed.data)
+        probed["equals_reference"] = result["status"] == "image" and output.read_bytes() == apply_reference(committed, probe.read_bytes()).data
         probed["verify"] = run(executables[1], ["verify", output, verified], [verified])["status"] if result["status"] == "image" else None
         replayed = [*transactions, probed]
         evolution = {"format": "xax-evolution-replay-v2", "replayed_by": "C1",
                      "baseline": "the frozen stores (bootstrap/evolution/LEDGER baselines, ADR-361)",
-                     "ledger_heads_equal_committed": subprocess.run(["sh", str(EV.EVOLUTION_DIRECTORY / "evolve.sh"), "check"], capture_output=True).returncode == 0, "transactions": transactions, "probe": probed,
+                     "ledger_heads_equal_committed": subprocess.run(["sh", str(evolve), "check"], capture_output=True).returncode == 0, "transactions": transactions, "probe": probed,
                      "structural": any(set(item["kinds"]) & {names[kind] for kind in STRUCTURAL} for item in replayed)}
 
     def elf_interpreter(path: Path) -> bool:

@@ -42,7 +42,7 @@ twice (the roots, then the APK).  S15e.6i.1 (ADR-357): ``build-signed <snapshot>
 APK is signed by the XAX APK signer program, which makes ``build``'s signing rejections.
 
 W2 (ADR-361): both driver stores are frozen.  The Python builder that made them is deleted; this module loads the
-committed stores and runs them as processes.  They change only by ledger transactions (``xax_selfhost_evolution``).
+committed stores and runs them as processes.  They change only by ledger transactions (``bootstrap/evolution/evolve.sh``).
 """
 
 from __future__ import annotations
@@ -113,12 +113,15 @@ class NativeDriver:
         return subprocess.run([str(self.path), *(str(item) for item in arguments)], check=False, timeout=self.timeout).returncode
 
 
+INPUTS_LIMIT = 100  # the committed compiler's external-input bound (ADR-306; the frozen driver holds it)
+
+
 class NativeGeneralDriver(NativeDriver):
     """S13a (ADR-281), S13b (ADR-282): the general driver as a Linux process.  Its first argument is the command:
     ``lower`` (a program store, a target package, the output), ``build`` (a build snapshot store, the artifact, its
     provenance), ``verify`` or ``inspect`` (a store, the output), ``resolve`` (a request store, the snapshot store).
     S15c.2 (ADR-300): ``build`` and ``resolve`` take external input files after their own arguments, up to
-    ``xax_selfhost_evolution.INPUTS_LIMIT`` in the committed compiler (S15d.3, ADR-306)."""
+    ``INPUTS_LIMIT`` in the committed compiler (S15d.3, ADR-306)."""
 
     def __init__(self, image=None) -> None:
         """``image``: the driver as the views backend lowered it (``compile_x86_64_views``).  None (ADR-382): the pinned

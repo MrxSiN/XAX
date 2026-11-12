@@ -503,10 +503,6 @@
       "class": "G",
       "note": "Builder of the XAX transaction engine inside the general driver store (S15d.1, ADR-304); apply_reference is its Python reference."
     },
-    "xax_selfhost_evolution.py": {
-      "class": "D",
-      "note": "The evolution ledger: applies the committed transactions to the builder baseline and derives records from read-only queries (S15d.2, ADR-305)."
-    },
     "xax_selfhost_aarch64_emit.py": {
       "class": "G",
       "note": "Builder of the S15e.2 AArch64 program store: the instruction encoders (ADR-315)."

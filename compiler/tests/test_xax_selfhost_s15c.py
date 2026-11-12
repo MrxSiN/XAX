@@ -303,7 +303,7 @@ class S15cTests(unittest.TestCase):
     def test_argument_counts(self):
         """Input files follow ``build`` and ``resolve`` only, at most ``INPUTS_LIMIT`` of them (100 since the evolution
         ledger's first transaction, S15d.3); anything else FAILED."""
-        from xax_selfhost_evolution import INPUTS_LIMIT
+        from xax_selfhost_driver import INPUTS_LIMIT
 
         request = self.directory / "request.xax"
         request.write_bytes(self.f.request_store().data)
