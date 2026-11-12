@@ -2170,3 +2170,18 @@ Worked on top of `65bce1e`. Nothing of the attempt is committed: no store, ledge
 - **Repository on Windows:** `compiler/bootstrap/evolution/LEDGER` (file) and `compiler/bootstrap/evolution/ledger/`
   (directory) collide on a case-insensitive file system; a Windows checkout shows `LEDGER` deleted.
 - **Next:** OI-59 (the reference fault, then the native compiler against the same family), then OI-58.
+
+## OI-59 diagnosed: edge copies overwrite shared edge spill slots; reference fixed — 2026-11-13
+
+- **Cause:** `copy_edge` stores frame-word destinations before later moves of the same edge read them; edge spill
+  slots are shared across blocks. Traced on a five-block function with 8 allocatable registers. The native general
+  backend has the same two phases, so the committed compiler carries the fault (`XAX_OPEN_ISSUES.md` OI-59, which
+  also corrects its first version: those results came from the native backend through `compile_linux_executable`'s
+  default mode).
+- **Reference fix:** `compiler/reference/xax_x86_64_regalloc.py` stages every source in a word the edge writes into a
+  free dynamic spill slot first. The family's programs now equal the executor (before: 1 to 9 of 40 wrong).
+- **Tests** (Linux x86-64, WSL 2, `XAX_REQUIRE_NATIVE=1`): `test_xax_regalloc_differential.py`,
+  `test_xax_x86_64_codegen.py`, `test_x86_64_optimizations.py`, `test_xax_chains.py`, `test_xax_linux.py` pass (43);
+  `test_xax_selfhost_general.py`, `_general_build.py`, `_general_rejects.py` pass; `_general_view.py` has its 7 OI-57
+  failures with and without the change.
+- **Not done:** the native transaction (the edge-copy code of the native general backend), seeds, BBC.

@@ -1414,6 +1414,35 @@ def compile_register_resident(
                     operand, amount = edge_sunk[source]
                     sunk[destination] = amount
                     pairs[position] = (operand, index, destination)
+            # OI-59: the stores below write frame words (parameter slots, edge spill slots) that another move of this
+            # edge may still read: edge spill slots are shared by every block's overflow parameters.  Such a source is
+            # first copied to a free dynamic spill slot and read from there.
+            written = {}
+            for source, index, destination in pairs:
+                if destination in parameter_slot:
+                    written[parameter_slot[destination]] = source
+                elif index >= len(allocatable) and destination not in pinned:
+                    written[edge_spill_base + (index - len(allocatable)) * 8] = source
+            staged, staging = {}, []
+            for source, _index, _destination in pairs:
+                kind, where = location(source)
+                if kind == "spill" and where in written and written[where] != source and where not in staged:
+                    if free_spills:
+                        slot = min(free_spills)
+                        free_spills.remove(slot)
+                    else:
+                        slot = state["next"]
+                        state["next"] += 1
+                        state["max"] = max(state["max"], state["next"])
+                    staging.append(slot)
+                    staged[where] = dynamic_spill_base + slot * 8
+                    emit(_load(_SCRATCH, where, 8))
+                    emit(_store(_SCRATCH, staged[where], 8))
+
+            def source_location_of(value):
+                kind, where = location(value)
+                return (kind, staged.get(where, where)) if kind == "spill" else (kind, where)
+
             for source, index, destination in pairs:
                 if destination in parameter_slot:
                     destination_offset = parameter_slot[destination]
@@ -1421,7 +1450,7 @@ def compile_register_resident(
                     continue
                 else:
                     destination_offset = edge_spill_base + (index - len(allocatable)) * 8
-                kind, source_location = location(source)
+                kind, source_location = source_location_of(source)
                 if destination in sunk:
                     emit(_move_register(_SCRATCH, source_location, 64) if kind == "reg" else _load(_SCRATCH, source_location, width_bytes(source)))
                     emit(_rex(widths[destination] == 64, _SCRATCH, _SCRATCH) + b"\x8d" + _modrm_base(_SCRATCH, _SCRATCH, sunk[destination]))
@@ -1444,7 +1473,7 @@ def compile_register_resident(
                     register = allocatable[index]
                 else:
                     continue
-                kind, source_location = location(source)
+                kind, source_location = source_location_of(source)
                 if kind == "reg":
                     moves.append((register, source_location, widths[destination], sunk.get(destination, 0)))
                 else:
@@ -1454,6 +1483,7 @@ def compile_register_resident(
                 emit(_load_constant(register, where) if kind == "const" else _lea(register, 4, where) if kind == "stack" else _load(register, where, width))
                 if offset:
                     emit(_rex(value_width == 64, register, register) + b"\x8d" + _modrm_base(register, register, offset))
+            free_spills.extend(staging)
 
         def edge_code(target_block: int, arguments: tuple[ValueRef, ...]) -> bytes:
             capture.append(bytearray())
