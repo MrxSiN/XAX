@@ -28,7 +28,7 @@ supersedes an earlier figure, and a superseded entry is kept rather than rewritt
 
 ### Bootstrap levels
 
-<!-- xax-status:bootstrap -->Bootstrap status (derived by `xax_selfhost.bootstrap_status` from `compiler/benchmarks/full_selfhost_evidence.json` and `compiler/benchmarks/python_free_seed_evidence.json`): whole production compiler: B0, B1, B2, B3, B4, B5, B6 established (derived from the Linux x86-64 production compiler, whose executed record covers every target and artifact `build` makes (S15g, ADR-358)); Linux x86-64 production compiler (`benchmarks/full_selfhost_evidence.json`): B0, B1, B2, B3, B4, B5, B6 hold, none do not; its seed requires Python: no; S-step component fixed points are not B milestones (`XAX_SPEC.md` §16.5). Bootstrap seed: native-elf `compiler/bootstrap/seed/xaxc-linux-x86_64`, 31,903,131 bytes, requires Python: no.<!-- /xax-status:bootstrap -->
+<!-- xax-status:bootstrap -->Bootstrap status (derived by `xax_selfhost.bootstrap_status` from `compiler/benchmarks/full_selfhost_evidence.json` and `compiler/benchmarks/python_free_seed_evidence.json`): whole production compiler: B0, B1, B2, B3, B4, B5, B6 established (derived from the Linux x86-64 production compiler, whose executed record covers every target and artifact `build` makes (S15g, ADR-358)); Linux x86-64 production compiler (`benchmarks/full_selfhost_evidence.json`): B0, B1, B2, B3, B4, B5, B6 hold, none do not; its seed requires Python: no; S-step component fixed points are not B milestones (`XAX_SPEC.md` §16.5). Bootstrap seed: native-elf `compiler/bootstrap/seed/xaxc-linux-x86_64`, 31,907,179 bytes, requires Python: no.<!-- /xax-status:bootstrap -->
 
 ### Self-hosting
 
@@ -81,7 +81,7 @@ U1 — universal-replacement proof set: **in progress**. Step status is in `XAX_
 
 S — compiler migration ladder: **S0–S5 EXECUTED** on the production path (native XAX leaves on Linux x86-64 only; Python on every other host) and **S6 EXECUTED** with component fixed points for the RISC-V backend and the store verifier on RV64 under emulation (ADR-116–ADR-151). BLAKE3 also closes on RV64 (ADR-151). **S7a EXECUTED** (ADR-152): the x86-64 views backend is an XAX program with a native component fixed point on x86-64; it lowers every native helper except its own production image, which the bootstrap generator lowers (byte-identical by that fixed point). These are S-step component results, not B milestones (`XAX_SPEC.md` §16.5; ADR-177 renamed the earlier "B1–B4" wording). **S7b.1 EXECUTED** (ADR-179): on Linux x86-64 the XAX x86-64 views program decides its own target legality and writes the exact rejection diagnostic. **S7b.2 EXECUTED** (ADR-181): both views programs resolve references, place the target, find the entry, and produce the image record themselves. **S7b.3 EXECUTED** (ADR-182): the RISC-V views program decides its rejections too, so S7b is complete for the views profiles. **S8a EXECUTED** (ADR-183): every store-container rejection is decided by XAX with the exact diagnostic. **S8b.1 EXECUTED** (ADR-184): object envelopes and their CID check are decided by XAX on `get`. **S8b.2 EXECUTED** (ADR-185): graph-body syntax rejections are decided by XAX through the shared site mechanism. Next: S8c (resolution, typing, facts, and object verification). Since ADR-180, S3–S7a count as migrated for acceptance only (`XAX_SPEC.md` §16.5 condition 5); the ladder continues with S8–S15, and migration is reported as SH1. The typing store was stale against its builder until ADR-177 regenerated it; its native and emulated evidence was re-run on Linux x86-64 on 2026-10-07 and matches (OI-45, self-hosting half).
 
-<!-- xax-status:bootstrap -->Bootstrap status (derived by `xax_selfhost.bootstrap_status` from `compiler/benchmarks/full_selfhost_evidence.json` and `compiler/benchmarks/python_free_seed_evidence.json`): whole production compiler: B0, B1, B2, B3, B4, B5, B6 established (derived from the Linux x86-64 production compiler, whose executed record covers every target and artifact `build` makes (S15g, ADR-358)); Linux x86-64 production compiler (`benchmarks/full_selfhost_evidence.json`): B0, B1, B2, B3, B4, B5, B6 hold, none do not; its seed requires Python: no; S-step component fixed points are not B milestones (`XAX_SPEC.md` §16.5). Bootstrap seed: native-elf `compiler/bootstrap/seed/xaxc-linux-x86_64`, 31,903,131 bytes, requires Python: no.<!-- /xax-status:bootstrap -->
+<!-- xax-status:bootstrap -->Bootstrap status (derived by `xax_selfhost.bootstrap_status` from `compiler/benchmarks/full_selfhost_evidence.json` and `compiler/benchmarks/python_free_seed_evidence.json`): whole production compiler: B0, B1, B2, B3, B4, B5, B6 established (derived from the Linux x86-64 production compiler, whose executed record covers every target and artifact `build` makes (S15g, ADR-358)); Linux x86-64 production compiler (`benchmarks/full_selfhost_evidence.json`): B0, B1, B2, B3, B4, B5, B6 hold, none do not; its seed requires Python: no; S-step component fixed points are not B milestones (`XAX_SPEC.md` §16.5). Bootstrap seed: native-elf `compiler/bootstrap/seed/xaxc-linux-x86_64`, 31,907,179 bytes, requires Python: no.<!-- /xax-status:bootstrap -->
 
 Dated sections below are historical records: a figure in them (a ratio, a level, a test count) is current only if no later section supersedes it.
 
@@ -2017,3 +2017,49 @@ Built on ledger 0024 (the x86-64 signed-compare fix, commit `8d83f98`).
   string in an existing Python test; the test is the validator's own and has no native form yet).
 - **Not done:** R4 needs raw-sample measurements on this host against C and one non-C toolchain (gcc and rustc are
   installed); R5 and R6 need a maintenance cycle and an XAX-only application run on Windows.
+
+## Seed rotated after ledgers 0024 and 0025; OI-55 closed on Linux — 2026-11-12 (ADR-393)
+
+Everything below was built and run on commit `059a327` (ledger 0025) and is committed on top of `6490d4f` (ledger 0026 and the
+Windows seed of ADR-397), which landed meanwhile. It settles the seed rotation for ledgers 0024 and 0025 that the sections before it leave open; the
+rotation for ledger 0026 is the next step.
+
+- **Seed:** `compiler/bootstrap/seed/xaxc-linux-x86_64` is now `fb31b03b…abb6b`, 31,907,179 bytes (was `a35fd59f…`,
+  31,903,131). `selfbuild.sh` from the old seed: two generations byte-identical, equal to `rotate-seed`'s result;
+  `write-request` changes nothing; `evolve.sh check` passes. The expected `1085c08a…` of the 2026-11-11 plan was the
+  fixed point before ledger 0025 and is not a committed seed.
+- **OI-55 on Linux:** `native/0024/probe.py` with the rotated seed: 240 of 240 programs equal the reference executor
+  (128 of 240 differ with `a35fd59f…`). `native/0024/narrow_signed_compare.xax`, the same check as an XAX program:
+  exit 0 built by the rotated seed, 1 by the old one. The OI-55 skip in `tests/test_xax_selfhost_general_build.py`
+  and `x86_raw_corpus.has_narrow_signed_compare` are removed; with `XAX_RAW_TRIALS=80` the file passes. OI-55 stays
+  open for Windows PE cases only.
+- **Windows seed (ADR-397, `e2f68c00…`):** on Windows 11 it builds `narrow_signed_compare.xax` to the same ELF bytes
+  as the rotated Linux seed (SHA-256 `39baf88c…`); that file exits 0 on Linux. No PE program with a narrow signed
+  compare was built or run.
+- **BBC:** `bbc.exe` built by the rotated seed from the committed `integration/bfx/bbc.xax` is `462d2cc2…`, the file
+  ADR-394 measured. Mandelbrot, life and factor at `-O1` for Windows x86-64 are byte-identical to the outputs of the
+  pre-0024 `bbc.exe` (`dd044715…`) and print the expected bytes on Windows 11 (run from a copy with the stack commit
+  raised, OI-56). BBC's driver was not rebuilt here: `bbc.xax` already follows the ledger 0025 driver.
+- **Evidence:** `benchmarks/full_selfhost_evidence.json` and `python_free_seed_evidence.json` re-recorded under
+  `XAX_REQUIRE_NATIVE=1`; status blocks regenerated (B levels unchanged).
+- **Tests** (Linux x86-64, WSL 2, `XAX_REQUIRE_NATIVE=1`, four workers): the whole suite without
+  `test_native_large_image.py`: 1,516 passed, 243 skipped, 524,991 subtests passed, 15 failed;
+  `test_native_large_image.py` alone: passed (33 min 32 s). The 15 failures are not from this change: seven need a
+  Wasm host the machine lacks (`test_oi06_memory_surface.py` 2, `test_oi16_target_granularity.py` 2,
+  `test_xax_compiler.py::WasmTests` 3), `test_xax_selfhost_jvm.py::test_callback_programs` needs a JDK (one subtest;
+  it fails the same way on `059a327` with the old seed), and the rest are `test_xax_selfhost_general_view.py`
+  (`test_jsonmin`, `test_random_programs` with three trials, `test_register_resident_analyses`,
+  `test_executables_assembled_in_xax`), now OI-57.
+- **Ledger replay:** `evolve.sh replay` with the rotated seed: 122 of 122 transactions (ledgers up to 0025) give
+  their recorded stores (58 min).
+- **Language rule (user, 2026-11-12):** this repository is XAX only; another language is allowed only where XAX
+  cannot do the thing. The Linux check that the 2026-11-11 plan asked for as a Python test is therefore the XAX
+  program above, and no Python was added. It is not in an automated run yet: the only test runner is pytest.
+- **Not done:** OI-55's cases as PE programs through the Windows seed; the XAX-MCP pin;
+  `tools/check.py` under Wine and qemu (neither is on the host); the AArch64 backends were not examined for the same
+  defect; the seed is one transaction behind the request again: ledger 0026 changed the request
+  after these runs, so `tests/test_python_free_seed.py` (the record names the request it was made from) fails until
+  the seed is rotated to the ledger 0026 compiler (`7988e0d0…` by the previous section) and the two records are
+  made again; no test was rerun on the ledger 0026 tree except those named in the commit.
+- **Next:** rotate the seed to ledger 0026 and re-record; run OI-55's cases as PE programs and close it; OI-57; a native runner for
+  `narrow_signed_compare.xax` and the other checks as the Python tests are replaced.

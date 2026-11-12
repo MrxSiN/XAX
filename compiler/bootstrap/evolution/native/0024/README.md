@@ -54,6 +54,15 @@ Ceiling: a narrow signed compare is 25 bytes (28 with an immediate) and one stac
 could use the sub-register `cmp`, and an immediate could be shifted at compile time, if such compares ever matter
 for speed.
 
+`narrow_signed_compare.xax` is the check as an XAX program (constructed 2026-11-12, verified; a Linux x86-64 process
+with no input or output). Over 256 operand pairs and their complements at widths 5, 8, 16 and 24 it compares each
+signed predicate on the narrow operands with the same predicate on the operands sign-extended to 64 bits by
+arithmetic (`(zext(x) xor top) - top`), and exits 1 when any pair disagrees: a compare node of two values, with a
+constant on either side, a compare fused into its branch, each of these in a five-parameter function (the frame
+path), and a compare in the process entry. `xaxc build narrow_signed_compare.xax check provenance`, then `./check`:
+status 0 with the compiler after this ledger entry, 1 with the seed before it (`a35fd59f…`). Its oracle is the same
+compiler's 64-bit compare, not the reference executor; `probe.py` below has that comparison.
+
 `probe.py <xaxc>|reference [widths]` (run from `compiler` with `PYTHONPATH=src:reference:.`) builds the programs the change was
 checked with and compares their output with the reference executor: 128 of 240 differ with the seed before this
 ledger entry, none with the compiler built from the changed stores.

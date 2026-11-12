@@ -409,7 +409,7 @@ class GeneralBuildTests(unittest.TestCase):
         import xax_selfhost_x86_64_general as GEN
         from aarch64_raw_corpus import aarch64_raw_case
         from wasm_corpus import wasm_case
-        from x86_raw_corpus import has_narrow_signed_compare, x86_raw_case
+        from x86_raw_corpus import x86_raw_case
 
         module, raw, bare = WASM.wasm_module, GEN.x86_64_raw_image, A64.aarch64_raw_image
         rng = random.Random(324)
@@ -418,8 +418,6 @@ class GeneralBuildTests(unittest.TestCase):
         cases += [x86_raw_case(rng) for _ in range(int(os.environ.get("XAX_RAW_TRIALS", "6")) * 2)]
         cases += [aarch64_raw_case(rng, kind) for kind in ("legacy", "eligible", "general", "random") for _ in range(int(os.environ.get("XAX_RAW_TRIALS", "6")))]
         for trial, (reader, entry, target, name) in enumerate(cases):
-            if name.startswith("x86_64-") and has_narrow_signed_compare(reader):
-                continue  # OI-55: the native backend has not followed ADR-392 yet; the bytes differ by design
             objects = tuple(item for item in reader.objects() if item.kind not in (X.Kind.MODULE, X.Kind.PROGRAM_ROOT) and item.cid != target.cid)
             try:
                 program = _program(objects, {b"image": entry}, target)

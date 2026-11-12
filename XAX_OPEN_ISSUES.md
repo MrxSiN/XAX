@@ -57,6 +57,7 @@ Only issues requiring implementation, target, ecosystem, or benchmark evidence a
 - [OI-54 — Function views past 2^18 values (BBC's hanoi -O0)](#oi-54--function-views-past-218-values-bbcs-hanoi--o0)
 - [OI-55 — Native x86-64 signed compares below 32 bits](#oi-55--native-x86-64-signed-compares-below-32-bits)
 - [OI-56 — PE images take large frames without a stack probe](#oi-56--pe-images-take-large-frames-without-a-stack-probe)
+- [OI-57 — The reference's S12c.2 analysis audit disagrees with the native `basics` since ledger 0022](#oi-57--the-references-s12c2-analysis-audit-disagrees-with-the-native-basics-since-ledger-0022)
 
 ## OI-02 — Canonical object and graph-fragment granularity
 
@@ -848,7 +849,9 @@ interpreter, with no fixed per-view capacity left in the driver.
 
 ## OI-55 — Native x86-64 signed compares below 32 bits
 
-**Status: OPEN (2026-11-11).** The native x86-64 general backend compares zero-extended `bits<N>` values, N < 32,
+**Status: OPEN for Windows PE cases only (2026-11-12); closed on Linux by ADR-393.** Ledger 0024 sign-corrects both lowerings, the Linux seed is rotated to `fb31b03b…`, and with it 240 of 240 probe programs equal the reference executor (128 of 240 differ with the seed before, which confirms the expectation below). BBC's driver follows the fixed production driver. The Windows seed is cut from the fixed driver (ADR-397) and builds `native/0024/narrow_signed_compare.xax` to the Linux seed's bytes. Still missing: the cases as PE programs, built by that seed and run on Windows. The record of 2026-11-11 follows unchanged.
+
+**Status on 2026-11-11: OPEN.** The native x86-64 general backend compares zero-extended `bits<N>` values, N < 32,
 with a 32-bit `cmp`, so `int.compare` with `slt`, `sle`, `sgt` or `sge` ignores the operand's sign bit. A verified
 program then computes a wrong flag with no diagnostic. The Python reference backend had the same defect and is fixed
 (ADR-392).
@@ -893,3 +896,20 @@ Windows 11 and on a Pixel 8 Pro; the 2026-11-11 device measurements use such a c
 **Evidence that closes it.** A native transaction that makes PE frames safe (page probes in the frame and register
 prologues as the reference emits them, or a header that commits the reserve), the Windows seed and `bbc.exe` rebuilt,
 and BBC's checks run on Windows itself, not under Wine.
+
+## OI-57 — The reference's S12c.2 analysis audit disagrees with the native `basics` since ledger 0022
+
+**Status: OPEN (2026-11-12).** `tests/test_xax_selfhost_general_view.py` fails on Linux x86-64 with
+`XAX_REQUIRE_NATIVE=1`: `test_jsonmin`, `test_random_programs` (trials 2, 17 and 39), `test_register_resident_analyses`
+and one subtest of `test_executables_assembled_in_xax`. The messages are "S12c.2 analyses disagree" in `erased` and
+`uses` (for some functions also `pinned`, `allocatable` and `hoisted`) and one "S12d emission disagrees" (272 against
+270 bytes). The native `basics` folds constants since ledger 0022 and the Python reference's analysis audit does not,
+so the two sides describe different graphs.
+
+Seen at commit `6bcaf77` with the seed `a35fd59f…` (2026-11-11) and again with the seed `fb31b03b…` (2026-11-12); it
+is not caused by ledger 0024 or the seed rotation. Not established: whether every failing case is this one cause
+(the emission difference was not traced).
+
+**Evidence that closes it.** The audit and the native analyses compared on the same graph (the reference folding
+as `basics` does, or the comparison made after folding on both sides), and the file passing under
+`XAX_REQUIRE_NATIVE=1`; or the audit replaced by a native check under the repository's language rule.
