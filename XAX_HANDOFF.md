@@ -1842,3 +1842,21 @@ Built on ledger 0024 (the x86-64 signed-compare fix, commit `8d83f98`).
   Windows seed; BBC's Android outputs on a device with this `bbc.exe`; `tools/check.py`. `rebuild.sh` and
   `evolve.sh` are still shell around `xaxc`; BBC's `tools/*.py` and the `importer_split` awk files remain.
 - **Next:** rotate the seed; cut a Windows seed from it and close OI-56; move the remaining tools to XAX.
+
+## The Windows seed is the production compiler and builds itself on Windows 11 — 2026-11-12 (ADR-397)
+
+- **Seed**: `compiler/bootstrap/windows/xaxc-windows-x86_64.exe` is now the production driver after ledger 0026 with
+  the Windows hosting layer (31,959,040 bytes, SHA-256 `e2f68c00…`). It replaces the alias-index seed `aa72234d…`.
+- **How it is made**: one native batch on `bbc.xax` (`bootstrap/windows/xaxc_entry.batch`): a four-node entry that
+  registers the view-commit handler and calls the driver's command-line entry, installed with `replace`. The engine
+  drops BBC's front. The same batch for `bbc_request.xax` gives the build request.
+- **Fixed point on Windows**: the seed resolves and builds its own request to its own bytes (42 s and 2 min 45 s).
+  The first copy was built on Linux by the self-built ledger 0026 compiler.
+- **Same compiler as on Linux**: its `edit` of a native batch equals the Linux result byte for byte; it builds the
+  Linux compiler's request to the Linux self-build's bytes (`7988e0d0…`); `bbc.exe` also rebuilds itself to its own
+  bytes on Windows (`a4717ac8…`). Records: `compiler/benchmarks/windows_selfhost_evidence.json`.
+- **Not a B level**: B levels are derived from the Linux records; this is a Windows fixed point recorded on its own.
+- **Not done:** the Linux seed rotation (another session); a console-handle run; OI-55's cases through this seed;
+  XAX-MCP's pin of the Windows seed (its own repository). The two entry batches must be rewritten when `bbc.xax`
+  changes (three handles and the root).
+- **Next:** the Windows row of the replacement matrix: R3 with this compiler as the workload, then R4 to R6.

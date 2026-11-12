@@ -1,21 +1,22 @@
 {
-  "schema": "xax-native-windows-seed-v1",
-  "contract": "xax-native-file-v1",
-  "sha256": "aa72234d6dd8a111efde62b47ced8449a482c4c5506d876714ff7fbe0968ab79",
-  "bytes": 11876864,
-  "source_commit": "37a4c95df13ae211aa98e6d98438b84491004f31",
-  "source_path": "compiler/integration/windows_helpers/driver.xax",
-  "source_root": "ec66899fddc117eb0496bbd504e06742daf9931d0b8e64e9efde0725dae45ebd",
-  "source_sha256": "894820c6ec0b777232ac6817f454add9f00493f95c72d53071de8ed4c690eced",
-  "source_git_blob": "bdc740cd3ed4b8bbf8cf43e352663c8d19959db5",
-  "historical_bootstrap": "Python SDK; reused existing native executable, no bootstrap interpreter run in this publication",
-  "native_self_build": "DECLINED; no fixed point or B/R promotion",
-  "commands": [
-    "verify",
-    "inspect",
-    "edit",
-    "resolve",
-    "build"
-  ],
+  "schema": "xax-native-windows-seed-v2",
+  "sha256": "e2f68c00a8dee67490929b173469e383853564254ed80b3a7a5e8188d8c50122",
+  "bytes": 31959040,
+  "source": {
+    "store": "compiler/integration/bfx/bbc.xax",
+    "store_git_blob": "9fe5b11e26af5f36b42914e282e567f8c5ae219c",
+    "store_root": "73b8a28bf6702b73c59785a333ef79bf87cdcd042f3b07b048dce6942b4dfac6",
+    "batch": "compiler/bootstrap/windows/xaxc_entry.batch",
+    "result_sha256": "c35072b4118ee4f352c6c9c1a98efd60abfadd14777f374a364715ce2efbd561"
+  },
+  "request": {
+    "store": "compiler/integration/bfx/bbc_request.xax",
+    "store_git_blob": "d28fb1a822276ea979d40a182da97b1d5545daf6",
+    "batch": "compiler/bootstrap/windows/xaxc_entry_request.batch",
+    "result_sha256": "ceb7d893239506f9158f5eb8d8dc5c7e23c121d72a24b32f69436d80e832aba7"
+  },
+  "production_ledger": "0026",
+  "native_self_build": "EXECUTED on Windows 11: generation 1 equals generation 2 (compiler/benchmarks/windows_selfhost_evidence.json)",
+  "commands": ["verify", "inspect", "edit", "resolve", "build"],
   "runtime": "native XAX machine code and Windows system DLLs"
 }

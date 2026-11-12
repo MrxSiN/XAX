@@ -3917,3 +3917,13 @@ Superseded by [ADR-369](#adr-369--n03-growable-views-as-limit-bounded-checked-ac
 | Evidence | The unpatched `bbc.exe` (SHA-256 `a4717ac8…`) on Windows 11: 36 of 36 corpus builds and runs correct. Self-build fixed point `7988e0d0…`. The batch carry reproduces the old rebuild's `bbc.xax` for ledgers 0024 and 0025 byte for byte. |
 | Consequences | Every XAX PE executable commits 1 MiB of stack at start. A thread made with a zero stack size commits the same. The reference still emits its page probes; they are now redundant. |
 | Limits | A function whose frames exceed the 1 MiB reserve still overflows, as before. The seeds are not rebuilt (OI-56 stays open for that). A production batch that names the driver's entry needs its own batch for BBC's entry. |
+
+## ADR-397 — The Windows seed is the production driver behind a four-node entry
+
+| Field | Record |
+|---|---|
+| Decision | The Windows seed is built from `bbc.xax` with one native batch that replaces the module's entry by: register the view-commit handler, call the driver's command-line entry. The store and its request are not committed; the two batches are. |
+| Rationale | `bbc.xax` already holds the production driver with the Windows process entry, file adapters and lazily committed views, kept current by carrying each production batch. A second hosted store would be a second copy to maintain. `replace` makes BBC's front unreachable and the engine drops it, so the seed carries no BBC code. |
+| Evidence | `compiler/benchmarks/windows_selfhost_evidence.json`: generation 1 equals generation 2 on Windows 11; batch edits and the cross-built Linux compiler equal the Linux results byte for byte. |
+| Consequences | The seed follows `bbc.xax`. After a production transaction: carry it to `bbc.xax` and `bbc_request.xax`, rewrite the entry batches' handles, rebuild on Windows, check the fixed point. |
+| Limits | The dependency runs from the compiler's Windows seed to BBC's store; moving the hosting layer into its own store under `bootstrap/` would reverse it and is not done. The entry batches name store handles, so they are valid for one `bbc.xax` only. |

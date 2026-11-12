@@ -109,6 +109,9 @@ checks, and compare mandelbrot, life and factor with their previous bytes. Never
 
 ### 6. Windows seed (separate, afterwards)
 
+Done 2026-11-12 (ADR-397): the Windows seed is the ledger 0026 driver and builds itself on Windows 11
+(`compiler/bootstrap/windows/README.md`). The XAX-MCP pin is still to move. The earlier note follows.
+
 XAX-MCP pins `compiler/bootstrap/windows/xaxc-windows-x86_64.exe`, which keeps the defect until a Windows seed is cut
 from the fixed driver (`compiler/bootstrap/windows/README.md`, `seed.json`). The XAX-MCP pin moves only after it. Do
 not claim the Windows side fixed from Linux results.

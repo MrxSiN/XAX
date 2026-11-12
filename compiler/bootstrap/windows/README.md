@@ -1,47 +1,67 @@
-# Native Windows seed — xax-native-file-v1
+# Native Windows seed — the production compiler, self-built on Windows
 
-`xaxc-windows-x86_64.exe` packages the existing XAX-built alias-index driver as a trusted Windows x86-64 seed:
-11,876,864 bytes, SHA-256 `aa72234d6dd8a111efde62b47ced8449a482c4c5506d876714ff7fbe0968ab79`.
-Its original canonical source is `compiler/integration/windows_helpers/driver.xax` at
-`37a4c95df13ae211aa98e6d98438b84491004f31`, root
-`ec66899fddc117eb0496bbd504e06742daf9931d0b8e64e9efde0725dae45ebd`, source SHA-256
-`894820c6ec0b777232ac6817f454add9f00493f95c72d53071de8ed4c690eced`.
-The recovered source blob was compared with that Git revision byte for byte. Exact identities are in `seed.json`.
+`xaxc-windows-x86_64.exe` is the production compiler (`xax_compiler_driver_general.xax` after ledger 0026) with the
+Windows hosting layer: 31,959,040 bytes, SHA-256
+`e2f68c00a8dee67490929b173469e383853564254ed80b3a7a5e8188d8c50122`. Exact identities are in `seed.json`.
 
-Its historical bootstrap used the Python SDK. No interpreter bootstrap was executed to publish or test this seed.
-The executable contains XAX machine code and Windows system imports; it starts no interpreter. Native build of
-its own large compiler source still declines. This trusted seed does not establish a Windows self-build fixed
-point, remove bootstrap trust or promote B/R levels.
+It replaces the alias-index seed of 2026-10 (`aa72234d…`, in git history), which took only `XAXEDIT1` records and
+declined its own source.
 
-## Versioned file contract
+## What it is made from
 
-Invoke directly with an argument vector:
+The store is BBC's driver (`../../integration/bfx/bbc.xax`: the production driver plus the Windows process entry,
+file adapters and lazily committed views) with one native batch applied, `xaxc_entry.batch`. The batch defines a
+four-node entry and installs it with `replace`: it registers the view-commit handler and calls the driver's
+command-line entry. BBC's own front is no longer reachable, so the edit engine drops it: the result is the
+production driver and the hosting layer only (62,530,358 bytes, SHA-256 `c35072b4…`).
+`xaxc_entry_request.batch` is the same batch for `bbc_request.xax` and gives the build request (SHA-256
+`ceb7d893…`).
+
+## Rebuilding it on Windows
+
+```text
+xaxc-windows-x86_64.exe edit ..\..\integration\bfx\bbc_request.xax xaxc_entry_request.batch request.xax
+xaxc-windows-x86_64.exe verify request.xax request.diag
+xaxc-windows-x86_64.exe resolve request.xax snapshot.xax
+xaxc-windows-x86_64.exe build snapshot.xax xaxc.exe xaxc.provenance
+```
+
+`xaxc.exe` must have the SHA-256 above. That is the check for this directory: the seed builds itself byte for byte.
+On Windows 11 it takes about 5 minutes. No Python, WSL or Wine takes part.
+
+The two batches name handles of the `bbc.xax` they were written for (root `73b8a28b…`). After `bbc.xax` changes,
+write them again from `xaxc edit bbc.xax <selector>`: the root line, the entry's handle (twice), the handler
+(`function.address`) and the command-line entry (`call.direct`) as the entry's own view shows them.
+
+## Evidence (2026-11-12, Windows 11 build 26300)
+
+`../../benchmarks/windows_selfhost_evidence.json` records the runs:
+
+- the Linux-hosted compiler (self-built from ledger 0026, `7988e0d0…`) built `xaxc.exe` from the request; that
+  file then built itself on Windows to the same bytes (generation 1 equals generation 2);
+- its `edit` applies a native batch and its result equals the Linux compiler's, byte for byte; `verify` accepts it;
+- it resolves and builds the Linux compiler's request (`../seed/xax_compiler_request.xax`) to the bytes the Linux
+  self-build makes (`7988e0d0…`);
+- it builds the BLAKE3 host (`../../integration/windows_helpers/hash_request.xax`), which gives the official digest
+  of `abc`.
+
+## Contract
 
 ```text
 xaxc-windows-x86_64.exe verify <store> <diagnostic>
 xaxc-windows-x86_64.exe inspect <store> <inspection-record>
-xaxc-windows-x86_64.exe edit <store> <XAXEDIT1-carrier> <candidate-store>
+xaxc-windows-x86_64.exe edit <store> <input> <output>
 xaxc-windows-x86_64.exe resolve <request-store> <snapshot-store>
 xaxc-windows-x86_64.exe build <snapshot-store> <artifact> <provenance>
 ```
 
-Exit 0 is success, 1 is rejection with a native diagnostic, 2 is decline with no validity/build claim and 3 is
-usage/I/O failure. Successful verification writes an empty diagnostic. `edit` constructs a candidate; callers
-MUST run `verify` before accepting it. It does not provide atomic workspace publication. `inspect` retains the
-existing binary root/object/reference record; `resolve` and `build` retain the canonical build formats.
-Unsupported cases reject or decline. `construct` is not a seed command. Pin the seed digest rather than moving
-`main`. This contract is not the proposed bounded workspace service or an arbitrary runtime-argument ABI.
+The commands and exit statuses are the production compiler's (`docs/09_AI_PROTOCOL.md` §16): `edit` takes a
+selector, a native batch, a rejection record or an `XAXEDIT1` record. Exit 0 is success, 1 a rejection with a
+diagnostic, 2 a decline, 3 a usage or I/O failure. Run `verify` on a candidate before accepting it.
 
-## Native-only example
+## Limits
 
-The unchanged generic BLAKE3 host now has a canonical build request independent of application repositories:
-
-```text
-compiler/bootstrap/windows/xaxc-windows-x86_64.exe verify compiler/integration/windows_helpers/hash_request.xax hash.diag
-compiler/bootstrap/windows/xaxc-windows-x86_64.exe resolve compiler/integration/windows_helpers/hash_request.xax hash-snapshot.xax
-compiler/bootstrap/windows/xaxc-windows-x86_64.exe build hash-snapshot.xax xax-hash.exe hash.prov
-```
-
-The `xax_hash_cli` package references the existing `hash_host.xax` function closure without changing semantic
-objects. Its executable reads raw stdin and emits a 32-byte digest. Empty and `abc` official vectors were checked.
-No MCP implementation, schema or dependency is included. See `native_seed_evidence.json` in the Windows helpers.
+- The Linux seed in `../seed` is still the ledger 0023 build; this seed is ahead of it until that one is rotated.
+- All runs here had standard input and output redirected. One earlier run of a program this compiler built, started
+  with the console's own handles, did not return and is not explained (`XAX_STATE.md`, 2026-11-12).
+- The store and request are not committed: they are one `edit` away from `bbc.xax` and `bbc_request.xax`.

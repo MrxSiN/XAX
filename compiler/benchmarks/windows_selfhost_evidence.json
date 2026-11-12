@@ -1,0 +1,102 @@
+{
+  "schema": "xax-windows-selfhost-evidence-v1",
+  "date": "2026-11-12",
+  "label": "EXECUTED",
+  "host": {
+    "os": "Windows 11 Pro 10.0.26300",
+    "cpu": "AMD Ryzen 9 5900HS",
+    "memory_gib": 39,
+    "emulation": "none: the executables ran as Windows processes, not under Wine or WSL"
+  },
+  "recorded_by": "transcribed from the command output of the runs; no script produced this file",
+  "compiler": {
+    "path": "compiler/bootstrap/windows/xaxc-windows-x86_64.exe",
+    "sha256": "e2f68c00a8dee67490929b173469e383853564254ed80b3a7a5e8188d8c50122",
+    "bytes": 31959040,
+    "generation_0": "built on Linux x86-64 (WSL 2) by the self-built ledger 0026 compiler, SHA-256 7988e0d0cbbbd04f8a3846ea319daf5ca3ed09104dab223acac9937a2e2fade9"
+  },
+  "runs": [
+    {
+      "name": "self-build",
+      "commands": [
+        "xaxc.exe resolve xaxc_windows_request.xax snap.xax",
+        "xaxc.exe build snap.xax xaxc2.exe xaxc2.prov"
+      ],
+      "request_sha256": "ceb7d893239506f9158f5eb8d8dc5c7e23c121d72a24b32f69436d80e832aba7",
+      "snapshot_sha256": "df7cd68777d9438ed60440f2ff5c72ec7f7fce87793237a3b2d1a82aff2e5971",
+      "exit": [0, 0],
+      "wall_seconds": [41.764, 165.168],
+      "output_sha256": "e2f68c00a8dee67490929b173469e383853564254ed80b3a7a5e8188d8c50122",
+      "equals_compiler": true
+    },
+    {
+      "name": "verify",
+      "commands": ["xaxc.exe verify xaxc_windows.xax v.out"],
+      "store_sha256": "c35072b4118ee4f352c6c9c1a98efd60abfadd14777f374a364715ce2efbd561",
+      "exit": [0],
+      "diagnostic_bytes": 0
+    },
+    {
+      "name": "list",
+      "commands": ["xaxc.exe edit bbc.xax <empty selector> b.list"],
+      "exit": [0],
+      "lines": 1062,
+      "root": "73b8a28bf6702b73c59785a333ef79bf87cdcd042f3b07b048dce6942b4dfac6"
+    },
+    {
+      "name": "native batch edit",
+      "commands": ["xaxc.exe edit bbc.xax xaxc_entry.batch edit_out.xax"],
+      "exit": [0],
+      "wall_seconds": [41.248],
+      "output_sha256": "c35072b4118ee4f352c6c9c1a98efd60abfadd14777f374a364715ce2efbd561",
+      "equals_linux_compiler_result": true
+    },
+    {
+      "name": "request batch edit",
+      "commands": ["xaxc.exe edit bbc_request.xax xaxc_entry_request.batch req2.xax"],
+      "exit": [0],
+      "output_sha256": "ceb7d893239506f9158f5eb8d8dc5c7e23c121d72a24b32f69436d80e832aba7",
+      "equals_linux_compiler_result": true
+    },
+    {
+      "name": "cross-build of the Linux compiler",
+      "commands": [
+        "xaxc.exe resolve compiler/bootstrap/seed/xax_compiler_request.xax lsnap.xax",
+        "xaxc.exe build lsnap.xax xaxc-linux lprov"
+      ],
+      "exit": [0, 0],
+      "wall_seconds": [null, 175.42],
+      "output_sha256": "7988e0d0cbbbd04f8a3846ea319daf5ca3ed09104dab223acac9937a2e2fade9",
+      "equals_linux_self_build": true
+    },
+    {
+      "name": "BLAKE3 host",
+      "commands": [
+        "xaxc.exe verify compiler/integration/windows_helpers/hash_request.xax h.diag",
+        "xaxc.exe resolve compiler/integration/windows_helpers/hash_request.xax hs.xax",
+        "xaxc.exe build hs.xax xh.exe h.prov",
+        "xaxc.exe inspect compiler/integration/windows_helpers/hash_request.xax insp.out"
+      ],
+      "exit": [0, 0, 0, 0],
+      "program_check": "xh.exe with standard input abc writes 6437b3ac38465133ffb63b75273a8db548c558465d79db03fd359c6cd5bd9d85, the official BLAKE3 digest"
+    },
+    {
+      "name": "BBC driver self-build",
+      "commands": [
+        "bbc.exe resolve compiler/integration/bfx/bbc_request.xax snap.xax",
+        "bbc.exe build snap.xax bbc2.exe bbc2.prov"
+      ],
+      "exit": [0, 0],
+      "wall_seconds": [45.529, 221.892],
+      "compiler_sha256": "a4717ac81ff2e29bb1442ce2064a8a4dee054be28e2b71c1578c803b4e7fed25",
+      "output_sha256": "a4717ac81ff2e29bb1442ce2064a8a4dee054be28e2b71c1578c803b4e7fed25",
+      "equals_compiler": true
+    }
+  ],
+  "conditions": "every process ran with standard input redirected from the null device; one run per command, timings are single samples and support no performance claim",
+  "not_run": [
+    "a run with the console's own handles",
+    "the Linux seed rotation (the pinned Linux seed is still the ledger 0023 build)",
+    "the native signed-compare cases of OI-55 through this compiler"
+  ]
+}
