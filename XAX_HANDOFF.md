@@ -29,7 +29,7 @@
 
 <!-- xax-status:levels -->Replacement levels (generated from `XAX_REPLACEMENT_MATRIX.json`): R6: jvm, linux-aarch64, linux-x86_64; R3: aarch64-baremetal, android-arm64, browser-web, gpu-spirv-cuda-metal-dxil, wasm32-wasi, windows-x86_64-pe; R1: riscv64; no level yet: bsd-unix, dotnet-clr, macos-ios-apple, rtos-embedded-mcu.<!-- /xax-status:levels -->
 
-<!-- xax-status:bootstrap -->Bootstrap status (derived by `xax_selfhost.bootstrap_status` from `compiler/benchmarks/full_selfhost_evidence.json` and `compiler/benchmarks/python_free_seed_evidence.json`): whole production compiler: B0, B1, B2, B3, B4, B5, B6 established (derived from the Linux x86-64 production compiler, whose executed record covers every target and artifact `build` makes (S15g, ADR-358)); Linux x86-64 production compiler (`benchmarks/full_selfhost_evidence.json`): B0, B1, B2, B3, B4, B5, B6 hold, none do not; its seed requires Python: no; S-step component fixed points are not B milestones (`XAX_SPEC.md` §16.5). Bootstrap seed: native-elf `compiler/bootstrap/seed/xaxc-linux-x86_64`, 31,912,763 bytes, requires Python: no.<!-- /xax-status:bootstrap -->
+<!-- xax-status:bootstrap -->Bootstrap status (derived by `xax_selfhost.bootstrap_status` from `compiler/benchmarks/full_selfhost_evidence.json` and `compiler/benchmarks/python_free_seed_evidence.json`): whole production compiler: B0, B1, B2, B3, B4, B5, B6 established (derived from the Linux x86-64 production compiler, whose executed record covers every target and artifact `build` makes (S15g, ADR-358)); Linux x86-64 production compiler (`benchmarks/full_selfhost_evidence.json`): B0, B1, B2, B3, B4, B5, B6 hold, none do not; its seed requires Python: no; S-step component fixed points are not B milestones (`XAX_SPEC.md` §16.5). Bootstrap seed: native-elf `compiler/bootstrap/seed/xaxc-linux-x86_64`, 31,922,107 bytes, requires Python: no.<!-- /xax-status:bootstrap -->
 
 Sections below are dated; a later section supersedes an earlier figure. The current full-suite result is under "Multi-language performance rule" and later entries in `XAX_STATE.md`.
 
@@ -2085,3 +2085,20 @@ Built on Linux x86-64 (WSL 2) and Windows 11 (build 26300), on top of `43054ce`.
   in Chrome, a `wc` counter under Node WASI, a fingerprint kernel on an RTX 3060 and an AMD iGPU through an XAX Vulkan
   host). `wasm32-core` and `accelerator-simt-packet` are removed. RISC-V is deferred.
 - **Not done:** OI-60; RISC-V; R4 evidence for the four new R3 rows; tests for the Windows seed.
+# Native resolved-snapshot mutation handoff — 2026-11-13
+
+Ledger 0028 and `compiler/bootstrap/evolution/native/0028/README.md` describe
+native snapshot ancestry rebuilding after the upstream ledger-0027 backend fix.
+Both production stores, both rebuilt BBC stores and the Windows compiler entry
+batches follow this transaction. Current seed identities are pinned in
+`xax_selfhost_seed` and `compiler/bootstrap/windows/seed.json`; independent native
+fixed points, JVM behavior, metadata/canonical-collection controls and BBC checks
+are recorded in `compiler/benchmarks/snapshot_mutation_20261113_evidence.json`.
+
+Run native `verify` before accepting any edited candidate. A result-type mutation
+can pass edit staging and fail semantic verification. Signed-package changes,
+signature/provenance rewriting and recursion-group users remain unsupported.
+Keep the historical generator identities separate from their natively evolved
+successors (`edit_begin` and `edit_next` now join the existing helper exclusions).
+Full bootstrap levels come only from the executed benchmark records and their
+ordinary status derivation.

@@ -1,0 +1,28 @@
+{
+  "generation_bytes_identical": true,
+  "scope": "Final compiler self-host/corpus/ordinary-evolution acceptance. Historical timing intervals include host suspension; no performance claim. Bootstrap levels remain derived, not hand-labelled.",
+  "all_ledger_before_after_bytes_equal": true,
+  "recorded": "2026-11-13",
+  "label": "EXECUTED",
+  "corpus_generation_disagreements": 0,
+  "structural_probe_equals_reference": true,
+  "full_record": {
+    "sha256": "2752f3372344ce8fc75f996115159aede5c4ce9e29a4c1fb914d5c647b35d2db",
+    "path": "compiler/benchmarks/full_selfhost_evidence.json"
+  },
+  "windows_compiler_sha256": "9779c7938b092b6a1b64bd97ff4950a0e5858f43e0f95040e5ea0d33c2319cd0",
+  "corpus_cases": 198,
+  "python_free_record": {
+    "sha256": "3a616ad97ced5291a5aabbb0100bf996ff8f4cdeed6af1f6d3b6ff2b5ff302a6",
+    "path": "compiler/benchmarks/python_free_seed_evidence.json"
+  },
+  "performance_claim": false,
+  "authority_record_in_full_evidence": true,
+  "native_generations": 3,
+  "unexpected_native_fallbacks": 0,
+  "ledger_transactions": 130,
+  "linux_compiler_sha256": "d3d3becc0b8a8c685cbccb6338aad22ff7fe6b52cb224734879c43d092bc3b82",
+  "structural_probe_native_verification": "image",
+  "schema": "xax-snapshot-selfhost-acceptance-v1",
+  "all_ledger_native_verification_succeeded": true
+}

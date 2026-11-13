@@ -1,0 +1,1122 @@
+{
+  "schema": "xax-native-snapshot-mutation-evidence-v1",
+  "date": "2026-11-13",
+  "label": "EXECUTED",
+  "ledger": "0028",
+  "linux": {
+    "compiler": {
+      "bytes": 31922107,
+      "sha256": "d3d3becc0b8a8c685cbccb6338aad22ff7fe6b52cb224734879c43d092bc3b82"
+    },
+    "generations_identical": true,
+    "rotated_seed_identical": true,
+    "development_compiler_identical": true,
+    "snapshot": {
+      "bytes": 62549491,
+      "sha256": "9352cabc169eeb1eaf97fdbfaa31e74ddee1f824861802ed898e0a468e38fb5d"
+    }
+  },
+  "windows": {
+    "compiler": {
+      "bytes": 31973888,
+      "sha256": "9779c7938b092b6a1b64bd97ff4950a0e5858f43e0f95040e5ea0d33c2319cd0"
+    },
+    "generations_identical": true
+  },
+  "jvm_semantics": {
+    "recorded": "2026-11-13",
+    "compiler_sha256": "9779c7938b092b6a1b64bd97ff4950a0e5858f43e0f95040e5ea0d33c2319cd0",
+    "source_sha256": "d12c9956e2d8149fd38cc6cdfae851beff02f7ee86fdc1f7f7d241ebb91cfb59",
+    "cases": [
+      {
+        "case": "count_semicolons",
+        "root": "4b08d23a73b72f4f17cee6035990f4507615562bd0ee7d0e9a95bb858e4b2d70",
+        "reference_bytes_equal": true,
+        "native_verify": true,
+        "unchanged_cids": 63,
+        "metadata_preserved": true,
+        "deterministic_jar_and_provenance": true,
+        "stdout_hex": "20202020202032202020202020203220202020202031390a"
+      },
+      {
+        "case": "zero_line_accumulator",
+        "root": "2007ffe4b45a704c3fa8e46ae1755627919f45c83945c2105811c1303862f785",
+        "reference_bytes_equal": true,
+        "native_verify": true,
+        "unchanged_cids": 63,
+        "metadata_preserved": true,
+        "deterministic_jar_and_provenance": true,
+        "stdout_hex": "20202020202030202020202020203220202020202031390a"
+      },
+      {
+        "case": "replace_accumulator_use",
+        "root": "7bcde82c4ebe11559c1d6717f8959a81ff3613c1a02f47afa16337282b80a0d4",
+        "reference_bytes_equal": true,
+        "native_verify": true,
+        "unchanged_cids": 63,
+        "metadata_preserved": true,
+        "deterministic_jar_and_provenance": true,
+        "stdout_hex": "20202020202032202020202020203220202020202031390a"
+      },
+      {
+        "case": "insert_rebind",
+        "root": "bb17a7daaeebfd7cb8c75bbdfe86963e25f9aeaa72d89464e5d13729c62ae941",
+        "reference_bytes_equal": true,
+        "native_verify": true,
+        "unchanged_cids": 63,
+        "metadata_preserved": true,
+        "deterministic_jar_and_provenance": true,
+        "stdout_hex": "20202020202032202020202020203220202020202031390a"
+      },
+      {
+        "case": "insert_reconnect_edge",
+        "root": "e28b4a46ab8f84d023252c0a8a46c05c8c942703deb484a4f5d8739e29080389",
+        "reference_bytes_equal": true,
+        "native_verify": true,
+        "unchanged_cids": 63,
+        "metadata_preserved": true,
+        "deterministic_jar_and_provenance": true,
+        "stdout_hex": "20202020202032202020202020203220202020202031390a"
+      },
+      {
+        "case": "wrong_type",
+        "native_edit_exit": 0,
+        "native_verify_exit": 1,
+        "source_preserved": true,
+        "verified_candidate": false
+      },
+      {
+        "case": "delete_live_node",
+        "native_edit_exit": 1,
+        "native_verify_exit": null,
+        "source_preserved": true,
+        "verified_candidate": false
+      },
+      {
+        "case": "unconnected_edge",
+        "native_edit_exit": 0,
+        "native_verify_exit": 1,
+        "source_preserved": true,
+        "verified_candidate": false
+      },
+      {
+        "case": "wrong_precondition",
+        "native_edit_exit": 1,
+        "native_verify_exit": null,
+        "source_preserved": true,
+        "verified_candidate": false
+      },
+      {
+        "case": "out_of_range",
+        "native_edit_exit": 1,
+        "native_verify_exit": null,
+        "source_preserved": true,
+        "verified_candidate": false
+      },
+      {
+        "case": "unknown_node",
+        "native_edit_exit": 1,
+        "native_verify_exit": null,
+        "source_preserved": true,
+        "verified_candidate": false
+      },
+      {
+        "case": "truncated",
+        "native_edit_exit": 1,
+        "native_verify_exit": null,
+        "source_preserved": true,
+        "verified_candidate": false
+      }
+    ],
+    "scope": "Native Windows compiler plus independent reference byte comparison and direct verified Java execution; not yet MCP acceptance"
+  },
+  "package_collections": [
+    {
+      "packages": 2,
+      "mixed_exact_logical": false,
+      "native_edit_exit": 0,
+      "native_verify_exit": 0,
+      "byte_equal_to_reference": true
+    },
+    {
+      "packages": 9,
+      "mixed_exact_logical": false,
+      "native_edit_exit": 0,
+      "native_verify_exit": 0,
+      "byte_equal_to_reference": true
+    },
+    {
+      "packages": 131,
+      "mixed_exact_logical": false,
+      "native_edit_exit": 0,
+      "native_verify_exit": 0,
+      "byte_equal_to_reference": true
+    },
+    {
+      "packages": 301,
+      "mixed_exact_logical": false,
+      "native_edit_exit": 0,
+      "native_verify_exit": 0,
+      "byte_equal_to_reference": true
+    },
+    {
+      "packages": 9,
+      "mixed_exact_logical": true,
+      "native_edit_exit": 0,
+      "native_verify_exit": 0,
+      "byte_equal_to_reference": true
+    },
+    {
+      "packages": 131,
+      "mixed_exact_logical": true,
+      "native_edit_exit": 0,
+      "native_verify_exit": 0,
+      "byte_equal_to_reference": true
+    }
+  ],
+  "snapshot_metadata": {
+    "scope": "Independent reference-generated metadata and aliasing test inputs; native editor under test; no cryptographic trust claim",
+    "cases": [
+      {
+        "case": "metadata-external-0",
+        "edit_exit": 0,
+        "source_preserved": true,
+        "byte_equal_to_reference": true,
+        "verified": true,
+        "successful_candidate": true
+      },
+      {
+        "case": "metadata-external-3",
+        "edit_exit": 0,
+        "source_preserved": true,
+        "byte_equal_to_reference": true,
+        "verified": true,
+        "successful_candidate": true
+      },
+      {
+        "case": "metadata-external-130",
+        "edit_exit": 0,
+        "source_preserved": true,
+        "byte_equal_to_reference": true,
+        "verified": true,
+        "successful_candidate": true
+      },
+      {
+        "case": "dependency-alias-collapse",
+        "edit_exit": 1,
+        "source_preserved": true,
+        "byte_equal_to_reference": false,
+        "verified": false,
+        "successful_candidate": false
+      },
+      {
+        "case": "signed-package-user-refused",
+        "edit_exit": 1,
+        "source_preserved": true,
+        "byte_equal_to_reference": false,
+        "verified": false,
+        "successful_candidate": false
+      }
+    ]
+  },
+  "trust_tests": {
+    "command": "XAX_REQUIRE_NATIVE=1 python3 -m pytest -q tests/test_xax_selfhost_s15c.py::S15cTests::test_signatures tests/test_xax_selfhost_s15c.py::S15cTests::test_trusted_resolution",
+    "tests": 2,
+    "subtests": 25,
+    "passed": true
+  },
+  "repository_checks": {
+    "tests": 6,
+    "passed": true,
+    "scope": "Ledger heads, request derivation, three kept helper pins, agent instruction equality"
+  },
+  "bbc": {
+    "source": {
+      "bytes": 72383781,
+      "sha256": "9f9b90eef6df40430aae005b5396700b198aecfb7bb5500bddd32d5fc16ca7af"
+    },
+    "request": {
+      "bytes": 72384090,
+      "sha256": "790b579f3b795b9da461aed1ae49a91169d96cb05601d73ada5feb150906f9bc"
+    },
+    "binary": {
+      "bytes": 36340224,
+      "sha256": "e3ea02428dada4a6662f9773a5a78367ecb1256f7eaa55058d4750cd0b2f2172"
+    },
+    "build_runs": [
+      {
+        "command": [
+          "C:\\Users\\User\\.codex\\scratch\\xax-mcp-20261113-jvm-mutation-final\\base-toolchain\\xaxc-windows-x86_64.exe",
+          "resolve",
+          "C:\\Users\\User\\.codex\\scratch\\xax-mcp-20261113-jvm-mutation-final\\bbc-final-request-candidate.xax",
+          "C:\\Users\\User\\.codex\\scratch\\xax-mcp-20261113-jvm-mutation-final\\bbc-final-snapshot.xax"
+        ],
+        "exit": 0,
+        "seconds": 54.374,
+        "stdout": "",
+        "stderr": ""
+      },
+      {
+        "command": [
+          "C:\\Users\\User\\.codex\\scratch\\xax-mcp-20261113-jvm-mutation-final\\base-toolchain\\xaxc-windows-x86_64.exe",
+          "build",
+          "C:\\Users\\User\\.codex\\scratch\\xax-mcp-20261113-jvm-mutation-final\\bbc-final-snapshot.xax",
+          "C:\\Users\\User\\.codex\\scratch\\xax-mcp-20261113-jvm-mutation-final\\bbc-final.exe",
+          "C:\\Users\\User\\.codex\\scratch\\xax-mcp-20261113-jvm-mutation-final\\bbc-final.prov"
+        ],
+        "exit": 0,
+        "seconds": 289.934,
+        "stdout": "",
+        "stderr": ""
+      }
+    ],
+    "checks": {
+      "recorded": "2026-11-13",
+      "host": "native Windows, redirected stdin/stdout",
+      "compiler_sha256": "e3ea02428dada4a6662f9773a5a78367ecb1256f7eaa55058d4750cd0b2f2172",
+      "cases": [
+        {
+          "case": "empty",
+          "level": "-O0",
+          "native_compile_exit": 0,
+          "artifact_sha256": "28e8e24003e494aa24693f26ab9b2b4e4de0b3b78d07fad0c3eaa6ce957f706c",
+          "seconds": 0.375,
+          "runs": [
+            {
+              "input_hex": "",
+              "stdout_hex": "",
+              "exit": 0
+            },
+            {
+              "input_hex": "410042",
+              "stdout_hex": "",
+              "exit": 0
+            }
+          ]
+        },
+        {
+          "case": "empty",
+          "level": "-O1",
+          "native_compile_exit": 0,
+          "artifact_sha256": "28e8e24003e494aa24693f26ab9b2b4e4de0b3b78d07fad0c3eaa6ce957f706c",
+          "seconds": 0.216,
+          "runs": [
+            {
+              "input_hex": "",
+              "stdout_hex": "",
+              "exit": 0
+            },
+            {
+              "input_hex": "410042",
+              "stdout_hex": "",
+              "exit": 0
+            }
+          ]
+        },
+        {
+          "case": "add_runs",
+          "level": "-O0",
+          "native_compile_exit": 0,
+          "artifact_sha256": "3c0f9c8092912b07a36c1ad4801565e7e1ab916907c2598ac101e3a6d67cc038",
+          "seconds": 0.145,
+          "runs": [
+            {
+              "input_hex": "",
+              "stdout_hex": "",
+              "exit": 0
+            },
+            {
+              "input_hex": "410042",
+              "stdout_hex": "",
+              "exit": 0
+            }
+          ]
+        },
+        {
+          "case": "add_runs",
+          "level": "-O1",
+          "native_compile_exit": 0,
+          "artifact_sha256": "fd876113d3dd0ee7d0acc2a1eb7534ba6384db5ee28a56fad265f94f64b179b7",
+          "seconds": 0.156,
+          "runs": [
+            {
+              "input_hex": "",
+              "stdout_hex": "",
+              "exit": 0
+            },
+            {
+              "input_hex": "410042",
+              "stdout_hex": "",
+              "exit": 0
+            }
+          ]
+        },
+        {
+          "case": "wrap_256",
+          "level": "-O0",
+          "native_compile_exit": 0,
+          "artifact_sha256": "a00e5082b729418a9553da051882f1825e2edef29cddb4675e1211d6a829a12e",
+          "seconds": 0.199,
+          "runs": [
+            {
+              "input_hex": "",
+              "stdout_hex": "",
+              "exit": 0
+            },
+            {
+              "input_hex": "410042",
+              "stdout_hex": "",
+              "exit": 0
+            }
+          ]
+        },
+        {
+          "case": "wrap_256",
+          "level": "-O1",
+          "native_compile_exit": 0,
+          "artifact_sha256": "28e8e24003e494aa24693f26ab9b2b4e4de0b3b78d07fad0c3eaa6ce957f706c",
+          "seconds": 0.203,
+          "runs": [
+            {
+              "input_hex": "",
+              "stdout_hex": "",
+              "exit": 0
+            },
+            {
+              "input_hex": "410042",
+              "stdout_hex": "",
+              "exit": 0
+            }
+          ]
+        },
+        {
+          "case": "moves",
+          "level": "-O0",
+          "native_compile_exit": 0,
+          "artifact_sha256": "0333b08faf5477d5163484242860264611c0b47297088cf6f9085fb6e8122682",
+          "seconds": 0.141,
+          "runs": [
+            {
+              "input_hex": "",
+              "stdout_hex": "",
+              "exit": 0
+            },
+            {
+              "input_hex": "410042",
+              "stdout_hex": "",
+              "exit": 0
+            }
+          ]
+        },
+        {
+          "case": "moves",
+          "level": "-O1",
+          "native_compile_exit": 0,
+          "artifact_sha256": "5ec28e40f5209f8619d0ab263509711a71c89ea0fc72c53491ece9d42447cd6a",
+          "seconds": 0.145,
+          "runs": [
+            {
+              "input_hex": "",
+              "stdout_hex": "",
+              "exit": 0
+            },
+            {
+              "input_hex": "410042",
+              "stdout_hex": "",
+              "exit": 0
+            }
+          ]
+        },
+        {
+          "case": "turning_point",
+          "level": "-O0",
+          "native_compile_exit": 0,
+          "artifact_sha256": "69e66d5b649fa0f7d35c39572e89ad5aa466489bac69a2935e010f1317b542a7",
+          "seconds": 0.129,
+          "runs": [
+            {
+              "input_hex": "",
+              "stdout_hex": "",
+              "exit": 0
+            },
+            {
+              "input_hex": "410042",
+              "stdout_hex": "",
+              "exit": 0
+            }
+          ]
+        },
+        {
+          "case": "turning_point",
+          "level": "-O1",
+          "native_compile_exit": 0,
+          "artifact_sha256": "9b759911bb34e8332058a2e5280c13aa6b692e0162179387d92bf2dc5cf543a9",
+          "seconds": 0.146,
+          "runs": [
+            {
+              "input_hex": "",
+              "stdout_hex": "",
+              "exit": 0
+            },
+            {
+              "input_hex": "410042",
+              "stdout_hex": "",
+              "exit": 0
+            }
+          ]
+        },
+        {
+          "case": "offset_add",
+          "level": "-O0",
+          "native_compile_exit": 0,
+          "artifact_sha256": "75826ce72c4a49ee455e46fa36d3e3d51989207b52f36bc3c058dd58bbbdd192",
+          "seconds": 0.133,
+          "runs": [
+            {
+              "input_hex": "",
+              "stdout_hex": "",
+              "exit": 0
+            },
+            {
+              "input_hex": "410042",
+              "stdout_hex": "",
+              "exit": 0
+            }
+          ]
+        },
+        {
+          "case": "offset_add",
+          "level": "-O1",
+          "native_compile_exit": 0,
+          "artifact_sha256": "8fd5eb45e63bc4024a93b991f120a3e2c2903434b5ae9686fcc74c9b0da3761b",
+          "seconds": 0.134,
+          "runs": [
+            {
+              "input_hex": "",
+              "stdout_hex": "",
+              "exit": 0
+            },
+            {
+              "input_hex": "410042",
+              "stdout_hex": "",
+              "exit": 0
+            }
+          ]
+        },
+        {
+          "case": "decrement_clear",
+          "level": "-O0",
+          "native_compile_exit": 0,
+          "artifact_sha256": "61160a0daf8eb6acb9099e8bb0c0a36a02e80aa3dc3eecd43a893a4fdc22d366",
+          "seconds": 0.119,
+          "runs": [
+            {
+              "input_hex": "",
+              "stdout_hex": "",
+              "exit": 0
+            },
+            {
+              "input_hex": "410042",
+              "stdout_hex": "",
+              "exit": 0
+            }
+          ]
+        },
+        {
+          "case": "decrement_clear",
+          "level": "-O1",
+          "native_compile_exit": 0,
+          "artifact_sha256": "67921aa34598916fab3932fcb8f3de1c02d79445b79863652b75083c597c89bc",
+          "seconds": 0.143,
+          "runs": [
+            {
+              "input_hex": "",
+              "stdout_hex": "",
+              "exit": 0
+            },
+            {
+              "input_hex": "410042",
+              "stdout_hex": "",
+              "exit": 0
+            }
+          ]
+        },
+        {
+          "case": "increment_clear",
+          "level": "-O0",
+          "native_compile_exit": 0,
+          "artifact_sha256": "2907b0cd29846d97ebaeae19348e898cb6a10492bb7061720b6510cbdd4fb6db",
+          "seconds": 0.133,
+          "runs": [
+            {
+              "input_hex": "",
+              "stdout_hex": "",
+              "exit": 0
+            },
+            {
+              "input_hex": "410042",
+              "stdout_hex": "",
+              "exit": 0
+            }
+          ]
+        },
+        {
+          "case": "increment_clear",
+          "level": "-O1",
+          "native_compile_exit": 0,
+          "artifact_sha256": "67921aa34598916fab3932fcb8f3de1c02d79445b79863652b75083c597c89bc",
+          "seconds": 0.129,
+          "runs": [
+            {
+              "input_hex": "",
+              "stdout_hex": "",
+              "exit": 0
+            },
+            {
+              "input_hex": "410042",
+              "stdout_hex": "",
+              "exit": 0
+            }
+          ]
+        },
+        {
+          "case": "even_step_kept",
+          "level": "-O0",
+          "native_compile_exit": 0,
+          "artifact_sha256": "dfdf1208215bbf726e1c5227cafc683b976a20deee18cd3d31f76de4af7097a2",
+          "seconds": 0.139,
+          "runs": [
+            {
+              "input_hex": "",
+              "stdout_hex": "",
+              "exit": 0
+            },
+            {
+              "input_hex": "410042",
+              "stdout_hex": "",
+              "exit": 0
+            }
+          ]
+        },
+        {
+          "case": "even_step_kept",
+          "level": "-O1",
+          "native_compile_exit": 0,
+          "artifact_sha256": "76bc160c49ee00870c0a91066c4063dc5d26360dd161c5ca10a9ddec219984c6",
+          "seconds": 0.151,
+          "runs": [
+            {
+              "input_hex": "",
+              "stdout_hex": "",
+              "exit": 0
+            },
+            {
+              "input_hex": "410042",
+              "stdout_hex": "",
+              "exit": 0
+            }
+          ]
+        },
+        {
+          "case": "transfer",
+          "level": "-O0",
+          "native_compile_exit": 0,
+          "artifact_sha256": "15a0c6d47de205511b625bdf10c74e477a18c192a7ca5cb07807123ebe7442b9",
+          "seconds": 0.13,
+          "runs": [
+            {
+              "input_hex": "",
+              "stdout_hex": "",
+              "exit": 0
+            },
+            {
+              "input_hex": "410042",
+              "stdout_hex": "",
+              "exit": 0
+            }
+          ]
+        },
+        {
+          "case": "transfer",
+          "level": "-O1",
+          "native_compile_exit": 0,
+          "artifact_sha256": "8f2da297eb8050fefdd59193e9e5c94f989ac39d1423c97ab40ac44d2e734993",
+          "seconds": 0.138,
+          "runs": [
+            {
+              "input_hex": "",
+              "stdout_hex": "",
+              "exit": 0
+            },
+            {
+              "input_hex": "410042",
+              "stdout_hex": "",
+              "exit": 0
+            }
+          ]
+        },
+        {
+          "case": "multiply",
+          "level": "-O0",
+          "native_compile_exit": 0,
+          "artifact_sha256": "f030b2cbc2bf0ed3e926b016dad1641563a69e54df4ae937225765ee08b01e05",
+          "seconds": 0.131,
+          "runs": [
+            {
+              "input_hex": "",
+              "stdout_hex": "",
+              "exit": 0
+            },
+            {
+              "input_hex": "410042",
+              "stdout_hex": "",
+              "exit": 0
+            }
+          ]
+        },
+        {
+          "case": "multiply",
+          "level": "-O1",
+          "native_compile_exit": 0,
+          "artifact_sha256": "5067de624810882af0aeac76c074afe2ab545b96be79e76aef881a0badbba5ad",
+          "seconds": 0.132,
+          "runs": [
+            {
+              "input_hex": "",
+              "stdout_hex": "",
+              "exit": 0
+            },
+            {
+              "input_hex": "410042",
+              "stdout_hex": "",
+              "exit": 0
+            }
+          ]
+        },
+        {
+          "case": "incrementing_counter",
+          "level": "-O0",
+          "native_compile_exit": 0,
+          "artifact_sha256": "5692af78513423719a2f670ab52d0d16a8829c626ec08d5084b0670044b2d2cc",
+          "seconds": 0.121,
+          "runs": [
+            {
+              "input_hex": "",
+              "stdout_hex": "",
+              "exit": 0
+            },
+            {
+              "input_hex": "410042",
+              "stdout_hex": "",
+              "exit": 0
+            }
+          ]
+        },
+        {
+          "case": "incrementing_counter",
+          "level": "-O1",
+          "native_compile_exit": 0,
+          "artifact_sha256": "8f2da297eb8050fefdd59193e9e5c94f989ac39d1423c97ab40ac44d2e734993",
+          "seconds": 0.143,
+          "runs": [
+            {
+              "input_hex": "",
+              "stdout_hex": "",
+              "exit": 0
+            },
+            {
+              "input_hex": "410042",
+              "stdout_hex": "",
+              "exit": 0
+            }
+          ]
+        },
+        {
+          "case": "nested_not_folded",
+          "level": "-O0",
+          "native_compile_exit": 0,
+          "artifact_sha256": "6abdf9695e8fa9101c008a189326d9176fe216e2b4f9093f7302f3b3d1bef87a",
+          "seconds": 0.127,
+          "runs": [
+            {
+              "input_hex": "",
+              "stdout_hex": "",
+              "exit": 0
+            },
+            {
+              "input_hex": "410042",
+              "stdout_hex": "",
+              "exit": 0
+            }
+          ]
+        },
+        {
+          "case": "nested_not_folded",
+          "level": "-O1",
+          "native_compile_exit": 0,
+          "artifact_sha256": "24929f393019244472d91b8158c981ba48910cea09109500943399f2543ddcbc",
+          "seconds": 0.138,
+          "runs": [
+            {
+              "input_hex": "",
+              "stdout_hex": "",
+              "exit": 0
+            },
+            {
+              "input_hex": "410042",
+              "stdout_hex": "",
+              "exit": 0
+            }
+          ]
+        },
+        {
+          "case": "scan_kept",
+          "level": "-O0",
+          "native_compile_exit": 0,
+          "artifact_sha256": "80ec7c3aa04ee9a1d905d54c5f7fd6e537b6fa9e62450002015a026877c5aea2",
+          "seconds": 0.143,
+          "runs": [
+            {
+              "input_hex": "",
+              "stdout_hex": "",
+              "exit": 0
+            },
+            {
+              "input_hex": "410042",
+              "stdout_hex": "",
+              "exit": 0
+            }
+          ]
+        },
+        {
+          "case": "scan_kept",
+          "level": "-O1",
+          "native_compile_exit": 0,
+          "artifact_sha256": "8838ef6bf9a996343a67a143b9c2324f7ab71bf553fe439478855bba5b4eff63",
+          "seconds": 0.135,
+          "runs": [
+            {
+              "input_hex": "",
+              "stdout_hex": "",
+              "exit": 0
+            },
+            {
+              "input_hex": "410042",
+              "stdout_hex": "",
+              "exit": 0
+            }
+          ]
+        },
+        {
+          "case": "io_breaks_segment",
+          "level": "-O0",
+          "native_compile_exit": 0,
+          "artifact_sha256": "638a4379d20d39e986411cf90cc005d015d5bb39ecb3aca8456b32cdf92f39fe",
+          "seconds": 0.136,
+          "runs": [
+            {
+              "input_hex": "",
+              "stdout_hex": "01",
+              "exit": 0
+            },
+            {
+              "input_hex": "410042",
+              "stdout_hex": "01",
+              "exit": 0
+            }
+          ]
+        },
+        {
+          "case": "io_breaks_segment",
+          "level": "-O1",
+          "native_compile_exit": 0,
+          "artifact_sha256": "ac7abacaf0d8bf5707dfbb2afd2ebd5293c4cdd81ba414f886137adaee0defb8",
+          "seconds": 0.144,
+          "runs": [
+            {
+              "input_hex": "",
+              "stdout_hex": "01",
+              "exit": 0
+            },
+            {
+              "input_hex": "410042",
+              "stdout_hex": "01",
+              "exit": 0
+            }
+          ]
+        },
+        {
+          "case": "edge_right",
+          "level": "-O0",
+          "native_compile_exit": 0,
+          "artifact_sha256": "9e2130246b202ea21751bb61c970896b5dd5f1125fe9c536d88808e957f816ad",
+          "seconds": 0.167,
+          "runs": [
+            {
+              "input_hex": "",
+              "stdout_hex": "",
+              "exit": 0
+            },
+            {
+              "input_hex": "410042",
+              "stdout_hex": "",
+              "exit": 0
+            }
+          ]
+        },
+        {
+          "case": "edge_right",
+          "level": "-O1",
+          "native_compile_exit": 0,
+          "artifact_sha256": "ff16a833f72d4dd0f3c6dc5cc5a19be33d698462d7c9a0c58d4876bd4c51277f",
+          "seconds": 0.149,
+          "runs": [
+            {
+              "input_hex": "",
+              "stdout_hex": "",
+              "exit": 0
+            },
+            {
+              "input_hex": "410042",
+              "stdout_hex": "",
+              "exit": 0
+            }
+          ]
+        },
+        {
+          "case": "pending_open_then_output",
+          "level": "-O0",
+          "native_compile_exit": 0,
+          "artifact_sha256": "073f620accf5333ed15805aafed09339c85a6e732b27d45035176025f6a6f85c",
+          "seconds": 0.118,
+          "runs": [
+            {
+              "input_hex": "",
+              "stdout_hex": "",
+              "exit": 0
+            },
+            {
+              "input_hex": "410042",
+              "stdout_hex": "",
+              "exit": 0
+            }
+          ]
+        },
+        {
+          "case": "pending_open_then_output",
+          "level": "-O1",
+          "native_compile_exit": 0,
+          "artifact_sha256": "073f620accf5333ed15805aafed09339c85a6e732b27d45035176025f6a6f85c",
+          "seconds": 0.128,
+          "runs": [
+            {
+              "input_hex": "",
+              "stdout_hex": "",
+              "exit": 0
+            },
+            {
+              "input_hex": "410042",
+              "stdout_hex": "",
+              "exit": 0
+            }
+          ]
+        },
+        {
+          "case": "moved_counter_not_folded",
+          "level": "-O0",
+          "native_compile_exit": 0,
+          "artifact_sha256": "a61c9ffe526dc740402906504457b6cb9ed2f7e7f4097c7c4ebf1555965ff69c",
+          "seconds": 0.141,
+          "runs": [
+            {
+              "input_hex": "",
+              "stdout_hex": "",
+              "exit": 0
+            },
+            {
+              "input_hex": "410042",
+              "stdout_hex": "",
+              "exit": 0
+            }
+          ]
+        },
+        {
+          "case": "moved_counter_not_folded",
+          "level": "-O1",
+          "native_compile_exit": 0,
+          "artifact_sha256": "04101f53dc588fe0d75964468483a85aea45182d0ad6129856dd597bcf2b7b03",
+          "seconds": 0.127,
+          "runs": [
+            {
+              "input_hex": "",
+              "stdout_hex": "",
+              "exit": 0
+            },
+            {
+              "input_hex": "410042",
+              "stdout_hex": "",
+              "exit": 0
+            }
+          ]
+        },
+        {
+          "case": "deep_nesting_512",
+          "level": "-O0",
+          "native_compile_exit": 0,
+          "artifact_sha256": "19620fc7e607c02f77efc37862751b112256b935651e4b24cc94b921538f1a18",
+          "seconds": 0.356,
+          "runs": [
+            {
+              "input_hex": "",
+              "stdout_hex": "01",
+              "exit": 0
+            },
+            {
+              "input_hex": "410042",
+              "stdout_hex": "01",
+              "exit": 0
+            }
+          ]
+        },
+        {
+          "case": "deep_nesting_512",
+          "level": "-O1",
+          "native_compile_exit": 0,
+          "artifact_sha256": "70e386d3724010504416236b99f5585b5f586566ef88c631b0e7b11feab2a8c7",
+          "seconds": 0.525,
+          "runs": [
+            {
+              "input_hex": "",
+              "stdout_hex": "01",
+              "exit": 0
+            },
+            {
+              "input_hex": "410042",
+              "stdout_hex": "01",
+              "exit": 0
+            }
+          ]
+        },
+        {
+          "case": "deep_nesting_512_active",
+          "level": "-O0",
+          "native_compile_exit": 0,
+          "artifact_sha256": "3337421ebf23228ebcafee9c9ccbb17e9c4b43af339cb3caea0aa843bbef96a3",
+          "seconds": 0.668,
+          "runs": [
+            {
+              "input_hex": "",
+              "stdout_hex": "03020100",
+              "exit": 0
+            },
+            {
+              "input_hex": "410042",
+              "stdout_hex": "03020100",
+              "exit": 0
+            }
+          ]
+        },
+        {
+          "case": "deep_nesting_512_active",
+          "level": "-O1",
+          "native_compile_exit": 0,
+          "artifact_sha256": "4c23dfa5cf785db4dfe60848c41cf0130f3f125bc422c06af3390848bad1ab5e",
+          "seconds": 0.85,
+          "runs": [
+            {
+              "input_hex": "",
+              "stdout_hex": "03020100",
+              "exit": 0
+            },
+            {
+              "input_hex": "410042",
+              "stdout_hex": "03020100",
+              "exit": 0
+            }
+          ]
+        },
+        {
+          "case": "binary_echo",
+          "level": "-O0",
+          "native_compile_exit": 0,
+          "artifact_sha256": "b1acec7f62afdbb8c5beea577e4d279181382296798752931f2df09e5505b7cd",
+          "seconds": 0.14,
+          "runs": [
+            {
+              "input_hex": "",
+              "stdout_hex": "000000",
+              "exit": 0
+            },
+            {
+              "input_hex": "410042",
+              "stdout_hex": "410042",
+              "exit": 0
+            }
+          ]
+        },
+        {
+          "case": "binary_echo",
+          "level": "-O1",
+          "native_compile_exit": 0,
+          "artifact_sha256": "b1acec7f62afdbb8c5beea577e4d279181382296798752931f2df09e5505b7cd",
+          "seconds": 0.136,
+          "runs": [
+            {
+              "input_hex": "",
+              "stdout_hex": "000000",
+              "exit": 0
+            },
+            {
+              "input_hex": "410042",
+              "stdout_hex": "410042",
+              "exit": 0
+            }
+          ]
+        },
+        {
+          "case": "hello",
+          "level": "-O0",
+          "native_compile_exit": 0,
+          "artifact_sha256": "493bdc82a23ac865e46c6e6caad62653a8fe4644e18ed0d5d2aa9ef71b301e08",
+          "seconds": 0.14,
+          "runs": [
+            {
+              "input_hex": "",
+              "stdout_hex": "41",
+              "exit": 0
+            },
+            {
+              "input_hex": "410042",
+              "stdout_hex": "41",
+              "exit": 0
+            }
+          ]
+        },
+        {
+          "case": "hello",
+          "level": "-O1",
+          "native_compile_exit": 0,
+          "artifact_sha256": "f45543856cb937019befef9dc21267167ede9eea7384c5a95498a99258cc7560",
+          "seconds": 0.133,
+          "runs": [
+            {
+              "input_hex": "",
+              "stdout_hex": "41",
+              "exit": 0
+            },
+            {
+              "input_hex": "410042",
+              "stdout_hex": "41",
+              "exit": 0
+            }
+          ]
+        }
+      ],
+      "builds": 44,
+      "runs": 88,
+      "oracle": "Independent primitive Brainfuck interpreter outside the repository; no production translation"
+    },
+    "timing_caveat": "Single-run wall intervals; no performance claim."
+  },
+  "scope": "Unsigned package/request/snapshot ancestry rebuilding only. Native edit may return an invalid staged candidate for a result-type edit: mandatory native verify rejects it before publication. Signature/provenance rewriting, recursion-group users remain outside this increment; upstream ledger 0027 supplies the edge-copy backend fix."
+}

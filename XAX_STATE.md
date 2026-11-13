@@ -28,7 +28,7 @@ supersedes an earlier figure, and a superseded entry is kept rather than rewritt
 
 ### Bootstrap levels
 
-<!-- xax-status:bootstrap -->Bootstrap status (derived by `xax_selfhost.bootstrap_status` from `compiler/benchmarks/full_selfhost_evidence.json` and `compiler/benchmarks/python_free_seed_evidence.json`): whole production compiler: B0, B1, B2, B3, B4, B5, B6 established (derived from the Linux x86-64 production compiler, whose executed record covers every target and artifact `build` makes (S15g, ADR-358)); Linux x86-64 production compiler (`benchmarks/full_selfhost_evidence.json`): B0, B1, B2, B3, B4, B5, B6 hold, none do not; its seed requires Python: no; S-step component fixed points are not B milestones (`XAX_SPEC.md` §16.5). Bootstrap seed: native-elf `compiler/bootstrap/seed/xaxc-linux-x86_64`, 31,912,763 bytes, requires Python: no.<!-- /xax-status:bootstrap -->
+<!-- xax-status:bootstrap -->Bootstrap status (derived by `xax_selfhost.bootstrap_status` from `compiler/benchmarks/full_selfhost_evidence.json` and `compiler/benchmarks/python_free_seed_evidence.json`): whole production compiler: B0, B1, B2, B3, B4, B5, B6 established (derived from the Linux x86-64 production compiler, whose executed record covers every target and artifact `build` makes (S15g, ADR-358)); Linux x86-64 production compiler (`benchmarks/full_selfhost_evidence.json`): B0, B1, B2, B3, B4, B5, B6 hold, none do not; its seed requires Python: no; S-step component fixed points are not B milestones (`XAX_SPEC.md` §16.5). Bootstrap seed: native-elf `compiler/bootstrap/seed/xaxc-linux-x86_64`, 31,922,107 bytes, requires Python: no.<!-- /xax-status:bootstrap -->
 
 ### Self-hosting
 
@@ -81,7 +81,7 @@ U1 — universal-replacement proof set: **in progress**. Step status is in `XAX_
 
 S — compiler migration ladder: **S0–S5 EXECUTED** on the production path (native XAX leaves on Linux x86-64 only; Python on every other host) and **S6 EXECUTED** with component fixed points for the RISC-V backend and the store verifier on RV64 under emulation (ADR-116–ADR-151). BLAKE3 also closes on RV64 (ADR-151). **S7a EXECUTED** (ADR-152): the x86-64 views backend is an XAX program with a native component fixed point on x86-64; it lowers every native helper except its own production image, which the bootstrap generator lowers (byte-identical by that fixed point). These are S-step component results, not B milestones (`XAX_SPEC.md` §16.5; ADR-177 renamed the earlier "B1–B4" wording). **S7b.1 EXECUTED** (ADR-179): on Linux x86-64 the XAX x86-64 views program decides its own target legality and writes the exact rejection diagnostic. **S7b.2 EXECUTED** (ADR-181): both views programs resolve references, place the target, find the entry, and produce the image record themselves. **S7b.3 EXECUTED** (ADR-182): the RISC-V views program decides its rejections too, so S7b is complete for the views profiles. **S8a EXECUTED** (ADR-183): every store-container rejection is decided by XAX with the exact diagnostic. **S8b.1 EXECUTED** (ADR-184): object envelopes and their CID check are decided by XAX on `get`. **S8b.2 EXECUTED** (ADR-185): graph-body syntax rejections are decided by XAX through the shared site mechanism. Next: S8c (resolution, typing, facts, and object verification). Since ADR-180, S3–S7a count as migrated for acceptance only (`XAX_SPEC.md` §16.5 condition 5); the ladder continues with S8–S15, and migration is reported as SH1. The typing store was stale against its builder until ADR-177 regenerated it; its native and emulated evidence was re-run on Linux x86-64 on 2026-10-07 and matches (OI-45, self-hosting half).
 
-<!-- xax-status:bootstrap -->Bootstrap status (derived by `xax_selfhost.bootstrap_status` from `compiler/benchmarks/full_selfhost_evidence.json` and `compiler/benchmarks/python_free_seed_evidence.json`): whole production compiler: B0, B1, B2, B3, B4, B5, B6 established (derived from the Linux x86-64 production compiler, whose executed record covers every target and artifact `build` makes (S15g, ADR-358)); Linux x86-64 production compiler (`benchmarks/full_selfhost_evidence.json`): B0, B1, B2, B3, B4, B5, B6 hold, none do not; its seed requires Python: no; S-step component fixed points are not B milestones (`XAX_SPEC.md` §16.5). Bootstrap seed: native-elf `compiler/bootstrap/seed/xaxc-linux-x86_64`, 31,912,763 bytes, requires Python: no.<!-- /xax-status:bootstrap -->
+<!-- xax-status:bootstrap -->Bootstrap status (derived by `xax_selfhost.bootstrap_status` from `compiler/benchmarks/full_selfhost_evidence.json` and `compiler/benchmarks/python_free_seed_evidence.json`): whole production compiler: B0, B1, B2, B3, B4, B5, B6 established (derived from the Linux x86-64 production compiler, whose executed record covers every target and artifact `build` makes (S15g, ADR-358)); Linux x86-64 production compiler (`benchmarks/full_selfhost_evidence.json`): B0, B1, B2, B3, B4, B5, B6 hold, none do not; its seed requires Python: no; S-step component fixed points are not B milestones (`XAX_SPEC.md` §16.5). Bootstrap seed: native-elf `compiler/bootstrap/seed/xaxc-linux-x86_64`, 31,922,107 bytes, requires Python: no.<!-- /xax-status:bootstrap -->
 
 Dated sections below are historical records: a figure in them (a ratio, a level, a test count) is current only if no later section supersedes it.
 
@@ -2232,3 +2232,36 @@ Built on Linux x86-64 (WSL 2) and Windows 11 (build 26300), on top of `43054ce`.
   in Chrome, a `wc` counter under Node WASI, a fingerprint kernel on an RTX 3060 and an AMD iGPU through an XAX Vulkan
   host). `wasm32-core` and `accelerator-simt-packet` are removed. RISC-V is deferred.
 - **Not done:** OI-60; RISC-V; R4 evidence for the four new R3 rows; tests for the Windows seed.
+# Native resolved-snapshot edits — 2026-11-13
+
+Ledger 0028 extends native workspace ancestry rebuilding to unsigned resolved
+build snapshots. It follows ledger 0027's edge-copy staging fix. Package module
+and exact-dependency collections, and snapshot package/signature collections,
+are rebuilt in mapped CID order with full ULEB indices. Reference collisions
+reject with `WORKSPACE-REBUILD-DISTINCT`; resolver identity and external digest
+bytes are preserved. Signed-package changes, recursion-group users and
+signature/provenance rewriting remain outside this editing boundary.
+
+The driver and its build request were changed through separate exact-root native
+ledger transactions and verified. Linux and Windows seeds were rebuilt to
+identical native generations. The Linux seed was rotated through the existing
+rotation tool. BBC's matching stores were rebuilt from the production change;
+its native Windows executable passed 44 builds and 88 independently checked runs.
+Native JVM mutation checks cover constants, operations, operands, insertion and
+edge reconnection, with byte-exact reference comparisons and actual JVM output.
+Mandatory native verification rejects a type-invalid staged candidate before
+publication. Signed-package/trusted-resolution checks passed 2 tests and 25
+subtests; repository consistency checks passed 6 tests.
+
+Exact identities and scope are in
+`compiler/benchmarks/snapshot_mutation_20261113_evidence.json` and
+`compiler/benchmarks/windows_selfhost_20261113_evidence.json`. Broader bootstrap
+levels remain derived from the current executed benchmark records, never from
+these component fixed points. This increment does not close wider security or
+publication gates in downstream hosts.
+
+The final broad run reproduced all 130 ledger transactions, all 198 corpus cases
+across three identical generations, and the structural probe's reference bytes.
+Its bindings are in `compiler/benchmarks/snapshot_selfhost_20261113_evidence.json`;
+the all-nine-operation supplement is
+`compiler/benchmarks/snapshot_mutation_operations_20261113_evidence.json`.

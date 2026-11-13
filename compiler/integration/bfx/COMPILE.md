@@ -611,3 +611,14 @@ with that batch applied by `rebuild.sh` (3 min 34 s, SHA-256 `b57f9044…`, veri
 -O0 and -O1 for windows-x86_64, 36 of 36 builds and runs equal to the expected output. `rebuild.sh` no longer uses
 Python or awk ([transactions/production_driver/native/README.md](transactions/production_driver/native/README.md)).
 Android outputs were not re-run on a device.
+## BBC follows snapshot rebuilding — 2026-11-13
+
+After the upstream ledger-0027 edge-copy fix, ledger 0028 extends the production
+editor to rebuild unsigned resolved snapshots. BBC's driver and request were
+rebuilt with the same production transaction through native edit and verify;
+there is no separate BBC compiler implementation. The rebuilt Windows host
+passed 44 O0/O1 builds and 88 runs against an independent primitive interpreter,
+including binary input and depth-512 nesting. The fixed points, artifact
+identities and exact scope are recorded in
+`../../benchmarks/snapshot_mutation_20261113_evidence.json`. Android device output
+was not re-run by this increment.

@@ -1,0 +1,126 @@
+{
+  "schema": "xax-windows-selfhost-evidence-v2",
+  "date": "2026-11-13",
+  "label": "EXECUTED",
+  "host": "Windows 11, native processes with redirected standard handles",
+  "compiler": {
+    "bytes": 31973888,
+    "sha256": "9779c7938b092b6a1b64bd97ff4950a0e5858f43e0f95040e5ea0d33c2319cd0"
+  },
+  "old_compiler": {
+    "bytes": 31964672,
+    "sha256": "91ce2a7146bc1057bfd85e6c739173bc8c9a3a7d46e2898779bae53522e7e871"
+  },
+  "runs": [
+    {
+      "command": [
+        "C:\\Users\\User\\.codex\\scratch\\xax-mcp-20261113-jvm-mutation-final\\base-toolchain\\xaxc-windows-x86_64.exe",
+        "edit",
+        "C:\\Users\\User\\.codex\\scratch\\xax-mcp-20261113-jvm-mutation-final\\bbc-final-candidate.xax",
+        "C:\\Users\\User\\.codex\\scratch\\xax-mcp-20261113-jvm-mutation-final\\xaxc-entry-source.batch",
+        "C:\\Users\\User\\.codex\\scratch\\xax-mcp-20261113-jvm-mutation-final\\windows-source.xax"
+      ],
+      "exit": 0,
+      "seconds": 63.882,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "C:\\Users\\User\\.codex\\scratch\\xax-mcp-20261113-jvm-mutation-final\\base-toolchain\\xaxc-windows-x86_64.exe",
+        "verify",
+        "C:\\Users\\User\\.codex\\scratch\\xax-mcp-20261113-jvm-mutation-final\\windows-source.xax",
+        "C:\\Users\\User\\.codex\\scratch\\xax-mcp-20261113-jvm-mutation-final\\windows-source.diag"
+      ],
+      "exit": 0,
+      "seconds": 50.69,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "C:\\Users\\User\\.codex\\scratch\\xax-mcp-20261113-jvm-mutation-final\\base-toolchain\\xaxc-windows-x86_64.exe",
+        "edit",
+        "C:\\Users\\User\\.codex\\scratch\\xax-mcp-20261113-jvm-mutation-final\\bbc-final-request-candidate.xax",
+        "C:\\Users\\User\\.codex\\scratch\\xax-mcp-20261113-jvm-mutation-final\\xaxc-entry-request.batch",
+        "C:\\Users\\User\\.codex\\scratch\\xax-mcp-20261113-jvm-mutation-final\\windows-request.xax"
+      ],
+      "exit": 0,
+      "seconds": 58.378,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "C:\\Users\\User\\.codex\\scratch\\xax-mcp-20261113-jvm-mutation-final\\base-toolchain\\xaxc-windows-x86_64.exe",
+        "verify",
+        "C:\\Users\\User\\.codex\\scratch\\xax-mcp-20261113-jvm-mutation-final\\windows-request.xax",
+        "C:\\Users\\User\\.codex\\scratch\\xax-mcp-20261113-jvm-mutation-final\\windows-request.diag"
+      ],
+      "exit": 0,
+      "seconds": 49.76,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "C:\\Users\\User\\.codex\\scratch\\xax-mcp-20261113-jvm-mutation-final\\base-toolchain\\xaxc-windows-x86_64.exe",
+        "resolve",
+        "C:\\Users\\User\\.codex\\scratch\\xax-mcp-20261113-jvm-mutation-final\\windows-request.xax",
+        "C:\\Users\\User\\.codex\\scratch\\xax-mcp-20261113-jvm-mutation-final\\windows-snapshot-1.xax"
+      ],
+      "exit": 0,
+      "seconds": 53.016,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "C:\\Users\\User\\.codex\\scratch\\xax-mcp-20261113-jvm-mutation-final\\base-toolchain\\xaxc-windows-x86_64.exe",
+        "build",
+        "C:\\Users\\User\\.codex\\scratch\\xax-mcp-20261113-jvm-mutation-final\\windows-snapshot-1.xax",
+        "C:\\Users\\User\\.codex\\scratch\\xax-mcp-20261113-jvm-mutation-final\\xaxc-windows-1.exe",
+        "C:\\Users\\User\\.codex\\scratch\\xax-mcp-20261113-jvm-mutation-final\\xaxc-windows-1.prov"
+      ],
+      "exit": 0,
+      "seconds": 198.324,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "C:\\Users\\User\\.codex\\scratch\\xax-mcp-20261113-jvm-mutation-final\\xaxc-windows-1.exe",
+        "resolve",
+        "C:\\Users\\User\\.codex\\scratch\\xax-mcp-20261113-jvm-mutation-final\\windows-request.xax",
+        "C:\\Users\\User\\.codex\\scratch\\xax-mcp-20261113-jvm-mutation-final\\windows-snapshot-2.xax"
+      ],
+      "exit": 0,
+      "seconds": 38.598,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "C:\\Users\\User\\.codex\\scratch\\xax-mcp-20261113-jvm-mutation-final\\xaxc-windows-1.exe",
+        "build",
+        "C:\\Users\\User\\.codex\\scratch\\xax-mcp-20261113-jvm-mutation-final\\windows-snapshot-2.xax",
+        "C:\\Users\\User\\.codex\\scratch\\xax-mcp-20261113-jvm-mutation-final\\xaxc-windows-2.exe",
+        "C:\\Users\\User\\.codex\\scratch\\xax-mcp-20261113-jvm-mutation-final\\xaxc-windows-2.prov"
+      ],
+      "exit": 0,
+      "seconds": 201.496,
+      "stdout": "",
+      "stderr": ""
+    }
+  ],
+  "generations_identical": true,
+  "source": {
+    "bytes": 62570429,
+    "sha256": "8e7628df0824aa0472b2aa72f02987c316247e2c8206bf4aee8b15dad8d52f2f"
+  },
+  "request": {
+    "bytes": 62570738,
+    "sha256": "357f5fe4b909e9f21122028b0a34e903fee5089ddf1ce4d231c58d109283f330"
+  },
+  "scope": "Native compiler fixed point and native snapshot mutation. Existing console-handle and wider backend/security issues remain open; timings are single observations and do not support performance claims."
+}

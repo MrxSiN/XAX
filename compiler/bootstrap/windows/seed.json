@@ -1,22 +1,28 @@
 {
-  "schema": "xax-native-windows-seed-v2",
-  "sha256": "91ce2a7146bc1057bfd85e6c739173bc8c9a3a7d46e2898779bae53522e7e871",
-  "bytes": 31964672,
+  "schema": "xax-native-windows-seed-v3",
+  "sha256": "9779c7938b092b6a1b64bd97ff4950a0e5858f43e0f95040e5ea0d33c2319cd0",
+  "bytes": 31973888,
   "source": {
     "store": "compiler/integration/bfx/bbc.xax",
-    "store_git_blob": "4d0d5bcbc83769da56a8646084221c3fc51c96c6",
-    "store_root": "937d05c3032e3b47d5528f915e4385a3c708e772282b7ec4cbef9ea39bac0b20",
+    "store_git_blob": "2b8514c023813ea7519434b8fd768e07d05b15e3",
+    "store_root": "c5814b38579d1f78b3ab23f6c10e2df6942e9ecc3a306e767aa911304909a154",
     "batch": "compiler/bootstrap/windows/xaxc_entry.batch",
-    "result_sha256": "82543ac7efce73579dcbf8511018867a2b483de92ba64c9503906f74b1ef4fbe"
+    "result_sha256": "8e7628df0824aa0472b2aa72f02987c316247e2c8206bf4aee8b15dad8d52f2f"
   },
   "request": {
     "store": "compiler/integration/bfx/bbc_request.xax",
-    "store_git_blob": "49c2d67003710850939ff00fda13b1ad904bba95",
+    "store_git_blob": "884d4370f70b662cc1a7490cfa3c2fc97e027299",
     "batch": "compiler/bootstrap/windows/xaxc_entry_request.batch",
-    "result_sha256": "1b528828bc316c511d30a75c81d2139195d1a2c880e37b0bc5b5677476274cc7"
+    "result_sha256": "357f5fe4b909e9f21122028b0a34e903fee5089ddf1ce4d231c58d109283f330"
   },
-  "production_ledger": "0027",
-  "native_self_build": "EXECUTED on Windows 11 (2026-11-13): the ledger 0026 seed built generation 1 from the request; generation 1 built generation 2 and generation 2 built generation 3; generations 2 and 3 are byte-identical and are this file",
-  "commands": ["verify", "inspect", "edit", "resolve", "build"],
+  "production_ledger": "0028",
+  "native_self_build": "EXECUTED on Windows 11: generation 1 equals generation 2 (compiler/benchmarks/windows_selfhost_20261113_evidence.json)",
+  "commands": [
+    "verify",
+    "inspect",
+    "edit",
+    "resolve",
+    "build"
+  ],
   "runtime": "native XAX machine code and Windows system DLLs"
 }

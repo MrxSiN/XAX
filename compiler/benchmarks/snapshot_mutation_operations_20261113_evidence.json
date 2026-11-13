@@ -1,0 +1,143 @@
+{
+  "schema": "xax-native-snapshot-operation-acceptance-v1",
+  "baseline": "compiler/benchmarks/snapshot_mutation_20261113_evidence.json",
+  "positive_cases": 8,
+  "operation_kinds": 9,
+  "recorded": "2026-11-13",
+  "results": {
+    "recorded": "2026-11-13",
+    "compiler_sha256": "9779c7938b092b6a1b64bd97ff4950a0e5858f43e0f95040e5ea0d33c2319cd0",
+    "source_sha256": "d12c9956e2d8149fd38cc6cdfae851beff02f7ee86fdc1f7f7d241ebb91cfb59",
+    "cases": [
+      {
+        "case": "count_semicolons",
+        "root": "4b08d23a73b72f4f17cee6035990f4507615562bd0ee7d0e9a95bb858e4b2d70",
+        "reference_bytes_equal": true,
+        "native_verify": true,
+        "unchanged_cids": 63,
+        "metadata_preserved": true,
+        "deterministic_jar_and_provenance": true,
+        "stdout_hex": "20202020202032202020202020203220202020202031390a"
+      },
+      {
+        "case": "zero_line_accumulator",
+        "root": "2007ffe4b45a704c3fa8e46ae1755627919f45c83945c2105811c1303862f785",
+        "reference_bytes_equal": true,
+        "native_verify": true,
+        "unchanged_cids": 63,
+        "metadata_preserved": true,
+        "deterministic_jar_and_provenance": true,
+        "stdout_hex": "20202020202030202020202020203220202020202031390a"
+      },
+      {
+        "case": "replace_accumulator_use",
+        "root": "7bcde82c4ebe11559c1d6717f8959a81ff3613c1a02f47afa16337282b80a0d4",
+        "reference_bytes_equal": true,
+        "native_verify": true,
+        "unchanged_cids": 63,
+        "metadata_preserved": true,
+        "deterministic_jar_and_provenance": true,
+        "stdout_hex": "20202020202032202020202020203220202020202031390a"
+      },
+      {
+        "case": "insert_rebind",
+        "root": "bb17a7daaeebfd7cb8c75bbdfe86963e25f9aeaa72d89464e5d13729c62ae941",
+        "reference_bytes_equal": true,
+        "native_verify": true,
+        "unchanged_cids": 63,
+        "metadata_preserved": true,
+        "deterministic_jar_and_provenance": true,
+        "stdout_hex": "20202020202032202020202020203220202020202031390a"
+      },
+      {
+        "case": "insert_reconnect_edge",
+        "root": "e28b4a46ab8f84d023252c0a8a46c05c8c942703deb484a4f5d8739e29080389",
+        "reference_bytes_equal": true,
+        "native_verify": true,
+        "unchanged_cids": 63,
+        "metadata_preserved": true,
+        "deterministic_jar_and_provenance": true,
+        "stdout_hex": "20202020202032202020202020203220202020202031390a"
+      },
+      {
+        "case": "wrong_type",
+        "native_edit_exit": 0,
+        "native_verify_exit": 1,
+        "source_preserved": true,
+        "verified_candidate": false
+      },
+      {
+        "case": "delete_live_node",
+        "native_edit_exit": 1,
+        "native_verify_exit": null,
+        "source_preserved": true,
+        "verified_candidate": false
+      },
+      {
+        "case": "unconnected_edge",
+        "native_edit_exit": 0,
+        "native_verify_exit": 1,
+        "source_preserved": true,
+        "verified_candidate": false
+      },
+      {
+        "case": "wrong_precondition",
+        "native_edit_exit": 1,
+        "native_verify_exit": null,
+        "source_preserved": true,
+        "verified_candidate": false
+      },
+      {
+        "case": "out_of_range",
+        "native_edit_exit": 1,
+        "native_verify_exit": null,
+        "source_preserved": true,
+        "verified_candidate": false
+      },
+      {
+        "case": "unknown_node",
+        "native_edit_exit": 1,
+        "native_verify_exit": null,
+        "source_preserved": true,
+        "verified_candidate": false
+      },
+      {
+        "case": "truncated",
+        "native_edit_exit": 1,
+        "native_verify_exit": null,
+        "source_preserved": true,
+        "verified_candidate": false
+      },
+      {
+        "case": "delete_unused",
+        "base": "tests/jvm/mutation/insert_rebind.xax",
+        "root": "59704882902044fa063112f432d93cd57bc22c6b69e557b4a94562b382f96953",
+        "reference_bytes_equal": true,
+        "native_verify": true,
+        "deterministic_jar_and_provenance": true,
+        "stdout_hex": "20202020202032202020202020203220202020202031390a"
+      },
+      {
+        "case": "widen_unused_type",
+        "base": "tests/jvm/mutation/insert_rebind.xax",
+        "root": "d0d9361884d2fffb93a375c9ea4a9a7912966d04a00215561d9ffa01c1009b4e",
+        "reference_bytes_equal": true,
+        "native_verify": true,
+        "deterministic_jar_and_provenance": true,
+        "stdout_hex": "20202020202032202020202020203220202020202031390a"
+      },
+      {
+        "case": "replace_snapshot_references",
+        "base": "tests/jvm/wordcount-v1.xax",
+        "root": "4b08d23a73b72f4f17cee6035990f4507615562bd0ee7d0e9a95bb858e4b2d70",
+        "reference_bytes_equal": true,
+        "native_verify": true,
+        "deterministic_jar_and_provenance": true,
+        "stdout_hex": "20202020202032202020202020203220202020202031390a"
+      }
+    ],
+    "scope": "Native Windows compiler plus independent reference byte comparison and direct verified Java execution; not yet MCP acceptance"
+  },
+  "label": "EXECUTED",
+  "scope": "All nine existing typed operation kinds on resolved JVM snapshots; independent reference bytes, native verification, deterministic builds and actual verified Java output"
+}
