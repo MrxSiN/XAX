@@ -1,22 +1,22 @@
 {
   "schema": "xax-native-windows-seed-v2",
-  "sha256": "e2f68c00a8dee67490929b173469e383853564254ed80b3a7a5e8188d8c50122",
-  "bytes": 31959040,
+  "sha256": "91ce2a7146bc1057bfd85e6c739173bc8c9a3a7d46e2898779bae53522e7e871",
+  "bytes": 31964672,
   "source": {
     "store": "compiler/integration/bfx/bbc.xax",
-    "store_git_blob": "9fe5b11e26af5f36b42914e282e567f8c5ae219c",
-    "store_root": "73b8a28bf6702b73c59785a333ef79bf87cdcd042f3b07b048dce6942b4dfac6",
+    "store_git_blob": "4d0d5bcbc83769da56a8646084221c3fc51c96c6",
+    "store_root": "937d05c3032e3b47d5528f915e4385a3c708e772282b7ec4cbef9ea39bac0b20",
     "batch": "compiler/bootstrap/windows/xaxc_entry.batch",
-    "result_sha256": "c35072b4118ee4f352c6c9c1a98efd60abfadd14777f374a364715ce2efbd561"
+    "result_sha256": "82543ac7efce73579dcbf8511018867a2b483de92ba64c9503906f74b1ef4fbe"
   },
   "request": {
     "store": "compiler/integration/bfx/bbc_request.xax",
-    "store_git_blob": "d28fb1a822276ea979d40a182da97b1d5545daf6",
+    "store_git_blob": "49c2d67003710850939ff00fda13b1ad904bba95",
     "batch": "compiler/bootstrap/windows/xaxc_entry_request.batch",
-    "result_sha256": "ceb7d893239506f9158f5eb8d8dc5c7e23c121d72a24b32f69436d80e832aba7"
+    "result_sha256": "1b528828bc316c511d30a75c81d2139195d1a2c880e37b0bc5b5677476274cc7"
   },
-  "production_ledger": "0026",
-  "native_self_build": "EXECUTED on Windows 11: generation 1 equals generation 2 (compiler/benchmarks/windows_selfhost_evidence.json)",
+  "production_ledger": "0027",
+  "native_self_build": "EXECUTED on Windows 11 (2026-11-13): the ledger 0026 seed built generation 1 from the request; generation 1 built generation 2 and generation 2 built generation 3; generations 2 and 3 are byte-identical and are this file",
   "commands": ["verify", "inspect", "edit", "resolve", "build"],
   "runtime": "native XAX machine code and Windows system DLLs"
 }

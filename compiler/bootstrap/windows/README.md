@@ -1,8 +1,8 @@
 # Native Windows seed — the production compiler, self-built on Windows
 
-`xaxc-windows-x86_64.exe` is the production compiler (`xax_compiler_driver_general.xax` after ledger 0026) with the
-Windows hosting layer: 31,959,040 bytes, SHA-256
-`e2f68c00a8dee67490929b173469e383853564254ed80b3a7a5e8188d8c50122`. Exact identities are in `seed.json`.
+`xaxc-windows-x86_64.exe` is the production compiler (`xax_compiler_driver_general.xax` after ledger 0027) with the
+Windows hosting layer: 31,964,672 bytes, SHA-256
+`91ce2a7146bc1057bfd85e6c739173bc8c9a3a7d46e2898779bae53522e7e871`. Exact identities are in `seed.json`.
 
 It replaces the alias-index seed of 2026-10 (`aa72234d…`, in git history), which took only `XAXEDIT1` records and
 declined its own source.
@@ -13,9 +13,9 @@ The store is BBC's driver (`../../integration/bfx/bbc.xax`: the production drive
 file adapters and lazily committed views) with one native batch applied, `xaxc_entry.batch`. The batch defines a
 four-node entry and installs it with `replace`: it registers the view-commit handler and calls the driver's
 command-line entry. BBC's own front is no longer reachable, so the edit engine drops it: the result is the
-production driver and the hosting layer only (62,530,358 bytes, SHA-256 `c35072b4…`).
+production driver and the hosting layer only (62,542,672 bytes, SHA-256 `82543ac7…`).
 `xaxc_entry_request.batch` is the same batch for `bbc_request.xax` and gives the build request (SHA-256
-`ceb7d893…`).
+`1b528828…`).
 
 ## Rebuilding it on Windows
 
@@ -29,11 +29,19 @@ xaxc-windows-x86_64.exe build snapshot.xax xaxc.exe xaxc.provenance
 `xaxc.exe` must have the SHA-256 above. That is the check for this directory: the seed builds itself byte for byte.
 On Windows 11 it takes about 5 minutes. No Python, WSL or Wine takes part.
 
-The two batches name handles of the `bbc.xax` they were written for (root `73b8a28b…`). After `bbc.xax` changes,
+The two batches name handles of the `bbc.xax` they were written for (root `937d05c3…`). After `bbc.xax` changes,
 write them again from `xaxc edit bbc.xax <selector>`: the root line, the entry's handle (twice), the handler
 (`function.address`) and the command-line entry (`call.direct`) as the entry's own view shows them.
 
-## Evidence (2026-11-12, Windows 11 build 26300)
+## Ledger 0027 (2026-11-13)
+
+Cut after ledger 0027 (edge-copy staging, `XAX_OPEN_ISSUES.md` OI-59) from the rebuilt `bbc.xax`. The ledger 0026
+seed (`e2f68c00…`, in git history) built generation 1 from the request; generation 1 built generation 2 and generation
+2 built generation 3 on Windows 11. Generations 2 and 3 are byte-identical and are this file: a change to code
+generation needs the extra generation, since generation 1 is still the old compiler's output. The entry batches name
+the new store's handles: entry `F598`, handler `F988`, command-line entry `F125`.
+
+## Evidence (2026-11-12, Windows 11 build 26300, ledger 0026 seed)
 
 `../../benchmarks/windows_selfhost_evidence.json` records the runs:
 
@@ -61,7 +69,7 @@ diagnostic, 2 a decline, 3 a usage or I/O failure. Run `verify` on a candidate b
 
 ## Limits
 
-- The Linux seed in `../seed` is the ledger 0025 build (rotated 2026-11-12); this seed is one transaction ahead of it.
+- The Linux seed in `../seed` is the ledger 0027 build (rotated 2026-11-13, with this seed).
 - All runs here had standard input and output redirected. One earlier run of a program this compiler built, started
   with the console's own handles, did not return and is not explained (`XAX_STATE.md`, 2026-11-12).
 - The store and request are not committed: they are one `edit` away from `bbc.xax` and `bbc_request.xax`.

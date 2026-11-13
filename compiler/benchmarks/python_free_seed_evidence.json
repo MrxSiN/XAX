@@ -5,11 +5,11 @@
   "host_nonsemantic": "Linux x86_64",
   "seed": {
     "path": "compiler/bootstrap/seed/xaxc-linux-x86_64",
-    "sha256": "7988e0d0cbbbd04f8a3846ea319daf5ca3ed09104dab223acac9937a2e2fade9",
-    "bytes": 31907179,
+    "sha256": "59588633665de343217f186fa48fdbce5a4a9b1aab83280ec1c574f771826e62",
+    "bytes": 31912763,
     "has_interpreter": false
   },
-  "request_store_sha256": "a9ba5498eda4e80ac90e32df3b8265dc36718998832eb4f5b375696ca92d1619",
+  "request_store_sha256": "8a52350dfcdd4044d096611b0ab2b1861890f5f38f22bbbbb8cf8787e5657a09",
   "environment": {
     "variables": [
       "PATH"
@@ -27,16 +27,16 @@
   "generations": [
     {
       "name": "xaxc1",
-      "sha256": "7988e0d0cbbbd04f8a3846ea319daf5ca3ed09104dab223acac9937a2e2fade9",
-      "snapshot_sha256": "71949f8b4c2a941e43ed918a7af58f44bd3b47125b2b3b8fabcc964ad0349d47",
-      "provenance_sha256": "d19a9a3c60dc0590e13f51f535f755b7b20f676ed0f8c4123c339bcb0111f198"
+      "sha256": "59588633665de343217f186fa48fdbce5a4a9b1aab83280ec1c574f771826e62",
+      "snapshot_sha256": "6917794dcff0d983f2c3b0de572f143d99ea859cad9a3f2de3e7a23d7a1e94a7",
+      "provenance_sha256": "a69d21e7530e5986ffcfa97c46737ace153ae55636da7dbe75f358bec2474f11"
     },
     {
       "name": "xaxc2",
-      "sha256": "7988e0d0cbbbd04f8a3846ea319daf5ca3ed09104dab223acac9937a2e2fade9",
-      "snapshot_sha256": "71949f8b4c2a941e43ed918a7af58f44bd3b47125b2b3b8fabcc964ad0349d47",
-      "provenance_sha256": "d19a9a3c60dc0590e13f51f535f755b7b20f676ed0f8c4123c339bcb0111f198"
+      "sha256": "59588633665de343217f186fa48fdbce5a4a9b1aab83280ec1c574f771826e62",
+      "snapshot_sha256": "6917794dcff0d983f2c3b0de572f143d99ea859cad9a3f2de3e7a23d7a1e94a7",
+      "provenance_sha256": "a69d21e7530e5986ffcfa97c46737ace153ae55636da7dbe75f358bec2474f11"
     }
   ],
-  "host_s_nonsemantic": 410.8
+  "host_s_nonsemantic": 448.0
 }
