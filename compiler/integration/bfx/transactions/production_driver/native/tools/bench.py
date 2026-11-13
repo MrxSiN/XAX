@@ -1,4 +1,4 @@
-"""Measurement driver outside BBC (BBC's AGENT.md, docs/06_PERFORMANCE_PLAN.md there): build and run Brainfuck programs
+"""Measurement driver outside BBC (BBC's AGENTS.md, docs/06_PERFORMANCE_PLAN.md there): build and run Brainfuck programs
 with one or more bbc.exe arms under wine and record every sample.  It only runs commands and compares outputs.
 
 Usage: bench.py <arm>[,<arm>...] <work directory> <out.json> <trials> <expected.json> <program.b> ...

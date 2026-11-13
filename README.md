@@ -124,7 +124,7 @@ setup: [`XAX_BENCHMARKS.md`](XAX_BENCHMARKS.md#host-setup-for-the-full-test-and-
 
 ### For AI agents
 
-Read [`docs/09_AI_PROTOCOL.md`](docs/09_AI_PROTOCOL.md) and [`CLAUDE.md`](CLAUDE.md) first.
+Read [`docs/09_AI_PROTOCOL.md`](docs/09_AI_PROTOCOL.md) and [`AGENTS.md`](AGENTS.md) first.
 
 ## Repository layout
 

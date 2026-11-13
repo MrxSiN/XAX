@@ -1,4 +1,4 @@
-"""Test driver outside BBC (BBC's AGENT.md): compile Brainfuck programs with bbc.exe under wine for both targets,
+"""Test driver outside BBC (BBC's AGENTS.md): compile Brainfuck programs with bbc.exe under wine for both targets,
 run them (wine / qemu-aarch64) and compare output bytes and exit status with an independent interpreter; then the
 compile error paths (exit statuses and no leftover files).
 
