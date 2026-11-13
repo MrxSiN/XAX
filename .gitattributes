@@ -50,3 +50,8 @@ compiler/integration/bfx/single_process_evidence.json -text whitespace=cr-at-eol
 compiler/integration/bfx/lazy_views_evidence.json -text whitespace=cr-at-eol
 compiler/integration/bfx/proof_cache_evidence.json -text whitespace=cr-at-eol
 compiler/integration/bfx/transactions/v2/*.edit -text
+
+# Shell scripts, native batches and the evolution ledger are read by sh and xaxc line by line: keep LF on every host.
+*.sh text eol=lf
+*.batch text eol=lf
+compiler/bootstrap/evolution/LEDGER text eol=lf

@@ -2057,7 +2057,9 @@ def _build_windows_dll(reader: StoreReader, package_view, target_object: Semanti
 
     S15e.3b (ADR-320): given the build request, the XAX general x86-64 program decides it where it runs and decides
     (``xax_pe.compile_pe_dll``); this function is the reference where it declines."""
-    if request_cid is not None and description.architecture == 1 and description.identity == b"x86_64-windows-pe-v1":
+    from xax_x86_64 import PE_HOSTED_IDENTITY
+
+    if request_cid is not None and description.architecture == 1 and description.identity == PE_HOSTED_IDENTITY:
         from xax_pe import compile_pe_dll
 
         return compile_pe_dll(reader, request_cid, target_object,
@@ -2070,7 +2072,7 @@ def _build_windows_dll(reader: StoreReader, package_view, target_object: Semanti
     from xax_x86_64 import compile_native_bound_target
 
     where = package_view.logical_identity.hex()
-    if description.architecture != 1 or description.identity != b"x86_64-windows-pe-v1":
+    if description.architecture != 1 or description.identity != PE_HOSTED_IDENTITY:
         fail("XAX.BUILD.ARTIFACT", where, "WINDOWS-DLL-TARGET", "x86_64-windows-pe-v1", description.identity)
     exports, forwards, mains = [], [], []
     for module_cid in package_view.modules:
@@ -2117,7 +2119,9 @@ def _hosted_container(reader: StoreReader, function_root: bytes, target_object: 
         from xax_linux_aarch64 import compile_linux_aarch64_executable
 
         return compile_linux_aarch64_executable(reader, function_root, target_object.cid).data
-    if description.architecture == 1 and description.identity == b"x86_64-windows-pe-v1":
+    from xax_x86_64 import PE_HOSTED_IDENTITY
+
+    if description.architecture == 1 and description.identity == PE_HOSTED_IDENTITY:
         from xax_pe import compile_pe_executable
 
         return compile_pe_executable(reader, function_root, target_object)

@@ -2314,7 +2314,7 @@ def _compile_function(
             reason, _target_data = decode_trap_payload(terminator.payload)
             assembler.emit(_immediate(target.result_register, reason))
             assembler.emit(b"\x0f\x0b")
-    if target.identity == b"x86_64-windows-pe-v1":
+    if target.identity == PE_HOSTED_IDENTITY:
         # ponytail: local store->load forwarding over the spill-every-value frame;
         # legacy load-image profiles keep their pinned bytes. Replace with a register allocator (U1.2b).
         removed = assembler.forward_stores()
