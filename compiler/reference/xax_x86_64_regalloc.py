@@ -47,6 +47,7 @@ from xax_compiler import (
     IntCompare,
     LINUX_X86_64_STARTUP_ABI,
     LINUX_X86_64_SYSCALL_ABI,
+    XAX_HOST_ABI,
     NativeTargetDescription,
     Operation,
     RESOURCE_EFFECT_OPERATIONS,
@@ -101,6 +102,7 @@ from xax_x86_64 import (
     _zero32,
     code_address_label,
     decode_syscall_name,
+    host_syscall_name,
     require_sysv_profile,
 )
 
@@ -1892,7 +1894,9 @@ def compile_register_resident(
                 declaration = decode_foreign_function(node.entity)
                 results = [ValueRef.node_result(block_index, node_index, index) for index, cid in enumerate(node.results) if not _is_proof_type(resolve(cid))]
                 owned = (WIN64_C_ABI,) if windows else (SYSV_X86_64_C_ABI, LINUX_X86_64_SYSCALL_ABI, LINUX_X86_64_STARTUP_ABI)
-                if declaration.abi not in owned:
+                # xax-host-v1 is owned on both hosts when it names a lowered operation; any other is not owned.
+                host = declaration.abi == XAX_HOST_ABI and host_syscall_name(declaration, resolve, len(machine_operands)) is not None
+                if declaration.abi not in owned and not host:
                     fail("XAX.FOREIGN.ABI", graph_object.cid.hex(), "NATIVE-FOREIGN-ABI", [abi.decode() for abi in owned], declaration.abi.decode("ascii", "replace"))
                 com_slot = com_method_slot(declaration)
                 if com_slot is not None:
@@ -1924,8 +1928,24 @@ def compile_register_resident(
                     place_arguments(node_index, machine_operands, _SYSV_ARGUMENT_REGISTERS)
                     if assembler is not None:
                         assembler.call_import(node.entity.cid)
-                elif declaration.abi == LINUX_X86_64_SYSCALL_ABI:
-                    number, template = decode_syscall_name(declaration.name, len(machine_operands))
+                elif host and windows:
+                    # The operand goes to rcx as for any Win64 call, then VirtualAlloc(0, n, MEM_COMMIT|MEM_RESERVE,
+                    # PAGE_READWRITE) or (0, n, MEM_RESERVE, PAGE_NOACCESS), or VirtualFree(p, 0, MEM_RELEASE) with its
+                    # BOOL made the portable 0-on-success result.
+                    free = declaration.name == b"free"
+                    place_arguments(node_index, machine_operands, (1,))
+                    if free:
+                        emit(_zero32(RDX) + _load_constant(8, 0x8000))
+                    else:
+                        reserve = declaration.name == b"reserve"
+                        emit(_move_register(RDX, 1, 64) + _zero32(1) + _load_constant(8, 0x2000 if reserve else 0x3000) + _load_constant(9, 1 if reserve else 4))
+                    if assembler is not None:
+                        assembler.call_import(node.entity.cid)
+                    if free:
+                        emit(bytes((0x85, 0xC0, 0x0F, 0x94, 0xC0, 0x0F, 0xB6, 0xC0)))  # test eax, eax; sete al; movzx eax, al
+                elif declaration.abi in (LINUX_X86_64_SYSCALL_ABI, XAX_HOST_ABI):
+                    name = host_syscall_name(declaration, resolve, len(machine_operands)) if host else declaration.name
+                    number, template = decode_syscall_name(name, len(machine_operands))
                     ordered = tuple(machine_operands[int(item[1:])] for item in template if isinstance(item, str))
                     registers = tuple(register for register, item in zip(_SYSCALL_ARGUMENT_REGISTERS, template) if isinstance(item, str))
                     place_arguments(node_index, ordered, registers)

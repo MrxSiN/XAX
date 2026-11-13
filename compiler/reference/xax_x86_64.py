@@ -32,6 +32,8 @@ from xax_compiler import (
     Operation,
     LINUX_X86_64_SYSCALL_ABI,
     SYSV_X86_64_C_ABI,
+    XAX_HOST_ABI,
+    _heap_view_info,
     X86_64_LINUX_ABI,
     X86_64_LINUX_ELF_DYNAMIC_FORMAT,
     decode_foreign_function,
@@ -752,6 +754,26 @@ def decode_syscall_name(name: bytes, machine_inputs: int) -> tuple[int, tuple[in
     if references != list(range(machine_inputs)) or len(arguments) > len(_SYSCALL_ARGUMENT_REGISTERS):
         fail("XAX.FOREIGN.SYSCALL", name.hex(), "SYSCALL-TEMPLATE-OPERANDS", f"each of {machine_inputs} machine operands exactly once", list(arguments))
     return number, arguments
+
+
+def host_syscall_name(declaration, resolve, machine_inputs: int) -> bytes | None:
+    """The Linux syscall template an ``xax-host-v1`` declaration with one machine operand means: private anonymous
+    mmap for ``commit`` and ``reserve`` with an allocator contract, munmap of the released view's extent for ``free``
+    with a deallocator contract and no allocator; None for any other declaration, which no target owns."""
+    if machine_inputs != 1:
+        return None
+    if declaration.name in (b"commit", b"reserve") and declaration.allocator is not None:
+        return encode_syscall_name(9, (0, "$0", 3, 34, (1 << 64) - 1, 0))
+    if declaration.name == b"free" and declaration.deallocator is not None and declaration.allocator is None:
+        view = _heap_view_info(resolve(declaration.inputs[declaration.deallocator.token_input]))
+        if view is not None:
+            return encode_syscall_name(11, ("$0", view[0]))
+    return None
+
+
+def host_win64_import(name: bytes) -> tuple[bytes, bytes]:
+    """The kernel32 import an ``xax-host-v1`` call lowers to on PE."""
+    return b"kernel32.dll", b"VirtualFree" if name == b"free" else b"VirtualAlloc"
 
 
 # sysv-x86_64-c: INTEGER-class arguments in this order (System V AMD64 psABI).
@@ -2403,6 +2425,9 @@ def _compile_native_with_target(
             position = base + local_position
             if callee not in offsets:
                 declaration = decode_foreign_function(resolve(callee))
+                if declaration.abi == XAX_HOST_ABI:
+                    imports.append((position, *host_win64_import(declaration.name)))
+                    continue
                 imports.append((position, declaration.library, declaration.name))
                 continue
             displacement = offsets[callee] - (position + 4)

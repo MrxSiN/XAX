@@ -2908,6 +2908,10 @@ LINUX_AARCH64_SYSCALL_ABI = b"linux-aarch64-syscall-v1"
 AAPCS64_LINUX_C_ABI = b"aapcs64-linux-c"
 # C code statically linked into a bare-metal board image (ADR-129).
 AAPCS64_STATIC_C_ABI = b"aapcs64-c"
+# Portable host memory: ``commit`` and ``reserve`` allocate (allocator contract), ``free`` releases one whole heap
+# view (deallocator contract; its length is that view type's extent).  Each x86-64 target lowers it: mmap/munmap on
+# Linux, VirtualAlloc/VirtualFree on PE, where ``reserve`` is committed page by page by the hosting layer's handler.
+XAX_HOST_ABI = b"xax-host-v1"
 # JVM member access (ADR-112): library is the class's internal name, name is
 # ``member(descriptor)`` or ``field:descriptor``; the descriptor must agree with
 # the declared XAX types.
@@ -2947,8 +2951,9 @@ JVM_FOREIGN_ABIS = (
 )
 FOREIGN_ABIS = (
     ANDROID_AAPCS64_C_ABI, b"win64-c", b"wasm32-import", LINUX_X86_64_SYSCALL_ABI, SYSV_X86_64_C_ABI, LINUX_X86_64_STARTUP_ABI,
-    *JVM_FOREIGN_ABIS, LINUX_AARCH64_SYSCALL_ABI, AAPCS64_LINUX_C_ABI, AAPCS64_STATIC_C_ABI,
+    *JVM_FOREIGN_ABIS, LINUX_AARCH64_SYSCALL_ABI, AAPCS64_LINUX_C_ABI, AAPCS64_STATIC_C_ABI, XAX_HOST_ABI,
 )
+
 # Conventions a foreign caller may use to enter an XAX function (ADR-102).
 # The ABI is part of the code-address *type*, so an entry address can only be
 # passed where a declaration names that exact type, and CALL_INDIRECT (which

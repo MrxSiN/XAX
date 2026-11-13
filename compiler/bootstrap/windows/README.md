@@ -1,3 +1,14 @@
+# Current Windows seed — ledger 0029, 2026-11-14
+
+Ledger 0029 adds the portable host memory ABI `xax-host-v1` (ADR-400). The seed is cut from `bbc_request.xax`
+rebuilt with `rebuild.sh` from the 0029 driver batch, with `xaxc_entry_request.batch` written for its root
+`93a7fc42…` (entry `F547`, view-commit handler `F1005`, command-line entry `F1002`; `bbc.xax`, root `9e01697c…`, has
+the same handles). On Windows 11 the ledger 0028 seed built generation 1, which built generation 2, which built
+generation 3: all three are byte-identical, 31,993,856 bytes, SHA-256
+`4308ea905aad7f8c8e42299953a2e7e1480eb75e4b0949f44cf1878378bd7c72` (the driver does not call the new ABI yet, so
+its code is unchanged and generation 1 is already the fixed point). Identities are in [seed.json](seed.json). The
+section below describes the ledger 0028 seed and is historical.
+
 # Current Windows seed — 2026-11-13
 
 Ledger 0028 adds native rebuilding of unsigned resolved snapshots after edits. The current seed is 31973888 bytes, SHA-256 `9779c7938b092b6a1b64bd97ff4950a0e5858f43e0f95040e5ea0d33c2319cd0`. Its exact source and build identities are in [seed.json](seed.json). Native Windows generation 1 equals generation 2; see [the new fixed-point record](../../benchmarks/windows_selfhost_20261113_evidence.json) and [mutation acceptance](../../benchmarks/snapshot_mutation_20261113_evidence.json). The Linux seed is also rotated to ledger 0028 and has two identical native generations.
