@@ -1,0 +1,57 @@
+R e68923165c6e228b913a8432391698561a6d29d1ed981cfc02c649f2772e82e4
+F0
+define @p_in
+object 4 0x0202000104 70bc721413a0e348b918104f74735b38a2f0fa24d6faaf4597eff803ef931a6c
+end
+define @p_out
+object 4 0x0202000304 70bc721413a0e348b918104f74735b38a2f0fa24d6faaf4597eff803ef931a6c
+end
+define @v_in
+object 4 0x048102010480804000
+end
+define @v_out
+object 4 0x048102010480800400
+end
+define @hash
+(T0,T1,T2,T3,T4,T5,T3)->(T1,T2,T3,T4,T5,T3)
+B0(P0:T0,P1:T1,P2:T2,P3:T3,P4:T4,P5:T5,P6:T3)
+N0 constant 64 -> T0
+N1 mul.wrap P0 N0 -> T0
+N2 constant 2166136261 -> T0
+br B1(N2,N1,N1,P1,P2,P3,P4,P5,P6)
+B1(P7:T0,P8:T0,P9:T0,P10:T1,P11:T2,P12:T3,P13:T4,P14:T5,P15:T3)
+N3 constant 64 -> T0
+N4 add.wrap P9 N3 -> T0
+N5 int.compare P8 N4 -> T6 [3]
+cbr N5 B2(P7,P8,P9,P10,P11,P12,P13,P14,P15) B3(P7,P10,P11,P12,P13,P14,P15)
+B2(P16:T0,P17:T0,P18:T0,P19:T1,P20:T2,P21:T3,P22:T4,P23:T5,P24:T3)
+N6 checked.load.bits.le P19 P17 P21 -> T0,T3 [4,1]
+N7 bit.xor P16 N6 -> T0
+N8 rotate.right N7 -> T0 [13]
+N9 constant 2246822507 -> T0
+N10 mul.wrap N8 N9 -> T0
+N11 constant 3266489909 -> T0
+N12 add.wrap N10 N11 -> T0
+N13 constant 4 -> T0
+N14 add.wrap P17 N13 -> T0
+br B1(N12,N14,P18,P19,P20,N6.R1,P22,P23,P24)
+B3(P25:T0,P26:T1,P27:T2,P28:T3,P29:T4,P30:T5,P31:T3)
+N15 rotate.right P25 -> T0 [16]
+N16 bit.xor P25 N15 -> T0
+N17 constant 668265263 -> T0
+N18 mul.wrap N16 N17 -> T0
+N19 rotate.right N18 -> T0 [15]
+N20 bit.xor N18 N19 -> T0
+N21 constant 4 -> T0
+N22 mul.wrap P0 N21 -> T0
+N23 checked.store.bits.le P29 N22 N20 P31 -> T3 [4,1]
+ret P26 P27 P28 P29 P30 N23
+T0 bits32
+T1 form2 d977dfc7cf2f2954e96688f3569a15362592a66161c2e9ad41833123c8f50db8
+T2 form4 fa9bd62ea14b1905accb9b5eba8bf112696d2e9948af7ca7d28521b5b6eaaee4
+T3 form3 2b2704e5644b2a600cc1c05f91f133f54c03637cddb3aaf658a635fff068bd0a
+T4 form2 4212a370a8bc08bf6d7e194762a534cbd58252e151bb2a165dadf6ec810aadff
+T5 form4 3f5c8e3779860667ed838f1c7bb30d71b46ddd4f748ba76b5572e95efbed172c
+T6 bits1
+end
+replace F0 @hash

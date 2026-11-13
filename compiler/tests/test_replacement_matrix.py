@@ -115,7 +115,7 @@ class ReplacementMatrixTests(unittest.TestCase):
     def test_not_applicable_needs_a_justification_and_only_covers_dynamic_linking(self):
         bad = copy.deepcopy(MATRIX)
         row = next(r for r in bad["platforms"] if r["id"] == "aarch64-baremetal")
-        self.assertEqual(derived_level(row), "R2")
+        self.assertEqual(derived_level(row), "R3")
         del row["not_applicable"]
         self.assertIn("aarch64-baremetal.dynamic_linking: NOT_APPLICABLE needs a justification in not_applicable", validate(bad, ROOT))
         self.assertEqual(derived_level(row), "R1")

@@ -1,0 +1,991 @@
+R 75b97f23ae4367db8aaaa4780c77cc0aeccff1346f5db7a43eac33d8d4bca26d
+F0
+define @ptr32
+object 4 0x0201000304 70bc721413a0e348b918104f74735b38a2f0fa24d6faaf4597eff803ef931a6c
+end
+define @owner
+object 4 0x040101
+end
+define @memory
+object 4 0x0301
+end
+define @msgbyte
+(T0,T0)->(T0)
+B0(P0:T0,P1:T0)
+N0 int.compare P1 P0 -> T1 [3]
+N1 int.zero.extend N0 -> T0
+N2 int.compare P1 P0 -> T1 [1]
+N3 int.zero.extend N2 -> T0
+N4 constant 97 -> T0
+N5 add.wrap P1 N4 -> T0
+N6 constant 255 -> T0
+N7 bit.and N5 N6 -> T0
+N8 mul.wrap N7 N1 -> T0
+N9 constant 128 -> T0
+N10 mul.wrap N3 N9 -> T0
+N11 add.wrap N8 N10 -> T0
+ret N11
+T0 bits32
+T1 bits1
+end
+define @puthex
+(T0,T1)->(T1)
+B0(P0:T0,P1:T1)
+N0 constant 268435456 -> T0
+N1 constant 0 -> T0
+br B1(P0,P1,N0,N1)
+B1(P2:T0,P3:T1,P4:T0,P5:T0)
+N2 constant 8 -> T0
+N3 int.compare P5 N2 -> T2 [3]
+cbr N3 B2(P2,P3,P4,P5) B3(P2,P3,P4,P5)
+B2(P6:T0,P7:T1,P8:T0,P9:T0)
+N4 udiv P6 P8 -> T0
+N5 constant 16 -> T0
+N6 urem N4 N5 -> T0
+N7 constant 10 -> T0
+N8 int.compare N6 N7 -> T2 [6]
+N9 int.zero.extend N8 -> T0
+N10 constant 48 -> T0
+N11 add.wrap N6 N10 -> T0
+N12 constant 39 -> T0
+N13 mul.wrap N9 N12 -> T0
+N14 add.wrap N11 N13 -> T0
+N15 int.truncate N14 -> T3
+N16 target.op entity=2dca6eab8ea169903b50722cf6eb1bd01a770cac749f35cfdc476f1352a421fd N15 P7 -> T1 [1,1,0,0]
+N17 constant 16 -> T0
+N18 udiv P8 N17 -> T0
+N19 constant 1 -> T0
+N20 add.wrap P9 N19 -> T0
+br B1(P6,N16,N18,N20)
+B3(P10:T0,P11:T1,P12:T0,P13:T0)
+ret P11
+T0 bits32
+T1 form3 305a00d3786865ab1a3ce5908885aaaaf6a50b8b7cbae3f6fe2d0b104d974455
+T2 bits1
+T3 bits8
+end
+define @kconst
+(T0)->(T0)
+B0(P0:T0)
+N0 constant 32 -> T0
+N1 int.compare P0 N0 -> T1 [3]
+cbr N1 B1(P0) B2(P0)
+B1(P1:T0)
+N2 constant 16 -> T0
+N3 int.compare P1 N2 -> T1 [3]
+cbr N3 B3(P1) B4(P1)
+B2(P2:T0)
+N4 constant 48 -> T0
+N5 int.compare P2 N4 -> T1 [3]
+cbr N5 B65(P2) B66(P2)
+B3(P3:T0)
+N6 constant 8 -> T0
+N7 int.compare P3 N6 -> T1 [3]
+cbr N7 B5(P3) B6(P3)
+B4(P4:T0)
+N8 constant 24 -> T0
+N9 int.compare P4 N8 -> T1 [3]
+cbr N9 B35(P4) B36(P4)
+B5(P5:T0)
+N10 constant 4 -> T0
+N11 int.compare P5 N10 -> T1 [3]
+cbr N11 B7(P5) B8(P5)
+B6(P6:T0)
+N12 constant 12 -> T0
+N13 int.compare P6 N12 -> T1 [3]
+cbr N13 B21(P6) B22(P6)
+B7(P7:T0)
+N14 constant 2 -> T0
+N15 int.compare P7 N14 -> T1 [3]
+cbr N15 B9(P7) B10(P7)
+B8(P8:T0)
+N16 constant 6 -> T0
+N17 int.compare P8 N16 -> T1 [3]
+cbr N17 B15(P8) B16(P8)
+B9(P9:T0)
+N18 constant 1 -> T0
+N19 int.compare P9 N18 -> T1 [3]
+cbr N19 B11(P9) B12(P9)
+B10(P10:T0)
+N20 constant 3 -> T0
+N21 int.compare P10 N20 -> T1 [3]
+cbr N21 B13(P10) B14(P10)
+B11(P11:T0)
+N22 constant 1116352408 -> T0
+ret N22
+B12(P12:T0)
+N23 constant 1899447441 -> T0
+ret N23
+B13(P13:T0)
+N24 constant 3049323471 -> T0
+ret N24
+B14(P14:T0)
+N25 constant 3921009573 -> T0
+ret N25
+B15(P15:T0)
+N26 constant 5 -> T0
+N27 int.compare P15 N26 -> T1 [3]
+cbr N27 B17(P15) B18(P15)
+B16(P16:T0)
+N28 constant 7 -> T0
+N29 int.compare P16 N28 -> T1 [3]
+cbr N29 B19(P16) B20(P16)
+B17(P17:T0)
+N30 constant 961987163 -> T0
+ret N30
+B18(P18:T0)
+N31 constant 1508970993 -> T0
+ret N31
+B19(P19:T0)
+N32 constant 2453635748 -> T0
+ret N32
+B20(P20:T0)
+N33 constant 2870763221 -> T0
+ret N33
+B21(P21:T0)
+N34 constant 10 -> T0
+N35 int.compare P21 N34 -> T1 [3]
+cbr N35 B23(P21) B24(P21)
+B22(P22:T0)
+N36 constant 14 -> T0
+N37 int.compare P22 N36 -> T1 [3]
+cbr N37 B29(P22) B30(P22)
+B23(P23:T0)
+N38 constant 9 -> T0
+N39 int.compare P23 N38 -> T1 [3]
+cbr N39 B25(P23) B26(P23)
+B24(P24:T0)
+N40 constant 11 -> T0
+N41 int.compare P24 N40 -> T1 [3]
+cbr N41 B27(P24) B28(P24)
+B25(P25:T0)
+N42 constant 3624381080 -> T0
+ret N42
+B26(P26:T0)
+N43 constant 310598401 -> T0
+ret N43
+B27(P27:T0)
+N44 constant 607225278 -> T0
+ret N44
+B28(P28:T0)
+N45 constant 1426881987 -> T0
+ret N45
+B29(P29:T0)
+N46 constant 13 -> T0
+N47 int.compare P29 N46 -> T1 [3]
+cbr N47 B31(P29) B32(P29)
+B30(P30:T0)
+N48 constant 15 -> T0
+N49 int.compare P30 N48 -> T1 [3]
+cbr N49 B33(P30) B34(P30)
+B31(P31:T0)
+N50 constant 1925078388 -> T0
+ret N50
+B32(P32:T0)
+N51 constant 2162078206 -> T0
+ret N51
+B33(P33:T0)
+N52 constant 2614888103 -> T0
+ret N52
+B34(P34:T0)
+N53 constant 3248222580 -> T0
+ret N53
+B35(P35:T0)
+N54 constant 20 -> T0
+N55 int.compare P35 N54 -> T1 [3]
+cbr N55 B37(P35) B38(P35)
+B36(P36:T0)
+N56 constant 28 -> T0
+N57 int.compare P36 N56 -> T1 [3]
+cbr N57 B51(P36) B52(P36)
+B37(P37:T0)
+N58 constant 18 -> T0
+N59 int.compare P37 N58 -> T1 [3]
+cbr N59 B39(P37) B40(P37)
+B38(P38:T0)
+N60 constant 22 -> T0
+N61 int.compare P38 N60 -> T1 [3]
+cbr N61 B45(P38) B46(P38)
+B39(P39:T0)
+N62 constant 17 -> T0
+N63 int.compare P39 N62 -> T1 [3]
+cbr N63 B41(P39) B42(P39)
+B40(P40:T0)
+N64 constant 19 -> T0
+N65 int.compare P40 N64 -> T1 [3]
+cbr N65 B43(P40) B44(P40)
+B41(P41:T0)
+N66 constant 3835390401 -> T0
+ret N66
+B42(P42:T0)
+N67 constant 4022224774 -> T0
+ret N67
+B43(P43:T0)
+N68 constant 264347078 -> T0
+ret N68
+B44(P44:T0)
+N69 constant 604807628 -> T0
+ret N69
+B45(P45:T0)
+N70 constant 21 -> T0
+N71 int.compare P45 N70 -> T1 [3]
+cbr N71 B47(P45) B48(P45)
+B46(P46:T0)
+N72 constant 23 -> T0
+N73 int.compare P46 N72 -> T1 [3]
+cbr N73 B49(P46) B50(P46)
+B47(P47:T0)
+N74 constant 770255983 -> T0
+ret N74
+B48(P48:T0)
+N75 constant 1249150122 -> T0
+ret N75
+B49(P49:T0)
+N76 constant 1555081692 -> T0
+ret N76
+B50(P50:T0)
+N77 constant 1996064986 -> T0
+ret N77
+B51(P51:T0)
+N78 constant 26 -> T0
+N79 int.compare P51 N78 -> T1 [3]
+cbr N79 B53(P51) B54(P51)
+B52(P52:T0)
+N80 constant 30 -> T0
+N81 int.compare P52 N80 -> T1 [3]
+cbr N81 B59(P52) B60(P52)
+B53(P53:T0)
+N82 constant 25 -> T0
+N83 int.compare P53 N82 -> T1 [3]
+cbr N83 B55(P53) B56(P53)
+B54(P54:T0)
+N84 constant 27 -> T0
+N85 int.compare P54 N84 -> T1 [3]
+cbr N85 B57(P54) B58(P54)
+B55(P55:T0)
+N86 constant 2554220882 -> T0
+ret N86
+B56(P56:T0)
+N87 constant 2821834349 -> T0
+ret N87
+B57(P57:T0)
+N88 constant 2952996808 -> T0
+ret N88
+B58(P58:T0)
+N89 constant 3210313671 -> T0
+ret N89
+B59(P59:T0)
+N90 constant 29 -> T0
+N91 int.compare P59 N90 -> T1 [3]
+cbr N91 B61(P59) B62(P59)
+B60(P60:T0)
+N92 constant 31 -> T0
+N93 int.compare P60 N92 -> T1 [3]
+cbr N93 B63(P60) B64(P60)
+B61(P61:T0)
+N94 constant 3336571891 -> T0
+ret N94
+B62(P62:T0)
+N95 constant 3584528711 -> T0
+ret N95
+B63(P63:T0)
+N96 constant 113926993 -> T0
+ret N96
+B64(P64:T0)
+N97 constant 338241895 -> T0
+ret N97
+B65(P65:T0)
+N98 constant 40 -> T0
+N99 int.compare P65 N98 -> T1 [3]
+cbr N99 B67(P65) B68(P65)
+B66(P66:T0)
+N100 constant 56 -> T0
+N101 int.compare P66 N100 -> T1 [3]
+cbr N101 B97(P66) B98(P66)
+B67(P67:T0)
+N102 constant 36 -> T0
+N103 int.compare P67 N102 -> T1 [3]
+cbr N103 B69(P67) B70(P67)
+B68(P68:T0)
+N104 constant 44 -> T0
+N105 int.compare P68 N104 -> T1 [3]
+cbr N105 B83(P68) B84(P68)
+B69(P69:T0)
+N106 constant 34 -> T0
+N107 int.compare P69 N106 -> T1 [3]
+cbr N107 B71(P69) B72(P69)
+B70(P70:T0)
+N108 constant 38 -> T0
+N109 int.compare P70 N108 -> T1 [3]
+cbr N109 B77(P70) B78(P70)
+B71(P71:T0)
+N110 constant 33 -> T0
+N111 int.compare P71 N110 -> T1 [3]
+cbr N111 B73(P71) B74(P71)
+B72(P72:T0)
+N112 constant 35 -> T0
+N113 int.compare P72 N112 -> T1 [3]
+cbr N113 B75(P72) B76(P72)
+B73(P73:T0)
+N114 constant 666307205 -> T0
+ret N114
+B74(P74:T0)
+N115 constant 773529912 -> T0
+ret N115
+B75(P75:T0)
+N116 constant 1294757372 -> T0
+ret N116
+B76(P76:T0)
+N117 constant 1396182291 -> T0
+ret N117
+B77(P77:T0)
+N118 constant 37 -> T0
+N119 int.compare P77 N118 -> T1 [3]
+cbr N119 B79(P77) B80(P77)
+B78(P78:T0)
+N120 constant 39 -> T0
+N121 int.compare P78 N120 -> T1 [3]
+cbr N121 B81(P78) B82(P78)
+B79(P79:T0)
+N122 constant 1695183700 -> T0
+ret N122
+B80(P80:T0)
+N123 constant 1986661051 -> T0
+ret N123
+B81(P81:T0)
+N124 constant 2177026350 -> T0
+ret N124
+B82(P82:T0)
+N125 constant 2456956037 -> T0
+ret N125
+B83(P83:T0)
+N126 constant 42 -> T0
+N127 int.compare P83 N126 -> T1 [3]
+cbr N127 B85(P83) B86(P83)
+B84(P84:T0)
+N128 constant 46 -> T0
+N129 int.compare P84 N128 -> T1 [3]
+cbr N129 B91(P84) B92(P84)
+B85(P85:T0)
+N130 constant 41 -> T0
+N131 int.compare P85 N130 -> T1 [3]
+cbr N131 B87(P85) B88(P85)
+B86(P86:T0)
+N132 constant 43 -> T0
+N133 int.compare P86 N132 -> T1 [3]
+cbr N133 B89(P86) B90(P86)
+B87(P87:T0)
+N134 constant 2730485921 -> T0
+ret N134
+B88(P88:T0)
+N135 constant 2820302411 -> T0
+ret N135
+B89(P89:T0)
+N136 constant 3259730800 -> T0
+ret N136
+B90(P90:T0)
+N137 constant 3345764771 -> T0
+ret N137
+B91(P91:T0)
+N138 constant 45 -> T0
+N139 int.compare P91 N138 -> T1 [3]
+cbr N139 B93(P91) B94(P91)
+B92(P92:T0)
+N140 constant 47 -> T0
+N141 int.compare P92 N140 -> T1 [3]
+cbr N141 B95(P92) B96(P92)
+B93(P93:T0)
+N142 constant 3516065817 -> T0
+ret N142
+B94(P94:T0)
+N143 constant 3600352804 -> T0
+ret N143
+B95(P95:T0)
+N144 constant 4094571909 -> T0
+ret N144
+B96(P96:T0)
+N145 constant 275423344 -> T0
+ret N145
+B97(P97:T0)
+N146 constant 52 -> T0
+N147 int.compare P97 N146 -> T1 [3]
+cbr N147 B99(P97) B100(P97)
+B98(P98:T0)
+N148 constant 60 -> T0
+N149 int.compare P98 N148 -> T1 [3]
+cbr N149 B113(P98) B114(P98)
+B99(P99:T0)
+N150 constant 50 -> T0
+N151 int.compare P99 N150 -> T1 [3]
+cbr N151 B101(P99) B102(P99)
+B100(P100:T0)
+N152 constant 54 -> T0
+N153 int.compare P100 N152 -> T1 [3]
+cbr N153 B107(P100) B108(P100)
+B101(P101:T0)
+N154 constant 49 -> T0
+N155 int.compare P101 N154 -> T1 [3]
+cbr N155 B103(P101) B104(P101)
+B102(P102:T0)
+N156 constant 51 -> T0
+N157 int.compare P102 N156 -> T1 [3]
+cbr N157 B105(P102) B106(P102)
+B103(P103:T0)
+N158 constant 430227734 -> T0
+ret N158
+B104(P104:T0)
+N159 constant 506948616 -> T0
+ret N159
+B105(P105:T0)
+N160 constant 659060556 -> T0
+ret N160
+B106(P106:T0)
+N161 constant 883997877 -> T0
+ret N161
+B107(P107:T0)
+N162 constant 53 -> T0
+N163 int.compare P107 N162 -> T1 [3]
+cbr N163 B109(P107) B110(P107)
+B108(P108:T0)
+N164 constant 55 -> T0
+N165 int.compare P108 N164 -> T1 [3]
+cbr N165 B111(P108) B112(P108)
+B109(P109:T0)
+N166 constant 958139571 -> T0
+ret N166
+B110(P110:T0)
+N167 constant 1322822218 -> T0
+ret N167
+B111(P111:T0)
+N168 constant 1537002063 -> T0
+ret N168
+B112(P112:T0)
+N169 constant 1747873779 -> T0
+ret N169
+B113(P113:T0)
+N170 constant 58 -> T0
+N171 int.compare P113 N170 -> T1 [3]
+cbr N171 B115(P113) B116(P113)
+B114(P114:T0)
+N172 constant 62 -> T0
+N173 int.compare P114 N172 -> T1 [3]
+cbr N173 B121(P114) B122(P114)
+B115(P115:T0)
+N174 constant 57 -> T0
+N175 int.compare P115 N174 -> T1 [3]
+cbr N175 B117(P115) B118(P115)
+B116(P116:T0)
+N176 constant 59 -> T0
+N177 int.compare P116 N176 -> T1 [3]
+cbr N177 B119(P116) B120(P116)
+B117(P117:T0)
+N178 constant 1955562222 -> T0
+ret N178
+B118(P118:T0)
+N179 constant 2024104815 -> T0
+ret N179
+B119(P119:T0)
+N180 constant 2227730452 -> T0
+ret N180
+B120(P120:T0)
+N181 constant 2361852424 -> T0
+ret N181
+B121(P121:T0)
+N182 constant 61 -> T0
+N183 int.compare P121 N182 -> T1 [3]
+cbr N183 B123(P121) B124(P121)
+B122(P122:T0)
+N184 constant 63 -> T0
+N185 int.compare P122 N184 -> T1 [3]
+cbr N185 B125(P122) B126(P122)
+B123(P123:T0)
+N186 constant 2428436474 -> T0
+ret N186
+B124(P124:T0)
+N187 constant 2756734187 -> T0
+ret N187
+B125(P125:T0)
+N188 constant 3204031479 -> T0
+ret N188
+B126(P126:T0)
+N189 constant 3329325298 -> T0
+ret N189
+T0 bits32
+T1 bits1
+end
+define @report
+(T0,T1,T1)->(T0,T2)
+B0(P0:T0,P1:T1,P2:T1)
+N0 constant 4294967296 -> T1
+N1 udiv P1 N0 -> T1
+N2 int.truncate N1 -> T2
+N3 int.truncate P1 -> T2
+N4 constant 4294967296 -> T1
+N5 udiv P2 N4 -> T1
+N6 int.truncate N5 -> T2
+N7 int.truncate P2 -> T2
+N8 call.direct entity=@puthex N2 P0 -> T0
+N9 call.direct entity=@puthex N3 N8 -> T0
+N10 bit.xor N2 N6 -> T2
+N11 bit.xor N3 N7 -> T2
+N12 bit.or N10 N11 -> T2
+ret N9 N12
+T0 form3 305a00d3786865ab1a3ce5908885aaaaf6a50b8b7cbae3f6fe2d0b104d974455
+T1 bits64
+T2 bits32
+end
+define @sha256
+(T0,T1,T2,T2,T2,T2)->(T0,T1)
+B0(P0:T0,P1:T1,P2:T2,P3:T2,P4:T2,P5:T2)
+N0 constant 72 -> T1
+N1 add.wrap P1 N0 -> T1
+N2 constant 64 -> T1
+N3 udiv N1 N2 -> T1
+N4 constant 1779033703 -> T1
+N5 constant 3144134277 -> T1
+N6 constant 1013904242 -> T1
+N7 constant 2773480762 -> T1
+N8 constant 1359893119 -> T1
+N9 constant 2600822924 -> T1
+N10 constant 528734635 -> T1
+N11 constant 1541459225 -> T1
+N12 constant 0 -> T1
+br B1(P0,P1,P2,P3,P4,P5,N3,N4,N5,N6,N7,N8,N9,N10,N11,N12)
+B1(P6:T0,P7:T1,P8:T2,P9:T2,P10:T2,P11:T2,P12:T1,P13:T1,P14:T1,P15:T1,P16:T1,P17:T1,P18:T1,P19:T1,P20:T1,P21:T1)
+N13 int.compare P21 P12 -> T3 [3]
+cbr N13 B2(P6,P7,P8,P9,P10,P11,P12,P13,P14,P15,P16,P17,P18,P19,P20,P21) B3(P6,P7,P8,P9,P10,P11,P12,P13,P14,P15,P16,P17,P18,P19,P20,P21)
+B2(P22:T0,P23:T1,P24:T2,P25:T2,P26:T2,P27:T2,P28:T1,P29:T1,P30:T1,P31:T1,P32:T1,P33:T1,P34:T1,P35:T1,P36:T1,P37:T1)
+N14 constant 1 -> T1
+N15 add.wrap P37 N14 -> T1
+N16 int.compare N15 P28 -> T3 [1]
+N17 int.zero.extend N16 -> T1
+N18 stack.alloc -> T4,T5,T6 [64,4]
+N19 constant 0 -> T1
+N20 store.bits.le N18 N19 N18.R2 -> T6 [4,4]
+N21 address.offset N18 -> T4 [4]
+N22 store.bits.le N21 N19 N20 -> T6 [4,4]
+N23 address.offset N18 -> T4 [8]
+N24 store.bits.le N23 N19 N22 -> T6 [4,4]
+N25 address.offset N18 -> T4 [12]
+N26 store.bits.le N25 N19 N24 -> T6 [4,4]
+N27 address.offset N18 -> T4 [16]
+N28 store.bits.le N27 N19 N26 -> T6 [4,4]
+N29 address.offset N18 -> T4 [20]
+N30 store.bits.le N29 N19 N28 -> T6 [4,4]
+N31 address.offset N18 -> T4 [24]
+N32 store.bits.le N31 N19 N30 -> T6 [4,4]
+N33 address.offset N18 -> T4 [28]
+N34 store.bits.le N33 N19 N32 -> T6 [4,4]
+N35 address.offset N18 -> T4 [32]
+N36 store.bits.le N35 N19 N34 -> T6 [4,4]
+N37 address.offset N18 -> T4 [36]
+N38 store.bits.le N37 N19 N36 -> T6 [4,4]
+N39 address.offset N18 -> T4 [40]
+N40 store.bits.le N39 N19 N38 -> T6 [4,4]
+N41 address.offset N18 -> T4 [44]
+N42 store.bits.le N41 N19 N40 -> T6 [4,4]
+N43 address.offset N18 -> T4 [48]
+N44 store.bits.le N43 N19 N42 -> T6 [4,4]
+N45 address.offset N18 -> T4 [52]
+N46 store.bits.le N45 N19 N44 -> T6 [4,4]
+N47 address.offset N18 -> T4 [56]
+N48 store.bits.le N47 N19 N46 -> T6 [4,4]
+N49 address.offset N18 -> T4 [60]
+N50 store.bits.le N49 N19 N48 -> T6 [4,4]
+N51 constant 0 -> T1
+br B4(P22,P23,P24,P25,P26,P27,P28,P29,P30,P31,P32,P33,P34,P35,P36,P37,N17,N18,N18.R1,N50,N51)
+B3(P38:T0,P39:T1,P40:T2,P41:T2,P42:T2,P43:T2,P44:T1,P45:T1,P46:T1,P47:T1,P48:T1,P49:T1,P50:T1,P51:T1,P52:T1,P53:T1)
+N52 constant 115 -> T7
+N53 target.op entity=2dca6eab8ea169903b50722cf6eb1bd01a770cac749f35cfdc476f1352a421fd N52 P38 -> T0 [1,1,0,0]
+N54 constant 104 -> T7
+N55 target.op entity=2dca6eab8ea169903b50722cf6eb1bd01a770cac749f35cfdc476f1352a421fd N54 N53 -> T0 [1,1,0,0]
+N56 constant 97 -> T7
+N57 target.op entity=2dca6eab8ea169903b50722cf6eb1bd01a770cac749f35cfdc476f1352a421fd N56 N55 -> T0 [1,1,0,0]
+N58 constant 50 -> T7
+N59 target.op entity=2dca6eab8ea169903b50722cf6eb1bd01a770cac749f35cfdc476f1352a421fd N58 N57 -> T0 [1,1,0,0]
+N60 constant 53 -> T7
+N61 target.op entity=2dca6eab8ea169903b50722cf6eb1bd01a770cac749f35cfdc476f1352a421fd N60 N59 -> T0 [1,1,0,0]
+N62 constant 54 -> T7
+N63 target.op entity=2dca6eab8ea169903b50722cf6eb1bd01a770cac749f35cfdc476f1352a421fd N62 N61 -> T0 [1,1,0,0]
+N64 constant 32 -> T7
+N65 target.op entity=2dca6eab8ea169903b50722cf6eb1bd01a770cac749f35cfdc476f1352a421fd N64 N63 -> T0 [1,1,0,0]
+N66 constant 110 -> T7
+N67 target.op entity=2dca6eab8ea169903b50722cf6eb1bd01a770cac749f35cfdc476f1352a421fd N66 N65 -> T0 [1,1,0,0]
+N68 constant 61 -> T7
+N69 target.op entity=2dca6eab8ea169903b50722cf6eb1bd01a770cac749f35cfdc476f1352a421fd N68 N67 -> T0 [1,1,0,0]
+N70 call.direct entity=@puthex P39 N69 -> T0
+N71 constant 32 -> T7
+N72 target.op entity=2dca6eab8ea169903b50722cf6eb1bd01a770cac749f35cfdc476f1352a421fd N71 N70 -> T0 [1,1,0,0]
+N73 constant 0 -> T1
+N74 int.zero.extend P45 -> T2
+N75 constant 4294967296 -> T2
+N76 mul.wrap N74 N75 -> T2
+N77 int.zero.extend P46 -> T2
+N78 add.wrap N76 N77 -> T2
+N79 call.direct entity=@report N72 N78 P40 -> T0,T1
+N80 bit.or N73 N79.R1 -> T1
+N81 int.zero.extend P47 -> T2
+N82 constant 4294967296 -> T2
+N83 mul.wrap N81 N82 -> T2
+N84 int.zero.extend P48 -> T2
+N85 add.wrap N83 N84 -> T2
+N86 call.direct entity=@report N79 N85 P41 -> T0,T1
+N87 bit.or N80 N86.R1 -> T1
+N88 int.zero.extend P49 -> T2
+N89 constant 4294967296 -> T2
+N90 mul.wrap N88 N89 -> T2
+N91 int.zero.extend P50 -> T2
+N92 add.wrap N90 N91 -> T2
+N93 call.direct entity=@report N86 N92 P42 -> T0,T1
+N94 bit.or N87 N93.R1 -> T1
+N95 int.zero.extend P51 -> T2
+N96 constant 4294967296 -> T2
+N97 mul.wrap N95 N96 -> T2
+N98 int.zero.extend P52 -> T2
+N99 add.wrap N97 N98 -> T2
+N100 call.direct entity=@report N93 N99 P43 -> T0,T1
+N101 bit.or N94 N100.R1 -> T1
+N102 constant 0 -> T1
+N103 int.compare N101 N102 -> T3 [2]
+N104 int.zero.extend N103 -> T1
+N105 constant 0 -> T1
+N106 int.compare N104 N105 -> T3 [1]
+cbr N106 B10(N100,P39,P40,P41,P42,P43,P44,P45,P46,P47,P48,P49,P50,P51,P52,P53,N101,N104) B11(N100,P39,P40,P41,P42,P43,P44,P45,P46,P47,P48,P49,P50,P51,P52,P53,N101,N104)
+B4(P54:T0,P55:T1,P56:T2,P57:T2,P58:T2,P59:T2,P60:T1,P61:T1,P62:T1,P63:T1,P64:T1,P65:T1,P66:T1,P67:T1,P68:T1,P69:T1,P70:T1,P71:T4,P72:T5,P73:T6,P74:T1)
+N107 constant 16 -> T1
+N108 int.compare P74 N107 -> T3 [3]
+cbr N108 B5(P54,P55,P56,P57,P58,P59,P60,P61,P62,P63,P64,P65,P66,P67,P68,P69,P70,P71,P72,P73,P74) B6(P54,P55,P56,P57,P58,P59,P60,P61,P62,P63,P64,P65,P66,P67,P68,P69,P70,P71,P72,P73,P74)
+B5(P75:T0,P76:T1,P77:T2,P78:T2,P79:T2,P80:T2,P81:T1,P82:T1,P83:T1,P84:T1,P85:T1,P86:T1,P87:T1,P88:T1,P89:T1,P90:T1,P91:T1,P92:T4,P93:T5,P94:T6,P95:T1)
+N109 constant 4 -> T1
+N110 mul.wrap P95 N109 -> T1
+N111 constant 64 -> T1
+N112 mul.wrap P90 N111 -> T1
+N113 add.wrap N112 N110 -> T1
+N114 constant 0 -> T1
+N115 add.wrap N113 N114 -> T1
+N116 call.direct entity=@msgbyte P76 N115 -> T1
+N117 constant 16777216 -> T1
+N118 mul.wrap N116 N117 -> T1
+N119 constant 1 -> T1
+N120 add.wrap N113 N119 -> T1
+N121 call.direct entity=@msgbyte P76 N120 -> T1
+N122 constant 65536 -> T1
+N123 mul.wrap N121 N122 -> T1
+N124 add.wrap N118 N123 -> T1
+N125 constant 2 -> T1
+N126 add.wrap N113 N125 -> T1
+N127 call.direct entity=@msgbyte P76 N126 -> T1
+N128 constant 256 -> T1
+N129 mul.wrap N127 N128 -> T1
+N130 add.wrap N124 N129 -> T1
+N131 constant 3 -> T1
+N132 add.wrap N113 N131 -> T1
+N133 call.direct entity=@msgbyte P76 N132 -> T1
+N134 constant 1 -> T1
+N135 mul.wrap N133 N134 -> T1
+N136 add.wrap N130 N135 -> T1
+N137 constant 15 -> T1
+N138 int.compare P95 N137 -> T3 [1]
+N139 int.zero.extend N138 -> T1
+N140 mul.wrap P91 N139 -> T1
+N141 constant 1 -> T1
+N142 sub.wrap N141 N140 -> T1
+N143 mul.wrap N136 N142 -> T1
+N144 constant 8 -> T1
+N145 mul.wrap P76 N144 -> T1
+N146 mul.wrap N145 N140 -> T1
+N147 add.wrap N143 N146 -> T1
+N148 checked.store.bits.le P92 N110 N147 P94 -> T6 [4,1]
+N149 constant 1 -> T1
+N150 add.wrap P95 N149 -> T1
+br B4(P75,P76,P77,P78,P79,P80,P81,P82,P83,P84,P85,P86,P87,P88,P89,P90,P91,P92,P93,N148,N150)
+B6(P96:T0,P97:T1,P98:T2,P99:T2,P100:T2,P101:T2,P102:T1,P103:T1,P104:T1,P105:T1,P106:T1,P107:T1,P108:T1,P109:T1,P110:T1,P111:T1,P112:T1,P113:T4,P114:T5,P115:T6,P116:T1)
+N151 constant 0 -> T1
+br B7(P96,P97,P98,P99,P100,P101,P102,P103,P104,P105,P106,P107,P108,P109,P110,P111,P113,P114,P115,N151,P103,P104,P105,P106,P107,P108,P109,P110)
+B7(P117:T0,P118:T1,P119:T2,P120:T2,P121:T2,P122:T2,P123:T1,P124:T1,P125:T1,P126:T1,P127:T1,P128:T1,P129:T1,P130:T1,P131:T1,P132:T1,P133:T4,P134:T5,P135:T6,P136:T1,P137:T1,P138:T1,P139:T1,P140:T1,P141:T1,P142:T1,P143:T1,P144:T1)
+N152 constant 64 -> T1
+N153 int.compare P136 N152 -> T3 [3]
+cbr N153 B8(P117,P118,P119,P120,P121,P122,P123,P124,P125,P126,P127,P128,P129,P130,P131,P132,P133,P134,P135,P136,P137,P138,P139,P140,P141,P142,P143,P144) B9(P117,P118,P119,P120,P121,P122,P123,P124,P125,P126,P127,P128,P129,P130,P131,P132,P133,P134,P135,P136,P137,P138,P139,P140,P141,P142,P143,P144)
+B8(P145:T0,P146:T1,P147:T2,P148:T2,P149:T2,P150:T2,P151:T1,P152:T1,P153:T1,P154:T1,P155:T1,P156:T1,P157:T1,P158:T1,P159:T1,P160:T1,P161:T4,P162:T5,P163:T6,P164:T1,P165:T1,P166:T1,P167:T1,P168:T1,P169:T1,P170:T1,P171:T1,P172:T1)
+N154 constant 4 -> T1
+N155 mul.wrap P164 N154 -> T1
+N156 constant 0 -> T1
+N157 add.wrap N155 N156 -> T1
+N158 constant 63 -> T1
+N159 bit.and N157 N158 -> T1
+N160 checked.load.bits.le P161 N159 P163 -> T1,T6 [4,1]
+N161 constant 56 -> T1
+N162 add.wrap N155 N161 -> T1
+N163 constant 63 -> T1
+N164 bit.and N162 N163 -> T1
+N165 checked.load.bits.le P161 N164 N160.R1 -> T1,T6 [4,1]
+N166 constant 36 -> T1
+N167 add.wrap N155 N166 -> T1
+N168 constant 63 -> T1
+N169 bit.and N167 N168 -> T1
+N170 checked.load.bits.le P161 N169 N165.R1 -> T1,T6 [4,1]
+N171 constant 4 -> T1
+N172 add.wrap N155 N171 -> T1
+N173 constant 63 -> T1
+N174 bit.and N172 N173 -> T1
+N175 checked.load.bits.le P161 N174 N170.R1 -> T1,T6 [4,1]
+N176 rotate.right N165 -> T1 [17]
+N177 rotate.right N165 -> T1 [19]
+N178 constant 1024 -> T1
+N179 udiv N165 N178 -> T1
+N180 bit.xor N176 N177 -> T1
+N181 bit.xor N180 N179 -> T1
+N182 rotate.right N175 -> T1 [7]
+N183 rotate.right N175 -> T1 [18]
+N184 constant 8 -> T1
+N185 udiv N175 N184 -> T1
+N186 bit.xor N182 N183 -> T1
+N187 bit.xor N186 N185 -> T1
+N188 add.wrap N181 N170 -> T1
+N189 add.wrap N187 N160 -> T1
+N190 add.wrap N188 N189 -> T1
+N191 constant 16 -> T1
+N192 int.compare P164 N191 -> T3 [6]
+N193 int.zero.extend N192 -> T1
+N194 constant 1 -> T1
+N195 sub.wrap N194 N193 -> T1
+N196 mul.wrap N160 N195 -> T1
+N197 mul.wrap N190 N193 -> T1
+N198 add.wrap N196 N197 -> T1
+N199 checked.store.bits.le P161 N159 N198 N175.R1 -> T6 [4,1]
+N200 call.direct entity=@kconst P164 -> T1
+N201 rotate.right P169 -> T1 [6]
+N202 rotate.right P169 -> T1 [11]
+N203 rotate.right P169 -> T1 [25]
+N204 bit.xor N201 N202 -> T1
+N205 bit.xor N204 N203 -> T1
+N206 bit.xor P170 P171 -> T1
+N207 bit.and P169 N206 -> T1
+N208 bit.xor P171 N207 -> T1
+N209 add.wrap P172 N205 -> T1
+N210 add.wrap N208 N200 -> T1
+N211 add.wrap N209 N210 -> T1
+N212 add.wrap N211 N198 -> T1
+N213 rotate.right P165 -> T1 [2]
+N214 rotate.right P165 -> T1 [13]
+N215 rotate.right P165 -> T1 [22]
+N216 bit.xor N213 N214 -> T1
+N217 bit.xor N216 N215 -> T1
+N218 bit.and P165 P166 -> T1
+N219 bit.or P165 P166 -> T1
+N220 bit.and P167 N219 -> T1
+N221 bit.or N218 N220 -> T1
+N222 add.wrap N217 N221 -> T1
+N223 add.wrap P168 N212 -> T1
+N224 add.wrap N212 N222 -> T1
+N225 constant 1 -> T1
+N226 add.wrap P164 N225 -> T1
+br B7(P145,P146,P147,P148,P149,P150,P151,P152,P153,P154,P155,P156,P157,P158,P159,P160,P161,P162,N199,N226,N224,P165,P166,P167,N223,P169,P170,P171)
+B9(P173:T0,P174:T1,P175:T2,P176:T2,P177:T2,P178:T2,P179:T1,P180:T1,P181:T1,P182:T1,P183:T1,P184:T1,P185:T1,P186:T1,P187:T1,P188:T1,P189:T4,P190:T5,P191:T6,P192:T1,P193:T1,P194:T1,P195:T1,P196:T1,P197:T1,P198:T1,P199:T1,P200:T1)
+N227 stack.end P190 P191
+N228 add.wrap P180 P193 -> T1
+N229 add.wrap P181 P194 -> T1
+N230 add.wrap P182 P195 -> T1
+N231 add.wrap P183 P196 -> T1
+N232 add.wrap P184 P197 -> T1
+N233 add.wrap P185 P198 -> T1
+N234 add.wrap P186 P199 -> T1
+N235 add.wrap P187 P200 -> T1
+N236 constant 1 -> T1
+N237 add.wrap P188 N236 -> T1
+br B1(P173,P174,P175,P176,P177,P178,P179,N228,N229,N230,N231,N232,N233,N234,N235,N237)
+B10(P201:T0,P202:T1,P203:T2,P204:T2,P205:T2,P206:T2,P207:T1,P208:T1,P209:T1,P210:T1,P211:T1,P212:T1,P213:T1,P214:T1,P215:T1,P216:T1,P217:T1,P218:T1)
+N238 constant 32 -> T7
+N239 target.op entity=2dca6eab8ea169903b50722cf6eb1bd01a770cac749f35cfdc476f1352a421fd N238 P201 -> T0 [1,1,0,0]
+N240 constant 111 -> T7
+N241 target.op entity=2dca6eab8ea169903b50722cf6eb1bd01a770cac749f35cfdc476f1352a421fd N240 N239 -> T0 [1,1,0,0]
+N242 constant 107 -> T7
+N243 target.op entity=2dca6eab8ea169903b50722cf6eb1bd01a770cac749f35cfdc476f1352a421fd N242 N241 -> T0 [1,1,0,0]
+N244 constant 13 -> T7
+N245 target.op entity=2dca6eab8ea169903b50722cf6eb1bd01a770cac749f35cfdc476f1352a421fd N244 N243 -> T0 [1,1,0,0]
+N246 constant 10 -> T7
+N247 target.op entity=2dca6eab8ea169903b50722cf6eb1bd01a770cac749f35cfdc476f1352a421fd N246 N245 -> T0 [1,1,0,0]
+br B12(N247,P202,P203,P204,P205,P206,P207,P208,P209,P210,P211,P212,P213,P214,P215,P216,P217,P218)
+B11(P219:T0,P220:T1,P221:T2,P222:T2,P223:T2,P224:T2,P225:T1,P226:T1,P227:T1,P228:T1,P229:T1,P230:T1,P231:T1,P232:T1,P233:T1,P234:T1,P235:T1,P236:T1)
+N248 constant 32 -> T7
+N249 target.op entity=2dca6eab8ea169903b50722cf6eb1bd01a770cac749f35cfdc476f1352a421fd N248 P219 -> T0 [1,1,0,0]
+N250 constant 70 -> T7
+N251 target.op entity=2dca6eab8ea169903b50722cf6eb1bd01a770cac749f35cfdc476f1352a421fd N250 N249 -> T0 [1,1,0,0]
+N252 constant 65 -> T7
+N253 target.op entity=2dca6eab8ea169903b50722cf6eb1bd01a770cac749f35cfdc476f1352a421fd N252 N251 -> T0 [1,1,0,0]
+N254 constant 73 -> T7
+N255 target.op entity=2dca6eab8ea169903b50722cf6eb1bd01a770cac749f35cfdc476f1352a421fd N254 N253 -> T0 [1,1,0,0]
+N256 constant 76 -> T7
+N257 target.op entity=2dca6eab8ea169903b50722cf6eb1bd01a770cac749f35cfdc476f1352a421fd N256 N255 -> T0 [1,1,0,0]
+N258 constant 13 -> T7
+N259 target.op entity=2dca6eab8ea169903b50722cf6eb1bd01a770cac749f35cfdc476f1352a421fd N258 N257 -> T0 [1,1,0,0]
+N260 constant 10 -> T7
+N261 target.op entity=2dca6eab8ea169903b50722cf6eb1bd01a770cac749f35cfdc476f1352a421fd N260 N259 -> T0 [1,1,0,0]
+br B12(N261,P220,P221,P222,P223,P224,P225,P226,P227,P228,P229,P230,P231,P232,P233,P234,P235,P236)
+B12(P237:T0,P238:T1,P239:T2,P240:T2,P241:T2,P242:T2,P243:T1,P244:T1,P245:T1,P246:T1,P247:T1,P248:T1,P249:T1,P250:T1,P251:T1,P252:T1,P253:T1,P254:T1)
+ret P237 P254
+T0 form3 305a00d3786865ab1a3ce5908885aaaaf6a50b8b7cbae3f6fe2d0b104d974455
+T1 bits32
+T2 bits64
+T3 bits1
+T4 form2 766ede40296145145d52e9de306d50524ab37c899a21eaa8b65c8362ecb3d9e4
+T5 form4 34a90e6582f27450d8fa1564f4f4d8342f8ccf58a047d8e9b6bec6e5f7ffe4b6
+T6 form3 2b2704e5644b2a600cc1c05f91f133f54c03637cddb3aaf658a635fff068bd0a
+T7 bits8
+end
+define @reset
+(T0)->(T0)
+B0(P0:T0)
+N0 constant 120 -> T1
+N1 target.op entity=2dca6eab8ea169903b50722cf6eb1bd01a770cac749f35cfdc476f1352a421fd N0 P0 -> T0 [1,1,0,0]
+N2 constant 115 -> T1
+N3 target.op entity=2dca6eab8ea169903b50722cf6eb1bd01a770cac749f35cfdc476f1352a421fd N2 N1 -> T0 [1,1,0,0]
+N4 constant 104 -> T1
+N5 target.op entity=2dca6eab8ea169903b50722cf6eb1bd01a770cac749f35cfdc476f1352a421fd N4 N3 -> T0 [1,1,0,0]
+N6 constant 97 -> T1
+N7 target.op entity=2dca6eab8ea169903b50722cf6eb1bd01a770cac749f35cfdc476f1352a421fd N6 N5 -> T0 [1,1,0,0]
+N8 constant 50 -> T1
+N9 target.op entity=2dca6eab8ea169903b50722cf6eb1bd01a770cac749f35cfdc476f1352a421fd N8 N7 -> T0 [1,1,0,0]
+N10 constant 53 -> T1
+N11 target.op entity=2dca6eab8ea169903b50722cf6eb1bd01a770cac749f35cfdc476f1352a421fd N10 N9 -> T0 [1,1,0,0]
+N12 constant 54 -> T1
+N13 target.op entity=2dca6eab8ea169903b50722cf6eb1bd01a770cac749f35cfdc476f1352a421fd N12 N11 -> T0 [1,1,0,0]
+N14 constant 32 -> T1
+N15 target.op entity=2dca6eab8ea169903b50722cf6eb1bd01a770cac749f35cfdc476f1352a421fd N14 N13 -> T0 [1,1,0,0]
+N16 constant 111 -> T1
+N17 target.op entity=2dca6eab8ea169903b50722cf6eb1bd01a770cac749f35cfdc476f1352a421fd N16 N15 -> T0 [1,1,0,0]
+N18 constant 110 -> T1
+N19 target.op entity=2dca6eab8ea169903b50722cf6eb1bd01a770cac749f35cfdc476f1352a421fd N18 N17 -> T0 [1,1,0,0]
+N20 constant 32 -> T1
+N21 target.op entity=2dca6eab8ea169903b50722cf6eb1bd01a770cac749f35cfdc476f1352a421fd N20 N19 -> T0 [1,1,0,0]
+N22 constant 97 -> T1
+N23 target.op entity=2dca6eab8ea169903b50722cf6eb1bd01a770cac749f35cfdc476f1352a421fd N22 N21 -> T0 [1,1,0,0]
+N24 constant 97 -> T1
+N25 target.op entity=2dca6eab8ea169903b50722cf6eb1bd01a770cac749f35cfdc476f1352a421fd N24 N23 -> T0 [1,1,0,0]
+N26 constant 114 -> T1
+N27 target.op entity=2dca6eab8ea169903b50722cf6eb1bd01a770cac749f35cfdc476f1352a421fd N26 N25 -> T0 [1,1,0,0]
+N28 constant 99 -> T1
+N29 target.op entity=2dca6eab8ea169903b50722cf6eb1bd01a770cac749f35cfdc476f1352a421fd N28 N27 -> T0 [1,1,0,0]
+N30 constant 104 -> T1
+N31 target.op entity=2dca6eab8ea169903b50722cf6eb1bd01a770cac749f35cfdc476f1352a421fd N30 N29 -> T0 [1,1,0,0]
+N32 constant 54 -> T1
+N33 target.op entity=2dca6eab8ea169903b50722cf6eb1bd01a770cac749f35cfdc476f1352a421fd N32 N31 -> T0 [1,1,0,0]
+N34 constant 52 -> T1
+N35 target.op entity=2dca6eab8ea169903b50722cf6eb1bd01a770cac749f35cfdc476f1352a421fd N34 N33 -> T0 [1,1,0,0]
+N36 constant 32 -> T1
+N37 target.op entity=2dca6eab8ea169903b50722cf6eb1bd01a770cac749f35cfdc476f1352a421fd N36 N35 -> T0 [1,1,0,0]
+N38 constant 98 -> T1
+N39 target.op entity=2dca6eab8ea169903b50722cf6eb1bd01a770cac749f35cfdc476f1352a421fd N38 N37 -> T0 [1,1,0,0]
+N40 constant 97 -> T1
+N41 target.op entity=2dca6eab8ea169903b50722cf6eb1bd01a770cac749f35cfdc476f1352a421fd N40 N39 -> T0 [1,1,0,0]
+N42 constant 114 -> T1
+N43 target.op entity=2dca6eab8ea169903b50722cf6eb1bd01a770cac749f35cfdc476f1352a421fd N42 N41 -> T0 [1,1,0,0]
+N44 constant 101 -> T1
+N45 target.op entity=2dca6eab8ea169903b50722cf6eb1bd01a770cac749f35cfdc476f1352a421fd N44 N43 -> T0 [1,1,0,0]
+N46 constant 32 -> T1
+N47 target.op entity=2dca6eab8ea169903b50722cf6eb1bd01a770cac749f35cfdc476f1352a421fd N46 N45 -> T0 [1,1,0,0]
+N48 constant 109 -> T1
+N49 target.op entity=2dca6eab8ea169903b50722cf6eb1bd01a770cac749f35cfdc476f1352a421fd N48 N47 -> T0 [1,1,0,0]
+N50 constant 101 -> T1
+N51 target.op entity=2dca6eab8ea169903b50722cf6eb1bd01a770cac749f35cfdc476f1352a421fd N50 N49 -> T0 [1,1,0,0]
+N52 constant 116 -> T1
+N53 target.op entity=2dca6eab8ea169903b50722cf6eb1bd01a770cac749f35cfdc476f1352a421fd N52 N51 -> T0 [1,1,0,0]
+N54 constant 97 -> T1
+N55 target.op entity=2dca6eab8ea169903b50722cf6eb1bd01a770cac749f35cfdc476f1352a421fd N54 N53 -> T0 [1,1,0,0]
+N56 constant 108 -> T1
+N57 target.op entity=2dca6eab8ea169903b50722cf6eb1bd01a770cac749f35cfdc476f1352a421fd N56 N55 -> T0 [1,1,0,0]
+N58 constant 13 -> T1
+N59 target.op entity=2dca6eab8ea169903b50722cf6eb1bd01a770cac749f35cfdc476f1352a421fd N58 N57 -> T0 [1,1,0,0]
+N60 constant 10 -> T1
+N61 target.op entity=2dca6eab8ea169903b50722cf6eb1bd01a770cac749f35cfdc476f1352a421fd N60 N59 -> T0 [1,1,0,0]
+N62 constant 0 -> T2
+N63 constant 0 -> T2
+N64 constant 16406829232824261652 -> T3
+N65 constant 11167788843400149284 -> T3
+N66 constant 2859295262623109964 -> T3
+N67 constant 11859553537011923029 -> T3
+N68 call.direct entity=@sha256 N61 N63 N64 N65 N66 N67 -> T0,T2
+N69 add.wrap N62 N68.R1 -> T2
+N70 constant 3 -> T2
+N71 constant 13436514500253700074 -> T3
+N72 constant 4702110809750118947 -> T3
+N73 constant 12683088330831133340 -> T3
+N74 constant 12975151322591401389 -> T3
+N75 call.direct entity=@sha256 N68 N70 N71 N72 N73 N74 -> T0,T2
+N76 add.wrap N69 N75.R1 -> T2
+N77 constant 55 -> T2
+N78 constant 7247281944828801636 -> T3
+N79 constant 11990739010750818495 -> T3
+N80 constant 8662972058867705084 -> T3
+N81 constant 10937010401111136573 -> T3
+N82 call.direct entity=@sha256 N75 N77 N78 N79 N80 N81 -> T0,T2
+N83 add.wrap N76 N82.R1 -> T2
+N84 constant 56 -> T2
+N85 constant 1598734436392378736 -> T3
+N86 constant 14976371481788582945 -> T3
+N87 constant 6623324344310682023 -> T3
+N88 constant 13226544225228295086 -> T3
+N89 call.direct entity=@sha256 N82 N84 N85 N86 N87 N88 -> T0,T2
+N90 add.wrap N83 N89.R1 -> T2
+N91 constant 64 -> T2
+N92 constant 13867141098424980998 -> T3
+N93 constant 1654575929182245986 -> T3
+N94 constant 13339412065459751776 -> T3
+N95 constant 15904563780417490486 -> T3
+N96 call.direct entity=@sha256 N89 N91 N92 N93 N94 N95 -> T0,T2
+N97 add.wrap N90 N96.R1 -> T2
+N98 constant 119 -> T2
+N99 constant 5887103033292538803 -> T3
+N100 constant 13331059303421416835 -> T3
+N101 constant 2679802182140890957 -> T3
+N102 constant 10117471833851109746 -> T3
+N103 call.direct entity=@sha256 N96 N98 N99 N100 N101 N102 -> T0,T2
+N104 add.wrap N97 N103.R1 -> T2
+N105 constant 1000 -> T2
+N106 constant 2682505199385205381 -> T3
+N107 constant 7846316788008682912 -> T3
+N108 constant 6239295785669507450 -> T3
+N109 constant 14481711701554545833 -> T3
+N110 call.direct entity=@sha256 N103 N105 N106 N107 N108 N109 -> T0,T2
+N111 add.wrap N104 N110.R1 -> T2
+N112 constant 0 -> T2
+N113 int.compare N111 N112 -> T4 [1]
+cbr N113 B1(N110,N111) B2(N110,N111)
+B1(P1:T0,P2:T2)
+N114 constant 80 -> T1
+N115 target.op entity=2dca6eab8ea169903b50722cf6eb1bd01a770cac749f35cfdc476f1352a421fd N114 P1 -> T0 [1,1,0,0]
+N116 constant 65 -> T1
+N117 target.op entity=2dca6eab8ea169903b50722cf6eb1bd01a770cac749f35cfdc476f1352a421fd N116 N115 -> T0 [1,1,0,0]
+N118 constant 83 -> T1
+N119 target.op entity=2dca6eab8ea169903b50722cf6eb1bd01a770cac749f35cfdc476f1352a421fd N118 N117 -> T0 [1,1,0,0]
+N120 constant 83 -> T1
+N121 target.op entity=2dca6eab8ea169903b50722cf6eb1bd01a770cac749f35cfdc476f1352a421fd N120 N119 -> T0 [1,1,0,0]
+N122 constant 13 -> T1
+N123 target.op entity=2dca6eab8ea169903b50722cf6eb1bd01a770cac749f35cfdc476f1352a421fd N122 N121 -> T0 [1,1,0,0]
+N124 constant 10 -> T1
+N125 target.op entity=2dca6eab8ea169903b50722cf6eb1bd01a770cac749f35cfdc476f1352a421fd N124 N123 -> T0 [1,1,0,0]
+br B3(N125,P2)
+B2(P3:T0,P4:T2)
+N126 constant 70 -> T1
+N127 target.op entity=2dca6eab8ea169903b50722cf6eb1bd01a770cac749f35cfdc476f1352a421fd N126 P3 -> T0 [1,1,0,0]
+N128 constant 65 -> T1
+N129 target.op entity=2dca6eab8ea169903b50722cf6eb1bd01a770cac749f35cfdc476f1352a421fd N128 N127 -> T0 [1,1,0,0]
+N130 constant 73 -> T1
+N131 target.op entity=2dca6eab8ea169903b50722cf6eb1bd01a770cac749f35cfdc476f1352a421fd N130 N129 -> T0 [1,1,0,0]
+N132 constant 76 -> T1
+N133 target.op entity=2dca6eab8ea169903b50722cf6eb1bd01a770cac749f35cfdc476f1352a421fd N132 N131 -> T0 [1,1,0,0]
+N134 constant 13 -> T1
+N135 target.op entity=2dca6eab8ea169903b50722cf6eb1bd01a770cac749f35cfdc476f1352a421fd N134 N133 -> T0 [1,1,0,0]
+N136 constant 10 -> T1
+N137 target.op entity=2dca6eab8ea169903b50722cf6eb1bd01a770cac749f35cfdc476f1352a421fd N136 N135 -> T0 [1,1,0,0]
+br B3(N137,P4)
+B3(P5:T0,P6:T2)
+N138 target.op entity=2dca6eab8ea169903b50722cf6eb1bd01a770cac749f35cfdc476f1352a421fd P5 -> T0 [14,1,0,0]
+ret N138
+T0 form3 305a00d3786865ab1a3ce5908885aaaaf6a50b8b7cbae3f6fe2d0b104d974455
+T1 bits8
+T2 bits32
+T3 bits64
+T4 bits1
+end
+replace F0 @reset

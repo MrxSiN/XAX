@@ -1,0 +1,120 @@
+{
+  "application": "xsha256: SHA-256 firmware (FIPS 180-4) with an in-firmware self-test, running on the AArch64 virt board image",
+  "authoring": {
+    "base_root": "75b97f23ae4367db8aaaa4780c77cc0aeccff1346f5db7a43eac33d8d4bca26d",
+    "base_store": "compiler/benchmarks/aarch64_baremetal_sha256/board-gen0.xax",
+    "base_store_note": "the committed bare-metal board program (aarch64_virt_board.build_board_program) before this change: reset entry, IRQ handler, board package",
+    "base_store_sha256": "c3a6f067efe24be24cb23f38478212ccd4958b55b96353a416a817f1302dcbe9",
+    "batch": "compiler/benchmarks/aarch64_baremetal_sha256/sha256-firmware.batch",
+    "batch_sha256": "4642ba96dd5770dce3ad48358f93ff34cc07857721dd3804694b249478cf1d42",
+    "edit_reproduces_committed_store": true,
+    "functions": [
+      "msgbyte",
+      "puthex",
+      "kconst",
+      "report",
+      "sha256",
+      "reset (replaces the base reset entry)"
+    ],
+    "native_commands": [
+      "xaxc edit board-gen0.xax sha256-firmware.batch sha256-firmware.xax  (exit 0)",
+      "xaxc verify sha256-firmware.xax <record>  (exit 0)"
+    ],
+    "result_root": "8e7d2f10414e39ceda328c03101d3927031161c9ae9fde6d3e8bc1f329b4c07e",
+    "result_store": "compiler/benchmarks/aarch64_baremetal_sha256/sha256-firmware.xax",
+    "result_store_sha256": "1e1ad69b66ff32b7801ba923ad43d1f1c9127ecf425eb097ee290330cd3a51d2",
+    "xaxc": "compiler/bootstrap/seed/xaxc-linux-x86_64, SHA-256 7988e0d0cbbbd04f8a3846ea319daf5ca3ed09104dab223acac9937a2e2fade9"
+  },
+  "board": "QEMU virt, cortex-a57, 128 MiB, PL011 UART, PSCI via HVC (board package aarch64-qemu-virt-v1)",
+  "cases": [
+    {
+      "firmware_verdict": "ok",
+      "hashlib_digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "match": true,
+      "n": 0,
+      "uart_digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "firmware_verdict": "ok",
+      "hashlib_digest": "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+      "match": true,
+      "n": 3,
+      "uart_digest": "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+    },
+    {
+      "firmware_verdict": "ok",
+      "hashlib_digest": "64938487f49f7264a667a999c238a8bf78390f306bf1a4fc97c8110356fb593d",
+      "match": true,
+      "n": 55,
+      "uart_digest": "64938487f49f7264a667a999c238a8bf78390f306bf1a4fc97c8110356fb593d"
+    },
+    {
+      "firmware_verdict": "ok",
+      "hashlib_digest": "162fd87fdb5a2170cfd6c283b44c8c215beac66636d5d1a7b78e1fe546ba0bae",
+      "match": true,
+      "n": 56,
+      "uart_digest": "162fd87fdb5a2170cfd6c283b44c8c215beac66636d5d1a7b78e1fe546ba0bae"
+    },
+    {
+      "firmware_verdict": "ok",
+      "hashlib_digest": "c071fb5b95d7560616f63c0a90d1d462b91f1c992a49cb60dcb85c7e07540e36",
+      "match": true,
+      "n": 64,
+      "uart_digest": "c071fb5b95d7560616f63c0a90d1d462b91f1c992a49cb60dcb85c7e07540e36"
+    },
+    {
+      "firmware_verdict": "ok",
+      "hashlib_digest": "51b331047f86c3b3b9016fce34199583253091e2eed30f4d8c687b0739b72172",
+      "match": true,
+      "n": 119,
+      "uart_digest": "51b331047f86c3b3b9016fce34199583253091e2eed30f4d8c687b0739b72172"
+    },
+    {
+      "firmware_verdict": "ok",
+      "hashlib_digest": "253a2c442d7e5a856ce3b78c107105a056966e75b96c397ac8f96010aec6c4a9",
+      "match": true,
+      "n": 1000,
+      "uart_digest": "253a2c442d7e5a856ce3b78c107105a056966e75b96c397ac8f96010aec6c4a9"
+    }
+  ],
+  "evidence_label": "EXECUTED (QEMU virt, emulated; not hardware)",
+  "exit_status": 0,
+  "format": "xax-aarch64-baremetal-application-evidence-v1",
+  "host": "Windows 11 (QEMU on the host; XAX native seed under WSL 2 Ubuntu-24.04)",
+  "image": {
+    "bytes": 19808,
+    "deterministic": true,
+    "irq_handler": "89f0cdc9976494fc58228bdd00e92a1d099eba5e54ae33f9e5022b3e304aaa6e",
+    "loaded_bytes": 19680,
+    "reset_entry": "f25827c87d5c24114010f45c3b8378494757de4de7c7367b700f52dae0d6bc96",
+    "sha256": "c7c8153919e8cfd733b127e7a7531ae213c61631b1ae98e38ae08cac17c4f8d9",
+    "target": "2dca6eab8ea169903b50722cf6eb1bd01a770cac749f35cfdc476f1352a421fd"
+  },
+  "negative_control": {
+    "change": "the expected digest of the empty message altered by one hex digit in the batch (rebuilt natively, verified, run)",
+    "final_line": "FAIL",
+    "firmware_verdict_first_case": "FAIL",
+    "uart_output": "xsha256 on aarch64 bare metal\nsha256 n=00000000 e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 FAIL\nsha256 n=00000003 ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad ok\nsha256 n=00000037 64938487f49f7264a667a999c238a8bf78390f306bf1a4fc97c8110356fb593d ok\nsha256 n=00000038 162fd87fdb5a2170cfd6c283b44c8c215beac66636d5d1a7b78e1fe546ba0bae ok\nsha256 n=00000040 c071fb5b95d7560616f63c0a90d1d462b91f1c992a49cb60dcb85c7e07540e36 ok\nsha256 n=00000077 51b331047f86c3b3b9016fce34199583253091e2eed30f4d8c687b0739b72172 ok\nsha256 n=000003e8 253a2c442d7e5a856ce3b78c107105a056966e75b96c397ac8f96010aec6c4a9 ok\nFAIL\n"
+  },
+  "not_xax_disclosure": [
+    "the board image writer (reset stub, vector table, ELF) is xax_board.compile_board_image in the Python reference compiler: the native compiler has no board image path, so the image was built by the reference AArch64 backend, not by xaxc",
+    "the authoring text of the batch was written by an agent; a throwaway local script (not committed) formatted its repetitive lines",
+    "QEMU, the Python harness calls that build and run the image, and Python hashlib (the oracle) are not XAX"
+  ],
+  "oracle": "Python hashlib.sha256 over bytes((97 + i) & 255 for i in range(n)); n=0 and n=3 are the FIPS 180-4 vectors for the empty string and \"abc\"",
+  "qemu": "QEMU emulator version 11.1.0 (v11.1.0-12130-ge470268ff4)",
+  "qemu_command": "qemu-system-aarch64 -M virt -cpu cortex-a57 -m 128M -nographic -net none -monitor none -kernel <image>",
+  "reproduce": [
+    "xaxc edit compiler/benchmarks/aarch64_baremetal_sha256/board-gen0.xax compiler/benchmarks/aarch64_baremetal_sha256/sha256-firmware.batch out.xax && xaxc verify out.xax out.record  (Linux seed; cmp out.xax sha256-firmware.xax)",
+    "Python calls, from compiler/ with src, reference and . on the path: reader = xax_compiler.StoreReader(store bytes); xax_compiler.verify_store(reader); image = xax_board.compile_board_image(reader, reset_entry, irq_handler, target); xax_board.run_board_image(image), with the CIDs recorded under image"
+  ],
+  "run_wall_seconds": [
+    0.158,
+    0.169,
+    0.161
+  ],
+  "runs": 3,
+  "runs_identical_output": true,
+  "uart_output": "xsha256 on aarch64 bare metal\r\nsha256 n=00000000 e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 ok\r\nsha256 n=00000003 ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad ok\r\nsha256 n=00000037 64938487f49f7264a667a999c238a8bf78390f306bf1a4fc97c8110356fb593d ok\r\nsha256 n=00000038 162fd87fdb5a2170cfd6c283b44c8c215beac66636d5d1a7b78e1fe546ba0bae ok\r\nsha256 n=00000040 c071fb5b95d7560616f63c0a90d1d462b91f1c992a49cb60dcb85c7e07540e36 ok\r\nsha256 n=00000077 51b331047f86c3b3b9016fce34199583253091e2eed30f4d8c687b0739b72172 ok\r\nsha256 n=000003e8 253a2c442d7e5a856ce3b78c107105a056966e75b96c397ac8f96010aec6c4a9 ok\r\nPASS\r\n",
+  "workload": "seven messages (0, 3, 55, 56, 64, 119 and 1000 bytes: single-block, padding-boundary and 16-block cases) hashed on the board, digest printed over the UART and compared in the firmware with the expected words, then PASS or FAIL"
+}

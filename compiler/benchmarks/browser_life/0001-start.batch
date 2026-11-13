@@ -1,0 +1,166 @@
+R cdf960f8e7db401da5657bb37e45c4db72017aab1c10ecd42468faa1536764f5
+F0
+define @start
+(T0)->(T0)
+B0(P0:T0)
+N0 stack.alloc -> T1,T2,T3 [16,1]
+N1 stack.alloc -> T1,T2,T3 [72,1]
+N2 constant 0 -> T4
+N3 store.bits.le N0 N2 N0.R2 -> T3 [1,1]
+N4 address.offset N0 -> T1 [1]
+N5 store.bits.le N4 N2 N3 -> T3 [1,1]
+N6 address.offset N0 -> T1 [2]
+N7 store.bits.le N6 N2 N5 -> T3 [1,1]
+N8 address.offset N0 -> T1 [3]
+N9 store.bits.le N8 N2 N7 -> T3 [1,1]
+N10 address.offset N0 -> T1 [4]
+N11 store.bits.le N10 N2 N9 -> T3 [1,1]
+N12 address.offset N0 -> T1 [5]
+N13 store.bits.le N12 N2 N11 -> T3 [1,1]
+N14 address.offset N0 -> T1 [6]
+N15 store.bits.le N14 N2 N13 -> T3 [1,1]
+N16 address.offset N0 -> T1 [7]
+N17 store.bits.le N16 N2 N15 -> T3 [1,1]
+N18 address.offset N0 -> T1 [8]
+N19 store.bits.le N18 N2 N17 -> T3 [1,1]
+N20 address.offset N0 -> T1 [9]
+N21 store.bits.le N20 N2 N19 -> T3 [1,1]
+N22 address.offset N0 -> T1 [10]
+N23 store.bits.le N22 N2 N21 -> T3 [1,1]
+N24 address.offset N0 -> T1 [11]
+N25 store.bits.le N24 N2 N23 -> T3 [1,1]
+N26 address.offset N0 -> T1 [12]
+N27 store.bits.le N26 N2 N25 -> T3 [1,1]
+N28 address.offset N0 -> T1 [13]
+N29 store.bits.le N28 N2 N27 -> T3 [1,1]
+N30 address.offset N0 -> T1 [14]
+N31 store.bits.le N30 N2 N29 -> T3 [1,1]
+N32 address.offset N0 -> T1 [15]
+N33 store.bits.le N32 N2 N31 -> T3 [1,1]
+N34 function.address entity=F1 -> T5
+N35 call.foreign entity=e70728c7f0ded375a11067762c7ad838835c5a5f908495aa1db0d4df6f3f5f2f N34 P0 -> T0
+N36 constant 16 -> T6
+N37 call.foreign entity=6c1cd7fb8082771d8a7c9bddd458bb131be7d39c740c623a84d9459f8c539818 N0 N36 N35 N33 -> T6,T0,T3
+N38 constant 8 -> T6
+N39 constant 10 -> T4
+N40 checked.store.bits.le N1 N38 N39 N1.R2 -> T3 [1,1]
+N41 constant 17 -> T6
+N42 constant 10 -> T4
+N43 checked.store.bits.le N1 N41 N42 N40 -> T3 [1,1]
+N44 constant 26 -> T6
+N45 constant 10 -> T4
+N46 checked.store.bits.le N1 N44 N45 N43 -> T3 [1,1]
+N47 constant 35 -> T6
+N48 constant 10 -> T4
+N49 checked.store.bits.le N1 N47 N48 N46 -> T3 [1,1]
+N50 constant 44 -> T6
+N51 constant 10 -> T4
+N52 checked.store.bits.le N1 N50 N51 N49 -> T3 [1,1]
+N53 constant 53 -> T6
+N54 constant 10 -> T4
+N55 checked.store.bits.le N1 N53 N54 N52 -> T3 [1,1]
+N56 constant 62 -> T6
+N57 constant 10 -> T4
+N58 checked.store.bits.le N1 N56 N57 N55 -> T3 [1,1]
+N59 constant 71 -> T6
+N60 constant 10 -> T4
+N61 checked.store.bits.le N1 N59 N60 N58 -> T3 [1,1]
+N62 constant 0 -> T6
+br B1(N62,N37.R1,N37.R2,N61,N0.R1,N1.R1)
+B1(P1:T6,P2:T0,P3:T3,P4:T3,P5:T2,P6:T2)
+N63 constant 16 -> T6
+N64 int.compare P1 N63 -> T7 [3]
+cbr N64 B2(P1,P2,P3,P4,P5,P6) B3(P2,P3,P4,P5,P6)
+B2(P7:T6,P8:T0,P9:T3,P10:T3,P11:T2,P12:T2)
+N65 checked.load.bits.le N0 P7 P9 -> T4,T3 [1,1]
+N66 int.zero.extend N65 -> T6
+N67 constant 48 -> T6
+N68 sub.wrap N66 N67 -> T6
+N69 constant 10 -> T6
+N70 int.compare N68 N69 -> T7 [3]
+N71 int.zero.extend N70 -> T6
+N72 constant 32 -> T6
+N73 bit.or N66 N72 -> T6
+N74 constant 97 -> T6
+N75 sub.wrap N73 N74 -> T6
+N76 constant 6 -> T6
+N77 int.compare N75 N76 -> T7 [3]
+N78 int.zero.extend N77 -> T6
+N79 mul.wrap N68 N71 -> T6
+N80 constant 10 -> T6
+N81 add.wrap N75 N80 -> T6
+N82 mul.wrap N81 N78 -> T6
+N83 add.wrap N79 N82 -> T6
+N84 constant 2 -> T6
+N85 udiv P7 N84 -> T6
+N86 urem P7 N84 -> T6
+N87 constant 4 -> T6
+N88 mul.wrap N86 N87 -> T6
+N89 constant 9 -> T6
+N90 mul.wrap N85 N89 -> T6
+N91 add.wrap N90 N88 -> T6
+N92 constant 8 -> T6
+N93 udiv N83 N92 -> T6
+N94 urem N93 N84 -> T6
+N95 constant 46 -> T6
+N96 constant 11 -> T6
+N97 mul.wrap N94 N96 -> T6
+N98 sub.wrap N95 N97 -> T6
+N99 int.truncate N98 -> T4
+N100 constant 0 -> T6
+N101 add.wrap N91 N100 -> T6
+N102 checked.store.bits.le N1 N101 N99 P10 -> T3 [1,1]
+N103 constant 4 -> T6
+N104 udiv N83 N103 -> T6
+N105 urem N104 N84 -> T6
+N106 constant 46 -> T6
+N107 constant 11 -> T6
+N108 mul.wrap N105 N107 -> T6
+N109 sub.wrap N106 N108 -> T6
+N110 int.truncate N109 -> T4
+N111 constant 1 -> T6
+N112 add.wrap N91 N111 -> T6
+N113 checked.store.bits.le N1 N112 N110 N102 -> T3 [1,1]
+N114 constant 2 -> T6
+N115 udiv N83 N114 -> T6
+N116 urem N115 N84 -> T6
+N117 constant 46 -> T6
+N118 constant 11 -> T6
+N119 mul.wrap N116 N118 -> T6
+N120 sub.wrap N117 N119 -> T6
+N121 int.truncate N120 -> T4
+N122 constant 2 -> T6
+N123 add.wrap N91 N122 -> T6
+N124 checked.store.bits.le N1 N123 N121 N113 -> T3 [1,1]
+N125 constant 1 -> T6
+N126 udiv N83 N125 -> T6
+N127 urem N126 N84 -> T6
+N128 constant 46 -> T6
+N129 constant 11 -> T6
+N130 mul.wrap N127 N129 -> T6
+N131 sub.wrap N128 N130 -> T6
+N132 int.truncate N131 -> T4
+N133 constant 3 -> T6
+N134 add.wrap N91 N133 -> T6
+N135 checked.store.bits.le N1 N134 N132 N124 -> T3 [1,1]
+N136 constant 1 -> T6
+N137 add.wrap P7 N136 -> T6
+br B1(N137,P8,N65.R1,N135,P11,P12)
+B3(P13:T0,P14:T3,P15:T3,P16:T2,P17:T2)
+N138 pointer.cast N1 -> T8
+N139 constant 72 -> T6
+N140 call.foreign entity=5ac7e7512d5f8cdc6b4d86e0992f41cdd75cfe78c22c7689d43833ce580b01f5 N138 N139 P13 P15 -> T0,T3
+N141 stack.end P17 N140.R1
+N142 stack.end P16 P14
+ret N140
+T0 form3 203db368bf606236f28772435b368f8804d8b22d16260c75d1122f06d3054dbe
+T1 form2 680099440be6815ed82e69d5f8a0de9334f6c917bd095dcd51f964e737ed5457
+T2 form4 34a90e6582f27450d8fa1564f4f4d8342f8ccf58a047d8e9b6bec6e5f7ffe4b6
+T3 form3 2b2704e5644b2a600cc1c05f91f133f54c03637cddb3aaf658a635fff068bd0a
+T4 bits8
+T5 form2 c711db8f19caa1460b8df81c26c22797122e38e1bbb82e4b7866ba54ffb2310a
+T6 bits32
+T7 bits1
+T8 form2 f052fc5c3864ed2cdf90e75c29c520317a7fa0e22e3d54d6f6308a5fd5d3a4f7
+end
+replace F0 @start

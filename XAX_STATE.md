@@ -24,11 +24,11 @@ supersedes an earlier figure, and a superseded entry is kept rather than rewritt
 
 ### Replacement levels
 
-<!-- xax-status:levels -->Replacement levels (generated from `XAX_REPLACEMENT_MATRIX.json`): R6: jvm, linux-aarch64, linux-x86_64; R3: android-arm64, windows-x86_64-pe; R2: aarch64-baremetal, browser-web; R1: gpu-spirv-cuda-metal-dxil, riscv64, wasm32-core, wasm32-wasi; R0: accelerator-simt-packet; no level yet: bsd-unix, dotnet-clr, macos-ios-apple, rtos-embedded-mcu.<!-- /xax-status:levels -->
+<!-- xax-status:levels -->Replacement levels (generated from `XAX_REPLACEMENT_MATRIX.json`): R6: jvm, linux-aarch64, linux-x86_64; R3: aarch64-baremetal, android-arm64, browser-web, gpu-spirv-cuda-metal-dxil, wasm32-wasi, windows-x86_64-pe; R1: riscv64; no level yet: bsd-unix, dotnet-clr, macos-ios-apple, rtos-embedded-mcu.<!-- /xax-status:levels -->
 
 ### Bootstrap levels
 
-<!-- xax-status:bootstrap -->Bootstrap status (derived by `xax_selfhost.bootstrap_status` from `compiler/benchmarks/full_selfhost_evidence.json` and `compiler/benchmarks/python_free_seed_evidence.json`): whole production compiler: B0, B1, B2, B3, B4, B5, B6 established (derived from the Linux x86-64 production compiler, whose executed record covers every target and artifact `build` makes (S15g, ADR-358)); Linux x86-64 production compiler (`benchmarks/full_selfhost_evidence.json`): B0, B1, B2, B3, B4, B5, B6 hold, none do not; its seed requires Python: no; S-step component fixed points are not B milestones (`XAX_SPEC.md` §16.5). Bootstrap seed: native-elf `compiler/bootstrap/seed/xaxc-linux-x86_64`, 31,907,179 bytes, requires Python: no.<!-- /xax-status:bootstrap -->
+<!-- xax-status:bootstrap -->Bootstrap status (derived by `xax_selfhost.bootstrap_status` from `compiler/benchmarks/full_selfhost_evidence.json` and `compiler/benchmarks/python_free_seed_evidence.json`): whole production compiler: B0, B1, B2, B3, B4, B5, B6 established (derived from the Linux x86-64 production compiler, whose executed record covers every target and artifact `build` makes (S15g, ADR-358)); Linux x86-64 production compiler (`benchmarks/full_selfhost_evidence.json`): B0, B1, B2, B3, B4, B5, B6 hold, none do not; its seed requires Python: no; S-step component fixed points are not B milestones (`XAX_SPEC.md` §16.5). Bootstrap seed: native-elf `compiler/bootstrap/seed/xaxc-linux-x86_64`, 31,912,763 bytes, requires Python: no.<!-- /xax-status:bootstrap -->
 
 ### Self-hosting
 
@@ -77,11 +77,11 @@ Repository: repository root. Compiler: `compiler/`.
 
 U1 — universal-replacement proof set: **in progress**. Step status is in `XAX_IMPLEMENTATION_ROADMAP.md` U1; the dated sections below are the history of each step.
 
-<!-- xax-status:levels -->Replacement levels (generated from `XAX_REPLACEMENT_MATRIX.json`): R6: jvm, linux-aarch64, linux-x86_64; R3: android-arm64, windows-x86_64-pe; R2: aarch64-baremetal, browser-web; R1: gpu-spirv-cuda-metal-dxil, riscv64, wasm32-core, wasm32-wasi; R0: accelerator-simt-packet; no level yet: bsd-unix, dotnet-clr, macos-ios-apple, rtos-embedded-mcu.<!-- /xax-status:levels -->
+<!-- xax-status:levels -->Replacement levels (generated from `XAX_REPLACEMENT_MATRIX.json`): R6: jvm, linux-aarch64, linux-x86_64; R3: aarch64-baremetal, android-arm64, browser-web, gpu-spirv-cuda-metal-dxil, wasm32-wasi, windows-x86_64-pe; R1: riscv64; no level yet: bsd-unix, dotnet-clr, macos-ios-apple, rtos-embedded-mcu.<!-- /xax-status:levels -->
 
 S — compiler migration ladder: **S0–S5 EXECUTED** on the production path (native XAX leaves on Linux x86-64 only; Python on every other host) and **S6 EXECUTED** with component fixed points for the RISC-V backend and the store verifier on RV64 under emulation (ADR-116–ADR-151). BLAKE3 also closes on RV64 (ADR-151). **S7a EXECUTED** (ADR-152): the x86-64 views backend is an XAX program with a native component fixed point on x86-64; it lowers every native helper except its own production image, which the bootstrap generator lowers (byte-identical by that fixed point). These are S-step component results, not B milestones (`XAX_SPEC.md` §16.5; ADR-177 renamed the earlier "B1–B4" wording). **S7b.1 EXECUTED** (ADR-179): on Linux x86-64 the XAX x86-64 views program decides its own target legality and writes the exact rejection diagnostic. **S7b.2 EXECUTED** (ADR-181): both views programs resolve references, place the target, find the entry, and produce the image record themselves. **S7b.3 EXECUTED** (ADR-182): the RISC-V views program decides its rejections too, so S7b is complete for the views profiles. **S8a EXECUTED** (ADR-183): every store-container rejection is decided by XAX with the exact diagnostic. **S8b.1 EXECUTED** (ADR-184): object envelopes and their CID check are decided by XAX on `get`. **S8b.2 EXECUTED** (ADR-185): graph-body syntax rejections are decided by XAX through the shared site mechanism. Next: S8c (resolution, typing, facts, and object verification). Since ADR-180, S3–S7a count as migrated for acceptance only (`XAX_SPEC.md` §16.5 condition 5); the ladder continues with S8–S15, and migration is reported as SH1. The typing store was stale against its builder until ADR-177 regenerated it; its native and emulated evidence was re-run on Linux x86-64 on 2026-10-07 and matches (OI-45, self-hosting half).
 
-<!-- xax-status:bootstrap -->Bootstrap status (derived by `xax_selfhost.bootstrap_status` from `compiler/benchmarks/full_selfhost_evidence.json` and `compiler/benchmarks/python_free_seed_evidence.json`): whole production compiler: B0, B1, B2, B3, B4, B5, B6 established (derived from the Linux x86-64 production compiler, whose executed record covers every target and artifact `build` makes (S15g, ADR-358)); Linux x86-64 production compiler (`benchmarks/full_selfhost_evidence.json`): B0, B1, B2, B3, B4, B5, B6 hold, none do not; its seed requires Python: no; S-step component fixed points are not B milestones (`XAX_SPEC.md` §16.5). Bootstrap seed: native-elf `compiler/bootstrap/seed/xaxc-linux-x86_64`, 31,907,179 bytes, requires Python: no.<!-- /xax-status:bootstrap -->
+<!-- xax-status:bootstrap -->Bootstrap status (derived by `xax_selfhost.bootstrap_status` from `compiler/benchmarks/full_selfhost_evidence.json` and `compiler/benchmarks/python_free_seed_evidence.json`): whole production compiler: B0, B1, B2, B3, B4, B5, B6 established (derived from the Linux x86-64 production compiler, whose executed record covers every target and artifact `build` makes (S15g, ADR-358)); Linux x86-64 production compiler (`benchmarks/full_selfhost_evidence.json`): B0, B1, B2, B3, B4, B5, B6 hold, none do not; its seed requires Python: no; S-step component fixed points are not B milestones (`XAX_SPEC.md` §16.5). Bootstrap seed: native-elf `compiler/bootstrap/seed/xaxc-linux-x86_64`, 31,912,763 bytes, requires Python: no.<!-- /xax-status:bootstrap -->
 
 Dated sections below are historical records: a figure in them (a ratio, a level, a test count) is current only if no later section supersedes it.
 
@@ -2198,3 +2198,37 @@ Validation: `sh compiler/bootstrap/evolution/evolve.sh check` reports every chai
 at its committed store. With `XAX_REQUIRE_NATIVE=1`, the evolution copy/apply test
 passes (1 test, 179.43 seconds). This resolves the Windows checkout collision
 recorded above; native snapshot mutation work and OI-59 remain separate.
+
+## Ledger 0027 (edge-copy staging), both seeds, four rows at R3 — 2026-11-13
+
+Built on Linux x86-64 (WSL 2) and Windows 11 (build 26300), on top of `43054ce`.
+
+- **Ledger 0027** (ADR-398, OI-59 fixed): the general backend's edge-copy function stages every source that sits in a
+  frame word the same edge writes, as the reference does since `b137b66`; batches
+  `0027-edge-copy-staging-x86-64.batch`, `0027-edge-copy-staging.batch`, `0027-edge-copy-staging-request.batch` on
+  `xax_x86_64_general.xax`, the driver and the request store, applied with `evolve.sh apply`.
+- **Linux seed:** `selfbuild.sh` gives generations that differ (the first is still the old compiler's code); the
+  second rebuilds itself byte for byte (`59588633…`, 31,912,763 bytes, was 31,907,179). `rotate-seed` twice; the seed
+  is that fixed point and the pins follow. `write-request` leaves the request unchanged.
+- **BBC and the Windows seed:** `bbc.xax` and `bbc_request.xax` rebuilt with `rebuild.sh` from the 0027 batches. The
+  Windows seed cut from them on Windows 11: the ledger 0026 seed built generation 1, generations 2 and 3 are equal
+  (`91ce2a71…`, 31,964,672 bytes); new entry handles `F598`, `F988`, `F125`. The Windows `chains.exe` and `xbench.exe`
+  built by it are byte-identical to the committed ones (`90e48100…`, `148fdd7a…`).
+- **Correctness:** the OI-59 family (nested loops carrying 8 to 21 values) returns the executor's result for every
+  program with the new backend (before: 1 to 9 of 40 wrong). The two Ed25519 trust cases of `bench_full_selfhost`'s
+  corpus are images again (the first, dropped version of ledger 0027 had lost them).
+- **Records:** `python_free_seed_evidence.json` and `full_selfhost_evidence.json` re-recorded with `XAX_REQUIRE_NATIVE=1`;
+  B0 to B6 hold. The Linux `chains` artifacts are unchanged, so `oi37_chains_evidence.json` stands.
+- **Tests** (Linux x86-64, WSL 2, `XAX_REQUIRE_NATIVE=1`, four workers, `XAX_RAW_TRIALS=80`): store regeneration,
+  general build, driver, x86-64 backend, narrow signed compare, chains, x86-64 optimizations, register-allocator
+  differential, evolution, Python-free seed, status docs, agent instructions, replacement matrix, general, general
+  rejects, build and Linux: 205 passed, 96 skipped, 5,097 subtests passed (1 h 14 min). On Windows 11,
+  `test_store_regeneration.py` now collects and runs: 65 passed, 93 skipped (the native replays need the Linux seed).
+- **Host audit** (OI-60): the compiler is host-neutral; the ledger path collision is fixed (`ledger-tool/`, `43054ce`);
+  `*.sh`, `*.batch` and `LEDGER` keep LF on every host; the reference names the PE identity once
+  (`PE_HOSTED_IDENTITY`); OI-58 item 1's register-count explanation is corrected. Left open: OI-60.
+- **Matrix** (ADR-399): `aarch64-baremetal` R2 to R3, `browser-web` R2 to R3, `wasm32-wasi` R1 to R3 and
+  `gpu-spirv-cuda-metal-dxil` R1 to R3, each with a practical application (SHA-256 firmware under QEMU, Game of Life
+  in Chrome, a `wc` counter under Node WASI, a fingerprint kernel on an RTX 3060 and an AMD iGPU through an XAX Vulkan
+  host). `wasm32-core` and `accelerator-simt-packet` are removed. RISC-V is deferred.
+- **Not done:** OI-60; RISC-V; R4 evidence for the four new R3 rows; tests for the Windows seed.

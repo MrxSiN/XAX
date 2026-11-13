@@ -1,0 +1,328 @@
+{
+  "claim": "EXECUTED",
+  "target": "wasm32-wasi-v1",
+  "target_cid": "8068402f0d5cdfeb429eba8bb19a22a64530f6cb8049f2097cb2ac620b52af63",
+  "what": "wc-style counter over standard input (lines, words, bytes, byte-sum pair mod 256), authored as a native batch and built by the production compiler (Windows seed); also executes args_sizes_get, args_get, clock_time_get and random_get before reading",
+  "authoring": {
+    "starter_store": "compiler/benchmarks/wasi_wc/starter_request.xax",
+    "starter_sha256": "ec114f080cadf979d159b8695327f82b8df0cb89fc7414ed6009dd794a52f78b",
+    "starter_root": "bb93e76af125e04af39caae51d2fbdc624877183831592e5343379becdf4c8e7",
+    "batch": "compiler/benchmarks/wasi_wc/wc.batch",
+    "batch_sha256": "a578f790fb0c0d6c6f56035900533318b06674229ab9ab265d258c760870d62b",
+    "request_sha256": "551e5f523ec4d79889c296fc7fe00fdbaa8e5142eadd09c0ffc2a46b5572b839",
+    "snapshot_sha256": "a4f27da6981aa49caddeb74e6d15ad32fe0bff89ffeab32ca7431141671da269",
+    "compiler": "compiler/bootstrap/windows/xaxc-windows-x86_64.exe (e2f68c00a8dee67490929b173469e383853564254ed80b3a7a5e8188d8c50122)",
+    "commands": [
+      "edit starter_request.xax wc.batch request.xax",
+      "verify request.xax request.diag",
+      "resolve request.xax snapshot.xax",
+      "build snapshot.xax wc.wasm wc.provenance"
+    ],
+    "exit_statuses": {
+      "edit": 0,
+      "verify": 0,
+      "resolve": 0,
+      "build": 0
+    },
+    "rebuilt_identically": true
+  },
+  "artifact": {
+    "path": "compiler/benchmarks/wasi_wc/wc.wasm",
+    "module_bytes": 3626,
+    "module_sha256": "990f7aae6f1ff4168eeeb5d985124ba43991c8e0dba92d6b433d47ebfd8c76ba",
+    "provenance": "compiler/benchmarks/wasi_wc/wc.provenance",
+    "provenance_sha256": "c0433515780bac613438fd9d0847540c3cd5a531c6b871e644014061818be169",
+    "imports": [
+      "wasi_snapshot_preview1!args_get",
+      "wasi_snapshot_preview1!args_sizes_get",
+      "wasi_snapshot_preview1!clock_time_get",
+      "wasi_snapshot_preview1!fd_read",
+      "wasi_snapshot_preview1!fd_write",
+      "wasi_snapshot_preview1!proc_exit",
+      "wasi_snapshot_preview1!random_get"
+    ],
+    "exports": [
+      "_start",
+      "memory"
+    ],
+    "reference_backend_byte_identical": true,
+    "reference_backend_note": "xax_wasm.compile_wasm_bound_target (Python reference) on the same verified store gives the same 3626 bytes"
+  },
+  "host": {
+    "runtime": "node v26.7.0",
+    "wasi": "preview1 (node:wasi)",
+    "os": "Windows 11"
+  },
+  "oracles": [
+    "independent JavaScript re-statement of the contract (every input)",
+    "GNU wc 8.x from Git for Windows, LC_ALL=C (inputs whose bytes are printable ASCII, tab, newline, CR, VT or FF)"
+  ],
+  "contract": "stdout is five 10-digit zero-padded fields separated by spaces and ended by a newline: line count (byte 10), word count (maximal runs of bytes above 32), byte count, then s1 and s2 as 8-bit wrap-around sums (s1 += byte, s2 += s1)",
+  "results": [
+    {
+      "input": "empty",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "exit_code": 0,
+      "stdout": "0000000000 0000000000 0000000000 0000000000 0000000000\n",
+      "oracle_js": "0000000000 0000000000 0000000000 0000000000 0000000000\n",
+      "js_match": true,
+      "wall_ms": 0.549,
+      "gnu_wc": [
+        0,
+        0,
+        0
+      ],
+      "gnu_wc_match": true
+    },
+    {
+      "input": "a b newline c newline",
+      "bytes": 6,
+      "sha256": "721a7916ccfa56849995f47004497d7d8cefa18b0033b017026036cbe016e171",
+      "exit_code": 0,
+      "stdout": "0000000002 0000000003 0000000006 0000000090 0000000092\n",
+      "oracle_js": "0000000002 0000000003 0000000006 0000000090 0000000092\n",
+      "js_match": true,
+      "wall_ms": 0.187,
+      "gnu_wc": [
+        2,
+        3,
+        6
+      ],
+      "gnu_wc_match": true
+    },
+    {
+      "input": "no trailing newline",
+      "bytes": 11,
+      "sha256": "b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9",
+      "exit_code": 0,
+      "stdout": "0000000000 0000000002 0000000011 0000000092 0000000000\n",
+      "oracle_js": "0000000000 0000000002 0000000011 0000000092 0000000000\n",
+      "js_match": true,
+      "wall_ms": 0.113,
+      "gnu_wc": [
+        0,
+        2,
+        11
+      ],
+      "gnu_wc_match": true
+    },
+    {
+      "input": "whitespace only",
+      "bytes": 8,
+      "sha256": "6541ecabbd1a9e5d07d733d0de559e63c5b4dec89e2e775b60b8703748fc7c71",
+      "exit_code": 0,
+      "stdout": "0000000002 0000000000 0000000008 0000000170 0000000250\n",
+      "oracle_js": "0000000002 0000000000 0000000008 0000000170 0000000250\n",
+      "js_match": true,
+      "wall_ms": 0.13,
+      "gnu_wc": [
+        2,
+        0,
+        8
+      ],
+      "gnu_wc_match": true
+    },
+    {
+      "input": "crlf text",
+      "bytes": 33,
+      "sha256": "978edb137e597de15ef01af517c65bce9fef9c5451781a25ba73682151d73205",
+      "exit_code": 0,
+      "stdout": "0000000004 0000000006 0000000033 0000000042 0000000144\n",
+      "oracle_js": "0000000004 0000000006 0000000033 0000000042 0000000144\n",
+      "js_match": true,
+      "wall_ms": 0.129,
+      "gnu_wc": [
+        4,
+        6,
+        33
+      ],
+      "gnu_wc_match": true
+    },
+    {
+      "input": "31 bytes",
+      "bytes": 31,
+      "sha256": "c549719999342a38b2615da3a96ef5a0f3e1e434b7adccfcec866df79ac1d8c5",
+      "exit_code": 0,
+      "stdout": "0000000006 0000000008 0000000031 0000000201 0000000094\n",
+      "oracle_js": "0000000006 0000000008 0000000031 0000000201 0000000094\n",
+      "js_match": true,
+      "wall_ms": 0.139,
+      "gnu_wc": [
+        6,
+        8,
+        31
+      ],
+      "gnu_wc_match": true
+    },
+    {
+      "input": "32 bytes",
+      "bytes": 32,
+      "sha256": "bdc3a9b977640d4b6a95297fb4f8dcbc81e91fbb14a02e644427959f8384edcd",
+      "exit_code": 0,
+      "stdout": "0000000005 0000000007 0000000032 0000000038 0000000180\n",
+      "oracle_js": "0000000005 0000000007 0000000032 0000000038 0000000180\n",
+      "js_match": true,
+      "wall_ms": 0.136,
+      "gnu_wc": [
+        5,
+        7,
+        32
+      ],
+      "gnu_wc_match": true
+    },
+    {
+      "input": "33 bytes",
+      "bytes": 33,
+      "sha256": "9e61a6df6530bfcf66913da544debaf9f3c787044fce22bc89d475f232867098",
+      "exit_code": 0,
+      "stdout": "0000000004 0000000007 0000000033 0000000196 0000000066\n",
+      "oracle_js": "0000000004 0000000007 0000000033 0000000196 0000000066\n",
+      "js_match": true,
+      "wall_ms": 0.123,
+      "gnu_wc": [
+        4,
+        7,
+        33
+      ],
+      "gnu_wc_match": true
+    },
+    {
+      "input": "64 bytes",
+      "bytes": 64,
+      "sha256": "02c4d02fddf2926d488ebef847c0d0d12414c3f4ff8b74ea5fc77c309d1df4df",
+      "exit_code": 0,
+      "stdout": "0000000006 0000000020 0000000064 0000000229 0000000001\n",
+      "oracle_js": "0000000006 0000000020 0000000064 0000000229 0000000001\n",
+      "js_match": true,
+      "wall_ms": 0.146,
+      "gnu_wc": [
+        6,
+        20,
+        64
+      ],
+      "gnu_wc_match": true
+    },
+    {
+      "input": "1000 bytes text",
+      "bytes": 1000,
+      "sha256": "62d8fe65a79a73b17c5190d4c3edd634824a50674989b81e08aa9da32f42bc2f",
+      "exit_code": 0,
+      "stdout": "0000000080 0000000227 0000001000 0000000224 0000000092\n",
+      "oracle_js": "0000000080 0000000227 0000001000 0000000224 0000000092\n",
+      "js_match": true,
+      "wall_ms": 0.205,
+      "gnu_wc": [
+        80,
+        227,
+        1000
+      ],
+      "gnu_wc_match": true
+    },
+    {
+      "input": "100000 bytes text",
+      "bytes": 100000,
+      "sha256": "35234fbad4c75f8995397ddb96ccb416bd1902716fad523f6d78f135127aebd3",
+      "exit_code": 0,
+      "stdout": "0000008307 0000024196 0000100000 0000000002 0000000139\n",
+      "oracle_js": "0000008307 0000024196 0000100000 0000000002 0000000139\n",
+      "js_match": true,
+      "wall_ms": 6.555,
+      "gnu_wc": [
+        8307,
+        24196,
+        100000
+      ],
+      "gnu_wc_match": true
+    },
+    {
+      "input": "1 MiB text",
+      "bytes": 1048576,
+      "sha256": "0618b106e2ef1fb3b5f0a5cb69f1de275f68531da4bf8b788e5a7f5b33e16fa8",
+      "exit_code": 0,
+      "stdout": "0000086992 0000254815 0001048576 0000000127 0000000153\n",
+      "oracle_js": "0000086992 0000254815 0001048576 0000000127 0000000153\n",
+      "js_match": true,
+      "wall_ms": 66.862,
+      "gnu_wc": [
+        86992,
+        254815,
+        1048576
+      ],
+      "gnu_wc_match": true
+    },
+    {
+      "input": "100000 bytes binary",
+      "bytes": 100000,
+      "sha256": "4438f24a1a466892de6195e1e1471e506493d95b57e751b728a26efd0a9c7e14",
+      "exit_code": 0,
+      "stdout": "0000000390 0000011276 0000100000 0000000140 0000000041\n",
+      "oracle_js": "0000000390 0000011276 0000100000 0000000140 0000000041\n",
+      "js_match": true,
+      "wall_ms": 6.63,
+      "gnu_wc": "skipped (input has control or non-ASCII bytes, where GNU wc and the contract differ by definition)"
+    },
+    {
+      "input": "README.md",
+      "bytes": 9774,
+      "sha256": "6f9c0208bf9d252d1843f868aefc15676c2509f762755b885f794d38cfde0921",
+      "exit_code": 0,
+      "stdout": "0000000172 0000001346 0000009774 0000000147 0000000244\n",
+      "oracle_js": "0000000172 0000001346 0000009774 0000000147 0000000244\n",
+      "js_match": true,
+      "wall_ms": 1.508,
+      "gnu_wc": "skipped (input has control or non-ASCII bytes, where GNU wc and the contract differ by definition)"
+    },
+    {
+      "input": "docs/09_AI_PROTOCOL.md",
+      "bytes": 56085,
+      "sha256": "145172b92ef28e63922e678b63fca6e75e9441fad8a0a2e6f331ca6f2a53e399",
+      "exit_code": 0,
+      "stdout": "0000000899 0000007495 0000056085 0000000044 0000000103\n",
+      "oracle_js": "0000000899 0000007495 0000056085 0000000044 0000000103\n",
+      "js_match": true,
+      "wall_ms": 3.24,
+      "gnu_wc": "skipped (input has control or non-ASCII bytes, where GNU wc and the contract differ by definition)"
+    },
+    {
+      "input": "XAX_SPEC.md",
+      "bytes": 134774,
+      "sha256": "b7d7d254f78ce9657d60153bcd3d3616f8702d8220370d67ce52bab0f4333a89",
+      "exit_code": 0,
+      "stdout": "0000001619 0000017543 0000134774 0000000094 0000000007\n",
+      "oracle_js": "0000001619 0000017543 0000134774 0000000094 0000000007\n",
+      "js_match": true,
+      "wall_ms": 7.588,
+      "gnu_wc": "skipped (input has control or non-ASCII bytes, where GNU wc and the contract differ by definition)"
+    }
+  ],
+  "failure_paths": {
+    "argc_6": {
+      "exit_code": 21,
+      "stdout": "",
+      "expected_exit": 21
+    },
+    "argc_4": {
+      "exit_code": 0,
+      "stdout": "0000000001 0000000001 0000000002 0000000130 0000000250\n",
+      "expected_stdout": "0000000001 0000000001 0000000002 0000000130 0000000250\n"
+    },
+    "stdin_not_readable": {
+      "exit_code": 15,
+      "stdout": "",
+      "expected_exit": 15
+    }
+  },
+  "repeat_runs": 10,
+  "repeat_all_equal": true,
+  "all_ok": true,
+  "limits": [
+    "one 32-byte read buffer; every read is one fd_read call",
+    "checksum is 8-bit modular (the wasm32-wasi profile has no widening, xor or division)",
+    "a short write to standard output is not retried",
+    "the compiler is the Windows seed; the Linux-hosted seed was not run"
+  ],
+  "runtime_dependencies": [
+    "platform-required WASI host (Node.js here)"
+  ]
+}

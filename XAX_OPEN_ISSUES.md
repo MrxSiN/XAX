@@ -945,6 +945,15 @@ measured with `xbench.exe` on that host:
    placements are not understood. A comparison on this workload therefore needs more than one build of each arm
    before a few percent can be called a lead.
 
+**Correction (2026-11-13).** Item 1's explanation of why Win64 meets the slot rule and SysV does not is wrong. Every
+x86-64 target, Linux included, uses the same internal register set (`xax_compiler._x86_64_windows_target`: arguments
+rcx, rdx, r8, r9; the decoder rejects any other, `TARGET-WINDOWS-X64-REGISTERS`), so `allocatable` is the same 14
+distinct registers on both ABIs and rsi and rdi are not counted twice on SysV. The frame slot in the Windows walk is
+real (seen in the code); why the Linux build of the same program avoids it is not established. A related divergence,
+recorded here so it is not lost: for PE frames over 4 KiB the reference still emits per-page stack probes
+(`xax_x86_64.py`, `_reserve_stack`), while the native backend relies on the committed 1 MiB reserve (ADR-396); a DLL
+export runs on its host's thread stack, which that header does not cover.
+
 With 1 and 2 worked around in the program the XAX arm went from about 134-155 ms to about 121-136 ms (two runs,
 rustc 134-142 ms, the C twin 105-112 ms, the C twin with the same prefetch written by hand 93-103 ms).
 
@@ -957,7 +966,7 @@ XAX arm leads every arm including `chains_soa.c`, repeated over more than one pl
 
 ## OI-59 — Edge copies overwrite a frame word another copy of the same edge still reads
 
-**Status: OPEN (2026-11-13); fixed in the reference, not in the native backend.** Both x86-64 register-path emitters,
+**Status: FIXED (2026-11-13): reference b137b66, native ledger 0027 (ADR-398), both seeds and BBC rebuilt.** Both x86-64 register-path emitters,
 `copy_edge` in `compiler/reference/xax_x86_64_regalloc.py` and the native general backend's (in
 `bootstrap/xax_x86_64_general.xax` and the driver), copy an edge's arguments in two phases: first every argument whose
 destination is a frame word (a loop-parameter slot or an edge spill slot), then the register destinations, register
@@ -986,3 +995,22 @@ the fix).
 **Evidence that closes it.** The same staging as a native transaction on the x86-64 backend, driver and request stores,
 both seeds and BBC rebuilt, and the native compiler equal to the executor on the same family; then OI-58 item 1 can be
 retried.
+
+## OI-60 — Host-portability gaps left after the 2026-11-13 audit
+
+**Status: OPEN (2026-11-13).** A read-only audit of the tracked repository for Linux-host assumptions found the
+compiler itself host-neutral (one XAX program on both hosts; the x86-64 allocator and emitter are shared, with five
+small ABI guards; ELF and PE writers are separate modules; `sys.platform` only picks the test harness). The checkout
+collision of `bootstrap/evolution/LEDGER` with the ledger program's directory is fixed (the directory is now
+`ledger-tool/`, 43054ce), and `*.sh`, `*.batch` and `LEDGER` keep LF on every host. Left open, each needing either a native
+tool or new test glue that the language rule does not allow in Python:
+
+- the ledger program (`evolve.sh apply/replay/check`) and `selfbuild.sh` run only where the Linux seed runs;
+- no test exercises the Windows seed (`compiler/bootstrap/windows`), and the seed tools pin the Linux seed only;
+- about 130 test modules gate on Linux x86-64 although several only call seed commands;
+- benchmark harnesses read `/proc/cpuinfo` without a fallback, and two scripts carry a developer path
+  (`bootstrap/evolution/native/0023/all.sh`, `integration/bfx/transactions/production_driver/native/tools/check.py`);
+- the reference emits per-page stack probes for PE frames over 4 KiB, the native backend does not (OI-58 note).
+
+**Evidence that closes it.** A native ledger tool and seed check that run on the Windows seed, and one test that
+runs a Windows-seed command against its pin.

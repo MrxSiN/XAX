@@ -70,13 +70,11 @@ Generated from [`XAX_REPLACEMENT_MATRIX.json`](XAX_REPLACEMENT_MATRIX.json). "�
 | JVM | `jvm` | R6 | Direct class files and JARs calling the JDK. jsonmin runs 0.87x javac (ADR-212). An AI maintained it through one transaction (ADR-209). `xwc` is 100% XAX and matches GNU wc (ADR-257). |
 | x86-64 Windows | `windows-x86_64-pe` | R3 | Native PE32+ executables run on Windows 11. The production compiler runs there and builds itself byte for byte (ADR-397). Measured against gcc and rustc on one workload: parity with rustc, not ahead (R4 withheld). |
 | Android (arm64-v8a) | `android-arm64` | R3 | Signed APKs with DEX, JNI and libxposed modules, run on Pixel 8 Pro. Cold start ties the Java and Kotlin versions, so the row stays at R3 (ADR-253). R5 maintenance is recorded (ADR-255). |
-| AArch64 bare metal | `aarch64-baremetal` | R2 | Bare-metal images with a QEMU board package; run under QEMU only. |
-| Browser (WebAssembly + generated glue) | `browser-web` | R2 | WebAssembly page with generated JavaScript glue; four DOM bindings run. |
-| WebAssembly (wasm32) | `wasm32-core` | R1 | Plain WebAssembly modules with no imports; run in a host engine. |
-| WebAssembly + WASI | `wasm32-wasi` | R1 | WebAssembly modules with basic WASI imports; run under Node.js. |
+| AArch64 bare metal | `aarch64-baremetal` | R3 | Bare-metal images with a QEMU board package; run under QEMU only. |
+| WebAssembly + WASI | `wasm32-wasi` | R3 | WebAssembly modules with basic WASI imports; run under Node.js. |
+| Browser (WebAssembly + generated glue) | `browser-web` | R3 | WebAssembly page with generated JavaScript glue; four DOM bindings run. |
+| GPU (SPIR-V/Vulkan; PTX, Metal, DXIL planned) | `gpu-spirv-cuda-metal-dxil` | R3 | SPIR-V compute modules built by the production compiler run on an RTX 3060 and an AMD iGPU, driven by an XAX Windows host program through vulkan-1.dll; integers only. |
 | RISC-V (RV64IM) | `riscv64` | R1 | Raw RV64IM images; run under the Unicorn emulator. |
-| GPU (SPIR-V/Vulkan; PTX, Metal, DXIL planned) | `gpu-spirv-cuda-metal-dxil` | R1 | SPIR-V compute modules run on a CPU Vulkan driver (llvmpipe), not GPU hardware; integers only. |
-| SIMT accelerator packet | `accelerator-simt-packet` | R0 | Packet format checked by conformance tests only; nothing runs. |
 | macOS / iOS / iPadOS / watchOS / tvOS / visionOS | `macos-ios-apple` | — | Not started. |
 | .NET CLI/CLR | `dotnet-clr` | — | Not started. |
 | RTOS / embedded MCU (Cortex-M, RISC-V MCU) | `rtos-embedded-mcu` | — | Not started. |
