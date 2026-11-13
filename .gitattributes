@@ -1,4 +1,5 @@
 *.xax linguist-language=XAX
+compiler/bootstrap/evolution/evolve.sh text eol=lf
 compiler/bootstrap/windows/*.exe binary
 compiler/bootstrap/windows/*.json -text whitespace=cr-at-eol
 compiler/integration/windows_helpers/hash_request.xax binary

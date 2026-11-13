@@ -1,5 +1,9 @@
 # The evolution ledger's logic as an XAX program
 
+The directory is `ledger-tool/` so it can coexist with the `../LEDGER` file on
+case-insensitive Windows filesystems. This naming change leaves canonical store
+and batch bytes unchanged; `evolve.sh` and the copy-based test use the new path.
+
 `xax_ledger.xax` is a Linux x86-64 process, an XAX build request store. It holds the ledger's logic; `evolve.sh`
 builds it with the pinned seed and keeps only the loops that run `xaxc` and `git`.
 

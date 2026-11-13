@@ -2038,3 +2038,16 @@ Worked on top of `65bce1e`. Nothing of the attempt is committed: no store, ledge
   `test_xax_selfhost_general.py`, `_general_build.py`, `_general_rejects.py` pass; `_general_view.py` has its 7 OI-57
   failures with and without the change.
 - **Not done:** the native transaction (the edge-copy code of the native general backend), seeds, BBC.
+
+## Windows evolution ledger paths coexist — 2026-11-13
+
+The native ledger tool directory is now `compiler/bootstrap/evolution/ledger-tool/`,
+so it coexists with the tracked `evolution/LEDGER` file on case-insensitive Windows
+filesystems. The native stores and construction batches are unchanged. Only the
+wrapper's program path and the copy-based evolution test's fixture path changed;
+the wrapper is checked out with LF line endings for execution under WSL.
+
+Validation: `sh compiler/bootstrap/evolution/evolve.sh check` reports every chain
+at its committed store. With `XAX_REQUIRE_NATIVE=1`, the evolution copy/apply test
+passes (1 test, 179.43 seconds). This resolves the Windows checkout collision
+recorded above; native snapshot mutation work and OI-59 remain separate.

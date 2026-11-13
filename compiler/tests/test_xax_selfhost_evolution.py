@@ -77,7 +77,7 @@ class EvolutionTests(unittest.TestCase):
 
         driver = "xax_compiler_driver_general.xax"
         bootstrap = self.directory / "bootstrap"
-        shutil.copytree(BOOTSTRAP / "evolution" / "ledger", bootstrap / "evolution" / "ledger")
+        shutil.copytree(BOOTSTRAP / "evolution" / "ledger-tool", bootstrap / "evolution" / "ledger-tool")
         shutil.copyfile(EVOLVE, bootstrap / "evolution" / "evolve.sh")
         shutil.copyfile(BOOTSTRAP / driver, bootstrap / driver)
         baseline = ledger("head", BOOTSTRAP, driver)

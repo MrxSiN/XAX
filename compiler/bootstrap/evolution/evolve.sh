@@ -4,7 +4,7 @@
 #   sh evolve.sh apply <record> <store> [<store> ...]   add one transaction to the ledger
 #   sh evolve.sh replay [<store>]                          replay the ledger's transactions with xaxc edit
 #   sh evolve.sh check [<bootstrap>]                       every store's chain ends at the committed store
-#   sh evolve.sh ledger <command> <argument>...            run the ledger program (ledger/README.md) itself
+#   sh evolve.sh ledger <command> <argument>...            run the ledger program (ledger-tool/README.md) itself
 #
 # A record is an XAXEDIT1 edit record or a batch (text whose first word is R: the root, a function, then edits,
 # `define` and `replace`, docs/09_AI_PROTOCOL.md section 16), the form native authoring writes. <store> is a path
@@ -16,8 +16,8 @@
 # result (transactions chained in one commit), applies the record with xaxc edit, and compares the result with the
 # recorded blob. XAXC names the compiler (default: the pinned seed).
 #
-# The ledger's logic (blob ids, chain ends, the transaction list, the check) is the XAX program ledger/xax_ledger.xax
-# (ledger/README.md), built here with the compiler; this script only runs xaxc, git and that program.
+# The ledger's logic (blob ids, chain ends, the transaction list, the check) is the XAX program ledger-tool/xax_ledger.xax
+# (ledger-tool/README.md), built here with the compiler; this script only runs xaxc, git and that program.
 set -eu
 here=$(cd "$(dirname "$0")" && pwd)
 bootstrap=$(dirname "$here")
@@ -27,7 +27,7 @@ die() { echo "evolve.sh: $*" >&2; exit 1; }
 
 work=$(mktemp -d "${TMPDIR:-/tmp}/xax-evolve.XXXXXX")
 trap 'rm -rf "$work"' EXIT
-"$xaxc" resolve "$here/ledger/xax_ledger.xax" "$work/ledger.xax" || die "xaxc resolve of the ledger program failed"
+"$xaxc" resolve "$here/ledger-tool/xax_ledger.xax" "$work/ledger.xax" || die "xaxc resolve of the ledger program failed"
 "$xaxc" build "$work/ledger.xax" "$work/xax_ledger" "$work/ledger.provenance" || die "xaxc build of the ledger program failed"
 chmod 755 "$work/xax_ledger"
 tool="$work/xax_ledger"
