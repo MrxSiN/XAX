@@ -2292,3 +2292,22 @@ compiler for both hosts (ADR-400): the driver's main can now allocate and releas
   host ABI, verify-exact, S4d.2d and S8 graphs: 230 passed, 102 skipped, 6,775 subtests passed (1 h 27 min).
 - **Not done:** ledger 0030 (main calls the host ABI and host functions), the Windows hosting batch on the shared
   request, and the Windows seed built from it.
+
+## Ledger 0030 (main allocates through `xax-host-v1`), Linux seed — 2026-11-14
+
+Built on Linux x86-64 (WSL 2), on top of `affbb53` (ADR-401). This supersedes the "Not done" line of the ledger 0029
+section for main's memory calls.
+
+- **Ledger 0030:** one batch each on the driver and the request (`evolution/native/0030/README.md`): main's 22 mmap
+  calls call `xax-host-v1` `reserve` (17) or `commit` (5, the kernel's buffers), its 22 munmap calls the `free` of
+  the same types; 14 declarations supplied with `define`'s `object` form. No other node changes.
+- **Linux seed:** the ledger 0029 seed builds the new request; generations 1 and 2 are byte-identical
+  (`4d081904…`, 31,941,787 bytes, the old size: code is unchanged, its placement follows main's new identity). That
+  compiler is the seed; `write-request` leaves the request unchanged; `evolve.sh check` passes.
+- **Records:** `python_free_seed_evidence.json` and `full_selfhost_evidence.json` re-recorded with
+  `XAX_REQUIRE_NATIVE=1` (5 h 39 min together); the B levels hold.
+- **Tests** (`XAX_REQUIRE_NATIVE=1`, four workers): store regeneration, host ABI, Python-free seed, status docs,
+  bootstrap: 77 passed, 109 skipped, 6 subtests passed.
+- **Not run / not done:** BBC's driver and the Windows seed are unchanged (`rebuild.sh` declines a batch naming the
+  production entry; BBC's entry already allocates with `VirtualAlloc` in the same split). Still open: main's other host
+  calls and kernel32 declarations in the shared store (the Windows hosting batch), and the Windows seed built from it.
