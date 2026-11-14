@@ -1,22 +1,19 @@
 {
-  "schema": "xax-native-windows-seed-v3",
-  "sha256": "4308ea905aad7f8c8e42299953a2e7e1480eb75e4b0949f44cf1878378bd7c72",
+  "schema": "xax-native-windows-seed-v4",
+  "sha256": "b9a1ba463001559caa26efc68a275cf8694be7cecb419a29dd361b40735225eb",
   "bytes": 31993856,
   "source": {
-    "store": "compiler/integration/bfx/bbc.xax",
-    "store_git_blob": "0a7c4f2cf514e4b2d96d8076a0b3cb32d704083b",
-    "store_root": "9e01697cea372d9fce13136710e0c05b7aeb81253ea8a6606dee4ecfd980f86d",
-    "batch": "compiler/bootstrap/windows/xaxc_entry.batch",
-    "result_sha256": "70854d3ecafade287543bb3bd5ac95bb9f293de56529ac74d4f19d3b2fb154a8"
+    "request": "compiler/bootstrap/seed/xax_compiler_request.xax",
+    "request_sha256": "8eabebdde7f41483431d30da20cc5a2fb935598b9e973f33e8ed84258aa524d2",
+    "hosting_batch": "compiler/bootstrap/windows/hosting.batch",
+    "hosting_batch_sha256": "d5070b6664e1260f33933d18772ae0c9278ee2dddc1cd851d69d80b94fd772d0",
+    "hosted_sha256": "d019f9d046e366c243a0b641ad3173baec56aeb7ba4b9ee646372daac03e5544",
+    "pe_target_record": "compiler/bootstrap/windows/pe_target.edit",
+    "pe_target_record_sha256": "6e2e1470afe1e9ae3d9c643139dc0c3f0307d3fdb94f9f0c3e6e88043d66fa81",
+    "result_sha256": "d0bcf29f9da3459ce10d79926c3662efeeb877b2d000440ba72463ae2397770d"
   },
-  "request": {
-    "store": "compiler/integration/bfx/bbc_request.xax",
-    "store_git_blob": "28d2ff70b5dc7f978dcda85d275f89c886bc5b58",
-    "batch": "compiler/bootstrap/windows/xaxc_entry_request.batch",
-    "result_sha256": "3e6e4f163106cb69c8d56cadc4144d8ef5cb8dd441fafda8484ed6581d2f763a"
-  },
-  "production_ledger": "0029",
-  "native_self_build": "EXECUTED on Windows 11 (2026-11-14): the ledger 0028 seed built generation 1; generations 1, 2 and 3 are byte-identical",
+  "production_ledger": "0031",
+  "native_self_build": "EXECUTED on Windows 11 (2026-11-14): the ledger 0029 Windows seed (4308ea90...) applied the hosting batch and the PE record to the shared request and built this file; this file builds itself byte for byte (generations 1 and 2 equal). The Linux ledger 0031 compiler cross-builds the same bytes.",
   "commands": [
     "verify",
     "inspect",
