@@ -1,22 +1,22 @@
 {
   "schema": "xax-native-windows-seed-v3",
-  "sha256": "4308ea905aad7f8c8e42299953a2e7e1480eb75e4b0949f44cf1878378bd7c72",
+  "sha256": "e4eaaa0a5ea9d0f8530c76635ef565057e9176b5698cd27ae846bf60ce53d52e",
   "bytes": 31993856,
   "source": {
     "store": "compiler/integration/bfx/bbc.xax",
-    "store_git_blob": "0a7c4f2cf514e4b2d96d8076a0b3cb32d704083b",
-    "store_root": "9e01697cea372d9fce13136710e0c05b7aeb81253ea8a6606dee4ecfd980f86d",
+    "store_git_blob": "2558f6818d3699d640750b3d9f5ffa60970269d8",
+    "store_root": "97aef73b8d6005a798bc54f4b5b560fcf4669518c9e0b8aad77d30156e7ac8df",
     "batch": "compiler/bootstrap/windows/xaxc_entry.batch",
-    "result_sha256": "70854d3ecafade287543bb3bd5ac95bb9f293de56529ac74d4f19d3b2fb154a8"
+    "result_sha256": "25ecba8b57a76e8a50133b9259d9b1a21171b34150b29d00e48a5fb54964d7c9"
   },
   "request": {
     "store": "compiler/integration/bfx/bbc_request.xax",
-    "store_git_blob": "28d2ff70b5dc7f978dcda85d275f89c886bc5b58",
+    "store_git_blob": "7a65d1e2e9043a1ca80b99e396595cfbc7c2f52b",
     "batch": "compiler/bootstrap/windows/xaxc_entry_request.batch",
-    "result_sha256": "3e6e4f163106cb69c8d56cadc4144d8ef5cb8dd441fafda8484ed6581d2f763a"
+    "result_sha256": "aafe39567f15f1688355652dea771dba8ad85504723eccbd20f2aa9788aa072e"
   },
-  "production_ledger": "0029",
-  "native_self_build": "EXECUTED on Windows 11 (2026-11-14): the ledger 0028 seed built generation 1; generations 1, 2 and 3 are byte-identical",
+  "production_ledger": "0030",
+  "native_self_build": "EXECUTED on Windows 11 (2026-11-14): the ledger 0029 seed built generation 1; generations 1 and 2 are byte-identical",
   "commands": [
     "verify",
     "inspect",

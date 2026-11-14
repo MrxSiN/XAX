@@ -2292,3 +2292,24 @@ compiler for both hosts (ADR-400): the driver's main can now allocate and releas
   host ABI, verify-exact, S4d.2d and S8 graphs: 230 passed, 102 skipped, 6,775 subtests passed (1 h 27 min).
 - **Not done:** ledger 0030 (main calls the host ABI and host functions), the Windows hosting batch on the shared
   request, and the Windows seed built from it.
+
+## Ledger 0030 (DEX writer output for large modules), both seeds — 2026-11-14
+
+Built on Windows 11 (build 26300) and Linux x86-64 (WSL 2), on top of `affbb53`. Pixel Photos Evolved 1.2.0-dev, a
+libxposed JVM module of 1,097 functions, declined in the native `build` (exit 2, nothing written). The Android program
+declined at site 1580, layer 3: the DEX writer, whose output buffer (`64 * 1,559,494 + 65536` words) did not fit the
+80M-word arena. Ledger 0030 makes the factor 16 in the writer and its three copies (ADR-401).
+
+- **Native build:** the new Windows compiler builds the module's snapshot with its three inputs (26,072, 394,984 and
+  2,900,496 bytes) in 1 min 34 s; the APK equals the reference build of the same store byte for byte (3,811,404 bytes).
+  EXECUTED on Windows 11.
+- **Seeds:** Linux seed `c52ac47d…` (31,941,787 bytes), generation 1 = 2 (WSL 2); Windows seed `e4eaaa0a…`
+  (31,993,856 bytes), generation 1 = 2 (Windows 11). `write-request` leaves the request unchanged.
+- **Test:** `test_xax_selfhost_dex_writer.test_large_code_dex` (1.3M input words) declines on the ledger 0029 writer
+  and equals the bootstrap's writer on this one.
+- **Records:** `full_selfhost_evidence.json` (C0 to C3 at `c52ac47d…`) and `python_free_seed_evidence.json`
+  (`selfbuild.sh` status 0) re-recorded with `XAX_REQUIRE_NATIVE=1` (WSL 2).
+- **Tests:** `test_xax_selfhost_dex_writer` and `test_xax_selfhost_android_jvm` pass natively (5 tests, WSL 2);
+  `test_store_regeneration`, `test_xax_selfhost_evolution`, `test_status_docs` and `test_python_free_seed` pass on
+  Windows (the last two after the records).
+- **Not done:** `build` still writes nothing on a decline, so the site code needs a host that reads `G_WHY`.

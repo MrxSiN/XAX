@@ -1,3 +1,14 @@
+# Current Windows seed — ledger 0030, 2026-11-14
+
+Ledger 0030 lets the DEX writer size its output for large modules (ADR-401). `bbc.xax` and `bbc_request.xax` are
+rebuilt with `rebuild.sh` from the 0030 driver and request batches; `xaxc_entry_request.batch` is written for the new
+request root `185d8760…` (entry `F894`, view-commit handler `F1003`, command-line entry `F667`; `bbc.xax`, root
+`97aef73b…`, has the same handles). On Windows 11 the ledger 0029 seed built generation 1 and generation 1 built
+generation 2: both are byte-identical, 31,993,856 bytes, SHA-256
+`e4eaaa0a5ea9d0f8530c76635ef565057e9176b5698cd27ae846bf60ce53d52e` (the change is one constant of the Android
+program, not code generation, so generation 1 is already the fixed point). Identities are in [seed.json](seed.json).
+The section below describes the ledger 0029 seed and is historical.
+
 # Current Windows seed — ledger 0029, 2026-11-14
 
 Ledger 0029 adds the portable host memory ABI `xax-host-v1` (ADR-400). The seed is cut from `bbc_request.xax`
