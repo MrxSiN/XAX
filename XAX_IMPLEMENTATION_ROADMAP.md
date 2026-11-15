@@ -687,3 +687,7 @@ The normal snapshot-bound local mutation interface is implemented in `compiler/s
 ### Android platform capability contracts (2026-10-08, ADR-202 to ADR-204)
 
 Done (STRUCTURAL): exact JNI floats and typed-record argument packs, platform declarations for the managed-class APK, POSIX async/ownership contracts, NDK window/codec/AAudio contracts, and the SDK capability table enforced at build time (`docs/ANDROID_PLATFORM_CAPABILITIES.md`). Next: device execution of each new contract on the authorized device, then OI-47 (path-exact ownership for media buffers, NULL windows and JNI-held SDK objects).
+
+### Native correctness oracle (2026-11-16, ADR-405)
+
+Not started. A native XAX reference executor, independent of the compiler (an interpreter of canonical graph semantics that shares no code with the backends), replaces `compiler/reference/` as the oracle. Order: the `src/` runners are retired first; then the executor; then comparison tests move area by area (x86-64 register lowering first), each only after both oracles agree on that area's corpus (EXECUTED evidence); a Python reference module is deleted when nothing imports it.
