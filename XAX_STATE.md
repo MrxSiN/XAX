@@ -2393,6 +2393,54 @@ On top of `4112a06`. This adds to the OI-50 section above, whose "current seed" 
 - **EXECUTED, Linux x86-64 (WSL 2):** the test file, seed `0cd26742…`: 3 passed, 1 skipped (AArch64), 8 subtests
   passed. Built by hand, the ledger 0032 seed's six executables are byte-identical to the ledger 0031 seed's.
 
+## Phase 2 profile: driver `xaxc edit` and `verify` — 2026-11-15
+
+Measurement only (RFC `docs/proposals/build-bootstrap-rotation-rfc.md` phase 2). Host: WSL 2 (kernel
+6.18.58.1-microsoft-standard-WSL2, 16 logical CPUs, about 19 GB), clone at `897002e`, pinned Linux seed `0cd26742…`,
+strace 6.8. Input: the ledger 0032 driver transaction, `0032-dex-writer-output-cap.batch` (87 bytes) on its `before`
+store `7feaf5b6…` (62,593,215 bytes). Log: `/root/work/profile/profile-20261115.log` in WSL.
+
+- **MEASURED, `xaxc edit` (`/usr/bin/time -v`):** wall 39.76 s, user 38.11 s, system 1.64 s, peak RSS 2,259,456 KB.
+  The result is the recorded `after` blob `7a5a219b…`, and the strace run wrote the same bytes.
+- **MEASURED, `xaxc verify` of that result:** wall 39.54 s, user 38.26 s, system 1.26 s, peak RSS 1,609,600 KB.
+- **MEASURED, phases (`strace -f -r -T -e trace=openat,read,write,mmap,munmap`):**
+  - `edit`: 22 `mmap` calls in the first 2 ms, 959 `read` calls of up to 64 KiB ending at 0.139 s, then no system
+    call for 39.0 s, then 956 `write` calls from 39.113 s to 39.329 s, then 22 `munmap` calls, exiting at 39.48 s.
+  - `verify`: its reads end at 0.181 s, then 38.5 s without a system call, then `munmap` and exit at 38.65 s.
+  - So file I/O is under 0.4 s of each run. The 38–39 s is in-process work: decoding the 62 MB store, then the
+    edit or the checks. System calls cannot separate decoding from that work. *Inference, not measured:* a one-node
+    edit and a whole-store `verify` take the same time, which suggests that decoding and indexing the store, not
+    the edit itself, dominate both. A profiler with symbols would be needed to confirm this.
+- **MEASURED, per-transaction replay times** (the timestamps in `/root/work/replay-baseline.log`, seconds since the
+  start, differenced; the 2026-11-15 strict replay of 142 transactions, total 4,481 s, user 4,261.57 s):
+  - `xax_compiler_driver_general.xax`: 51 transactions, 2,115 s in total, mean 41.5 s, max 48 s.
+  - `seed/xax_compiler_request.xax`: 51, 2,113 s, mean 41.4 s, max 48 s.
+  - Driver and request together: 4,228 s, 94% of the replay.
+  - The rest: `xax_x86_64_general` 19 transactions, 115 s; `xax_android` 6, 106 s; `xax_aarch64_general` 5, 14 s;
+    `xax_op_typing` 3, 10 s; `xax_store_verifier` 2, 6 s; the decoder, writer and DEX writer stores, 1 s or less.
+  - The first difference includes building the ledger program.
+- **Correction:** the RFC's "6.1 GB" per `edit` is not what this host measures: peak RSS is 2.26 GB for one driver
+  `edit` and 2.45 GB for the whole replay. The large figure is close to the address space the compiler reserves at
+  start (anonymous `mmap` calls of up to 2 GiB each), not memory it touches.
+- **Consequences:** two compiler processes at once use under 5 GB, so the two-process limit holds with room. Each
+  `evolve.sh apply` on the driver and the request costs about 4 × 40 s (`edit` and `verify` on each store). A
+  request derived from the driver (RFC phase 4) removes the request's `edit` and `verify`, about half of that.
+- **Not run:** a symbol-level profile; `verify` on any store but the driver.
+
+## OI-55 closed: narrow signed compares through the Windows seed — 2026-11-15
+
+On `897002e`. `tests/test_x86_64_narrow_signed_compare.py` gets `SeedNarrowCompareTests`. For each width (5, 8, 16, 24,
+32, 64), one `xax-construct-v1` program calls `f_<kind>(x, y) = zext(compare(truncate(x), truncate(y)))` for all ten
+predicates on all 64 operand pairs. It XORs each result with the reference executor's, and exits with the mismatch count.
+
+- **EXECUTED, Windows 11, pinned Windows seed `e88877d1…`:** the file: 6 passed, 3,846 subtests passed (30 s). The seed
+  class alone: 6 widths, 3,840 cases, exit status 0 for each, 28 s.
+- **EXECUTED, mutation check:** flipping one expected bit (width 8, case 300) makes the program exit 1 and the test fail.
+- **Inspected:** the width-8 PE (22,528 bytes) has one `call` (the exit). The seed inlines the callees and keeps one
+  operand of each compare as an immediate. The other operand is in a register or on the stack, and signed predicates
+  are sign-corrected at run time (`shl $0x18`, then `cmp` and `setl`), as in the ledger 0024 lowering.
+- **Not run:** the class on Linux (it skips there; the Linux half closed with ADR-393's 240 probes).
+
 ## OI-57 closed: the reference register lowering folds as the native `basics` does — 2026-11-15
 
 On `897002e`. `compiler/reference/xax_x86_64_regalloc.py` takes both halves of ADR-388 (ledger 0022). First, after
