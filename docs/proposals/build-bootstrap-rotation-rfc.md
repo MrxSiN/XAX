@@ -496,6 +496,14 @@ Checked against `main` `d9249ed`, AGENTS.md, the tests and the live GitHub state
 | 9 | Release (§13.5): rotate, confirm, V2 record, full suite, BBC rebuild, device session, `validated`; release PR | `main` | 7, 8 | all |
 | 10 | Batch B (#51, #47, #55) on the new `bbc.exe`; BBC#4 follows | `main` | 9 for -O0 programs; #55 `check` can go earlier | Windows, device |
 
+**Plan change (2026-11-16).** Release 0033 ships C-x86 (ledgers 0033, 0034) and C-a64 (ledger 0035) and nothing
+else. C-jvm (#49 with ADR-406, then #48) and C-cap (OI-54 steps, OI-52 R2) move to the next release branch,
+`release/<its first ledger>`. Reason: each needs native changes inside single functions of 41,000 to 46,000 view lines
+(the JVM backend) or new arena, index and liveness layouts (OI-54), with no generator. That is several sessions of
+work, and holding the finished fixes (OI-58 item 1, the PE probes, OI-49) for it would leave them unshipped. Step 8
+(phases 3 and 6) follows the release, so release 0033 records V1 evidence with the existing tools
+(`bench_full_selfhost`, `bench_python_free_seed`, `rotate-seed`), as the ledger 0027 release did.
+
 ## 14. Open questions
 
 - Does `xaxc edit` re-root a store? If it does, the request tool could be a generated batch instead of a program.
