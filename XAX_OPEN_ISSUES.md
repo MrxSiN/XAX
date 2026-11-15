@@ -553,6 +553,8 @@ The minimum maintained diversity threshold is therefore **one release-only indep
 
 **Status.** OPEN (partially addressed, ADR-124). SPIR-V for Vulkan is the selected first representation: `spirv-vulkan-compute-v1` kernels execute on Mesa llvmpipe and match the reference executor (GPU row R1). Still missing for closure: execution on a physical GPU and a measured throughput comparison against a vendor or glslang baseline there (the llvmpipe comparison, 6.9× glslang for Collatz, is software-device evidence only).
 
+**Check (2026-11-15): still OPEN.** `compiler/benchmarks/vulkan_gpu_evidence.json` EXECUTED a kernel on physical GPUs (RTX 3060 Laptop GPU, AMD Radeon iGPU) and compared it with an independent CPU computation, which meets the first two criteria. It records no throughput and no vendor-toolchain baseline on that hardware, so the third criterion is not met. Closes with: the same kernel timed on the RTX 3060 against a glslang (or vendor) build of it, with raw samples.
+
 ## OI-35 — Managed-platform emission strategy (JVM, CLR)
 
 **Question.** For JVM and .NET, should XAX emit bytecode/IL directly (as for DEX), emit native code plus a generated managed bridge, or choose per workload?
@@ -804,6 +806,8 @@ transaction byte for byte. Re-run the corpus without treating declines as
 validity claims or removing the diagnostic mismatch. No B-level or replacement
 matrix promotion follows from the current prototype.
 
+
+**Check (2026-11-15): still OPEN.** The production compiler now runs natively on Windows (the Windows seed, ADR-397, ADR-402), but no run of it, or of the prototype, has accepted the corrected self-store, replayed the large flag transaction byte for byte, or re-run the 212-case corpus. Those are this issue's closing criteria. Whether they should move from the prototype to the Windows seed is a scope decision for this issue; until one of them runs, it stays open.
 
 ## OI-52 — 64-bit checked offsets and growable views (roadmap)
 
