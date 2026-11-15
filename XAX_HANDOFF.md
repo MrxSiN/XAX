@@ -2205,3 +2205,33 @@ only, applied with `evolve.sh apply`, which rewrites the request. Windows reques
   x86-64 code generation). Step 8 (V2 evidence runner, `rotate.sh`) can run in parallel on `main`.
 - Runs in progress: none. WSL scratch: `/root/work/step6b` (a copy of `bootstrap/` with a test transaction; it can
   be deleted) and `/root/work/step6.log`.
+
+## Build/rotation campaign: step 7 started (C-x86) — 2026-11-16
+
+`main` = `660f9eb`, unchanged this session. `release/0033` is cut from it and pushed. Re-verified at the start:
+no open PRs; issues #47, #48, #49, #51, #55 open; both seeds at their pins (`0cd26742…`, `e88877d1…`);
+`evolve.sh check` passes.
+
+- **Done (PRs open, owner to merge):**
+  - [#69](https://github.com/MrxSiN/XAX/pull/69) into `release/0033` (`2220530`): ledger 0033, OI-58 item 1, the
+    loop-slot rule, native and reference.
+  - [#71](https://github.com/MrxSiN/XAX/pull/71), stacked on #69 (`0bc8e85`): ledger 0034, the OI-56 note, PE stack
+    probes. Retarget it to `release/0033` after #69 merges.
+- **Tests run:** listed in `XAX_STATE.md` (2026-11-16). Known failure on the release branch:
+  `test_xax_chains.py::test_committed_artifact_identity_reproduces`. The `xax_link` chains executable has new bytes,
+  `oi37_chains_evidence.json` is historical, and a new chains record is due at the release.
+- **Compilers in use:** the pinned Linux seed. Candidates (WSL, not seeds): 0033 C1 `64fb4180…`, C2 = C3
+  `daeeff12…` (`/root/work/sb0033a`); 0033+0034 C1 `738a89f5…`, C2 `e64a0291…` (`/root/work/sb0034`).
+- **WSL working clone:** `/root/work/campaign` is on `c-x86-pe-probes` (equal to the pushed branch). A `main`
+  worktree is at `/root/work/mainwt`. `/root/work/x86v` holds the 0033 views of `xax_x86_64_general.xax`.
+- **Runs in progress:** none.
+- **Blockers:** none. OI-58 stays open: the Windows `chains` measurement without its workaround, and the lead over
+  every arm, need the release's Windows seed. The OI-56 note's DLL run also waits for the release's Windows confirm.
+- **Learned:** the native edit engine rejects a batch that redefines both a function and a caller of it, in either
+  `replace` order. Split such a change into two transactions. Driver functions are often not byte-twins of the
+  backend store's (31 of 235 differ). Find a driver twin read-only with the reference reader, by walking up from a
+  distinctive constant to its functions.
+- **Next step:** C-a64 (OI-49), a branch from `release/0033` (stacked on #71 until #69 and #71 merge). After it,
+  C-jvm (#49 with an ADR, then #48) and C-cap (OI-54 steps, OI-52 R2). In parallel on `main`, step 8's phase 3: the
+  corpus input measurement is done (`XAX_STATE.md`). The external input files of the build cases still need
+  counting, then the decision whether to freeze the corpus as data.
