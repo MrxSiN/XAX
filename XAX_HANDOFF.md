@@ -2102,3 +2102,47 @@ Keep the historical generator identities separate from their natively evolved
 successors (`edit_begin` and `edit_next` now join the existing helper exclusions).
 Full bootstrap levels come only from the executed benchmark records and their
 ordinary status derivation.
+
+## Build/rotation campaign, steps 2–4 — 2026-11-15
+
+Base `main` = `897002e` (ledger 0032, 142 transactions, nothing pending). Execution order: RFC
+`docs/proposals/build-bootstrap-rotation-rfc.md` §13.7. Every PR below waits for the owner's merge. Several append
+to `XAX_STATE.md` or edit `XAX_OPEN_ISSUES.md`, so later merges may need a trivial rebase.
+
+- **Step 2 (phase 0):** ADR-404 and the AGENTS.md amendment (rotation, full evidence and BBC's rebuild once per
+  release; driver transactions on `release/<ledger>`). [PR #59](https://github.com/MrxSiN/XAX/pull/59). Steps 7 and
+  9 wait for its merge.
+- **Step 3 (phase 2):** profile of one driver `edit` and `verify` in WSL, and per-store replay times. File I/O is
+  under 0.4 s of 40 s; peak RSS is 2.26 GB (edit) and 1.61 GB (verify); the RFC's 6.1 GB is corrected.
+  [PR #62](https://github.com/MrxSiN/XAX/pull/62).
+- **Step 4 (batch S):**
+  - OI-55 closed: Windows-seed cases, 3,840 of 3,840 equal the executor. [PR #63](https://github.com/MrxSiN/XAX/pull/63)
+  - OI-57 closed: the reference folds as ledger 0022 does. [PR #64](https://github.com/MrxSiN/XAX/pull/64)
+  - Status lines: OI-21 to OI-24 closed; OI-15, 18 and 19 kept open, each missing one criterion.
+    [PR #60](https://github.com/MrxSiN/XAX/pull/60)
+  - OI-34 and OI-51 checked, both still open. [PR #61](https://github.com/MrxSiN/XAX/pull/61)
+- **Tests run** (results in the `XAX_STATE.md` sections of 2026-11-15):
+  - `test_x86_64_narrow_signed_compare.py` on Windows 11: 6 passed, 3,846 subtests.
+  - `test_xax_selfhost_general_view.py` in WSL with `XAX_REQUIRE_NATIVE=1`: 17 passed.
+  - 42 reference-x86-64 files in WSL: 413 passed, 6 environmental failures (no `node`, no JDK jmods; also on main).
+  - 7 Windows reference files: 22 passed.
+  - Not run: the full suite (by design); `test_xax_selfhost_compiler_fixed_point.py`; `test_the_compiler_replays_the_ledger`
+    on its own.
+- **Identities:**
+  - Linux seed `0cd26742…` (31,942,651 bytes).
+  - Windows seed `e88877d1…` (31,993,856 bytes).
+  - Request `8345f64d…`; `hosted_sha256` `ff9dfa42…`; Windows `result_sha256` `5bf65de6…` (`windows/seed.json`).
+- **Runs in progress:** none. WSL logs: `/root/work/profile/profile-20261115.log`, `/root/work/oi57-run1.log`,
+  `/root/work/oi57-related.log`, `/root/work/oi57-related2.log`. `/root/work/campaign` is detached at `897002e`, and its
+  `reference/xax_x86_64_regalloc.py` holds PR #64's version (restore it with `git checkout` before other work).
+  `strace` is now installed in WSL.
+- **WSL environment gaps:** no `node` and no JDK `jmods`, so Wasm and JVM-import tests fail there. One worker of the
+  42-file run peaked at 11.6 GB RSS, so keep `-n 4` or fewer.
+- **Blockers:** none new. Steps 7 and 9 need PR #59 merged.
+- **Next step:** step 5. Write the native request tool `request <driver> <target> <out>` and the Windows hosting
+  generator, then run their oracle checks at ledger 0032 before any driver change:
+  - the Linux request equals the committed `8345f64d…` and the reference `compiler_request`;
+  - the hosted store equals `ff9dfa42…`;
+  - the Windows request equals `5bf65de6…`;
+  - its build equals `e88877d1…`.
+  Only then delete `hosting.batch` and `pe_target.edit`. Steps 6 and 8 follow; step 8 may start in parallel.
