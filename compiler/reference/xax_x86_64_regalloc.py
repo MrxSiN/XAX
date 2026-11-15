@@ -488,6 +488,9 @@ def _loop_parameter_slots(graph, machine_parameters, uses_by_block, homes, pinne
             member_of[(root, member.block)] = member
     # An edge between two blocks of a class must pass the class member to the
     # class member: then its copy is a no-op and the slot never holds two values.
+    # An edge from a cyclic block holding no member writes the slot inside a loop
+    # (OI-58 item 1: the walk's visit block increments `steps` on every step), so
+    # the class keeps its registers.
     for source, block in enumerate(graph.blocks):
         for target, arguments in block.terminator.edges:
             for index, argument in enumerate(arguments):
@@ -495,7 +498,10 @@ def _loop_parameter_slots(graph, machine_parameters, uses_by_block, homes, pinne
                 if destination not in candidates:
                     continue
                 root = find(destination)
-                if (root, source) in member_of and member_of[(root, source)] != argument:
+                if (root, source) in member_of:
+                    if member_of[(root, source)] != argument:
+                        rejected.add(root)
+                elif component[source]:
                     rejected.add(root)
     pressured = {index for index in range(count) if component[index] and pressure(index) > registers}
     slots: dict[ValueRef, int] = {}
