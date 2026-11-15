@@ -931,6 +931,8 @@ and BBC's checks run on Windows itself, not under Wine.
 
 ## OI-57 — The reference's S12c.2 analysis audit disagrees with the native `basics` since ledger 0022
 
+**Status: CLOSED (2026-11-15).** The reference register lowering (`compiler/reference/xax_x86_64_regalloc.py`) now does both halves of ADR-388, as the native `basics` and emit do. It folds single-result wrap add/sub/mul, truncate and zero extend of width 8/16/32/64 over constants, in value order, into erased constants. It also saves the register of every hoisted constant. So the audit and the native analyses describe the same graph. `tests/test_xax_selfhost_general_view.py` passes under `XAX_REQUIRE_NATIVE=1` on Linux x86-64 (WSL 2, seed `0cd26742…`): 17 passed, 119 subtests (EXECUTED, `XAX_STATE.md` 2026-11-15). The emission difference (272 against 270 bytes) was the missing save of `r15`, which held a hoisted constant. The status below is the historical record.
+
 **Status: OPEN (2026-11-12).** `tests/test_xax_selfhost_general_view.py` fails on Linux x86-64 with
 `XAX_REQUIRE_NATIVE=1`: `test_jsonmin`, `test_random_programs` (trials 2, 17 and 39), `test_register_resident_analyses`
 and one subtest of `test_executables_assembled_in_xax`. The messages are "S12c.2 analyses disagree" in `erased` and

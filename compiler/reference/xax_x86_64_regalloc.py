@@ -150,6 +150,10 @@ SUPPORTED_OPERATIONS = frozenset(
     }
 )
 _CALLS = frozenset({Operation.CALL_DIRECT, Operation.CALL_FOREIGN, Operation.CALL_INDIRECT})
+_FOLDED = {  # ADR-388: the operations the native ``basics`` folds over constants (results masked by the caller)
+    Operation.ADD_WRAP: lambda a, b: a + b, Operation.SUB_WRAP: lambda a, b: a - b, Operation.MUL_WRAP: lambda a, b: a * b,
+    Operation.INT_TRUNCATE: None, Operation.INT_ZERO_EXTEND: None,
+}
 _GROUP1 = {Operation.ADD_WRAP: 0, Operation.BIT_OR: 1, Operation.BIT_AND: 4, Operation.SUB_WRAP: 5, Operation.BIT_XOR: 6}
 _JUMP_IF_FALSE = {
     IntCompare.EQ: 0x85, IntCompare.NE: 0x84, IntCompare.ULT: 0x83, IntCompare.ULE: 0x87,
@@ -561,6 +565,20 @@ def compile_register_resident(
         for node_index, node in enumerate(block.nodes):
             if node.operation == Operation.CONSTANT:
                 constants[ValueRef.node_result(block_index, node_index)] = _decode_constant(node.entity, resolve)[1]
+    # ADR-388 (ledger 0022, the native ``basics``): in value order, a single-result wrap add/sub/mul, truncate or zero
+    # extend of width 8/16/32/64 over constants is a constant, and its node is erased.  An operand defined later
+    # (a dominating block with a larger index) is not yet a constant there, so its user stays a value, as natively.
+    folded_constants: set[ValueRef] = set()
+    for block_index, block in enumerate(graph.blocks):
+        for node_index, node in enumerate(block.nodes):
+            value = ValueRef.node_result(block_index, node_index)
+            width = widths.get(value)
+            if node.operation not in _FOLDED or len(node.results) != 1 or width not in (8, 16, 32, 64) or not all(operand in constants for operand in node.operands):
+                continue
+            operands = [constants[operand] for operand in node.operands]
+            result = operands[0] if node.operation in (Operation.INT_TRUNCATE, Operation.INT_ZERO_EXTEND) else _FOLDED[node.operation](*operands)
+            constants[value] = result & ((1 << width) - 1)
+            folded_constants.add(value)
 
     # Stack storage lives in the frame; its pointers are rematerialized with
     # ``lea`` at each use (like constants), so they never need homes or spills.
@@ -748,7 +766,7 @@ def compile_register_resident(
             if node.operation in checked_access and access_proven(node):
                 index_uses[node.operands[1]] += 1
     scaled: dict[ValueRef, tuple[ValueRef, int]] = {}
-    erased_index_nodes: set[ValueRef] = set()
+    erased_index_nodes: set[ValueRef] = set(folded_constants)
     for value, count in index_uses.items():
         if use_count[value] != count or value.tag != 1:
             continue
@@ -2081,6 +2099,7 @@ def compile_register_resident(
     if any(item < 0 for item in plan):
         return None
     spill_count = max(plan, default=0)
+    used.update(hoisted_constants.values())  # ADR-388: a hoisted constant's register is never bound, but is overwritten
     # A process entry never returns to a caller, so it has nothing to preserve.
     # SysV preserves rbx, rbp, r12-r15 only (rsi/rdi are caller-saved there, and this
     # allocator never keeps a value in them across a call); Win64 also preserves rsi/rdi.
