@@ -2357,6 +2357,6 @@ Built on Linux x86-64 (WSL 2) and Windows 11, on top of `e3e65e0` (ADR-403). PR 
   `XAX_REQUIRE_NATIVE=1`; every component reports `xax` authority with no fallback; the B levels hold.
 - **Tests:** Linux (`XAX_REQUIRE_NATIVE=1`, five workers): DEX writer (with the large-code case), Android JVM,
   evolution, Python-free seed: 12 passed, 64 subtests passed (2 h 6 min). Windows 11: status docs, Python-free seed,
-  evolution, store regeneration: 76 passed, 114 skipped.
+  evolution, store regeneration: 72 passed, 114 skipped.
 - **Not run:** the PPE APK rebuild on the 0032 compiler (its module snapshot cannot be reconstructed exactly); the
   ledger 0029 APK run stands for that path.
