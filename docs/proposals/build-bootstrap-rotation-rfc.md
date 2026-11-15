@@ -34,7 +34,7 @@ Phases 1–7 change no compiler store, so none of them needs a seed rotation. On
 | A seed rotation takes about 8 min on Linux (two generations) and 7–11 min on Windows | `python_free_seed_evidence.json` (478 s), `windows/README.md` |
 | The full self-hosting record takes 3 h 4 min to 5 h 33 min | `XAX_STATE.md`, ledger 0031 and 0032 sections |
 | It runs three generations and the 198-case corpus on C0–C3, which were byte-identical (`0cd26742…`) | `benchmarks/bench_full_selfhost.py` `measure()` |
-| It replays all 142 ledger transactions (78 min of `edit` at ~40 s and 6.1 GB each; `verify` is not timed) | same, `evolution` |
+| It replays all 142 ledger transactions (78 min of `edit`, about 40 s and 2.3 GB peak RSS per driver `edit`; a driver `verify` also takes about 40 s and 1.6 GB, phase 2 profile in `XAX_STATE.md`, 2026-11-15) | same, `evolution` |
 | The test suite replays the ledger a second time | `tests/test_xax_selfhost_evolution.py::test_the_compiler_replays_the_ledger` |
 | `replay` prints `skip` and exits 0 when git lacks a blob, so a shallow clone passes | `bootstrap/evolution/evolve.sh:78` |
 | A test forces the full record to be re-run after every driver transaction | `tests/test_full_selfhost_status.py::test_the_record_describes_the_committed_compiler` |
@@ -427,7 +427,7 @@ Estimates are marked *est.*
     `verify` calls, then the corpus once instead of 4 times. Corrected projection: ≈ 2–2.5 h *est.* (an earlier
     draft said 1–1.5 h);
   - ≈ **7–10 h** of machine time (*est.*), with one hand remap at most and one replay.
-- **Memory:** both are bounded by about 6 GB per compiler process in a 19 GB WSL. B runs at most two compiler
+- **Memory:** both are bounded by about 2.3 GB peak RSS per compiler process (phase 2 profile; an earlier draft said 6 GB) in a 19 GB WSL. B runs at most two compiler
   processes at a time; A has the same limit but repeats the work.
 - **Agent cost:** A means 7 cycles of reading state, remapping handles and re-running evidence. B means one
   release, plus one gate run per sub-batch.
@@ -500,6 +500,6 @@ Checked against `main` `d9249ed`, AGENTS.md, the tests and the live GitHub state
 
 - Does `xaxc edit` re-root a store? If it does, the request tool could be a generated batch instead of a program.
 - Is WSL interop enabled, and does a Windows run started from WSL give the same bytes (phase 6 probe)?
-- Does phase 2 show decode and serialize dominate `edit`? That decides whether a multi-record `edit` is worthwhile
+- Does phase 2 show decode and serialize dominate `edit`? Partly answered (2026-11-15): file I/O and writing are under 0.4 s of a 40 s driver `edit`; a one-node `edit` and a whole `verify` take the same time, which points at decoding, but only a symbol-level profile can confirm it. That decides whether a multi-record `edit` is worthwhile
   in phase 8.
 - Does the owner accept agent merges gated by `rotate.sh gate`? That is an AGENTS.md change, outside this RFC.
