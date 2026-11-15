@@ -224,6 +224,69 @@ class XaxAarch64ProgramTests(unittest.TestCase):
                 kind, diagnostic = self.assertSame(reader, entry, target)
                 self.assertEqual((kind, diagnostic.rule), ("rejected", "AARCH64-FOREIGN-ABI"))
 
+    def test_composite_returns_over_16_bytes(self):
+        """OI-49 (ledger 0035): a result over 16 bytes is copied through the return pointer, which sits in x16, so the
+        data goes through x17. Leaf and non-leaf makers of 24-, 32- and 64-byte results; the process exits with the low
+        byte of the components' sum, run under ``qemu-aarch64-static`` where it is installed."""
+        import shutil
+        import subprocess
+        import tempfile
+
+        qemu = shutil.which("qemu-aarch64-static") or shutil.which("qemu-aarch64")
+        for kind, count in ((tuple_type((B64,) * 3), 3), (tuple_type((B64,) * 4), 4), (array_type(B64, 8), 8)):
+            for leaf in (True, False):
+                with self.subTest(count=count, leaf=leaf):
+                    reader, entry, target, expected = _composite_program(kind, count, leaf, random.Random(count * 2 + leaf))
+                    outcome, image = self.assertSame(reader, entry, target)
+                    self.assertEqual(outcome, "image")
+                    if qemu is not None:
+                        with tempfile.TemporaryDirectory() as work:
+                            path = Path(work) / "composite"
+                            path.write_bytes(image)
+                            path.chmod(0o755)
+                            self.assertEqual(subprocess.run([qemu, str(path)], timeout=60).returncode, expected)
+
+
+def _composite_program(kind, count, leaf, rng):
+    """A maker ``(x, y) -> kind`` of ``count`` bits<64> components (calling a helper first unless ``leaf``) and a
+    process entry exiting with the low byte of their sum; returns the store and the expected status."""
+    objects, helper = [], None
+    if not leaf:
+        graph = GraphBuilder()
+        block = graph.block(B64)
+        scaled = block.op1(Operation.MUL_WRAP, (block.params[0], block.const(B64, 3)), B64)
+        block.ret(block.op1(Operation.ADD_WRAP, (scaled, block.const(B64, 11)), B64))
+        helper = graph.function((B64,), (B64,))
+        objects += [*graph.objects.values(), helper]
+    graph = GraphBuilder()
+    block = graph.block(B64, B64)
+    x, y = block.params
+    if helper is not None:
+        x = block.op1(Operation.CALL_DIRECT, (x,), B64, entity=helper)
+    masks = [rng.getrandbits(16) for _ in range(count)]
+    parts = tuple(block.op1(Operation.ADD_WRAP, (block.op1(Operation.MUL_WRAP, (x, block.const(B64, k + 1)), B64),
+                                                 block.op1(Operation.BIT_XOR, (y, block.const(B64, masks[k])), B64)), B64) for k in range(count))
+    block.ret(block.op1(Operation.AGGREGATE_MAKE, parts, kind))
+    maker = graph.function((B64, B64), (kind,))
+    objects += [*graph.objects.values(), maker]
+    api = linux_aarch64_api()
+    graph = GraphBuilder()
+    block = graph.block(api.process_effect, api.filesystem_effect)
+    process, fs = block.params
+    a, b = rng.getrandbits(20), rng.getrandbits(20)
+    made = block.op1(Operation.CALL_DIRECT, (block.const(B64, a), block.const(B64, b)), kind, entity=maker)
+    total = block.const(B64, 0)
+    for k in range(count):
+        total = block.op1(Operation.ADD_WRAP, (total, block.op1(Operation.AGGREGATE_GET, (made,), B64, attributes=(k,))), B64)
+    status = block.op1(Operation.INT_TRUNCATE, (block.op1(Operation.BIT_AND, (total, block.const(B64, 0xFF)), B64),), B32)
+    process = block.op1(Operation.CALL_FOREIGN, (status, process), api.process_effect, entity=api.exit_group)
+    block.ret(status, process, fs)
+    entry = graph.function((api.process_effect, api.filesystem_effect), (B32, api.process_effect, api.filesystem_effect))
+    target = aarch64_linux_exec_target()
+    reader = program_store(entry, target, (*objects, *api.types, *graph.objects.values(), B32, B64, kind))
+    start = a if leaf else a * 3 + 11
+    return reader, entry, target, sum(start * (k + 1) + (b ^ masks[k]) for k in range(count)) & 0xFF
+
 
 if __name__ == "__main__":
     unittest.main()
