@@ -2392,3 +2392,26 @@ On top of `4112a06`. This adds to the OI-50 section above, whose "current seed" 
   6 passed, 2 skipped, 6 subtests passed.
 - **EXECUTED, Linux x86-64 (WSL 2):** the test file, seed `0cd26742…`: 3 passed, 1 skipped (AArch64), 8 subtests
   passed. Built by hand, the ledger 0032 seed's six executables are byte-identical to the ledger 0031 seed's.
+
+## OI-57 closed: the reference register lowering folds as the native `basics` does — 2026-11-15
+
+On `897002e`. `compiler/reference/xax_x86_64_regalloc.py` takes both halves of ADR-388 (ledger 0022). First, after
+it collects the function's constants, it folds single-result `add.wrap`, `sub.wrap`, `mul.wrap`, `int.truncate` and
+`int.zero_extend` of width 8, 16, 32 or 64 over constants, in value order, into constants whose nodes are erased.
+Second, the frame saves the register of every hoisted constant. The reference is the oracle, so this keeps it
+describing the graph the native backend lowers. It adds no production logic.
+
+- **EXECUTED, WSL 2, Linux seed `0cd26742…`, `XAX_REQUIRE_NATIVE=1`:** `tests/test_xax_selfhost_general_view.py`, 17
+  passed, 119 subtests passed. On main it fails in 7 tests: `test_jsonmin`, `test_random_programs` trials 2, 17 and 39,
+  `test_register_resident_analyses` and one subtest of `test_executables_assembled_in_xax`, the failures OI-57
+  recorded. With the fold alone, the analyses agree and two S12d emissions still differ by 2 bytes: the native frame
+  pushes `r15`, which holds a hoisted constant. The register save fixes them.
+- **EXECUTED, WSL 2, the 42 other test files that compile through the reference x86-64 lowering**
+  (`test_xax_selfhost_compiler_fixed_point.py` excluded), four workers, 30 min 35 s: 413 passed, 27 skipped, 5,076
+  subtests passed, 6 failed. The six are three `WasmTests`, two `OI06MemorySurfaceTests` and one subtest of
+  `test_xax_selfhost_jvm.py::test_callback_programs`. They fail on main the same way: this WSL has no `node`
+  (`XAX.WASM.HOST`, `/root/venv/node/bin/node.exe`) and no JDK `jmods`.
+- **EXECUTED, Windows 11:** `test_xax_pe`, `test_x86_64_optimizations`, `test_xax_x86_64_codegen`,
+  `test_xax_regalloc_differential`, `test_xax_pe_links`, `test_x86_64_narrow_signed_compare` and
+  `test_xax_member_bit_test`: 22 passed, 15 skipped, 3,846 subtests passed.
+- **Not run:** `test_xax_selfhost_compiler_fixed_point.py`; the full suite.
