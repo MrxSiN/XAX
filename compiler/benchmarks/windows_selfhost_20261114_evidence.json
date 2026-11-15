@@ -1,0 +1,16 @@
+{
+  "schema": "xax-windows-selfhost-v1",
+  "date": "2026-11-14",
+  "status": "EXECUTED",
+  "host": "Windows 11 Pro 10.0.26300, x86-64; cross-build on Linux x86-64 (WSL 2)",
+  "source": "the shared production request after ledger 0031 + compiler/bootstrap/windows/hosting.batch + pe_target.edit (no BBC store)",
+  "request_sha256": "8eabebdde7f41483431d30da20cc5a2fb935598b9e973f33e8ed84258aa524d2",
+  "windows_request_sha256": "d0bcf29f9da3459ce10d79926c3662efeeb877b2d000440ba72463ae2397770d",
+  "runs": [
+    {"compiler": "Linux ledger 0031 seed 89ca6b02...", "host": "Linux", "steps": "resolve, build", "output_sha256": "b9a1ba463001559caa26efc68a275cf8694be7cecb419a29dd361b40735225eb"},
+    {"compiler": "that output (generation 0)", "host": "Windows 11", "steps": "resolve, build", "wall_seconds": 607, "output_sha256": "b9a1ba463001559caa26efc68a275cf8694be7cecb419a29dd361b40735225eb"},
+    {"compiler": "generation 1", "host": "Windows 11", "steps": "resolve, build", "wall_seconds": 692, "output_sha256": "b9a1ba463001559caa26efc68a275cf8694be7cecb419a29dd361b40735225eb"},
+    {"compiler": "ledger 0029 Windows seed 4308ea90...", "host": "Windows 11", "steps": "edit hosting.batch, verify, edit pe_target.edit, verify, resolve, build", "wall_seconds": 1248, "windows_request_equal_to_linux": true, "output_sha256": "b9a1ba463001559caa26efc68a275cf8694be7cecb419a29dd361b40735225eb"}
+  ],
+  "output_bytes": 31993856
+}

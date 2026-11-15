@@ -1,3 +1,50 @@
+# Current Windows seed — one request for both hosts, ledger 0031, 2026-11-14
+
+The Windows seed is now built from the **same request store as the Linux seed** (`../seed/xax_compiler_request.xax`)
+and a small Windows hosting step. BBC's store is no longer part of it (ADR-402). `xaxc-windows-x86_64.exe`: 31,993,856
+bytes, SHA-256 `b9a1ba463001559caa26efc68a275cf8694be7cecb419a29dd361b40735225eb`; identities in [seed.json](seed.json),
+the runs in [windows_selfhost_20261114_evidence.json](../../benchmarks/windows_selfhost_20261114_evidence.json).
+
+## Building it on Windows
+
+```text
+xaxc-windows-x86_64.exe edit ..\seed\xax_compiler_request.xax hosting.batch hosted.xax
+xaxc-windows-x86_64.exe verify hosted.xax hosted.diag
+xaxc-windows-x86_64.exe edit hosted.xax pe_target.edit request.xax
+xaxc-windows-x86_64.exe verify request.xax request.diag
+xaxc-windows-x86_64.exe resolve request.xax snapshot.xax
+xaxc-windows-x86_64.exe build snapshot.xax xaxc.exe xaxc.provenance
+```
+
+`xaxc.exe` must equal the seed byte for byte. On Windows 11 the build takes about 11 minutes; no Python, WSL or Wine
+takes part. The Linux seed cross-builds the same bytes from `request.xax` (`resolve`, `build`).
+
+## What the hosting step is
+
+Main is shared: after ledgers 0030 and 0031 its memory calls are `xax-host-v1` and its file and exit calls are host
+functions (`host_open`, `host_read`, `host_write`, `host_close`, `host_exit`). `hosting.batch` is a native batch on the
+request:
+- the Windows declarations and types the layer needs (`define`'s `object` form): msvcrt `_wopen`, `_read`, `_write`,
+  `_close`, `__wgetmainargs`, `memcpy`; kernel32 `ExitProcess`, `AddVectoredExceptionHandler`, `VirtualAlloc`,
+  `VirtualFree`, `VirtualQuery`, `RtlMoveMemory`, `GetLastError`, `SetLastError`, `MultiByteToWideChar`,
+  `WideCharToMultiByte`;
+- the Windows bodies of the host functions (`@w_open`, `@w_read`, `@w_write`, `@w_close`, `@w_exit`), the argument
+  adapters (`@w_argc`, `@w_argcopy`) and the view-commit handler (`@w_handler`), from BBC's views of them (their CIDs
+  are unchanged since BBC's port);
+- `@w_main`: main's view with its host function calls made calls of the Windows bodies and its three startup reads
+  (`argc`, `arg_copy`, which only a Linux process entry may make) made calls of the argument adapters;
+- `@XAXC`, the process entry: it registers the handler, commits and releases one page (it holds the `VirtualFree`
+  declaration, through which `xax-host-v1` `free` is imported, ADR-400), calls `@w_main` and returns its results.
+  `replace` makes it the module's entry.
+
+`pe_target.edit` is an `XAXEDIT1` record (two `REPLACE_REFERENCE` operations, one supplied object): the module's and
+the build request's target become `x86_64-windows-pe-v1` with the growable accesses.
+
+**Handles.** Both files bind the request's root. After a production ledger transaction write them again from `xaxc
+edit <request> <selector>`: the root line, main's handle, and the five host functions' handles in `@w_main`.
+
+The sections below describe earlier seeds and are historical.
+
 # Current Windows seed — ledger 0029, 2026-11-14
 
 Ledger 0029 adds the portable host memory ABI `xax-host-v1` (ADR-400). The seed is cut from `bbc_request.xax`
