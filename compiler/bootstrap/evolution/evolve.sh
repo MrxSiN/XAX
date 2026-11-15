@@ -14,7 +14,9 @@
 # a store's bytes, so earlier stores are read back from the repository. `replay` takes each transaction's earlier
 # store from the committed file while it still is that store, else from git, else from the store's previous replayed
 # result (transactions chained in one commit), applies the record with xaxc edit, and compares the result with the
-# recorded blob. XAXC names the compiler (default: the pinned seed).
+# recorded blob. The replay is strict: a shallow clone, or a transaction whose earlier store it cannot find or whose
+# result differs, fails it; it ends with `replayed <n> of <total> LEDGER=<blob> xaxc=<blob>` (git object ids) for the
+# evidence and tests to read. XAXC names the compiler (default: the pinned seed).
 #
 # The ledger's logic (blob ids, chain ends, the transaction list, the check) is the XAX program ledger-tool/xax_ledger.xax
 # (ledger-tool/README.md), built here with the compiler; this script only runs xaxc, git and that program.
@@ -63,10 +65,13 @@ apply() {
 
 replay() {
     only=${1:-}
-    status=0
+    status=0 total=0 replayed=0
+    # Strict (docs/proposals/build-bootstrap-rotation-rfc.md section 5): every transaction is replayed or the replay fails.
+    [ "$(git -C "$bootstrap" rev-parse --is-shallow-repository)" = false ] || die "shallow clone: replay needs the full history"
     "$tool" transactions "$bootstrap" > "$work/transactions"
     while read -r name store before after; do
         [ -z "$only" ] || [ "$store" = "$only" ] || continue
+        total=$((total + 1))
         made="$work/made-$(echo "$store" | tr / _)"  # this store's last replayed result
         if [ "$("$tool" blob "$bootstrap/$store")" = "$before" ]; then
             cp -- "$bootstrap/$store" "$work/before.xax"
@@ -75,17 +80,21 @@ replay() {
         elif [ -f "$made" ] && [ "$("$tool" blob "$made")" = "$before" ]; then
             cp -- "$made" "$work/before.xax"  # a transaction chained in one commit: git holds only the chain's end
         else
-            echo "skip $name $store: the repository does not hold $before"
+            echo "FAIL $name $store: the repository does not hold $before" >&2
+            status=1
             continue
         fi
         if "$xaxc" edit "$work/before.xax" "$here/$name" "$work/after.xax" && [ "$("$tool" blob "$work/after.xax")" = "$after" ]; then
             cp -- "$work/after.xax" "$made"
+            replayed=$((replayed + 1))
             echo "ok   $name $store"
         else
             echo "FAIL $name $store" >&2
             status=1
         fi
     done < "$work/transactions"
+    [ "$total" -gt 0 ] || { echo "FAIL no transaction${only:+ for $only}" >&2; status=1; }
+    echo "replayed $replayed of $total LEDGER=$("$tool" blob "$here/LEDGER") xaxc=$("$tool" blob "$xaxc")"
     return $status
 }
 
