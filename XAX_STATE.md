@@ -2463,3 +2463,23 @@ describing the graph the native backend lowers. It adds no production logic.
   `test_xax_regalloc_differential`, `test_xax_pe_links`, `test_x86_64_narrow_signed_compare` and
   `test_xax_member_bit_test`: 22 passed, 15 skipped, 3,846 subtests passed.
 - **Not run:** `test_xax_selfhost_compiler_fixed_point.py`; the full suite.
+
+## Native request tool at ledger 0032 (RFC step 5, Linux half) — 2026-11-15
+
+On `6b47cea`. `compiler/bootstrap/evolution/request-tool/` holds `xax_request.xax`, an XAX program that writes the
+build request store for a driver store and a target object (RFC §6). It is a native batch, `request.batch`, on the
+ledger tool's seed, with no generator of its logic. Its BLAKE3 is the S2 component's two functions, copied as views.
+
+- **EXECUTED, WSL 2, pinned Linux seed `0cd26742…`:** `xax_request xax_compiler_driver_general.xax
+  x86_64-linux-elf-exec-v1.target out` writes `out` equal to `seed/xax_compiler_request.xax` byte for byte (SHA-256
+  `8345f64d…`). The reference `compiler_request` gives the same SHA-256 (EXECUTED on Windows 11).
+- **MEASURED:** 3.26 s wall, 2.02 s user, 1.20 s system, 122,624 KB peak RSS. A request-mirror ledger transaction's
+  `edit` takes about 41 s and 2.3 GB (phase 2 profile above).
+- **EXECUTED:** `tests/test_request_tool.py` with `XAX_REQUIRE_NATIVE=1` in WSL: 3 passed. They check that the store is
+  the seed's `edit` of the batch, that the request equals the committed one and the reference, and that a missing
+  driver exits 1 and writes nothing.
+- **Limits:** the driver must be under 63 MiB (it is 62.6 MB; the tool refuses above that). Metadata records are not
+  copied (there are none).
+- **Not done:** the Windows hosting generator and its three oracle checks (`hosted_sha256` `ff9dfa42…`,
+  `result_sha256` `5bf65de6…`, the build equal to `e88877d1…`). `hosting.batch` and `pe_target.edit` stay. The
+  `derived` ledger line (step 6) is not added.
