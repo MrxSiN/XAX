@@ -174,3 +174,5 @@ baseline seed/xax_compiler_request.xax 57fa5a649a6268c6d39eed71e8700b1954dc8e03
 0032-dex-writer-output-cap-request.batch seed/xax_compiler_request.xax 6683a9b5c31c34451d07f28030f9274b3382d154 3b123e3d940ef1eefeb6285fdad555fc84dd400b
 # derived <store> <final blob> <tool root> (RFC step 6): from here the store is the named tool's output, not a chain; evolve.sh check compares it.
 derived seed/xax_compiler_request.xax 3b123e3d940ef1eefeb6285fdad555fc84dd400b 03284c0dd157c27462840430366db7ac5c5ddf953205ec9206ca3b3e345f52e0
+0033-loop-slot-writes-x86-64.batch xax_x86_64_general.xax 8708688fa44afc7eaf7303316d83693f857411c2 4449c122cfd87bdd1ebabeb5567003361d248bb0
+0033-loop-slot-writes.batch xax_compiler_driver_general.xax 7a5a219b7baac6fd6d33892ccbb4632c09a38850 2bbf3aa2d9a16a64e73126d4f8073285eed2831c
