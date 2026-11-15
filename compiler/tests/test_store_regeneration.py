@@ -24,10 +24,12 @@ EVOLUTION = BOOTSTRAP / "evolution"
 REQUEST_STORE = "seed/xax_compiler_request.xax"
 LINES = [line.split() for line in (EVOLUTION / "LEDGER").read_text(encoding="ascii").splitlines() if line.strip() and not line.startswith("#")]
 FROZEN = sorted(fields[1] for fields in LINES if fields[0] == "baseline")
-TRANSACTIONS = [(EVOLUTION / fields[0], *fields[1:]) for fields in LINES if fields[0] != "baseline"]
+TRANSACTIONS = [(EVOLUTION / fields[0], *fields[1:]) for fields in LINES if fields[0] not in ("baseline", "derived")]
+DERIVED = {fields[1]: fields[2] for fields in LINES if fields[0] == "derived"}  # RFC step 6: the store's chain ends here
 HEADS = {fields[1]: fields[2] for fields in LINES if fields[0] == "baseline"}
 for _record, _store, _before, _after in TRANSACTIONS:
     HEADS[_store] = _after
+assert all(HEADS[store] == final for store, final in DERIVED.items()), "a derived line's final blob is its chain end"
 
 
 def blob_id(data: bytes) -> str:

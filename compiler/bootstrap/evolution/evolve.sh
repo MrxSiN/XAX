@@ -18,6 +18,10 @@
 # result differs, fails it; it ends with `replayed <n> of <total> LEDGER=<blob> xaxc=<blob>` (git object ids) for the
 # evidence and tests to read. XAXC names the compiler (default: the pinned seed).
 #
+# A derived store (a `derived <store> <final blob> <tool root>` line, RFC step 6) is no longer changed by transactions:
+# seed/xax_compiler_request.xax is request-tool/request.sh of the driver, so `apply` rewrites it after a driver
+# transaction and `check` requires the committed request to be that derivation. Its historical transactions replay.
+#
 # The ledger's logic (blob ids, chain ends, the transaction list, the check) is the XAX program ledger-tool/xax_ledger.xax
 # (ledger-tool/README.md), built here with the compiler; this script only runs xaxc, git and that program.
 set -eu
@@ -44,7 +48,7 @@ apply() {
     for store in "$@"; do
         path="$bootstrap/$store"
         [ -f "$path" ] || die "$store is not a store under bootstrap/"
-        before=$("$tool" head "$bootstrap" "$store") || die "$store is not a frozen store (no ledger chain, or a broken one)"
+        before=$("$tool" head "$bootstrap" "$store") || die "$store is not a frozen store (no ledger chain, a broken one, or derived)"
         [ "$("$tool" blob "$path")" = "$before" ] || die "$store is not its ledger chain's end"
         n=$((n + 1))
         if ! "$xaxc" edit "$path" "$record" "$work/$n.xax"; then
@@ -61,6 +65,13 @@ apply() {
     done
     cat "$work/lines" >> "$here/LEDGER"
     cat "$work/lines"
+    for store in "$@"; do
+        [ "$store" != xax_compiler_driver_general.xax ] || [ ! -f "$bootstrap/seed/xax_compiler_request.xax" ] || derive "$bootstrap" "$bootstrap/seed/xax_compiler_request.xax"
+    done
+}
+
+derive() {  # derive <bootstrap> <out>: the build request of that bootstrap's driver (RFC step 6)
+    sh "$here/request-tool/request.sh" "$1/xax_compiler_driver_general.xax" "$here/request-tool/x86_64-linux-elf-exec-v1.target" "$2"
 }
 
 replay() {
@@ -104,6 +115,13 @@ case "$command" in
     apply) apply "$@" ;;
     replay) replay "$@" ;;
     ledger) "$tool" "$@" ;;
-    check) "$tool" check "${1:-$bootstrap}" && echo "every chain ends at its committed store" ;;
+    check)
+        root=${1:-$bootstrap}
+        "$tool" check "$root"
+        if [ -f "$root/seed/xax_compiler_request.xax" ]; then
+            derive "$root" "$work/request.xax"
+            cmp -s "$work/request.xax" "$root/seed/xax_compiler_request.xax" || die "seed/xax_compiler_request.xax is not the request of the committed driver (request-tool/request.sh)"
+        fi
+        echo "every chain ends at its committed store; the request is derived from the driver" ;;
     *) die "usage: evolve.sh apply <record> <store>... | replay [<store>] | check [<bootstrap>] | ledger <command> <argument>..." ;;
 esac
