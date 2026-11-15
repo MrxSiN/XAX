@@ -1,19 +1,19 @@
 {
   "schema": "xax-native-windows-seed-v4",
-  "sha256": "b9a1ba463001559caa26efc68a275cf8694be7cecb419a29dd361b40735225eb",
+  "sha256": "e88877d10690e171b73d9de8b94cb579820672e980b97f0bb11a88e460a7a77f",
   "bytes": 31993856,
   "source": {
     "request": "compiler/bootstrap/seed/xax_compiler_request.xax",
-    "request_sha256": "8eabebdde7f41483431d30da20cc5a2fb935598b9e973f33e8ed84258aa524d2",
+    "request_sha256": "8345f64d964f0114c500268cdd224d40152247118fd0a478fa42426ff8078a63",
     "hosting_batch": "compiler/bootstrap/windows/hosting.batch",
-    "hosting_batch_sha256": "d5070b6664e1260f33933d18772ae0c9278ee2dddc1cd851d69d80b94fd772d0",
-    "hosted_sha256": "d019f9d046e366c243a0b641ad3173baec56aeb7ba4b9ee646372daac03e5544",
+    "hosting_batch_sha256": "afa009b9c6c04c7a9705079983d41255e21c1d310733d23ffd266e5b752a80db",
+    "hosted_sha256": "ff9dfa423bca5fc4e721c986859e17b5b68bc2a9fa9493292dcb00cf2706fa65",
     "pe_target_record": "compiler/bootstrap/windows/pe_target.edit",
-    "pe_target_record_sha256": "6e2e1470afe1e9ae3d9c643139dc0c3f0307d3fdb94f9f0c3e6e88043d66fa81",
-    "result_sha256": "d0bcf29f9da3459ce10d79926c3662efeeb877b2d000440ba72463ae2397770d"
+    "pe_target_record_sha256": "d13fb5b95b8737360cbab51315eabd7de25f630274a703ac2d8b50c1f401beba",
+    "result_sha256": "5bf65de639b81ac6387caeb3caad87a9997ceaadcfd522853f980c41c449609d"
   },
-  "production_ledger": "0031",
-  "native_self_build": "EXECUTED on Windows 11 (2026-11-14): the ledger 0029 Windows seed (4308ea90...) applied the hosting batch and the PE record to the shared request and built this file; this file builds itself byte for byte (generations 1 and 2 equal). The Linux ledger 0031 compiler cross-builds the same bytes.",
+  "production_ledger": "0032",
+  "native_self_build": "EXECUTED on Windows 11 (2026-11-15): the ledger 0031 Windows seed (b9a1ba46...) applied the hosting batch and the PE record to the shared ledger 0032 request and built this file in 7 minutes; this file builds itself byte for byte (generations 1 and 2 equal). The Linux ledger 0032 compiler (0cd26742...) cross-builds the same bytes.",
   "commands": [
     "verify",
     "inspect",

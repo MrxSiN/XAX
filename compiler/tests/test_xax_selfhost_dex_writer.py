@@ -60,6 +60,14 @@ class SelfhostDexWriterTests(unittest.TestCase):
             with self.subTest(trial=trial):
                 self.assertEqual(write_dex_with_xax(tuple(classes), required=True), D._write_dex_python(classes))
 
+    def test_large_code_dex(self):
+        # Ledger 0030: about 1.3M input words.  The output buffer was 64 words per input word (83M words, past the
+        # 80M-word arena), so a module this size (Pixel Photos Evolved's 1,097 methods) declined.
+        code = D.DexCode(4, 0, 0, tuple(range(6500)))
+        methods = tuple(D.DexMethodDef(f"m{k}", "V", (), 0x9, code) for k in range(100))
+        classes = [D.DexClassDef("Lx/Big;", 1, "Ljava/lang/Object;", (), (), methods)]
+        self.assertEqual(write_dex_with_xax(tuple(classes), required=True), D._write_dex_python(classes))
+
     def test_duplicate_class_declines(self):
         item = D.DexClassDef("Lx/A;", 1, "Ljava/lang/Object;")
         self.assertIsNone(write_dex_with_xax((item, item)))
