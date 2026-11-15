@@ -13,8 +13,10 @@ and the trusted compiler chain is never broken.**
 
 The following invariants hold after every commit. Each phase's tests check all of them:
 
-- **I1 (seed):** `bootstrap/seed/selfbuild.sh` run with the pinned Linux seed rebuilds the pinned seed byte for byte.
-  The pinned Windows seed has native evidence for its exact SHA-256.
+- **I1 (seed):** on `main`, `bootstrap/seed/selfbuild.sh` run with the pinned Linux seed rebuilds the pinned seed
+  byte for byte, and the pinned Windows seed has native evidence for its exact SHA-256. On a release branch with
+  unrotated driver transactions, the pins still hold for the last release. The candidate is shown only by its own
+  fixed point (C(n) = C(n−1)) and is never reported as the pinned seed.
 - **I2 (ledger):** `evolve.sh check` passes. Historical ledger lines, records and blob identities are never edited.
 - **I3 (stores):** no frozen store changes except through a ledger transaction. A phase that claims "no semantic
   change" leaves every store, CID and seed byte-identical.
@@ -420,13 +422,76 @@ Estimates are marked *est.*
   - Plus 7 full ledger replays, each run twice (test and evidence).
 - **B**:
   - 7 × (apply on two stores ≈ 4–12 min + C1 build 4 min + targeted tests ≈ 15–30 min *est.*) ≈ 3–5 h;
-  - plus one release: 8 + 4 (third generation) + 10 + V2 record (≈ 1–1.5 h *est.*, from §2's breakdown) + one test
-    pass (1–2 h) + BBC (15 min);
-  - ≈ **6–10 h** of machine time (*est.*), with no hand remaps and one replay.
+  - plus one release: 8 + 4 (third generation) + 10 + V2 record + one test pass (1–2 h) + BBC (15 min);
+  - the V2 record still runs one strict replay with `verify`: 78 min of measured `edit` time plus the untimed
+    `verify` calls, then the corpus once instead of 4 times. Corrected projection: ≈ 2–2.5 h *est.* (an earlier
+    draft said 1–1.5 h);
+  - ≈ **7–10 h** of machine time (*est.*), with one hand remap at most and one replay.
 - **Memory:** both are bounded by about 6 GB per compiler process in a 19 GB WSL. B runs at most two compiler
   processes at a time; A has the same limit but repeats the work.
 - **Agent cost:** A means 7 cycles of reading state, remapping handles and re-running evidence. B means one
   release, plus one gate run per sub-batch.
+
+### 13.7 Audit corrections (2026-11-15) and the execution order
+
+Checked against `main` `d9249ed`, AGENTS.md, the tests and the live GitHub state. The corrections:
+
+1. **Current rules require a rotation and a BBC rebuild after every driver change.** AGENTS.md says to change the
+   production compiler by a transaction, "then rebuild with `selfbuild.sh` and rotate the seed", and to rebuild
+   BBC "after any production driver change". It also says to open a PR "as soon as each task is finished". In
+   addition, `test_the_record_describes_the_committed_compiler` and `seed_requires_python` fail on `main` as soon
+   as a driver transaction lands without a rotation.
+   **So driver transactions never land on `main` before their release.** They go on a release branch,
+   `release/<first ledger>`, cut from `main`. Each sub-batch is a PR into that branch, opened when its own tests
+   pass; one release PR merges the validated release into `main`. Phase 0 changes AGENTS.md to say this, in its
+   own PR. PRs are merged by the owner (every merged PR so far is `MrxSiN`'s); agents never merge.
+2. **The Python test question is settled by AGENTS.md itself.** The native-evolution rule says "Python or other
+   languages may test or serve as references but must not generate or implement production compiler logic".
+   This more specific rule permits tests that compare a native result with the reference. The OI-50 Windows-seed
+   test is such a test, and OI-55's PE cases may be done the same way, inside the existing test file
+   (`test_x86_64_narrow_signed_compare.py`, "add no new file"). OI-60's remark is narrower than AGENTS.md and is
+   corrected when OI-60 closes. Evidence runners, rotation and ledger tools are tooling, not tests, and are native.
+3. **The Windows generator's oracle exists only at ledger 0032.** Its acceptance (§7) compares it with today's
+   `hosted.xax` and request. That comparison must run on the 0032 request, before any batch C transaction, or no
+   oracle is left. The same applies to the request tool, against `compiler_request` and the committed request.
+4. **Phase 5 saves only one remap in this campaign**, because Windows is built only at the release. It stays in the
+   campaign for later releases, but only its oracle check is time-critical (item 3). The generator itself must be
+   finished before the release.
+5. **Corpus freezing (phase 3) needs a size check first.** `corpus()` builds its cases from Python test helpers and
+   the reference (`bench_full_selfhost.py` around line 85). Measure the bytes of its input stores before deciding
+   to commit them as data. If they are too large, the runner stays a reference-side Python evidence harness with an
+   AGENTS.md justification, and only the V2 schema changes.
+6. **The one-rotation claim holds, with conditions.** No batch C change is used by the compiler's own store, so no
+   change needs the two-stage rotation. Conditions:
+   - x86-64 code generation changes (OI-58, PE probes, OI-54 arena) are also tested with C2, because C1 is the old
+     seed's code;
+   - the driver's growth is checked against its limits after each sub-batch (main is 632 values below `VCAP`);
+   - if OI-54 step 1 needs its own fixed point to measure the later steps, the campaign takes two rotations.
+7. **WSL may restart the VM and kill long runs.** A full replay started on 2026-11-15 was lost when the VM
+   restarted, and its log was overwritten. Long runs keep a `wsl.exe` client attached for their whole duration,
+   write to a log named per run, and are recorded as unfinished in the handoff until their last line exists.
+8. **Inventory additions:**
+   - BBC#4 is blocked on #55. `bbc compile` of those programs at -O0 also needs OI-54, so #55 closes on
+     `check`/`emit-bfx` and BBC#4 waits for batch C.
+   - The XAX-MCP pin is another repository's PR.
+   - Roadmap U2.2 and S8c and the matrix rows marked NONE are outside this campaign.
+9. **Branch protection:** `main` is not protected (GitHub API 404). The guard in §9 relies on owner merges until the
+   owner adds protection; the RFC cannot add it.
+
+**Execution order** (supersedes §10's order where they differ; each step is one PR unless noted):
+
+| Step | Work | Target branch | Needs | Runs on |
+|---|---|---|---|---|
+| 1 | Phase 1 strict replay, after the full replay prints `replayed 142 of 142` | `main` | — | WSL |
+| 2 | Phase 0: ADR (cadence, release branch, gates) and the AGENTS.md amendment | `main` | — | docs |
+| 3 | Phase 2 profile, using step 1's per-transaction timestamps plus one `strace`/`time -v` edit | `main` (evidence note) | 1 | WSL |
+| 4 | Batch S PRs: OI-55 PE run, OI-57, the status lines, OI-34 and OI-51 checks | `main` | — | Windows, WSL |
+| 5 | Request tool and Windows generator, with their oracle checks at ledger 0032 | `main` | 1 | WSL, Windows |
+| 6 | Phase 4: the `derived` ledger line | `main` | 5 | WSL |
+| 7 | Cut `release/0033`; batch C sub-batches in this order: C-x86, C-a64, C-jvm (#49, then #48), C-cap (OI-54 steps, OI-52 R2); each tested with C1 (and C2 for x86-64) | release branch | 6 | WSL, Windows, device |
+| 8 | Phase 3 (V2 runner) and phase 6 (`rotate.sh`), in parallel with step 7 | `main` | 1 | WSL |
+| 9 | Release (§13.5): rotate, confirm, V2 record, full suite, BBC rebuild, device session, `validated`; release PR | `main` | 7, 8 | all |
+| 10 | Batch B (#51, #47, #55) on the new `bbc.exe`; BBC#4 follows | `main` | 9 for -O0 programs; #55 `check` can go earlier | Windows, device |
 
 ## 14. Open questions
 
