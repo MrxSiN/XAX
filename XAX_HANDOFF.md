@@ -2146,3 +2146,34 @@ to `XAX_STATE.md` or edit `XAX_OPEN_ISSUES.md`, so later merges may need a trivi
   - the Windows request equals `5bf65de6…`;
   - its build equals `e88877d1…`.
   Only then delete `hosting.batch` and `pe_target.edit`. Steps 6 and 8 follow; step 8 may start in parallel.
+
+## Build/rotation campaign: step 5 started (request tool) — 2026-11-15
+
+`main` = `6b47cea`. On the owner's instruction in chat, PRs #59–#65 were merged (phase 0 ADR-404, the phase 2
+profile, OI-55, OI-57, the OI status lines, the OI-34/OI-51 checks, the previous handoff).
+
+- **Done, open:** [PR #66](https://github.com/MrxSiN/XAX/pull/66), the native request tool
+  (`compiler/bootstrap/evolution/request-tool/`). At ledger 0032 its output equals the committed request and the
+  reference `compiler_request` byte for byte (`8345f64d…`), EXECUTED in WSL with the pinned Linux seed.
+  `tests/test_request_tool.py`: 3 passed.
+- **Identities:** Linux seed `0cd26742…`, Windows seed `e88877d1…`, LEDGER head ledger 0032 (142 transactions).
+- **Runs in progress:** none. WSL scratch: `/root/work/rt/`. `/root/work/campaign` is detached at `d382e00` (the PR
+  branch). `/tmp` in WSL does not survive between `wsl.exe` calls, so keep outputs under `/root/work`.
+- **Verifier and backend rules learned while writing the tool** (native batch authoring; see its README):
+  - an access through `ptr<bitsN>` must be N/8 bytes wide;
+  - a cast from `ptr<bits8>` to `ptr<bits32>` is declined (verify exit 2, no record);
+  - a function has at most one machine return value and at most four machine parameters, and a call at most four
+    machine inputs;
+  - every heap view needs its own memory-effect token (`MEMORY-EFFECT-PROVENANCE`), so an entry takes one memory
+    parameter per view;
+  - `heap.view`'s second attribute must equal the pointer's alignment;
+  - the startup `arg_copy` does not NUL-terminate;
+  - `xaxc edit` verifies its input store first, so an unverified candidate cannot be viewed.
+- **Next step (rest of step 5):** the Windows hosting generator. It takes the request tool with a PE target and a
+  frozen `windows/host_layer.xax` (RFC §7), rewrites main's host-function calls and startup reads by CID, and adds
+  `@XAXC`. Its oracle checks use the ledger 0032 files, which git keeps after later ledgers too:
+  - the hosted store equals `ff9dfa42…`;
+  - the Windows request equals `5bf65de6…`;
+  - its build equals `e88877d1…`.
+  Then delete `hosting.batch` and `pe_target.edit`. After that, step 6 (`derived` line), with steps 7 and 8 as the
+  RFC orders them.
