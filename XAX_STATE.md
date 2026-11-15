@@ -2334,3 +2334,29 @@ the ledger 0030 section for main's other host calls and the Windows seed.
 - **Not run / not done:** BBC's driver is not rebuilt (`rebuild.sh` declines batches naming the production entry;
   BBC's entry already calls the same adapters) and BBC's checks were not rerun. `argc` and `arg_copy` stay Linux
   startup reads in main; the hosting batch ports them.
+
+## Ledger 0032 (DEX writer output for large modules), Linux and Windows seeds — 2026-11-15
+
+Built on Linux x86-64 (WSL 2) and Windows 11, on top of `e3e65e0` (ADR-403). PR #53's change, first written as ledger
+0030, is replayed as ledger 0032 after main's 0030 and 0031.
+
+- **Ledger 0032:** one batch each on the driver and the request (`evolution/native/0032/README.md`): the DEX writer's
+  output capacity constant (`F966`, `N3331`) becomes 16, as in the PR's `xax_dex_writer.xax` and `xax_android.xax`
+  transactions (same blobs). No other node changes.
+- **Linux seed:** the ledger 0031 seed builds the new request; generations 1 and 2 are byte-identical (`0cd26742…`,
+  31,942,651 bytes, the old size). That compiler is the seed; `write-request` leaves the request unchanged;
+  `evolve.sh check` passes.
+- **Windows seed:** `windows/hosting.batch` remapped to the new request's handles and `windows/pe_target.edit` to the new
+  hosted root and module object; the ledger 0031 Windows seed builds `e88877d1…` (31,993,856 bytes) in 7 minutes, which
+  rebuilds itself byte for byte on Windows 11, and the Linux seed cross-builds the same bytes (`windows/seed.json`).
+- **BBC:** `rebuild.sh` with the 0032 batches on main's BBC stores gives the PR's `bbc.xax` and `bbc_request.xax`.
+  `bbc.exe` built from them with the new Windows seed (`d6264e70…`) compiles BBC's 7 test programs at O0 and O1 for
+  windows-x86_64 and android-arm64 to the same 28 outputs as main's BBC request built with main's Windows seed; 8
+  Windows runs print the same output.
+- **Records:** `python_free_seed_evidence.json` (8 min) and `full_selfhost_evidence.json` (3 h 4 min) re-recorded with
+  `XAX_REQUIRE_NATIVE=1`; every component reports `xax` authority with no fallback; the B levels hold.
+- **Tests:** Linux (`XAX_REQUIRE_NATIVE=1`, five workers): DEX writer (with the large-code case), Android JVM,
+  evolution, Python-free seed: 12 passed, 64 subtests passed (2 h 6 min). Windows 11: status docs, Python-free seed,
+  evolution, store regeneration: 72 passed, 114 skipped.
+- **Not run:** the PPE APK rebuild on the 0032 compiler (its module snapshot cannot be reconstructed exactly); the
+  ledger 0029 APK run stands for that path.

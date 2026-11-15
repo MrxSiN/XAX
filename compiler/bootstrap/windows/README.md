@@ -1,3 +1,16 @@
+# Current Windows seed — ledger 0032, 2026-11-15
+
+Ledger 0032 lets the DEX writer size its output for large modules (ADR-403). The seed is built as the ledger 0031
+section below describes. Only the hosting files changed: they are rewritten for the new request root `ad816a6d…`.
+`hosting.batch` has the new root line and the handles that moved. Main is F426 (F473 before), and the four functions
+whose CIDs changed are matched by their views (`../evolution/native/0032/README.md`). `pe_target.edit` binds the new
+hosted root `7262bc4f…` and the new module object `14fbaca8…`; its supplied object and target reference are unchanged.
+On Windows 11, the ledger 0031 seed built generation 1 in 7 minutes, and generation 1 built generation 2. Both are
+byte-identical: 31,993,856 bytes, SHA-256 `e88877d10690e171b73d9de8b94cb579820672e980b97f0bb11a88e460a7a77f`. The
+Linux ledger 0032 seed cross-builds the same bytes from the same `request.xax` (WSL 2). Identities are in
+[seed.json](seed.json). The section below describes the ledger 0031 seed and how to build it; its seed identity is
+historical.
+
 # Current Windows seed — one request for both hosts, ledger 0031, 2026-11-14
 
 The Windows seed is now built from the **same request store as the Linux seed** (`../seed/xax_compiler_request.xax`)
