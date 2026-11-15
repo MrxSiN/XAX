@@ -1,22 +1,19 @@
 {
-  "schema": "xax-native-windows-seed-v3",
-  "sha256": "e4eaaa0a5ea9d0f8530c76635ef565057e9176b5698cd27ae846bf60ce53d52e",
+  "schema": "xax-native-windows-seed-v4",
+  "sha256": "b9a1ba463001559caa26efc68a275cf8694be7cecb419a29dd361b40735225eb",
   "bytes": 31993856,
   "source": {
-    "store": "compiler/integration/bfx/bbc.xax",
-    "store_git_blob": "2558f6818d3699d640750b3d9f5ffa60970269d8",
-    "store_root": "97aef73b8d6005a798bc54f4b5b560fcf4669518c9e0b8aad77d30156e7ac8df",
-    "batch": "compiler/bootstrap/windows/xaxc_entry.batch",
-    "result_sha256": "25ecba8b57a76e8a50133b9259d9b1a21171b34150b29d00e48a5fb54964d7c9"
+    "request": "compiler/bootstrap/seed/xax_compiler_request.xax",
+    "request_sha256": "8eabebdde7f41483431d30da20cc5a2fb935598b9e973f33e8ed84258aa524d2",
+    "hosting_batch": "compiler/bootstrap/windows/hosting.batch",
+    "hosting_batch_sha256": "d5070b6664e1260f33933d18772ae0c9278ee2dddc1cd851d69d80b94fd772d0",
+    "hosted_sha256": "d019f9d046e366c243a0b641ad3173baec56aeb7ba4b9ee646372daac03e5544",
+    "pe_target_record": "compiler/bootstrap/windows/pe_target.edit",
+    "pe_target_record_sha256": "6e2e1470afe1e9ae3d9c643139dc0c3f0307d3fdb94f9f0c3e6e88043d66fa81",
+    "result_sha256": "d0bcf29f9da3459ce10d79926c3662efeeb877b2d000440ba72463ae2397770d"
   },
-  "request": {
-    "store": "compiler/integration/bfx/bbc_request.xax",
-    "store_git_blob": "7a65d1e2e9043a1ca80b99e396595cfbc7c2f52b",
-    "batch": "compiler/bootstrap/windows/xaxc_entry_request.batch",
-    "result_sha256": "aafe39567f15f1688355652dea771dba8ad85504723eccbd20f2aa9788aa072e"
-  },
-  "production_ledger": "0030",
-  "native_self_build": "EXECUTED on Windows 11 (2026-11-14): the ledger 0029 seed built generation 1; generations 1 and 2 are byte-identical",
+  "production_ledger": "0031",
+  "native_self_build": "EXECUTED on Windows 11 (2026-11-14): the ledger 0029 Windows seed (4308ea90...) applied the hosting batch and the PE record to the shared request and built this file; this file builds itself byte for byte (generations 1 and 2 equal). The Linux ledger 0031 compiler cross-builds the same bytes.",
   "commands": [
     "verify",
     "inspect",

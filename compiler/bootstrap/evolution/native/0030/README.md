@@ -1,22 +1,24 @@
-# Ledger 0030: the DEX writer's output buffer for large modules (ADR-401)
+# Ledger 0030: main allocates and releases through `xax-host-v1` (ADR-401)
 
-Applied with `../../evolve.sh apply` to four stores, one batch each, written from `xaxc edit <store> <selector>` views
-and accepted by `xaxc verify`. Each batch sets one constant: `N3331` (64, the output words per input word of the
-writer frontend's buffer) becomes 16.
+Applied with `../../evolve.sh apply` to two stores, one batch each, written from `xaxc edit <store> F599`'s view of
+main (`99a19fc7…`) and accepted by `xaxc verify`:
 
-| Batch | Store | Function |
-|---|---|---|
-| `0030-dex-writer-output-cap-dex-writer.batch` | `xax_dex_writer.xax` | F28 (`f6b7f601…`) |
-| `0030-dex-writer-output-cap-android.batch` | `xax_android.xax` | F446 (`ec5f4709…`, the writer as the Android program's layer) |
-| `0030-dex-writer-output-cap.batch` | the driver | F962 (`ec5f4709…`) |
-| `0030-dex-writer-output-cap-request.batch` | the request | F962 (`ec5f4709…`) |
+| Batch | Store |
+|---|---|
+| `0030-host-main.batch` | the driver |
+| `0030-host-main-request.batch` | the request (its own `R` line; the rest is the same text) |
 
-**Finding the site.** The Android program declined at site 1580, layer 3. Site codes are constants stored at
-`G_WHY` (word `CO_AT + 8` = 264241160); without the deleted builder, the site is found natively by scanning the
-program store for the constant 1580 and viewing the one function that holds it (`xax_android.xax` F230): the check
-after its first layer, which is the DEX writer (layer 1 is the JVM program, layer 2 the class translation). The
-writer's own `_ok` checks record no site; the failing one was `G_OUT`'s `alloc` (`64 * 1,559,494 + 65536` words
-against the 80M-word arena).
+**Objects.** Fourteen `xax-host-v1` declarations (ADR-400), supplied with `define`'s `object` form: `commit` and
+`reserve` (`(bits64, memory) -> (bytes_rw, heap owner, memory)`, the allocator contract of the mmap declaration they
+replace) and one `free` per (pointer type, view type) pair of main's 13 munmap declarations (`(ptr, view, memory) ->
+(bits64, memory)`, a deallocator only). Their bodies are the reference's `foreign_function_symbol` with
+`XAX_HOST_ABI` and the library `host`, for exactly the types of the declaration each replaces.
 
-**Checks.** `tests/test_xax_selfhost_dex_writer.py::test_large_code_dex`; the PPE module built natively on Windows
-equals its reference APK (ADR-401).
+**Main.** `define @xaxc_main` is main's view with only call entities changed, then `replace F599 @xaxc_main`:
+- the 22 calls of the mmap declaration `d2ab6da2…`, in view order: sites 1–4, 6–9, 12–15 and 18–22 call `reserve`,
+  sites 5, 10, 11, 16 and 17 (buffers the kernel reads or writes) call `commit`. That is the split BBC's Windows
+  entry has made with `MEM_RESERVE`/`PAGE_NOACCESS` since its variants (ADR-400's memory contract);
+- the 22 munmap calls (13 declarations) call the `free` of the same pointer and view types.
+
+No other node, value or type changes. On Linux `xax-host-v1` lowers to exactly the syscall declarations' code, so
+main's machine code is unchanged.
