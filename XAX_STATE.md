@@ -2382,3 +2382,13 @@ production compiler. That decision is unchanged, so this section adds no ADR.
   Through `xax_x86_64.compile_native` the reused case returns garbage; branch-only results are right. It is not the
   production path and is not repaired (language rule).
 - **Not run:** `BranchFusionTests.test_aarch64` (no AArch64 runner); the full test suite.
+
+## OI-50 test on the ledger 0032 seeds — 2026-11-15
+
+On top of `4112a06`. This adds to the OI-50 section above, whose "current seed" means the ledger 0031 seed
+(`89ca6b02…`). PR #53 rotated both seeds after that section's runs.
+
+- **EXECUTED, Windows 11:** `tests/test_native_branch_fusion.py` with `test_status_docs`, Windows seed `e88877d1…`:
+  6 passed, 2 skipped, 6 subtests passed.
+- **EXECUTED, Linux x86-64 (WSL 2):** the test file, seed `0cd26742…`: 3 passed, 1 skipped (AArch64), 8 subtests
+  passed. Built by hand, the ledger 0032 seed's six executables are byte-identical to the ledger 0031 seed's.
