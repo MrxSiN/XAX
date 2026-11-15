@@ -2334,3 +2334,25 @@ the ledger 0030 section for main's other host calls and the Windows seed.
 - **Not run / not done:** BBC's driver is not rebuilt (`rebuild.sh` declines batches naming the production entry;
   BBC's entry already calls the same adapters) and BBC's checks were not rerun. `argc` and `arg_copy` stay Linux
   startup reads in main; the hosting batch ports them.
+
+## OI-50 closed: cross-block compares through the native compiler — 2026-11-15
+
+On top of `e3e65e0`. No store, ledger or seed changes. ADR-376 (ledger 0013, 2026-11-06) repaired OI-50 in the
+production compiler. That decision is unchanged, so this section adds no ADR.
+
+- **Test:** `tests/test_native_branch_fusion.py` gains `SeedBranchFusionTests`, built with `xax_construct` and the
+  host's pinned native compiler (`build`): the Windows seed (pinned by `windows/seed.json`) or the Linux seed. A
+  compare that drives the branch and is read in both arms and the join, and a branch-only compare. Each runs on taken,
+  not-taken and equal inputs and is checked against `xax_compiler.execute`.
+- **EXECUTED, Windows 11:** both new tests pass (6 subtests). With `test_store_regeneration`,
+  `test_python_free_seed` and `test_status_docs`: 74 passed, 109 skipped (Linux-only checks and native-batch replays),
+  6 subtests passed (2 h 0 min, one worker).
+- **EXECUTED, Linux x86-64 (WSL 2), test file only:** 3 passed, 1 skipped (AArch64), 8 subtests passed.
+- **EXECUTED, pre-fix check (WSL 2):** the same snapshots built by hand with three seeds from git history. The pre-0013
+  seed (`74fac54f…`) returns 1 for the taken case, where the reference gives 51. The ledger 0013 seed (`58505b20…`)
+  and the current seed (`89ca6b02…`) return 51. All three build byte-identical branch-only executables, so the
+  sole-use fusion path is unchanged.
+- **Python reference emitter:** `compiler/reference/xax_x86_64_regalloc.py` still fuses without counting later blocks.
+  Through `xax_x86_64.compile_native` the reused case returns garbage; branch-only results are right. It is not the
+  production path and is not repaired (language rule).
+- **Not run:** `BranchFusionTests.test_aarch64` (no AArch64 runner); the full test suite.

@@ -92,7 +92,8 @@ while overlooking uses in later blocks. The canonical
 [control](regression/flag_base.xax) reproduces wrong emitted results; its
 [transaction](regression/flag.edit) produces an equivalent
 [fixed graph](regression/flag_fixed.xax) passing 256 inputs. The Python emitter
-is unchanged; arbitrary programs still need a general backend repair.
+is unchanged; arbitrary programs still need a general backend repair. (2026-11-15: OI-50 is closed for the
+production compiler by ADR-376, ledger 0013.)
 
 The PE imports only kernel32 and msvcrt. Thirty-one adapter checks cover spaces
 and Unicode, binary bytes including `00`, `1A`, `FF`, 65,536-byte chunks, EOF,

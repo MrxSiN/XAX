@@ -715,7 +715,19 @@ results. No new Python implementation is needed or authorized by this issue.
 
 ## OI-50 — x86-64 branch fusion loses cross-block comparison values
 
-**Status: OPEN (2026-10-20).** Compare/branch fusion in the hosted register
+**Status: CLOSED (2026-11-15; opened 2026-10-20) by ADR-376 (ledger 0013, 2026-11-06):** the production
+compiler's x86-64 general backend, a canonical XAX program, fuses a compare into its branch only when the branch is
+its only use anywhere in the function (every block, terminators included), so a compare read in later blocks is materialized.
+`tests/test_native_branch_fusion.py` (`SeedBranchFusionTests`) builds two functions with the host's pinned native
+compiler (`build`, Windows or Linux x86-64): a compare read by its branch, both arms and the join, and a branch-only
+compare. It runs each on taken, not-taken and equal inputs against `xax_compiler.execute`. EXECUTED 2026-11-15: the
+Windows seed passes all six. On Linux x86-64 (WSL 2) the pre-0013 seed returns 1 for the taken case, where the
+reference gives 51; the ledger 0013 and current seeds return 51. The pre-0013 and current seeds build byte-identical
+branch-only executables. The Python reference emitter (`compiler/reference/xax_x86_64_regalloc.py`) keeps the defect:
+through `xax_x86_64.compile_native` the reused case returns garbage. It is not the production path and is not
+repaired (language rule). The report below is historical.
+
+Compare/branch fusion in the hosted register
 allocator (`compiler/src/xax_x86_64_regalloc.py`) counts consumers only in the
 defining block and its outgoing arguments. A comparison may also dominate uses
 in later blocks. Fusing it without materializing its result leaves those uses
