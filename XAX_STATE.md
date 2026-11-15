@@ -2426,3 +2426,17 @@ store `7feaf5b6…` (62,593,215 bytes). Log: `/root/work/profile/profile-2026111
   `evolve.sh apply` on the driver and the request costs about 4 × 40 s (`edit` and `verify` on each store). A
   request derived from the driver (RFC phase 4) removes the request's `edit` and `verify`, about half of that.
 - **Not run:** a symbol-level profile; `verify` on any store but the driver.
+
+## OI-55 closed: narrow signed compares through the Windows seed — 2026-11-15
+
+On `897002e`. `tests/test_x86_64_narrow_signed_compare.py` gets `SeedNarrowCompareTests`. For each width (5, 8, 16, 24,
+32, 64), one `xax-construct-v1` program calls `f_<kind>(x, y) = zext(compare(truncate(x), truncate(y)))` for all ten
+predicates on all 64 operand pairs. It XORs each result with the reference executor's, and exits with the mismatch count.
+
+- **EXECUTED, Windows 11, pinned Windows seed `e88877d1…`:** the file: 6 passed, 3,846 subtests passed (30 s). The seed
+  class alone: 6 widths, 3,840 cases, exit status 0 for each, 28 s.
+- **EXECUTED, mutation check:** flipping one expected bit (width 8, case 300) makes the program exit 1 and the test fail.
+- **Inspected:** the width-8 PE (22,528 bytes) has one `call` (the exit). The seed inlines the callees and keeps one
+  operand of each compare as an immediate. The other operand is in a register or on the stack, and signed predicates
+  are sign-corrected at run time (`shl $0x18`, then `cmp` and `setl`), as in the ledger 0024 lowering.
+- **Not run:** the class on Linux (it skips there; the Linux half closed with ADR-393's 240 probes).

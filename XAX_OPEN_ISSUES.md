@@ -879,6 +879,8 @@ interpreter, with no fixed per-view capacity left in the driver.
 
 ## OI-55 — Native x86-64 signed compares below 32 bits
 
+**Status: CLOSED (2026-11-15).** The last missing piece ran: `tests/test_x86_64_narrow_signed_compare.py::SeedNarrowCompareTests` builds the file's cases (6 widths × 10 predicates × 64 operand pairs) as PE programs with the pinned Windows seed `e88877d1…` and runs them on Windows 11. All 3,840 equal the reference executor (EXECUTED, `XAX_STATE.md` 2026-11-15). The seed inlines the callees and keeps one operand of each compare as an immediate. The other operand is a register or stack value, sign-corrected at run time (`shl $24` then `cmp`/`setl` at width 8), which is the ledger 0024 lowering. The Linux half closed with ADR-393. The statuses below are the historical record.
+
 **Status: OPEN for Windows PE cases only (2026-11-12); closed on Linux by ADR-393.** Ledger 0024 sign-corrects both lowerings, the Linux seed is rotated to `fb31b03b…`, and with it 240 of 240 probe programs equal the reference executor (128 of 240 differ with the seed before, which confirms the expectation below). BBC's driver follows the fixed production driver. The Windows seed is cut from the fixed driver (ADR-397) and builds `native/0024/narrow_signed_compare.xax` to the Linux seed's bytes. Still missing: the cases as PE programs, built by that seed and run on Windows. The record of 2026-11-11 follows unchanged.
 
 **Status on 2026-11-11: OPEN.** The native x86-64 general backend compares zero-extended `bits<N>` values, N < 32,
