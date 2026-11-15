@@ -2177,3 +2177,18 @@ profile, OI-55, OI-57, the OI status lines, the OI-34/OI-51 checks, the previous
   - its build equals `e88877d1…`.
   Then delete `hosting.batch` and `pe_target.edit`. After that, step 6 (`derived` line), with steps 7 and 8 as the
   RFC orders them.
+
+## Build/rotation campaign: step 5 done (Windows generator) — 2026-11-15
+
+`main` = `d47ba6d` (PR #66, the request tool, merged on the owner's instruction). This PR completes step 5.
+
+- `compiler/bootstrap/windows/generator/` derives the Windows seed's request from the shared request.
+- At ledger 0032 every oracle matched (batch, record, hosted store, request, the build `e88877d1…`), so
+  `hosting.batch` and `pe_target.edit` are deleted (`XAX_STATE.md`, same date).
+- After a future driver change, run `sh windows/generator/generate.sh` instead of rewriting handles.
+- **Next step:** step 6. First the ledger tool accepts the `derived <store> <final blob> <tool root>` line, in its
+  own commit, with every old line still accepted. Then LEDGER gets
+  `derived seed/xax_compiler_request.xax <blob> <request-tool root>`, and `check` requires committed request =
+  `request(driver)`. Steps 7 and 8 follow (step 2 / PR #59 is merged).
+- Runs in progress: none. WSL scratch is `/root/work/win/`, holding the chain log and the cross-built
+  `xaxc_win.exe`.

@@ -1,3 +1,26 @@
+# The Windows request is generated — 2026-11-15
+
+`hosting.batch` and `pe_target.edit` are no longer written by hand; they are deleted. `generator/generate.sh`
+makes the Windows seed's build request from the shared request ([generator/README.md](generator/README.md)):
+
+```text
+sh generator/generate.sh ../seed/xax_compiler_request.xax request.xax
+xaxc resolve request.xax snapshot.xax
+xaxc build snapshot.xax xaxc.exe xaxc.provenance
+```
+
+At ledger 0032 it reproduces the deleted files' results, EXECUTED in WSL 2 with the pinned Linux seed:
+
+- the hosting batch, byte for byte (`afa009b9…`);
+- the hosted store (`ff9dfa42…`);
+- the PE record, byte for byte (`d13fb5b9…`);
+- the request (`5bf65de6…`);
+- its build, which is the pinned seed `e88877d1…`.
+
+[seed.json](seed.json) keeps the deleted files' names and hashes as the record of how the pinned seed was built. The
+generator needs Linux x86-64, as the ledger and request tools do. The sections below are historical; where they say
+to rewrite the hosting files, run the generator instead.
+
 # Current Windows seed — ledger 0032, 2026-11-15
 
 Ledger 0032 lets the DEX writer size its output for large modules (ADR-403). The seed is built as the ledger 0031

@@ -2483,3 +2483,25 @@ ledger tool's seed, with no generator of its logic. Its BLAKE3 is the S2 compone
 - **Not done:** the Windows hosting generator and its three oracle checks (`hosted_sha256` `ff9dfa42…`,
   `result_sha256` `5bf65de6…`, the build equal to `e88877d1…`). `hosting.batch` and `pe_target.edit` stay. The
   `derived` ledger line (step 6) is not added.
+
+## Windows generator at ledger 0032 (RFC step 5, Windows half) — 2026-11-15
+
+On `d47ba6d`. `compiler/bootstrap/windows/generator/` holds `xax_hosting.xax`, an XAX program, a native batch on the
+ledger tool's seed, with no generator of its logic. With `../host_layer.txt` (the fixed Windows layer) and
+`pe_target.template`, it replaces the hand-written `hosting.batch` and `pe_target.edit`, which are deleted.
+`generate.sh` runs the whole chain.
+
+- **EXECUTED, WSL 2, pinned Linux seed `0cd26742…`, each output compared with the deleted file or the `seed.json`
+  record:**
+  - `xax_hosting e` on the request and its listing gives `F426`;
+  - `xax_hosting b` on main's view gives the hosting batch byte for byte (`afa009b9…`, 6,090,986 bytes);
+  - `xaxc edit` of the request with it gives the hosted store `ff9dfa42…`, and `verify` accepts it;
+  - `xax_hosting r` gives `pe_target.edit` byte for byte (`d13fb5b9…`);
+  - `xaxc edit` of the hosted store with it gives the Windows request `5bf65de6…`, and `verify` accepts it;
+  - `resolve` and `build` of that request give `e88877d1…`, 31,993,856 bytes: the pinned Windows seed, cross-built.
+- **MEASURED:** `e` 0.27 s and `b` 0.11 s (65–77 MB peak RSS). The chain took 369 s: the two `edit`s, two
+  `verify`s and the build.
+- **EXECUTED:** `tests/test_windows_generator.py` and `tests/test_request_tool.py` with `XAX_REQUIRE_NATIVE=1` in
+  WSL: 5 passed (3 min 52 s). `generate.sh` makes `seed.json`'s `result_sha256` from the committed request.
+- **Not run:** the generator on Windows (it is a Linux program), and a native Windows build of the generated request
+  (the build above is the Linux seed's cross-build, which `seed.json` already records as equal).
