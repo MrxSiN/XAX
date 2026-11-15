@@ -67,7 +67,8 @@ DIAGNOSTICS = (
     ("gcc-O2-index-checked", INDEX_SOURCE, ("-DCHECKED",)),
     ("gcc-O2-pointer-checked", C_SOURCE, ("-DCHECKED",)),
 )
-EVIDENCE = HERE / "oi37_chains_evidence.json"
+# The newest record (ledger 0033, 2026-11-16); oi37_chains_evidence.json is the ADR-212 run, kept as history.
+EVIDENCE = HERE / "oi37_chains_evidence_0033.json"
 
 
 @dataclass(frozen=True)
