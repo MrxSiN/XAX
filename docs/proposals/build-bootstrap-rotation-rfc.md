@@ -470,6 +470,9 @@ Checked against `main` `d9249ed`, AGENTS.md, the tests and the live GitHub state
 7. **WSL may restart the VM and kill long runs.** A full replay started on 2026-11-15 was lost when the VM
    restarted, and its log was overwritten. Long runs keep a `wsl.exe` client attached for their whole duration,
    write to a log named per run, and are recorded as unfinished in the handoff until their last line exists.
+   The rerun (2026-11-15, WSL, full clone at e796f50, pinned Linux seed) EXECUTED: `replayed 142 of 142
+   LEDGER=eefbb4f9f2b83fc3b23b1341b2af6c4d3afa2d83 xaxc=0ecdcd6bcc8180d3727881dbea7c2d1042d2a403`, no `FAIL`, exit 0,
+   wall 1:14:40, peak RSS 2.4 GB (`/usr/bin/time -v`).
 8. **Inventory additions:**
    - BBC#4 is blocked on #55. `bbc compile` of those programs at -O0 also needs OI-54, so #55 closes on
      `check`/`emit-bfx` and BBC#4 waits for batch C.
