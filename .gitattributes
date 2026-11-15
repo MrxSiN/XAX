@@ -55,3 +55,6 @@ compiler/integration/bfx/transactions/v2/*.edit -text
 *.sh text eol=lf
 *.batch text eol=lf
 compiler/bootstrap/evolution/LEDGER text eol=lf
+
+# Target objects the native request tool reads as raw bytes.
+compiler/bootstrap/evolution/request-tool/*.target -text
