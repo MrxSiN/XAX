@@ -288,6 +288,8 @@ Authority is split only once where the workloads demonstrate a least-authority b
 
 ## OI-15 — Specialization object boundaries
 
+**Status: OPEN (2026-11-15).** The 2026-10-02 closure paragraph below records cache reuse, graph size, optimization opportunity and transaction locality but no compile time, which "Evidence that closes it" requires.
+
 **Question.** What canonical granularity best supports specialization identity/reuse versus graph growth and invalidation?
 
 **Fixed constraints.** Specialization is semantic XAX computation, not textual substitution; generated graphs are verified.
@@ -328,6 +330,8 @@ Authority is split only once where the workloads demonstrate a least-authority b
 
 ## OI-18 — Legalization/optimizer organization and machine-level IR
 
+**Status: OPEN (2026-11-15).** The 2026-10-02 closure paragraph below records implementation volume, compile time and memory, incrementality, target extensibility and code quality on two architectures, but not verifier complexity, which "Evidence that closes it" requires.
+
 **Question.** Should implementations use one universal machine graph or target-specialized machine forms; conventional passes, demand-driven rewriting, equality saturation hybrids, or other bounded search organizations?
 
 **Fixed constraints.** Transformations preserve semantics, termination/failure is detectable, and target assumptions come from packages.
@@ -339,6 +343,8 @@ Authority is split only once where the workloads demonstrate a least-authority b
 **Closure evidence (2026-10-02).** OI-18 now compares the current staged semantic optimizer/direct lowering with one benchmark-only alternate organization: demand-driven target-package legality/selection cached per immutable block, with no persistent machine IR. The five-workload corpus covers straight-line arithmetic, branch/merge, stack memory, direct calls, and a real system-scope seq-cst atomic legalization on both x86-64 and AArch64. Both organizations produce the exact same optimized function CID and byte-identical emitted artifacts for all ten target/workload cells; semantic execution vectors also match. The alternate adds **51 benchmark-only selector lines**, **60 deterministic legality/selection work units** over the ten cold cells, no production or target-specific lines, no target-duplication reduction, and no code-size/optimization improvement. Cold median wall time is higher in 9/10 cells and equal-output peak memory is generally higher; the sole memory decrease occurs on one noisy branch cell and does not correspond to less compiler work. After a one-block branch edit, the alternate correctly reuses **2/3** cached block selections on both targets, but the existing backend must still re-lower the function: x86-64 median incremental wall time is **23.837 ms demand vs 21.948 ms staged**, and AArch64 is **24.014 ms vs 21.218 ms**; retained-cache-aware peak memory is **45,050 vs 25,972 bytes** and **42,468 vs 24,707 bytes** respectively. The explicit unsupported WebAssembly atomic case rejects deterministically both in the selector and unchanged backend. Existing optimizer search remains bounded by deterministic fuel and ordinary candidate validation. Therefore the simpler organization remains the mechanical default: **staged semantic optimization followed by direct target-specialized lowering, with no universal persistent machine IR and no additional demand-selection layer**. Target assumptions continue to come from target packages; future evidence may justify a target-specialized derived form only when it materially reduces total compile cost or improves generated code. **OI-18 is closed.**
 
 ## OI-19 — Transformation-proof granularity
+
+**Status: OPEN (2026-11-15).** The 2026-10-02 closure paragraph below records trusted code size, validation latency and bug detection, but not validation memory or optimization throughput, which "Evidence that closes it" requires.
 
 **Question.** What split among trusted rewrite rules, proof objects, solver-backed equivalence, and translation validation yields the best trusted-core/compile-cost balance?
 
@@ -362,6 +368,8 @@ Authority is split only once where the workloads demonstrate a least-authority b
 
 ## OI-21 — Semantic-database dependency representation and cross-process parallelism
 
+**Status: CLOSED (2026-10-02; status line added 2026-11-15).** The closure evidence paragraph below meets every item of "Evidence that closes it".
+
 **Question.** What reverse-dependency representation, fingerprints, and distribution thresholds best support incremental compiler services?
 
 **Fixed constraints.** Under-invalidation is forbidden; all reusable facts include complete relevant dependencies.
@@ -378,6 +386,8 @@ Authority is split only once where the workloads demonstrate a least-authority b
 
 ## OI-22 — Hash agility and migration
 
+**Status: CLOSED (2026-10-02; status line added 2026-11-15).** The closure evidence paragraph below meets every item of "Evidence that closes it".
+
 **Question.** How should a future hash suite be introduced and migrated without ambiguous identities or unnecessary graph churn?
 
 **Fixed constraints.** v0.1 suite 1 remains BLAKE3-256 permanently; algorithm transitions are explicit/versioned.
@@ -387,6 +397,8 @@ Authority is split only once where the workloads demonstrate a least-authority b
 **Closure evidence (2026-10-02).** A benchmark-only dual-suite prototype leaves every suite-1 canonical byte/CID unchanged and uses SHA-256 only as a readily available 256-bit migration-test suite, not as a hash recommendation. Persistent identities in dual-suite tooling are `(suite_id,digest)`; suite is never inferred from digest bytes. `XHA2/v1` secondary addressing hashes each immutable suite-1 canonical semantic envelope under suite 2 and maps the typed secondary address back to its exact suite-1 CID. `XHF2/v1` is the comparison full-readdress carrier: all experimental object identities and 654 child references use suite 2 while source CIDs are retained only as migration provenance/rollback mapping. On a package-rooted generated service with 6 modules, 72 functions, 297 objects and a 49,881-byte suite-1 store, XHA2 is 19,145 bytes and rewrites zero semantic envelopes; XHF2 is 48,413 bytes and rewrites all 297 identities. Both resolve dependencies and reproduce the exact decoded canonical semantics/root mapping. A populated 297-entry verifier proof cache is directly reusable 297/297 through XHA2 because lookup returns the unchanged suite-1 object; XHF2 has 0/297 direct raw-key reuse and requires an explicit equivalence/migration map. Median migration times over 11 host samples were 11.584 ms (alias) and 11.619 ms (full); median lookup cost was 0.094 us/object for suite 1, 1.162 us through the suite-2 alias, and 1.242 us through the full map. On the repository's current Python implementations over the 31,941-byte semantic-input sample, BLAKE3 suite-1 hashing measured 4.824 MiB/s and the SHA-256 test implementation 605.328 MiB/s; this is implementation-specific performance evidence and not an algorithm-selection claim. Unknown/wrong suite declarations, stale source fingerprints, file corruption, rehashed inner-record corruption, missing references, and forced simulated same-suite digest collisions reject deterministically. Atomic-replace interruption leaves the authoritative suite-1 repository unchanged; restart reproduces the same migration artifact; rollback deletes the migration artifact and restores the suite-1-only view. **OI-22 is closed with the migration rule: suite 1 remains permanent and never reinterpreted; introduce any future suite only under a new explicit suite ID/version; prefer a validated secondary-address index over immutable suite-1 objects so ordinary migration causes no Merkle churn or direct derived-cache loss; define cross-suite equivalence only by equality of decoded canonical semantics, never raw digest equality; reject unknown or ambiguous suite identities and any same-suite digest collision between unequal semantics; use full store-wide re-addressing only when retiring suite-1 storage is explicitly required, and then rewrite every persistent child identity under the new suite and rekey/translate derived caches explicitly.**
 
 ## OI-23 — Package resolver expressiveness and complexity bounds
+
+**Status: CLOSED (2026-10-02; status line added 2026-11-15).** The closure evidence paragraph below meets every item of "Evidence that closes it".
 
 **Question.** How expressive should compatibility constraints be before resolution cost and mutation complexity become pathological?
 
@@ -399,6 +411,8 @@ Authority is split only once where the workloads demonstrate a least-authority b
 **Closure evidence (2026-10-02).** A benchmark-only `XRV1` catalog keyed by exact package CID adds only three compatibility forms: exact root, exact numeric version `(major,minor,patch)`, and conjunctive inclusive-lower/exclusive-upper range `[lo,hi)`. Canonical package objects and M10 store/build semantics are unchanged. Resolution fixes at most one root per logical identity, chooses the highest compatible version in deterministic version/CID order, rejects two roots at the same chosen version as `XAX.RESOLVE.AMBIGUOUS`, backtracks deterministically when a higher candidate's transitive constraints fail, and rejects on explicit state/requirement-visit/candidate-check budgets rather than depending on discovery order or time. Simultaneous incompatible major lines use distinct logical identities; OR, arbitrary predicates, scripts, and implicit `latest` are excluded. Realistic linear, diamond, explicit-major-line, and generated-service fixtures resolve with 0 backtracks; the 33-candidate generated service selects 13 exact roots in 335 deterministic work units. Adversarial ladders scale from 33 candidates/depth 8/version 4 at 212 work units and 1.215 ms median to 257 candidates/depth 32/version 8 at 4,744 work units and 10.591 ms median on the measured Linux x86-64 host, with 3 and 7 deterministic backtracks respectively. Catalog overhead ranges from 286 B for the 5-candidate dual-major fixture to 18,665 B for the 257-candidate adversarial case. Exact-root repair resolves deliberately ambiguous same-version candidates; unsatisfiable ranges and budget exhaustion produce deterministic compact diagnostics. Four mutation/checker tasks cover adding/changing a constraint and repairing unsatisfied/ambiguous resolution; compact views are 79–226 B and mutation packets 50–71 B with exact target snapshots. **OI-23 is closed with the first-resolver contract: exact roots remain authoritative; logical compatibility is exact version or conjunctive bounded half-open interval only; select the highest compatible exact package root under deterministic bounded backtracking; allow one root per logical identity, requiring distinct logical identities for deliberate coexisting major lines; reject equal-version duplicate roots as ambiguous unless an exact root is requested; reject unsatisfied/budget-exhausted resolution deterministically; do not add OR/disjunction, arbitrary predicates, scripts, SAT-style features, or implicit latest until a measured workload requires them.**
 
 ## OI-24 — Provenance granularity and sandbox portability
+
+**Status: CLOSED (2026-10-02; status line added 2026-11-15).** The closure evidence paragraph below meets every item of "Evidence that closes it".
 
 **Question.** Should provenance normally capture only snapshot/toolchain closure or an action-level build DAG, and how should semantic capabilities be enforced across hosted/bare-metal build environments?
 
