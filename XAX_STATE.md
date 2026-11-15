@@ -2505,3 +2505,28 @@ ledger tool's seed, with no generator of its logic. With `../host_layer.txt` (th
   WSL: 5 passed (3 min 52 s). `generate.sh` makes `seed.json`'s `result_sha256` from the committed request.
 - **Not run:** the generator on Windows (it is a Linux program), and a native Windows build of the generated request
   (the build above is the Linux seed's cross-build, which `seed.json` already records as equal).
+
+## The compiler request is derived (RFC step 6) — 2026-11-15
+
+On `2595e42`. Two commits:
+- the ledger tool reads `derived <store> <final blob> <tool root>` lines (`ledger-tool/derived.batch`);
+- `LEDGER` gets `derived seed/xax_compiler_request.xax 3b123e3d… 03284c0d…` (the request tool's root).
+
+`evolve.sh apply` rewrites the request with `request-tool/request.sh` after a driver transaction and refuses a
+transaction on the request. `evolve.sh check` requires the committed request to be the driver's derivation. The 52
+historical request transactions are unchanged and still replay.
+
+- **EXECUTED, WSL 2, pinned Linux seed `0cd26742…`:**
+  - on the committed tree, the new ledger program's `check`, `transactions` (142 lines, byte for byte) and `head`
+    equal the old one's;
+  - with the derived line, `check` exits 0, `head` of the request exits 1, and a changed request is no longer
+    flagged by the program, while a changed driver is;
+  - a derived line with a wrong final blob fails;
+  - `evolve.sh check` passes on the committed tree;
+  - on a copy of `bootstrap/`, `apply` on the request is refused;
+  - on that copy, `apply` of a driver record (the input bound 100 → 99) appends its line and rewrites the request,
+    which equals the reference `compiler_request` of the new driver, and `check` on the copy passes;
+  - `pytest` (`XAX_REQUIRE_NATIVE=1`): `test_store_regeneration` (chains, frozen set, request derivation) and
+    `test_xax_selfhost_evolution`'s `apply` test, 4 passed.
+- **Not run:** a full `evolve.sh replay` (the transaction list is byte-identical to the one replayed 142 of 142
+  earlier today), and the Python reference replays in `test_store_regeneration`.
