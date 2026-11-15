@@ -42,3 +42,25 @@ one byte appended, a transaction whose before blob is altered, a missing store (
 missing ledger (status 3); `head` gives the awk lookup's chain end for three stores and exits 1 for an unknown one;
 `transactions` gives the awk filter's 125 lines byte for byte; `blob` equals `git hash-object` on the empty file, a
 16 KB and a 62 MB store, and exits 3 for a missing file.
+
+## Derived lines (RFC step 6, 2026-11-15)
+
+`derived.batch` on the previous `xax_ledger.xax` (`main` only) teaches the program a third line kind:
+`derived <store> <final blob> <tool root>`.
+
+- From that line on, the store is a tool's output, not a chain. The chain scan stops there, and the line's
+  `<final blob>` must equal the chain end; otherwise the chain is broken.
+- `check` then no longer compares that store with its committed file. `evolve.sh check` compares the committed file
+  with the tool's output instead.
+- `head` exits 1 for it, so `evolve.sh apply` refuses a transaction on it.
+- `transactions` does not list `derived` lines, so the store's historical transactions still replay.
+- Every old line is read as before.
+
+The `<tool root>` (the tool store's root CID) is not read by the program.
+
+Checked on Linux x86-64 (WSL 2, the pinned seed), EXECUTED. On the committed tree the new program's `check`,
+`transactions` (142 lines) and `head` equal the old program's. With `derived seed/xax_compiler_request.xax 3b123e3d…`
+appended:
+- `check` exits 0, `transactions` is unchanged, and `head` of the request exits 1;
+- with a byte appended to the request, `check` still exits 0, while a byte appended to the driver fails it;
+- a derived line whose final blob is not the chain end fails `check`.

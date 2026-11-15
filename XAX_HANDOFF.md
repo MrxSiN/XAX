@@ -2192,3 +2192,16 @@ profile, OI-55, OI-57, the OI status lines, the OI-34/OI-51 checks, the previous
   `request(driver)`. Steps 7 and 8 follow (step 2 / PR #59 is merged).
 - Runs in progress: none. WSL scratch is `/root/work/win/`, holding the chain log and the cross-built
   `xaxc_win.exe`.
+
+## Build/rotation campaign: step 6 done (derived request) — 2026-11-15
+
+`main` = `2595e42` (PR #67 merged on the owner's instruction). This PR: the ledger tool reads `derived` lines, and
+`LEDGER` marks the request as derived. From now on, a production driver change is one transaction on the driver
+only, applied with `evolve.sh apply`, which rewrites the request. Windows requests come from
+`windows/generator/generate.sh` (AGENTS.md updated).
+
+- **Next step:** step 7. Cut `release/0033` from `main` and start batch C with C-x86: the OI-58 slot rule and native
+  PE stack probes for frames over 4 KiB. Each sub-batch is a PR into the release branch, tested with C1 (and C2 for
+  x86-64 code generation). Step 8 (V2 evidence runner, `rotate.sh`) can run in parallel on `main`.
+- Runs in progress: none. WSL scratch: `/root/work/step6b` (a copy of `bootstrap/` with a test transaction; it can
+  be deleted) and `/root/work/step6.log`.
