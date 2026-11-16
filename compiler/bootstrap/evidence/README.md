@@ -42,10 +42,16 @@ xax_evidence diag <file>                 "<code> <rule>" from xaxc's text render
 xax_evidence plan <corpus> <dir>         one line per case: "<index> <command> <arguments>", with outputs
                                          <dir>/<index>.<k>; it writes <dir>/zero when a case needs zero bytes;
                                          exit 3 when the corpus cannot be read
+xax_evidence levels <record> <corpus> <snapshots> <seed>
+                                         the B levels of a V2 record (below), one "<name> 0|1" line each: B0 to B6,
+                                         rotated, python; <seed> is the pinned seed file, whose SHA-256 is compared
+                                         with the record's; exit 3 when the record cannot be read
 ```
 
 Limits: a hashed file under 256 MiB, a corpus or rendered record under 1 MiB, a path under 4 KiB; `plan` output under
-64 MiB and a zero input under 128 MiB.
+64 MiB and a zero input under 128 MiB. For `levels`: a record under 512 KiB, a corpus under 448 KiB and snapshots
+under 64 KiB, at most 3 generations, 4 contexts and 256 cases. A record outside these limits is not one the runner
+writes, and its levels are undefined.
 
 How it was made, without a generator of its logic:
 
@@ -55,6 +61,10 @@ How it was made, without a generator of its logic:
 - SHA-256 (FIPS 180-4) is `@s256`: `@mb` gives the padded message's bytes, `@s256w` the message schedule and
   `@s256r` the 64 rounds; the digest is at scratch bytes 2048–2079 as `@hex64` prints it.
 - Output text goes through a cursor word in memory (`@put`, `@putd`), as in the Windows generator.
+- `levels` reads the record, the corpus and the snapshots into one view (at 0, 512 KiB and 960 KiB, through
+  `address.offset`). `@parse` and `@pline` keep the record's facts in scratch cells (`@gc`, `@sc`) and an outcome
+  table, `@cindex` indexes the corpus, and `@gens`, `@cases` (with `@exact1` and `@agree`) and `@levels` derive the
+  levels.
 - Change it by a further batch on `xax_evidence.xax` (`xaxc edit` lists and shows its functions), then `xaxc verify`.
 
 ## The record
@@ -78,3 +88,36 @@ end
 ```
 
 A missing output or field is `-`. A record without `end` is unfinished.
+
+## The levels of a V2 record
+
+`levels` computes every level from the record, the corpus's expectations and the snapshot list; nothing is read
+from the record as a claim. With E = the record has `end`, and C1 = generation 1's artifact:
+
+- **B2**: E, at least one generation, and every generation resolved and built (status 0), was produced by the seed
+  (generation 1) or by the previous generation's artifact, and wrote the reference snapshot of the record's request.
+- **B0**: E, generation 1 resolved and built, and either generation 2 resolved or C1 is the seed (fixed point 1).
+- **B1**: B2, and C1's context reproduces every `diag` expectation (status 1 and the expected record digest).
+- **B3**: B2; the contexts agree (each has every case, all contexts' outcomes are equal, and every repeat equals
+  its context's outcome); C1's context meets every `image` and `rejected` expectation; no `diag` case is rejected
+  with a diagnostic other than the bootstrap's and other than `XAX.DRIVER.VERIFY`; the corpus has positive and
+  negative cases.
+- **B4**: B2 and a fixed point F (the first generation whose artifact is its producer), with every later generation
+  equal to it. A fixed point that is not the seed still counts during development; `rotated` says whether it is.
+- **B5**: B2, and no executable (the seed and every generation) has an ELF interpreter.
+- **B6**: B5, the replay exited 0 with `replayed N of N` for N ≥ 1, and C1's context meets the probe's expectation.
+- **python** (the seed requires Python): not (the record's seed is the pinned seed file, has no interpreter, and
+  both empty-environment runs resolved and built C1).
+
+The reference evaluator `compiler/reference/xax_selfhost.py` evaluates V1 records as before. `tests/test_evidence_v2.py`
+writes the committed V1 record and mutated copies of it as V2 records and requires `levels` to give the reference's
+levels on each.
+
+Checked on Linux x86-64 (WSL 2, the pinned seed `36e2b756…`), EXECUTED, 2026-11-16:
+
+- `sha` equals `sha256sum` on empty, 3-, 55- and 56-byte inputs, the 31,549,147-byte seed and the 62 MB driver
+  (0.34 s); `elf` gives 0 for the seed and 1 for `/bin/ls`; `plan` on `CORPUS` equals an awk reading of it byte for
+  byte, and its zero file is 68,157,440 zero bytes.
+- `sh run.sh <out> quick` on `main` `95647a0` plus this directory took 10 min 50 s: generation 1 equals the seed
+  (fixed point 1), its snapshot is the reference's, both empty-environment rebuilds give the seed, and the 198 cases,
+  the probe and the ten repeats ran. `levels` gives B0–B5 1, B6 0 (the replay was not run), rotated 1, python 0.
