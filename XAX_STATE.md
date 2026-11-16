@@ -2610,3 +2610,15 @@ EXECUTED on Linux x86-64 (WSL 2) with the pinned seed `36e2b756…` (`main` `92a
 | `test_evidence_v2` | native levels equal the reference on the V1 record and 15 mutations |
 
 The committed bootstrap records are still V1 (release 0033). B levels in the status docs are unchanged.
+
+## Seed rotation by release: RELEASES, POLICY, rotate.sh (RFC phase 6) — 2026-11-16
+
+EXECUTED on Linux x86-64 (WSL 2) with the pinned seed `36e2b756…` (`main` `552234a`, [#80](https://github.com/MrxSiN/XAX/pull/80), ADR-408).
+
+| Item | Result |
+|---|---|
+| Interop probe | the Windows seed started from WSL (`wslpath -w` paths) writes the same bytes as from Git Bash and as the Linux seed |
+| `rotate.sh build --dry` | both pinned seeds rebuilt byte for byte (9 min 42 s) |
+| `rotate.sh confirm` (scratch copy, test candidate = current pins) | Windows through interop: 2 rebuilds identical (9 min 35 s); Linux: 2 rebuilds identical (6 min 17 s) |
+| `rotate.sh state` / `gate` on `main` | release 0033 validated, profile released; gate passes |
+| `test_rotate_tool` | 4 passed |
