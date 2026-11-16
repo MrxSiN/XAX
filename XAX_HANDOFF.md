@@ -2526,3 +2526,54 @@ plan two sections up: F83 and F84 emit no instructions.
   execution for the four member behaviours; C1 and the 198-case differential).
 - **Next step:** locate item 6, then write batch 1 (F38) and batch 2 (F53) on `jvm-catch-emit` from `release/0036`.
   Then items 3–6, the android and driver batches, and the tests. Land all of it as one PR into the release.
+
+## #49 parts 2+3 done: the JVM program lowers catching calls — 2026-11-16
+
+PR [#93](https://github.com/MrxSiN/XAX/pull/93) (`jvm-catch-emit`, commit `d33546d`) went into `release/0036`, which
+is now `e5de5e5`. Merged by the agent on the owner's standing instruction once its tests passed. It completes the plan
+of the two sections above, with these differences from that plan.
+
+- **Ledger 0036 c to g:** five steps, each one transaction on `xax_jvm_general.xax` (`-jvm`), `xax_android.xax`
+  (`-android`) and the driver (no suffix); 15 in all, and the request is re-derived.
+  - c: a new function `jk_catching(c)`. It is F38's own payload parse (its first 87 blocks, which issue no
+    diagnostics) followed by a `-catch` suffix test. F10 (interference) and F13 (definite assignment) call it, and
+    only for operation 42, so they treat a catching call like an `INTERNAL_LABELS` node. The anchor search of the
+    earlier section failed because bits64 is not `T0` in F10 and F13. Search views type-agnostically.
+  - d: F38 (`jk_member`): at B87 the flag, the ABI length minus 6 for every later chain, and `mb[18]` = flag (the
+    record's spare word). At B723 the arity compares outputs minus the flag.
+  - e: F53 (`jl_node`). Two guarded regions are inserted before B1238 (the result's keep) and B1256 (the K_FOREIGN
+    push), and the results loop runs over nres minus the flag. Run order: invoke; mark E; mask; store the result;
+    aconst_null; store the throwable; goto J; mark H; store the throwable (or pop); the result's zero and its store;
+    mark J. V_SINGLE is cleared for both outputs. Three fresh labels are taken; C_TARGET[H] = 2, plus 4 for a 5-byte
+    invokeinterface.
+  - f: F41 (`jc_mark`) ORs in its target bit. F52 (`jk_record`) scans the labels and stores `n, (E − 3 or 5, E,
+    H)…` in the class store, and puts the pointer in the word after the copied frames (`_copy_words` allocates
+    count + 1). F12 (`_serialize_method`) treats a frame whose first instruction pops (astore, astore_n, wide astore,
+    pop) as a handler: every other frame has an empty stack. It writes it as a full frame with one stack item
+    `java/lang/Throwable`, takes the record's entries in frame order, and declines on any mismatch. The exception
+    table replaces u2 0.
+  - g: F89 (`jk_method`; in the driver, its own copy) sizes the label table 2·blocks + 2 + 3·nodes.
+- **Why the first layout failed:** a `goto` with the result still on the stack reaches a frame whose stack is empty.
+  The result must be stored before any branch, so the range is marked by a label, not by an offset from H.
+- **Function numbers change after every transaction.** Callers of a changed function get new CIDs. A function's CID
+  is the same in every store that holds it (its body and its callees' CIDs are), so a CID found in one store finds the
+  function in the others. The driver lacks F14, F89 and F9 and has its own versions; its F89 is F882 at root `004a7d07…`.
+- **Tests (EXECUTED, WSL 2, `XAX_REQUIRE_NATIVE=1`; JVM runs on the Android Studio JBR through WSL interop, with
+  `XAX_JAVA` and `XAX_JAVA_TMP` set):**
+  - `test_jvm_catch_run`: 8 of 8 programs right (result, throwable text, exit status 4 or 7). They cover returns, a
+    nested throw, a checked exception and an Error, plus invokevirtual and invokeinterface with and without a throw.
+  - Store regeneration, `test_xax_selfhost_jvm` (byte equality), the catch tests, `test_xax_selfhost_android_jvm` and
+    `test_xax_selfhost_general_build`: 110 passed, 137 skipped, 1 failed. The failure is the known
+    `test_callback_programs` subtest (no JDK jmods in WSL), and it fails the same way on the release's stores.
+  - C1 (`/root/work/c1-catch/C1`) verifies the three stores. The corpus differential, seed against C1: 0 of 198 differ.
+    `evolve.sh check` passes.
+- **Logs:** `/root/work/logs/{catch-targeted2,catch-apply,c1-catch,diff-catch,catch-run}.log`. The scratch generators
+  are in `/root/work/catch` (`vt.py`, `em.py`, `chain.py`, `mk_*.py`, `build.py`) and are not committed.
+- **Seeds:** unchanged (Linux `36e2b756…`, Windows `ae43e32f…`). The release is not rotated.
+- **Open:**
+  - F38 does not check that the throwable output is `jvm-ref:Ljava/lang/Throwable;`. A wrong type gives a JAR that
+    fails to load with a VerifyError.
+  - Part 6: DEX still rejects exception tables (`DEX-EXCEPTION-TABLE`), so Android builds of catching calls decline.
+  - Part 7 on ART (Pixel) waits for part 6.
+- **Next step:** part 6 on a new branch from `release/0036` (`xax_dex_jvm.xax`: a `try_item` and an encoded handler
+  whose code starts with `move-exception`). Then ART on the Pixel, #48, C-cap, and the release.
