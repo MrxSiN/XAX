@@ -12,9 +12,13 @@ import platform
 import sys
 import unittest
 
-from xax_compiler import IntCompare, Operation, bits_type, execute, x86_64_windows_pe_target
+from xax_compiler import IntCompare, Operation, bits_type, x86_64_windows_pe_target
 from xax_graph_builder import GraphBuilder, program_store
 from xax_x86_64 import compile_native, run_native
+
+sys.path.insert(0, __import__("os").path.dirname(__file__))
+# ADR-405 (4): the native oracle where it runs (benchmarks/oracle_x86_64_compare_evidence.json), else the Python executor.
+from test_native_oracle import oracle_execute as execute  # noqa: E402
 
 X86_64_HOST = platform.machine().lower() in ("amd64", "x86_64") and (sys.platform == "win32" or sys.platform.startswith("linux"))
 B1, B64 = bits_type(1), bits_type(64)
