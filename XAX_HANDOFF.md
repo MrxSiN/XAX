@@ -2456,3 +2456,68 @@ add to the C-jvm plan in the section above. F38's B87 parameters P1064 and P1065
   output has been checked to be `jvm-ref:Ljava/lang/Throwable;`;
 - parts 2 and 3 must land together. Classification without emission would compile the call as a plain invoke
   and leave the throwable result unset.
+
+## #49 parts 2+3: the JVM program's call path mapped, the change set designed — 2026-11-16
+
+Step 1a of the release 0036 plan. Read-only on `xax_jvm_general.xax` at root `31f5aa52…` (unchanged on `release/0036`
+`e53833a`); no store changed and no PR into the release. It supersedes the "emission in F83/F84" guess in the C-jvm
+plan two sections up: F83 and F84 emit no instructions.
+
+- **Names for the anonymous functions.** The frozen store's high-level source is readable in git history:
+  `git show f6d5b08:compiler/src/xax_selfhost_jvm_{foreign,lower,code,emit,method}.py` and
+  `xax_selfhost_jvm.py` (the builders before ADR-361 froze the store). They are only a map for reading the lowered
+  views. Nothing may be generated from them (AGENTS.md, ADR-367). Arguments go through the global words
+  `268435424 + k`; the method state is the record at global word `29360338` (`GLOBALS + M_STATE`, GLOBALS = 29360128).
+  Identified, with the old names:
+
+  | F | Old name | Role |
+  |---|---|---|
+  | F38 | `jk_member` | `_foreign_member`: the member record (`MB_*`, 18 words) |
+  | F53 | `jl_node` | node lowering: pushes tasks with F33; `_foreign_node` is its second F38 call (view line ~33,009) |
+  | F33 | `jl_push` | pushes one task (kind, a, b, c) |
+  | F54 | `jl_run` | the task loop; `K_FOREIGN` writes the opcode at N809 (`mb[0]`, through F92), then the pool entry, then for 185 the count (B168) |
+  | F92 | `jc_op` | `code.op`: flush, append, set `ended` |
+  | F94 | `jc_branch` | `code.branch` (the target flag, three bytes) |
+  | F96 | `jc_depth` | the operand stack depth; it ignores a depth that wrapped below zero (`depth < 2^62`) |
+  | F89 | `jk_method` | the per-method driver: state `alloc(100)`, zeroes words 0–97, pass 1, pass 2 with retries, finish, record |
+  | F12 | `_serialize_method` | StackMapTable, LineNumberTable, the Code attribute |
+  | F14 | the class entry | no callers |
+
+- **Free words, so no masking is needed.** The member record is allocated as `MB_WORDS + 1` = 19 words, and word 18 is
+  unused, so word 18 can hold the catching flag (written 0 or 1 in F38 for every member). This replaces the
+  `opcode + 256` idea, which would have needed every reader of word 0 to mask. The method state is
+  `alloc(STATE_WORDS + 2)` with `STATE_WORDS` = 98 (16 code fields, 20 value tables, 62 scalars), so words 98 and 99 are free
+  for a per-method list of handler labels. They are not zeroed at allocation, so the emit pass must reset the count.
+  Check that no ledger transaction since `f6d5b08` uses words 98–99 or 18 before relying on them.
+- **The handler needs no change in the depth pass.** At the handler frame F96 restarts at 0 and the `astore` takes it to
+  −1, which F96 ignores. The true depth there is at most 2, and `max_stack` is at least 8.
+- **Planned change set** (each also a batch on `xax_android.xax` and the driver, mapped by CID):
+  1. F38: at B87, a catching ABI (length > 6, ending `-catch`) continues with P1064 − 6, and `mb[18]` = 1, else 0.
+     After the outputs loop, check that the last machine output is `jvm-ref:Ljava/lang/Throwable;` and take one off
+     `fm_mout`.
+  2. F53 `_foreign_node`: allow two machine results when `mb[18]`. Bump `C_READS` of both, so pass 2 never keeps
+     them on the operand stack. Then push, in this order:
+     `K_FOREIGN mb`, `K_BRANCH goto Lok`, `K_MARK H`, the throwable's store (or `pop` when unused), the result's zero
+     and its store, `K_BRANCH goto Ljoin`, `K_MARK Lok`, the mask and the result's store, `aconst_null` and the
+     throwable's store, `K_MARK Ljoin`. Labels come from `_fresh` (`2 NB + 1 + M_LABELN`), and the pair (H, invoke
+     length 3 or 5) is appended to state words 98–99. The fixed layout `invoke; goto` puts the protected range at
+     `[H − 3 − len, H − 3)`.
+  3. The emit pass: reset the list count at its start, because pass 1 and every pass-2 retry re-emit.
+  4. The record (`jk_record`): `_copy_words` allocates `nframes + 1`, so its last word is free. Store there a
+     pointer to the entries `n, (start, end, handler)…`, resolved through `C_LABELS`, or NONE.
+  5. F12: a frame whose offset is a handler becomes `same_locals_1_stack_item` (64 + delta, or 247 and u2 delta) with
+     `Object java/lang/Throwable`, or a full frame with one stack item when it is the first. The exception table is the
+     entries, with catch_type the Class `java/lang/Throwable` (`jp_ref1(pool, 7, jp_utf8(…))`, as F12 already does
+     for `StackMapTable`), instead of u2 0.
+  6. The two analyses that treat `INTERNAL_LABELS` nodes specially: definite assignment (the old `emit.py` `da_*`,
+     "a label inside it") and interference (the old `method.py` `in_*`, unions into `M_ACROSS`). They must treat a
+     catching call as such a node, or a typed local unassigned at H, Lok or Ljoin breaks the uniform frame. **Not
+     found yet:** no view compares the operation against 23, 49, 59, 50 and 60 (`ATOMIC_CMPXCHG`,
+     `UINT_TO_FLOAT`, `SINT_TO_FLOAT`, `FLOAT_TO_UINT_TRUNC`, `FLOAT_TO_SINT_TRUNC`) together, so the node operation
+     there is probably not the `Operation` number. Next: find `_eop` (the node's operation field) in F53's
+     dispatch and search for its codes. The candidates are F31, F34, F5 and F89 (F89 inlines `_analyses`). The check
+     must call no rejecting function before lowering: a cheap ABI suffix test on the carrier, not F38.
+- **Tests and oracle:** unchanged from the plan (`test_xax_selfhost_jvm.py` byte equality without catching calls; JBR
+  execution for the four member behaviours; C1 and the 198-case differential).
+- **Next step:** locate item 6, then write batch 1 (F38) and batch 2 (F53) on `jvm-catch-emit` from `release/0036`.
+  Then items 3–6, the android and driver batches, and the tests. Land all of it as one PR into the release.
