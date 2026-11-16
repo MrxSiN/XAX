@@ -2,8 +2,8 @@
 
 A declaration ``jvm-invokestatic-catch java/lang/Integer parseInt(Ljava/lang/String;)I`` with outputs ``int`` and
 ``jvm-ref:Ljava/lang/Throwable;`` verifies (``verify_store``: the reference and, on Linux x86-64, the native typing
-program).  The JVM backends do not lower it yet: the reference and the XAX JVM program both reject it with
-``JVM-FOREIGN-ABI``, by the same diagnostic.
+program).  The reference JVM backend does not lower it (``JVM-FOREIGN-ABI``; ADR-405 adds no Python); the XAX JVM
+program does (#49 parts 2-3), for all three ABIs, and ``test_jvm_catch_run`` runs what it builds.
 """
 
 from __future__ import annotations
@@ -54,16 +54,13 @@ class CatchAbiTests(unittest.TestCase):
         self.assertEqual(raised.exception.diagnostic.rule, "JVM-FOREIGN-ABI")
 
     @unittest.skipUnless(LINUX_X86_64, "the XAX JVM program runs natively on Linux x86-64")
-    def test_xax_jvm_program_declines_alike(self):
+    def test_xax_jvm_program_lowers(self):
         from xax_selfhost_jvm import jvm_jar
-        entry, target, reader = catching_program(CATCH_ABIS[0])
-        outcomes = []
-        for frontend in ("python", "xax"):
-            with self.assertRaises(XaxError) as raised:
-                jvm_jar(reader, entry.cid, target, process_entry=False, frontend=frontend)
-            outcomes.append(raised.exception.diagnostic)
-        self.assertEqual(outcomes[0], outcomes[1])
-        self.assertEqual(outcomes[0].rule, "JVM-FOREIGN-ABI")
+        for abi in CATCH_ABIS:
+            with self.subTest(abi=abi):
+                entry, target, reader = catching_program(abi)
+                jar = jvm_jar(reader, entry.cid, target, process_entry=False, frontend="xax")
+                self.assertTrue(jar.startswith(b"PK"))
 
 
 if __name__ == "__main__":
