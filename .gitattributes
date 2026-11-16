@@ -62,3 +62,8 @@ compiler/bootstrap/evolution/request-tool/*.target -text
 # The Windows generator reads its layer line by line and patches its record template as raw bytes.
 compiler/bootstrap/windows/host_layer.txt text eol=lf
 compiler/bootstrap/windows/generator/pe_target.template -text
+compiler/bootstrap/evidence/inputs/* -text
+compiler/bootstrap/evidence/CORPUS text eol=lf
+compiler/bootstrap/evidence/SNAPSHOTS text eol=lf
+compiler/bootstrap/evidence/*.batch text eol=lf
+compiler/bootstrap/evidence/*.sh text eol=lf
