@@ -2440,3 +2440,19 @@ Linux `36e2b756…`, Windows `ae43e32f…` (ledger 0035). `rotate.sh gate` passe
 - **Next step:** #49 part 2, the F38 classification, on a new branch from `release/0036`. Then the emitter, frames,
   the Code attribute and DEX, each a PR into the release. After those: C-cap, the rotation and the release PR.
   Native oracle slice 3 is independent and can go first if part 2 is blocked.
+
+## #49 part 2: anchors in the JVM program's F38 — 2026-11-16
+
+Found on `main` `4c45125` (the view of `xax_jvm_general.xax` at root `31f5aa52…`); no store changed. These
+add to the C-jvm plan in the section above. F38's B87 parameters P1064 and P1065 are the ABI's length and start.
+
+     - the member record is the arena record whose address is F38's P30, and field 0 is the invoke opcode, stored
+  at B226 (184, static), around view line 15918 (182, virtual), 16512 (185, interface) and 16979 (184,
+  interface static). A catching call can carry its mark there as `opcode + 256`, which every reader of field 0
+  (the emitter in F83 and F84) must then mask;
+- the outputs are counted by a loop over the declaration's non-proof outputs (B334 to B336,
+  `N19032 = count + 1`). The method arity check at B723 tests `count == 1 - (result == 'V')` (P32273) and
+  raises `JVM-FOREIGN-ARITY` at B724. A catching call takes one off that count after the loop, once its last
+  output has been checked to be `jvm-ref:Ljava/lang/Throwable;`;
+- parts 2 and 3 must land together. Classification without emission would compile the call as a plain invoke
+  and leave the throwable result unset.
