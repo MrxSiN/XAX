@@ -57,3 +57,14 @@ How it was made, without a generator of its logic:
 
 Until `rotate.sh` has made one release, `SEED_SHA256` (`src/xax_selfhost_seed.py`) and `../../windows/seed.json` stay
 and must equal the pins (`tests/test_rotate_tool.py`); they are retired by the first release `rotate.sh` makes.
+
+Checked on Linux x86-64 (WSL 2, the pinned seed `36e2b756…`), EXECUTED, 2026-11-16, at ledger 0035:
+
+- `rotate.sh build --dry` rebuilt both pinned seeds byte for byte in 9 min 42 s: generation 1 equals the seed, and
+  the cross-built Windows seed is `ae43e32f…` (31,602,176 bytes).
+- On a scratch copy with a test candidate naming the current pins, `confirm x86_64-windows-pe-v1` ran the Windows
+  seed as a Windows process through WSL interop. It rebuilt itself from the generated request (`67f7cfa4…`) and
+  rebuilt itself again, both byte for byte, in 9 min 35 s. `confirm x86_64-linux-elf-exec-v1` did the same in
+  6 min 17 s. `state` then moved from `unmet confirm` to `profile candidate`. A first attempt, before `rotate.sh`
+  made an executable copy, showed the NOT RUN path: exit 1 and no `confirmed` line.
+- `rotate.sh gate` on the committed tree: profile released, `evolve.sh check` passes, and no tests are selected.

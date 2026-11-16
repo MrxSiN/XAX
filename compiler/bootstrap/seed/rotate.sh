@@ -95,7 +95,9 @@ confirm)
     case $target in
     x86_64-linux-elf-exec-v1) binary=$seed request=$here/xax_compiler_request.xax mode=linux ;;
     x86_64-windows-pe-v1)
-        binary=$bootstrap/windows/xaxc-windows-x86_64.exe mode=win request=$out/request.xax
+        # a copy: interop needs the execute bit, which a Linux checkout does not give the .exe
+        cp "$bootstrap/windows/xaxc-windows-x86_64.exe" "$out/seed.exe" && chmod 755 "$out/seed.exe" || exit 3
+        binary=$out/seed.exe mode=win request=$out/request.xax
         sh "$bootstrap/windows/generator/generate.sh" "$here/xax_compiler_request.xax" "$request" || die "generating the Windows request failed"
         "$binary" verify "$(winpath "$bootstrap/evolution/ledger-tool/seed.xax")" "$(winpath "$out/probe")" \
             || { echo "confirm $n $target NOT RUN: the Windows seed does not run here" >&2; exit 1; } ;;
@@ -120,7 +122,11 @@ confirm)
         echo "request $("$r" id "$request")"
         cat "$out/generations"
         echo "generation 2 $("$r" id "$out/C1") $("$r" id "$out/C2")"
-        echo "host $(uname -srm)"
+        if [ "$mode" = win ] && command -v wslpath >/dev/null 2>&1; then
+            echo "host $(uname -srm); the seed ran as a Windows process through WSL interop"
+        else
+            echo "host $(uname -srm)"
+        fi
         echo "label EXECUTED"
     } > "$evidence"
     sha=$("$r" id "$binary") record=$("$r" id "$evidence")

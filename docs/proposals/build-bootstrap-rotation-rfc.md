@@ -516,6 +516,11 @@ Calls made against §4: the record is line text, not JSON; the native evaluator 
 the reference on V1 is shown by writing V1 records as V2 records in the test; B6's probe uses a frozen store. `RELEASES`
 and `POLICY` move to phase 6, which first uses them. The committed record stays V1 until the next rotation.
 
+**Phase 6 done (2026-11-16).** `RELEASES` (restating release 0033), `POLICY`, the native `seed/rotate-tool/xax_rotate`
+and `seed/rotate.sh` (ADR-408). Executed: a dry rotation of ledger 0035 rebuilt both pinned seeds byte for byte;
+the §14 interop question is answered (yes, the same bytes). `SEED_SHA256`, `windows/seed.json` and the §9 repair-diff
+guard remain until the first release that `rotate.sh` makes.
+
 ## 14. Open questions
 
 - Does `xaxc edit` re-root a store? If it does, the request tool could be a generated batch instead of a program.
