@@ -510,6 +510,12 @@ files that the reference and the test helpers generate (the build cases' 23,592 
 included). So item 5's condition holds: the generated part is frozen as data (about 475 KB). The runner is native and
 reads the committed stores by path, and the Python harness stays only as the oracle that wrote the expectations.
 
+**Phase 3 done (2026-11-16).** `compiler/bootstrap/evidence/` holds the frozen corpus (`CORPUS`, `inputs/`,
+`SNAPSHOTS`), the native program `xax_evidence` (`sha`, `elf`, `diag`, `plan`, `levels`) and `run.sh` (ADR-407).
+Calls made against §4: the record is line text, not JSON; the native evaluator reads V2 only, and its agreement with
+the reference on V1 is shown by writing V1 records as V2 records in the test; B6's probe uses a frozen store. `RELEASES`
+and `POLICY` move to phase 6, which first uses them. The committed record stays V1 until the next rotation.
+
 ## 14. Open questions
 
 - Does `xaxc edit` re-root a store? If it does, the request tool could be a generated batch instead of a program.
