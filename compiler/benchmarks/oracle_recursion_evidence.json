@@ -1,0 +1,20 @@
+{
+  "format": "xax-native-oracle-agreement-v1",
+  "label": "EXECUTED",
+  "adr": "ADR-405",
+  "design": "docs/proposals/native-oracle.md, slice 2",
+  "date": "2026-11-16",
+  "areas": [
+    {"area": "recursion groups (call.group.member, group member functions)", "corpus": "tests/test_xax_recursion.py factorial_group (n = 0, 1, 5, 10, 12) and parity_group (even 10, even 7, odd 7, odd 0, even 200)",
+     "cases": 10, "agree": 10, "disagree": 0},
+    {"area": "x86-64 register lowering (regression with the slice 2 build)", "corpus": "tests/test_xax_regalloc_differential.py corpus", "cases": 160, "agree": 160, "disagree": 0}
+  ],
+  "oracles": {
+    "python": "reference/xax_compiler.py execute (verify_store first)",
+    "native": {"store": "compiler/bootstrap/oracle/xax_oracle.xax", "store_sha256": "2f4ce48c3e020633f8a524c26a62a776ea36aef8007816a65ce4ad21b179d759",
+               "executable_sha256": "2805816c40e65e939b57b2e3cbfba089fbe78a11876a8c2f9cf95bd3581d5201", "executable_bytes": 18178,
+               "built_by": "the pinned seed 36e2b756e97377c3955aeb6af9605468107a44bfbf6192b17439911c63c120c2"}
+  },
+  "notes": "the Python executor exceeds its host recursion limit at depth 999 (even 999); the native oracle has an explicit frame stack",
+  "host_nonsemantic": "Linux 6.18.58.1-microsoft-standard-WSL2 x86_64, Python 3.12.3"
+}
