@@ -47,7 +47,8 @@ STATUS_READ_FAILED = 3
 
 HERE = Path(__file__).resolve().parent
 C_SOURCE = HERE / "linux_filestat_c" / "filestat.c"
-EVIDENCE = HERE / "u1_linux_filestat_evidence.json"
+# The newest record (ledger 0035, 2026-11-16); u1_linux_filestat_evidence.json is the earlier run, kept as history.
+EVIDENCE = HERE / "u1_linux_filestat_evidence_0033.json"
 
 
 @dataclass(frozen=True)

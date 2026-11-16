@@ -1098,6 +1098,15 @@ loop moved by two bytes, and OI-58 item 4 records up to 25% between placements o
 few percent here is not attributed to the rule. On this host neither executable leads rustc clearly; the lead needs
 more than one placement per arm (OI-58).
 
+#### 15.40 Linux `filestat` after release 0033 (MEASURED, 2026-11-16)
+
+Release 0033's x86-64 changes give the `filestat` executable new bytes (`7a267511…` → `e29f9c30…`). The new record is
+`compiler/benchmarks/u1_linux_filestat_evidence_0033.json` (`linux_filestat.EVIDENCE` names it).
+`u1_linux_filestat_evidence.json` (the shared Xeon host) is kept unchanged and still holds the matrix's R4 citation.
+The run was `python -m benchmarks.linux_filestat` with `XAX_REQUIRE_NATIVE=1` on the release tree: WSL 2 on a Ryzen 9
+5900HS, 31 repetitions, a 32 MiB input. Medians: XAX 0.0419 s; gcc -O3 0.0585, clang -O2 0.0599, gcc -O2 static 0.0620,
+gcc -O2 0.0622, rustc -O3 0.0624. XAX is 0.716x the fastest other arm, so the lead holds on this host.
+
 ## Part III — Host setup
 
 ### Host setup for the full test and benchmark suite

@@ -2235,3 +2235,29 @@ no open PRs; issues #47, #48, #49, #51, #55 open; both seeds at their pins (`0cd
   C-jvm (#49 with an ADR, then #48) and C-cap (OI-54 steps, OI-52 R2). In parallel on `main`, step 8's phase 3: the
   corpus input measurement is done (`XAX_STATE.md`). The external input files of the build cases still need
   counting, then the decision whether to freeze the corpus as data.
+
+## Build/rotation campaign: release 0033 done — 2026-11-16
+
+Merged by the agent on the owner's chat instruction ("merge it yourself with gh pr merge --merge" once a PR's
+targeted tests pass). PRs: [#69](https://github.com/MrxSiN/XAX/pull/69), [#71](https://github.com/MrxSiN/XAX/pull/71)
+(C-x86) and [#73](https://github.com/MrxSiN/XAX/pull/73) (C-a64) into `release/0033`;
+[#70](https://github.com/MrxSiN/XAX/pull/70) (the owner's ADR-405), [#72](https://github.com/MrxSiN/XAX/pull/72) and
+[#74](https://github.com/MrxSiN/XAX/pull/74) (ADR-406, the plan change) into `main`; then the rotation PR and the
+release PR (this section's).
+
+- **Seeds now**: Linux `36e2b756…` (31,549,147 bytes), Windows `ae43e32f…` (31,602,176 bytes), both at ledger 0035.
+  Results are in `XAX_STATE.md` (2026-11-16, release 0033).
+- **Calls made overnight** (recorded):
+  1. C-jvm and C-cap were moved to the next release, because the JVM backend's emission is in single 41,000–46,000-line
+     functions and OI-54 needs new layouts. ADR-406 designs #49.
+  2. The chains and filestat evidence go into new files; the old records and the matrix's R4 citations stay.
+  3. The graph-decoder fuzz test runs 3,000 trials, not 1,500.
+  4. `qemu-user-static` is installed in WSL, with a `qemu-aarch64` link in `/usr/local/bin`.
+  5. BBC's `check.py` ran in WSL with a scratch `wine` shim that executes Windows files natively through interop.
+  6. BBC's local `build/bbc.exe` is the new one; the old one is `build/bbc.exe.0032`.
+- **Runs in progress**: none. Logs: `/root/work/logs/{replay-0035,rotation-0033,full-0033,pfs-0033,suite-0033,bbc-check-0033b}.log`.
+- **Open**: OI-58 (the Windows measurement), the OI-56 note's DLL run, OI-49 closes once the Android-target build is
+  run (the fix is in the seed now), #47, #48, #49, #51, #55.
+- **Next step**: step 8 on `main`. For phase 3, count the build cases' external input files (the corpus stores are
+  about 411 KB generated), then write the V2 runner and evaluator; then phase 6 (`rotate.sh`, `RELEASES`, `POLICY`).
+  After that, the next release branch with C-jvm (#49 per ADR-406, then #48) and C-cap.

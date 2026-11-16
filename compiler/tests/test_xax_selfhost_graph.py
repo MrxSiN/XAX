@@ -84,7 +84,9 @@ class GraphDecoderTests(unittest.TestCase):
     def test_mutated_bodies_give_the_same_parse_or_diagnostic(self):
         rng = random.Random(20261003)
         parsed = 0
-        for trial in range(1500):
+        # 3000 trials (1500 before release 0033): the graphs come from every bootstrap store, so a release's new graphs
+        # move the sample; at 1500 the 0035 stores gave exactly 10 bodies that still parse, all agreeing with the reference.
+        for trial in range(3000):
             graph, resolve = rng.choice(self.graphs)
             body = bytearray(graph.body)
             choice = rng.random()
