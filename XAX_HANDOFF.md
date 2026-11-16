@@ -2359,3 +2359,27 @@ Linux `36e2b756…`, Windows `ae43e32f…` (ledger 0035). `rotate.sh gate` passe
   - slice 2 (recursion groups);
   - slice 3 (views and memory);
   - or step 4, `release/0036` (C-jvm per ADR-406, then C-cap), which is the first release made with `rotate.sh`.
+
+## Native oracle: slice 1 widened, slice 2 done — 2026-11-16
+
+`main` = `c2bdb48`. PRs: [#85](https://github.com/MrxSiN/XAX/pull/85) (narrow compare and branch fusion) and
+[#86](https://github.com/MrxSiN/XAX/pull/86) (slice 2, recursion groups). No compiler store or seed changed.
+
+- **Areas checked against the native oracle on Linux x86-64 (ADR-405 (4)):**
+  - x86-64 register lowering (160 programs);
+  - narrow and signed compare (3,840 cases);
+  - compare after branch (6 cases);
+  - recursion groups (10 cases).
+  Evidence: `benchmarks/oracle_x86_64_regalloc_evidence.json`, `oracle_x86_64_compare_evidence.json` and
+  `oracle_recursion_evidence.json`.
+- **Windows:** the oracle is a Linux program, so these tests use `oracle_execute` (`tests/test_native_oracle.py`).
+  That is the native oracle on Linux x86-64 and the Python executor elsewhere (ADR-405 (3)). The Python executor
+  cannot be retired for these areas until the oracle runs on Windows, by building it as a PE through the Windows
+  hosting generator or a host layer.
+- **Oracle store now:** `2f4ce48c…` (executable `2805816c…`, 18,178 bytes, built by the pinned seed).
+- **Next:**
+  - slice 3: heap views, checked and growable loads and stores, stack allocation, address offset and pointer
+    rebase (`test_xax_x86_64_views`, `test_xax_byte_view_widening`, `test_xax_pointer_rebase`). It needs a memory
+    model: an allocation table of base, extent and element per region, plus bounds and alignment traps exactly
+    as `_execute_graph` raises them. Read that function's memory cases first.
+  - or step 4, `release/0036`.
