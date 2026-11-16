@@ -2664,3 +2664,16 @@ Analysis only, NOT RUN against any test (no store changed). Release 0036 is stil
 0036 b, and no catching call lowers yet. Seeds unchanged (Linux `36e2b756…`, Windows `ae43e32f…`); `rotate.sh state`
 on the release: validated 0033, candidate none; `evolve.sh check` passes. The JVM program's foreign-call path,
 the free words it can use and the planned change set are in `XAX_HANDOFF.md`, same date.
+
+## Release 0036: catching JVM calls lower (#49 parts 2–3, ADR-406) — 2026-11-16
+
+EXECUTED in WSL 2 on `release/0036` `e5de5e5` ([#93](https://github.com/MrxSiN/XAX/pull/93), ledger 0036 c–g on the JVM,
+android and driver stores). The seed is not rotated.
+
+| Check | Result |
+|---|---|
+| `test_jvm_catch_run` (built by the XAX JVM program, run on the Android Studio JBR) | 8 of 8 programs right |
+| Store regeneration, JVM selfhost byte equality, catch ABIs, android JVM, general build | 110 passed, 137 skipped, 1 known failure (no JDK jmods in WSL) |
+| C1 `verify` of the three stores | accepted |
+| `bench_full_selfhost.corpus()`, seed against C1 | 0 of 198 differ |
+| DEX lowering of a catching call | NOT RUN: still rejected (`DEX-EXCEPTION-TABLE`, part 6) |
