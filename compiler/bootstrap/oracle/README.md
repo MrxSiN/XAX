@@ -58,3 +58,8 @@ Limits:
 - A float operation and a float parameter decline.
 - So `test_xax_regalloc_differential` compares the native code with this oracle (ADR-405 (4)), and
   `tests/test_native_oracle.py` keeps checking that both oracles agree.
+- Slice 1 also covers two more corpora. Narrow and signed `int.compare` (3,840 cases of
+  `test_x86_64_narrow_signed_compare`) and compares reused after their branch (6 cases of
+  `test_native_branch_fusion`) agree in both executors (`../../benchmarks/oracle_x86_64_compare_evidence.json`).
+  Both tests now take their expected values from `oracle_execute`: the native oracle on Linux x86-64, and the Python
+  executor on Windows, where this Linux program cannot run.
