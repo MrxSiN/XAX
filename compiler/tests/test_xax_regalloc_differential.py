@@ -33,6 +33,9 @@ from xax_graph_builder import BlockBuilder, GraphBuilder, program_store
 from xax_linux import compile_linux_executable, linux_api, run_linux_executable
 from xax_x86_64_regalloc import compile_register_resident
 
+sys.path.insert(0, __import__("os").path.dirname(__file__))
+from test_native_oracle import native_execute  # noqa: E402
+
 LINUX_X86_64 = sys.platform.startswith("linux") and platform.machine().lower() in ("x86_64", "amd64")
 B1, B32, B64 = bits_type(1), bits_type(32), bits_type(64)
 MASK64 = (1 << 64) - 1
@@ -151,7 +154,9 @@ class RegisterAllocatorDifferentialTests(unittest.TestCase):
         native = struct.unpack(f"<{len(functions)}Q", completed.stdout)
         for index, (function, arguments) in enumerate(functions):
             with self.subTest(program=index):
-                self.assertEqual(native[index], execute(reader, function.cid, arguments)[0])
+                # ADR-405 (4): the area's oracle is the native reference executor since both agreed on this corpus
+                # (benchmarks/oracle_x86_64_regalloc_evidence.json); test_native_oracle keeps checking that agreement.
+                self.assertEqual(native[index], native_execute(reader, function.cid, arguments)[0])
 
 
 
