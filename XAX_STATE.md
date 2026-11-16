@@ -2633,3 +2633,14 @@ EXECUTED on Linux x86-64 (WSL 2) with the pinned seed `36e2b756…` (`main` `d43
 | Edge cases | division by zero, explicit trap payload, signed compare, rotate, two results and fuel all agree; float operations and types decline |
 | `test_native_oracle` + `test_xax_regalloc_differential` | 6 passed, 327 subtests (WSL) |
 | Comparison test moved | `test_xax_regalloc_differential` now checks native code against the native oracle |
+
+## Native oracle: compare areas and recursion groups (ADR-405) — 2026-11-16
+
+EXECUTED in WSL 2 with the pinned seed `36e2b756…` (`main` `c2bdb48`).
+
+| Area moved to the native oracle (Linux) | Agreement |
+|---|---|
+| x86-64 register lowering | 160 / 160 |
+| narrow and signed `int.compare` | 3,840 / 3,840 |
+| compare reused after its branch (OI-50) | 6 / 6 |
+| recursion groups (slice 2) | 10 / 10 |
