@@ -2383,3 +2383,60 @@ Linux `36e2b756…`, Windows `ae43e32f…` (ledger 0035). `rotate.sh gate` passe
     model: an allocation table of base, extent and element per region, plus bounds and alignment traps exactly
     as `_execute_graph` raises them. Read that function's memory cases first.
   - or step 4, `release/0036`.
+
+## Release 0036 started: #49 part 1, the verifier — 2026-11-16
+
+`release/0036` was cut from `main` `991ef7a`. PR [#88](https://github.com/MrxSiN/XAX/pull/88) (`jvm-catch-abis`, commits
+`5dfc89b` and `df29469`) goes into it. Merged by the agent on the owner's standing instruction once its tests passed.
+
+- **Done:** the verifier accepts the three catching JVM ABIs of ADR-406. These are native transactions on
+  `xax_op_typing.xax` and the driver, and the derived request follows:
+  - ledger 0036: op-typing F61 (driver F716), the `FOREIGN-CALL-ABI` diagnostic's list;
+  - ledger 0036 b: op-typing F9 (driver F90), the facts program's byte compares that decide acceptance.
+  The reference `FOREIGN_ABIS` lists the same three names. The JVM backends still reject them with
+  `JVM-FOREIGN-ABI`, which `tests/test_jvm_catch_abis.py` checks.
+- **Tests (EXECUTED):**
+  - WSL, `XAX_REQUIRE_NATIVE=1`: 94 passed, 0 failed (store regeneration, facts, typing, verify, verify-exact and
+    catch ABIs). Windows: the new test passes.
+  - C1 (`/root/work/c1-0036b/C1`): it verifies the three catching stores, which the seed rejects. The
+    `bench_full_selfhost.corpus()` differential, seed against C1, found 0 of 198 cases different.
+  - `evolve.sh check` passes.
+- **Seeds:** unchanged (Linux `36e2b756…`, Windows `ae43e32f…`). The release is not rotated yet.
+- **Logs:** `/root/work/logs/{c1-0036b,diff-0036a,slice1-tests,catch-tests}.log`.
+- **How the patch batches were made:** each is a whole-function `define`/`replace`. A scratch script appended the
+  table entries to the function's view and renumbered the nodes; it is not committed. Only the op-typing store and
+  the driver hold these two functions (checked over all 29 bootstrap stores).
+- **C-jvm plan for #49 (ADR-406), made from the native stores** (function numbers are `xax_jvm_general.xax`'s at its
+  committed root `31f5aa52…`; the driver holds 94 of its 97 functions, `xax_android.xax` all 97, so each JVM slice is
+  three batches like ledger 0035):
+  1. **Verifier (done, ledger 0036 and 0036 b, this release).** Op-typing F61 is only the `FOREIGN-CALL-ABI`
+     diagnostic's list; the acceptance is the facts program's byte-compare chain in op-typing F9. Both now hold the
+     three names.
+  2. **Classification (F38, 45,641 lines, 787 blocks).** F38 is `_foreign_member`: it compares the ABI bytes in
+     branchy chains (the `jvm-invokestatic` 16-byte compare appears about 6 times, at view lines 2831, 10989, 15312,
+     …) and builds the member record. The planned change is one insertion before the first chain: when the ABI is a
+     catching one, compare against the base name (length minus 6), check the last output is
+     `jvm-ref:Ljava/lang/Throwable;`, drop it from the outputs, and mark the member record. Every later chain then
+     classifies the base ABI unchanged. The insertion point is F38's B87: its parameters P1064 and P1065 are the ABI's
+     length and start (B84 has just checked that the ABI, library and name blobs are nonempty), and B87's edges thread
+     them through every later block, so replacing P1064 by the adjusted length in B87's nodes and edges is enough. First find the member record's layout (where the opcode, the interface flag
+     and the output count are stored) by following the stores after the `invokevirtual` chain.
+  3. **Emission (F83 44,675 lines and F84 9,724 lines emit nodes; the invoke opcodes 182/184/185 appear there).** At a
+     marked call: label before the invoke, label after it, store the result and `aconst_null` into the throwable's
+     local, `goto` the join; the handler stores the throwable and the result's zero; the join is a branch target.
+  4. **Frames and stack depth.** The handler is a branch target whose frame has one stack item (`Throwable`); the
+     uniform frame elsewhere is unchanged. F95 (33,050 lines) is the next place to read: it calls the pool and frame
+     helpers.
+  5. **Code attribute (F12, 5,088 lines).** F12 writes `StackMapTable` and `LineNumberTable` (their bytes are at view
+     lines 1448 and 2184); the exception table length is written as zero there today and becomes the entries
+     `start, end, handler, catch_type` (`java/lang/Throwable` in the pool).
+  6. **DEX (`xax_dex_jvm.xax`, 53 functions).** Replace the `DEX-EXCEPTION-TABLE` rejection with a `try_item` and an
+     encoded catch handler whose code starts with `move-exception`.
+  7. **Oracle: execution.** JVM (Android Studio JBR on Windows) and ART on the Pixel: a member that returns, throws a
+     checked exception, throws an `Error`, and throws from a nested call, each with the expected result, throwable
+     class and exit status. Then #48.
+- Every emitter slice keeps the existing byte-for-byte differential (`tests/test_xax_selfhost_jvm.py`) for programs
+  without a catching call; programs with one are checked only by execution (ADR-405: no Python reference).
+- **Next step:** #49 part 2, the F38 classification, on a new branch from `release/0036`. Then the emitter, frames,
+  the Code attribute and DEX, each a PR into the release. After those: C-cap, the rotation and the release PR.
+  Native oracle slice 3 is independent and can go first if part 2 is blocked.
