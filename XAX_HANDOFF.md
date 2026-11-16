@@ -2334,3 +2334,28 @@ Linux `36e2b756…`, Windows `ae43e32f…` (ledger 0035). `rotate.sh gate` passe
   reference executor that interprets canonical graphs (no code shared with the backends, nothing generated from the
   compiler's stores), scoped first to x86-64 register lowering's corpus. Alternatively, start step 4
   (`release/0036`, #49 per ADR-406) if the release is more urgent; neither depends on the other.
+
+## Native oracle: design and slice 1 done — 2026-11-16
+
+`main` = `d4379fa`. PRs: [#82](https://github.com/MrxSiN/XAX/pull/82) (design, `docs/proposals/native-oracle.md`) and
+[#83](https://github.com/MrxSiN/XAX/pull/83) (slice 1). No compiler store, CID or seed changed. Seeds unchanged:
+`36e2b756…` and `ae43e32f…`.
+
+- **Done:** `compiler/bootstrap/oracle/xax_oracle` (native, hand-written batch on the ledger tool's seed; shares no
+  compiler code). Slice 1 covers integer arithmetic, compares, truncation and extension, rotation, direct calls and
+  the four terminators. The Python and native executors agree on all 160 programs of the x86-64 register-lowering
+  corpus (`benchmarks/oracle_x86_64_regalloc_evidence.json`, EXECUTED). `test_xax_regalloc_differential` therefore
+  now compares native code with the native oracle (ADR-405 (4)), and `test_native_oracle` keeps checking that both
+  oracles agree.
+- **Found and fixed during the work:** the decimal printer the tools share looped forever at 10^19 and above. The
+  oracle's copy (`@wdec`) is fixed. The copies in `xax_evidence` (`@putd`) and `xax_rotate` (`@decc`) only print
+  counts and sizes, far below that, and are left as they are; note it if one ever prints a 64-bit value.
+- **Calls made:** the oracle does not verify, because the harness verifies first, as `execute` does. A non-`bits`
+  type declines as `decline 0`. Fuel exhaustion is reported but never compared with Python's, because the units may
+  differ.
+- **Next:** in order of the design's §4,
+  - slice 1 for `test_x86_64_narrow_signed_compare` and `test_native_branch_fusion` (they may need only the same
+    operations: run the agreement first);
+  - slice 2 (recursion groups);
+  - slice 3 (views and memory);
+  - or step 4, `release/0036` (C-jvm per ADR-406, then C-cap), which is the first release made with `rotate.sh`.

@@ -2622,3 +2622,14 @@ EXECUTED on Linux x86-64 (WSL 2) with the pinned seed `36e2b756…` (`main` `552
 | `rotate.sh confirm` (scratch copy, test candidate = current pins) | Windows through interop: 2 rebuilds identical (9 min 35 s); Linux: 2 rebuilds identical (6 min 17 s) |
 | `rotate.sh state` / `gate` on `main` | release 0033 validated, profile released; gate passes |
 | `test_rotate_tool` | 4 passed |
+
+## Native reference executor, slice 1 (ADR-405) — 2026-11-16
+
+EXECUTED on Linux x86-64 (WSL 2) with the pinned seed `36e2b756…` (`main` `d4379fa`, [#83](https://github.com/MrxSiN/XAX/pull/83)).
+
+| Item | Result |
+|---|---|
+| Agreement with `execute` on the x86-64 register-lowering corpus | 160 of 160 programs (`benchmarks/oracle_x86_64_regalloc_evidence.json`) |
+| Edge cases | division by zero, explicit trap payload, signed compare, rotate, two results and fuel all agree; float operations and types decline |
+| `test_native_oracle` + `test_xax_regalloc_differential` | 6 passed, 327 subtests (WSL) |
+| Comparison test moved | `test_xax_regalloc_differential` now checks native code against the native oracle |
