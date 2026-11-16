@@ -504,6 +504,12 @@ work, and holding the finished fixes (OI-58 item 1, the PE probes, OI-49) for it
 (phases 3 and 6) follows the release, so release 0033 records V1 evidence with the existing tools
 (`bench_full_selfhost`, `bench_python_free_seed`, `rotate-seed`), as the ledger 0027 release did.
 
+**Phase 3 corpus size, measured (2026-11-16, `main` `1f2fc4c`).** `corpus()` makes 198 cases. Their inputs are 166.8 MB
+of committed bootstrap stores, 32 KB of committed fixtures, a 65 MiB zero store, and 474,826 bytes in 132 unique
+files that the reference and the test helpers generate (the build cases' 23,592 bytes of external input files
+included). So item 5's condition holds: the generated part is frozen as data (about 475 KB). The runner is native and
+reads the committed stores by path, and the Python harness stays only as the oracle that wrote the expectations.
+
 ## 14. Open questions
 
 - Does `xaxc edit` re-root a store? If it does, the request tool could be a generated batch instead of a program.
