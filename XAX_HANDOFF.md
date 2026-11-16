@@ -2261,3 +2261,19 @@ release PR (this section's).
 - **Next step**: step 8 on `main`. For phase 3, count the build cases' external input files (the corpus stores are
   about 411 KB generated), then write the V2 runner and evaluator; then phase 6 (`rotate.sh`, `RELEASES`, `POLICY`).
   After that, the next release branch with C-jvm (#49 per ADR-406, then #48) and C-cap.
+
+## Build/rotation campaign: after release 0033 — 2026-11-16
+
+`main` = `1f2fc4c` (release PR [#76](https://github.com/MrxSiN/XAX/pull/76)), equal to `release/0033`. No open PRs.
+Seeds: Linux `36e2b756…`, Windows `ae43e32f…` (ledger 0035). `evolve.sh check` passes on `main`.
+
+- **Phase 3 size check done** (RFC §13.7, the 2026-11-16 measurement): the generated corpus inputs are 474,826 bytes in
+  132 files, so the corpus is frozen as data.
+- **Runs in progress**: none.
+- **Exact next step**: phase 3 in one PR on `main`. Write the native evidence runner (`bootstrap/evidence/`: a program
+  like `ledger-tool/`, plus an `sh` wrapper). It reads a frozen corpus manifest (case, command, input paths or
+  committed store paths, expected outcome), runs each case once per context, and writes the V2 record (§4). Freezing
+  needs a one-time export of the 132 generated files and the reference outcomes: do it from `bench_full_selfhost.corpus()`
+  with a scratch script that is not committed, and record that command in the PR as the oracle's. Then move the Python
+  evaluator to `reference/` and make the native evaluator agree with it on the V1 record and on mutated copies. After
+  phase 3: phase 6 (`rotate.sh`, `RELEASES`, `POLICY`), then the next release branch with C-jvm (ADR-406) and C-cap.
