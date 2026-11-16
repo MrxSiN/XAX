@@ -2517,6 +2517,11 @@ plan two sections up: F83 and F84 emit no instructions.
      there is probably not the `Operation` number. Next: find `_eop` (the node's operation field) in F53's
      dispatch and search for its codes. The candidates are F31, F34, F5 and F89 (F89 inlines `_analyses`). The check
      must call no rejecting function before lowering: a cheap ABI suffix test on the carrier, not F38.
+- **Searches already done for item 6 (all negative):** no view holds the five operation constants within 200 lines
+  of each other, and none holds their bit mask (`1731071106778923008`). F53's own dispatch does compare `Operation`
+  numbers (42 at view line 174), so the analyses probably read a per-operation table instead of comparing. Counting
+  `constant 57` (the old `M_ACROSS` word) finds operation numbers too, so trace the analyses F89 calls after it allocates
+  `M_ACROSS`/`M_FRAMED` (view line ~8,771: F56, F10, F40, then the others) instead of grepping for constants.
 - **Tests and oracle:** unchanged from the plan (`test_xax_selfhost_jvm.py` byte equality without catching calls; JBR
   execution for the four member behaviours; C1 and the 198-case differential).
 - **Next step:** locate item 6, then write batch 1 (F38) and batch 2 (F53) on `jvm-catch-emit` from `release/0036`.
