@@ -1,0 +1,2229 @@
+R 1eb80498556828e265319520c54d3bbde680aa67d9646bbfada31ea7045d69cf
+F0
+define @uv
+(T5,T9,T2,T4)->(T4,T5,T9,T2)
+B0(P0:T5,P1:T9,P2:T2,P3:T4)
+N0 constant 0 -> T4
+N1 constant 1 -> T4
+br B1(P0,P1,P2,P3,N0,N1)
+B1(P4:T5,P5:T9,P6:T2,P7:T4,P8:T4,P9:T4)
+N2 int.truncate P7 -> T3
+N3 checked.load.bits.le P4 N2 P6 -> T11,T2 [1,1]
+N4 int.zero.extend N3 -> T4
+N5 constant 128 -> T4
+N6 urem N4 N5 -> T4
+N7 mul.wrap N6 P9 -> T4
+N8 add.wrap P8 N7 -> T4
+N9 mul.wrap P9 N5 -> T4
+N10 add.wrap P7 N1 -> T4
+N11 int.compare N4 N5 -> T12 [3]
+cbr N11 B2(P4,P5,N3.R1,N8) B1(P4,P5,N3.R1,N10,N8,N9)
+B2(P10:T5,P11:T9,P12:T2,P13:T4)
+ret P13 P10 P11 P12
+T0 form3 ea03b918f20d0a81a33884ee817f029b0acdbece68ae2d7bd3eeb935ccf3485b
+T1 form3 c0bccc4581f6497319c020d4f090f292851eaca295e91a3814668574aa3ec567
+T2 form3 2b2704e5644b2a600cc1c05f91f133f54c03637cddb3aaf658a635fff068bd0a
+T3 bits32
+T4 bits64
+T5 form2 ed7f465bd391df681fba3366051d89f1cf6dbd0fa4983971d7bb14a55f889d29
+T6 form4 933b152d7a3ae1cbd182fd6ece7825ad5a2536c7395b404382763b99acb94833
+T7 form4 3f5c8e3779860667ed838f1c7bb30d71b46ddd4f748ba76b5572e95efbed172c
+T8 form4 fa9bd62ea14b1905accb9b5eba8bf112696d2e9948af7ca7d28521b5b6eaaee4
+T9 form4 4776812445978ecc4336796680f50d1e24bc77be09ec5fdaca1098edd630d6f7
+T10 form2 f615ad96e3f3b84a7bfab041dde4598988ff2ff45d2c382c57a507016ef60f6b
+T11 bits8
+T12 bits1
+end
+define @ue
+(T5,T9,T2,T4)->(T4,T5,T9,T2)
+B0(P0:T5,P1:T9,P2:T2,P3:T4)
+br B1(P0,P1,P2,P3)
+B1(P4:T5,P5:T9,P6:T2,P7:T4)
+N0 int.truncate P7 -> T3
+N1 checked.load.bits.le P4 N0 P6 -> T11,T2 [1,1]
+N2 int.zero.extend N1 -> T4
+N3 constant 128 -> T4
+N4 constant 1 -> T4
+N5 add.wrap P7 N4 -> T4
+N6 int.compare N2 N3 -> T12 [3]
+cbr N6 B2(P4,P5,N1.R1,N5) B1(P4,P5,N1.R1,N5)
+B2(P8:T5,P9:T9,P10:T2,P11:T4)
+ret P11 P8 P9 P10
+T0 form3 ea03b918f20d0a81a33884ee817f029b0acdbece68ae2d7bd3eeb935ccf3485b
+T1 form3 c0bccc4581f6497319c020d4f090f292851eaca295e91a3814668574aa3ec567
+T2 form3 2b2704e5644b2a600cc1c05f91f133f54c03637cddb3aaf658a635fff068bd0a
+T3 bits32
+T4 bits64
+T5 form2 ed7f465bd391df681fba3366051d89f1cf6dbd0fa4983971d7bb14a55f889d29
+T6 form4 933b152d7a3ae1cbd182fd6ece7825ad5a2536c7395b404382763b99acb94833
+T7 form4 3f5c8e3779860667ed838f1c7bb30d71b46ddd4f748ba76b5572e95efbed172c
+T8 form4 fa9bd62ea14b1905accb9b5eba8bf112696d2e9948af7ca7d28521b5b6eaaee4
+T9 form4 4776812445978ecc4336796680f50d1e24bc77be09ec5fdaca1098edd630d6f7
+T10 form2 f615ad96e3f3b84a7bfab041dde4598988ff2ff45d2c382c57a507016ef60f6b
+T11 bits8
+T12 bits1
+end
+define @wl
+(T5,T8,T2,T4)->(T4,T5,T8,T2)
+B0(P0:T5,P1:T8,P2:T2,P3:T4)
+N0 int.truncate P3 -> T3
+N1 checked.load.bits.le P0 N0 P2 -> T4,T2 [8,1]
+ret N1 P0 P1 N1.R1
+T0 form3 ea03b918f20d0a81a33884ee817f029b0acdbece68ae2d7bd3eeb935ccf3485b
+T1 form3 c0bccc4581f6497319c020d4f090f292851eaca295e91a3814668574aa3ec567
+T2 form3 2b2704e5644b2a600cc1c05f91f133f54c03637cddb3aaf658a635fff068bd0a
+T3 bits32
+T4 bits64
+T5 form2 ed7f465bd391df681fba3366051d89f1cf6dbd0fa4983971d7bb14a55f889d29
+T6 form4 933b152d7a3ae1cbd182fd6ece7825ad5a2536c7395b404382763b99acb94833
+T7 form4 3f5c8e3779860667ed838f1c7bb30d71b46ddd4f748ba76b5572e95efbed172c
+T8 form4 fa9bd62ea14b1905accb9b5eba8bf112696d2e9948af7ca7d28521b5b6eaaee4
+T9 form4 4776812445978ecc4336796680f50d1e24bc77be09ec5fdaca1098edd630d6f7
+T10 form2 f615ad96e3f3b84a7bfab041dde4598988ff2ff45d2c382c57a507016ef60f6b
+T11 bits8
+T12 bits1
+end
+define @ws
+(T5,T8,T2,T4,T4)->(T5,T8,T2)
+B0(P0:T5,P1:T8,P2:T2,P3:T4,P4:T4)
+N0 int.truncate P3 -> T3
+N1 checked.store.bits.le P0 N0 P4 P2 -> T2 [8,1]
+ret P0 P1 N1
+T0 form3 ea03b918f20d0a81a33884ee817f029b0acdbece68ae2d7bd3eeb935ccf3485b
+T1 form3 c0bccc4581f6497319c020d4f090f292851eaca295e91a3814668574aa3ec567
+T2 form3 2b2704e5644b2a600cc1c05f91f133f54c03637cddb3aaf658a635fff068bd0a
+T3 bits32
+T4 bits64
+T5 form2 ed7f465bd391df681fba3366051d89f1cf6dbd0fa4983971d7bb14a55f889d29
+T6 form4 933b152d7a3ae1cbd182fd6ece7825ad5a2536c7395b404382763b99acb94833
+T7 form4 3f5c8e3779860667ed838f1c7bb30d71b46ddd4f748ba76b5572e95efbed172c
+T8 form4 fa9bd62ea14b1905accb9b5eba8bf112696d2e9948af7ca7d28521b5b6eaaee4
+T9 form4 4776812445978ecc4336796680f50d1e24bc77be09ec5fdaca1098edd630d6f7
+T10 form2 f615ad96e3f3b84a7bfab041dde4598988ff2ff45d2c382c57a507016ef60f6b
+T11 bits8
+T12 bits1
+end
+define @cg
+(T5,T8,T2,T4)->(T4,T5,T8,T2)
+B0(P0:T5,P1:T8,P2:T2,P3:T4)
+N0 constant 8 -> T4
+N1 mul.wrap P3 N0 -> T4
+N2 constant 1040384 -> T4
+N3 add.wrap N1 N2 -> T4
+N4 int.truncate N3 -> T3
+N5 checked.load.bits.le P0 N4 P2 -> T4,T2 [8,1]
+ret N5 P0 P1 N5.R1
+T0 form3 ea03b918f20d0a81a33884ee817f029b0acdbece68ae2d7bd3eeb935ccf3485b
+T1 form3 c0bccc4581f6497319c020d4f090f292851eaca295e91a3814668574aa3ec567
+T2 form3 2b2704e5644b2a600cc1c05f91f133f54c03637cddb3aaf658a635fff068bd0a
+T3 bits32
+T4 bits64
+T5 form2 ed7f465bd391df681fba3366051d89f1cf6dbd0fa4983971d7bb14a55f889d29
+T6 form4 933b152d7a3ae1cbd182fd6ece7825ad5a2536c7395b404382763b99acb94833
+T7 form4 3f5c8e3779860667ed838f1c7bb30d71b46ddd4f748ba76b5572e95efbed172c
+T8 form4 fa9bd62ea14b1905accb9b5eba8bf112696d2e9948af7ca7d28521b5b6eaaee4
+T9 form4 4776812445978ecc4336796680f50d1e24bc77be09ec5fdaca1098edd630d6f7
+T10 form2 f615ad96e3f3b84a7bfab041dde4598988ff2ff45d2c382c57a507016ef60f6b
+T11 bits8
+T12 bits1
+end
+define @cs
+(T5,T8,T2,T4,T4)->(T5,T8,T2)
+B0(P0:T5,P1:T8,P2:T2,P3:T4,P4:T4)
+N0 constant 8 -> T4
+N1 mul.wrap P3 N0 -> T4
+N2 constant 1040384 -> T4
+N3 add.wrap N1 N2 -> T4
+N4 int.truncate N3 -> T3
+N5 checked.store.bits.le P0 N4 P4 P2 -> T2 [8,1]
+ret P0 P1 N5
+T0 form3 ea03b918f20d0a81a33884ee817f029b0acdbece68ae2d7bd3eeb935ccf3485b
+T1 form3 c0bccc4581f6497319c020d4f090f292851eaca295e91a3814668574aa3ec567
+T2 form3 2b2704e5644b2a600cc1c05f91f133f54c03637cddb3aaf658a635fff068bd0a
+T3 bits32
+T4 bits64
+T5 form2 ed7f465bd391df681fba3366051d89f1cf6dbd0fa4983971d7bb14a55f889d29
+T6 form4 933b152d7a3ae1cbd182fd6ece7825ad5a2536c7395b404382763b99acb94833
+T7 form4 3f5c8e3779860667ed838f1c7bb30d71b46ddd4f748ba76b5572e95efbed172c
+T8 form4 fa9bd62ea14b1905accb9b5eba8bf112696d2e9948af7ca7d28521b5b6eaaee4
+T9 form4 4776812445978ecc4336796680f50d1e24bc77be09ec5fdaca1098edd630d6f7
+T10 form2 f615ad96e3f3b84a7bfab041dde4598988ff2ff45d2c382c57a507016ef60f6b
+T11 bits8
+T12 bits1
+end
+define @u
+(T5,T9,T2,T5,T8,T2)->(T4,T5,T9,T2,T5,T8,T2)
+B0(P0:T5,P1:T9,P2:T2,P3:T5,P4:T8,P5:T2)
+N0 constant 7 -> T4
+N1 call.direct entity=@cg P3 P4 P5 N0 -> T4,T5,T8,T2
+N2 call.direct entity=@uv P0 P1 P2 N1 -> T4,T5,T9,T2
+N3 call.direct entity=@ue N2.R1 N2.R2 N2.R3 N1 -> T4,T5,T9,T2
+N4 call.direct entity=@cs N1.R1 N1.R2 N1.R3 N0 N3 -> T5,T8,T2
+ret N2 N3.R1 N3.R2 N3.R3 N4 N4.R1 N4.R2
+T0 form3 ea03b918f20d0a81a33884ee817f029b0acdbece68ae2d7bd3eeb935ccf3485b
+T1 form3 c0bccc4581f6497319c020d4f090f292851eaca295e91a3814668574aa3ec567
+T2 form3 2b2704e5644b2a600cc1c05f91f133f54c03637cddb3aaf658a635fff068bd0a
+T3 bits32
+T4 bits64
+T5 form2 ed7f465bd391df681fba3366051d89f1cf6dbd0fa4983971d7bb14a55f889d29
+T6 form4 933b152d7a3ae1cbd182fd6ece7825ad5a2536c7395b404382763b99acb94833
+T7 form4 3f5c8e3779860667ed838f1c7bb30d71b46ddd4f748ba76b5572e95efbed172c
+T8 form4 fa9bd62ea14b1905accb9b5eba8bf112696d2e9948af7ca7d28521b5b6eaaee4
+T9 form4 4776812445978ecc4336796680f50d1e24bc77be09ec5fdaca1098edd630d6f7
+T10 form2 f615ad96e3f3b84a7bfab041dde4598988ff2ff45d2c382c57a507016ef60f6b
+T11 bits8
+T12 bits1
+end
+define @eq32
+(T5,T9,T2,T4,T4)->(T4,T5,T9,T2)
+B0(P0:T5,P1:T9,P2:T2,P3:T4,P4:T4)
+N0 constant 0 -> T4
+N1 add.wrap P3 N0 -> T4
+N2 int.truncate N1 -> T3
+N3 checked.load.bits.le P0 N2 P2 -> T4,T2 [8,1]
+N4 add.wrap P4 N0 -> T4
+N5 int.truncate N4 -> T3
+N6 checked.load.bits.le P0 N5 N3.R1 -> T4,T2 [8,1]
+N7 bit.xor N3 N6 -> T4
+N8 constant 8 -> T4
+N9 add.wrap P3 N8 -> T4
+N10 int.truncate N9 -> T3
+N11 checked.load.bits.le P0 N10 N6.R1 -> T4,T2 [8,1]
+N12 add.wrap P4 N8 -> T4
+N13 int.truncate N12 -> T3
+N14 checked.load.bits.le P0 N13 N11.R1 -> T4,T2 [8,1]
+N15 bit.xor N11 N14 -> T4
+N16 bit.or N7 N15 -> T4
+N17 constant 16 -> T4
+N18 add.wrap P3 N17 -> T4
+N19 int.truncate N18 -> T3
+N20 checked.load.bits.le P0 N19 N14.R1 -> T4,T2 [8,1]
+N21 add.wrap P4 N17 -> T4
+N22 int.truncate N21 -> T3
+N23 checked.load.bits.le P0 N22 N20.R1 -> T4,T2 [8,1]
+N24 bit.xor N20 N23 -> T4
+N25 bit.or N16 N24 -> T4
+N26 constant 24 -> T4
+N27 add.wrap P3 N26 -> T4
+N28 int.truncate N27 -> T3
+N29 checked.load.bits.le P0 N28 N23.R1 -> T4,T2 [8,1]
+N30 add.wrap P4 N26 -> T4
+N31 int.truncate N30 -> T3
+N32 checked.load.bits.le P0 N31 N29.R1 -> T4,T2 [8,1]
+N33 bit.xor N29 N32 -> T4
+N34 bit.or N25 N33 -> T4
+N35 constant 0 -> T4
+N36 int.compare N34 N35 -> T12 [1]
+N37 int.zero.extend N36 -> T4
+ret N37 P0 P1 N32.R1
+T0 form3 ea03b918f20d0a81a33884ee817f029b0acdbece68ae2d7bd3eeb935ccf3485b
+T1 form3 c0bccc4581f6497319c020d4f090f292851eaca295e91a3814668574aa3ec567
+T2 form3 2b2704e5644b2a600cc1c05f91f133f54c03637cddb3aaf658a635fff068bd0a
+T3 bits32
+T4 bits64
+T5 form2 ed7f465bd391df681fba3366051d89f1cf6dbd0fa4983971d7bb14a55f889d29
+T6 form4 933b152d7a3ae1cbd182fd6ece7825ad5a2536c7395b404382763b99acb94833
+T7 form4 3f5c8e3779860667ed838f1c7bb30d71b46ddd4f748ba76b5572e95efbed172c
+T8 form4 fa9bd62ea14b1905accb9b5eba8bf112696d2e9948af7ca7d28521b5b6eaaee4
+T9 form4 4776812445978ecc4336796680f50d1e24bc77be09ec5fdaca1098edd630d6f7
+T10 form2 f615ad96e3f3b84a7bfab041dde4598988ff2ff45d2c382c57a507016ef60f6b
+T11 bits8
+T12 bits1
+end
+define @rhdr
+(T5,T9,T2,T5,T8,T2,T4)->(T4,T5,T9,T2,T5,T8,T2)
+B0(P0:T5,P1:T9,P2:T2,P3:T5,P4:T8,P5:T2,P6:T4)
+N0 constant 32 -> T4
+N1 add.wrap P6 N0 -> T4
+N2 call.direct entity=@uv P0 P1 P2 N1 -> T4,T5,T9,T2
+N3 call.direct entity=@ue N2.R1 N2.R2 N2.R3 N1 -> T4,T5,T9,T2
+N4 call.direct entity=@ue N3.R1 N3.R2 N3.R3 N3 -> T4,T5,T9,T2
+N5 call.direct entity=@uv N4.R1 N4.R2 N4.R3 N4 -> T4,T5,T9,T2
+N6 call.direct entity=@ue N5.R1 N5.R2 N5.R3 N4 -> T4,T5,T9,T2
+N7 mul.wrap N5 N0 -> T4
+N8 add.wrap N6 N7 -> T4
+N9 call.direct entity=@ue N6.R1 N6.R2 N6.R3 N8 -> T4,T5,T9,T2
+N10 constant 17 -> T4
+N11 call.direct entity=@cs P3 P4 P5 N10 N6 -> T5,T8,T2
+N12 constant 18 -> T4
+N13 call.direct entity=@cs N11 N11.R1 N11.R2 N12 N9 -> T5,T8,T2
+ret N2 N9.R1 N9.R2 N9.R3 N13 N13.R1 N13.R2
+T0 form3 ea03b918f20d0a81a33884ee817f029b0acdbece68ae2d7bd3eeb935ccf3485b
+T1 form3 c0bccc4581f6497319c020d4f090f292851eaca295e91a3814668574aa3ec567
+T2 form3 2b2704e5644b2a600cc1c05f91f133f54c03637cddb3aaf658a635fff068bd0a
+T3 bits32
+T4 bits64
+T5 form2 ed7f465bd391df681fba3366051d89f1cf6dbd0fa4983971d7bb14a55f889d29
+T6 form4 933b152d7a3ae1cbd182fd6ece7825ad5a2536c7395b404382763b99acb94833
+T7 form4 3f5c8e3779860667ed838f1c7bb30d71b46ddd4f748ba76b5572e95efbed172c
+T8 form4 fa9bd62ea14b1905accb9b5eba8bf112696d2e9948af7ca7d28521b5b6eaaee4
+T9 form4 4776812445978ecc4336796680f50d1e24bc77be09ec5fdaca1098edd630d6f7
+T10 form2 f615ad96e3f3b84a7bfab041dde4598988ff2ff45d2c382c57a507016ef60f6b
+T11 bits8
+T12 bits1
+end
+define @find
+(T5,T9,T2,T5,T8,T2,T4)->(T4,T5,T9,T2,T5,T8,T2)
+B0(P0:T5,P1:T9,P2:T2,P3:T5,P4:T8,P5:T2,P6:T4)
+N0 constant 0 -> T4
+N1 call.direct entity=@cg P3 P4 P5 N0 -> T4,T5,T8,T2
+N2 constant 1 -> T4
+N3 call.direct entity=@cg N1.R1 N1.R2 N1.R3 N2 -> T4,T5,T8,T2
+br B1(P0,P1,P2,N3.R1,N3.R2,N3.R3,N1,N0)
+B1(P7:T5,P8:T9,P9:T2,P10:T5,P11:T8,P12:T2,P13:T4,P14:T4)
+N4 int.compare P14 N3 -> T12 [6]
+cbr N4 B4(P7,P8,P9,P10,P11,P12,N0) B2(P7,P8,P9,P10,P11,P12)
+B2(P15:T5,P16:T9,P17:T2,P18:T5,P19:T8,P20:T2)
+N5 call.direct entity=@uv P15 P16 P17 P13 -> T4,T5,T9,T2
+N6 call.direct entity=@ue N5.R1 N5.R2 N5.R3 P13 -> T4,T5,T9,T2
+N7 call.direct entity=@eq32 N6.R1 N6.R2 N6.R3 N6 P6 -> T4,T5,T9,T2
+N8 add.wrap N6 N5 -> T4
+N9 add.wrap P14 N2 -> T4
+N10 int.compare N7 N2 -> T12 [1]
+cbr N10 B4(N7.R1,N7.R2,N7.R3,P18,P19,P20,N6) B3(N7.R1,N7.R2,N7.R3,P18,P19,P20)
+B3(P21:T5,P22:T9,P23:T2,P24:T5,P25:T8,P26:T2)
+br B1(P21,P22,P23,P24,P25,P26,N8,N9)
+B4(P27:T5,P28:T9,P29:T2,P30:T5,P31:T8,P32:T2,P33:T4)
+ret P33 P27 P28 P29 P30 P31 P32
+T0 form3 ea03b918f20d0a81a33884ee817f029b0acdbece68ae2d7bd3eeb935ccf3485b
+T1 form3 c0bccc4581f6497319c020d4f090f292851eaca295e91a3814668574aa3ec567
+T2 form3 2b2704e5644b2a600cc1c05f91f133f54c03637cddb3aaf658a635fff068bd0a
+T3 bits32
+T4 bits64
+T5 form2 ed7f465bd391df681fba3366051d89f1cf6dbd0fa4983971d7bb14a55f889d29
+T6 form4 933b152d7a3ae1cbd182fd6ece7825ad5a2536c7395b404382763b99acb94833
+T7 form4 3f5c8e3779860667ed838f1c7bb30d71b46ddd4f748ba76b5572e95efbed172c
+T8 form4 fa9bd62ea14b1905accb9b5eba8bf112696d2e9948af7ca7d28521b5b6eaaee4
+T9 form4 4776812445978ecc4336796680f50d1e24bc77be09ec5fdaca1098edd630d6f7
+T10 form2 f615ad96e3f3b84a7bfab041dde4598988ff2ff45d2c382c57a507016ef60f6b
+T11 bits8
+T12 bits1
+end
+define @pow2
+(T4)->(T4)
+B0(P0:T4)
+N0 constant 1 -> T4
+br B1(P0,N0)
+B1(P1:T4,P2:T4)
+N1 constant 0 -> T4
+N2 int.compare P1 N1 -> T12 [1]
+cbr N2 B3(P2) B2(P1,P2)
+B2(P3:T4,P4:T4)
+N3 constant 1 -> T4
+N4 sub.wrap P3 N3 -> T4
+N5 constant 2 -> T4
+N6 mul.wrap P4 N5 -> T4
+br B1(N4,N6)
+B3(P5:T4)
+ret P5
+T0 form3 ea03b918f20d0a81a33884ee817f029b0acdbece68ae2d7bd3eeb935ccf3485b
+T1 form3 c0bccc4581f6497319c020d4f090f292851eaca295e91a3814668574aa3ec567
+T2 form3 2b2704e5644b2a600cc1c05f91f133f54c03637cddb3aaf658a635fff068bd0a
+T3 bits32
+T4 bits64
+T5 form2 ed7f465bd391df681fba3366051d89f1cf6dbd0fa4983971d7bb14a55f889d29
+T6 form4 933b152d7a3ae1cbd182fd6ece7825ad5a2536c7395b404382763b99acb94833
+T7 form4 3f5c8e3779860667ed838f1c7bb30d71b46ddd4f748ba76b5572e95efbed172c
+T8 form4 fa9bd62ea14b1905accb9b5eba8bf112696d2e9948af7ca7d28521b5b6eaaee4
+T9 form4 4776812445978ecc4336796680f50d1e24bc77be09ec5fdaca1098edd630d6f7
+T10 form2 f615ad96e3f3b84a7bfab041dde4598988ff2ff45d2c382c57a507016ef60f6b
+T11 bits8
+T12 bits1
+end
+define @tmask
+(T5,T9,T2,T5,T8,T2,T4)->(T4,T5,T9,T2,T5,T8,T2)
+B0(P0:T5,P1:T9,P2:T2,P3:T5,P4:T8,P5:T2,P6:T4)
+N0 call.direct entity=@find P0 P1 P2 P3 P4 P5 P6 -> T4,T5,T9,T2,T5,T8,T2
+N1 constant 0 -> T4
+N2 int.compare N0 N1 -> T12 [1]
+cbr N2 B2(N0.R1,N0.R2,N0.R3,N0.R4,N0.R5,N0.R6,N1) B1(N0.R1,N0.R2,N0.R3,N0.R4,N0.R5,N0.R6)
+B1(P7:T5,P8:T9,P9:T2,P10:T5,P11:T8,P12:T2)
+N3 call.direct entity=@rhdr P7 P8 P9 P10 P11 P12 N0 -> T4,T5,T9,T2,T5,T8,T2
+N4 constant 18 -> T4
+N5 call.direct entity=@cg N3.R4 N3.R5 N3.R6 N4 -> T4,T5,T8,T2
+N6 call.direct entity=@uv N3.R1 N3.R2 N3.R3 N5 -> T4,T5,T9,T2
+N7 call.direct entity=@ue N6.R1 N6.R2 N6.R3 N5 -> T4,T5,T9,T2
+N8 call.direct entity=@uv N7.R1 N7.R2 N7.R3 N7 -> T4,T5,T9,T2
+N9 constant 4 -> T4
+N10 int.compare N3 N9 -> T12 [1]
+N11 int.zero.extend N10 -> T4
+N12 constant 1 -> T4
+N13 int.compare N6 N12 -> T12 [1]
+N14 int.zero.extend N13 -> T4
+N15 int.compare N8 N12 -> T12 [6]
+N16 int.zero.extend N15 -> T4
+N17 constant 64 -> T4
+N18 int.compare N8 N17 -> T12 [4]
+N19 int.zero.extend N18 -> T4
+N20 bit.and N11 N14 -> T4
+N21 bit.and N20 N16 -> T4
+N22 bit.and N21 N19 -> T4
+N23 call.direct entity=@pow2 N8 -> T4
+N24 sub.wrap N23 N12 -> T4
+N25 mul.wrap N24 N22 -> T4
+br B2(N8.R1,N8.R2,N8.R3,N5.R1,N5.R2,N5.R3,N25)
+B2(P13:T5,P14:T9,P15:T2,P16:T5,P17:T8,P18:T2,P19:T4)
+ret P19 P13 P14 P15 P16 P17 P18
+T0 form3 ea03b918f20d0a81a33884ee817f029b0acdbece68ae2d7bd3eeb935ccf3485b
+T1 form3 c0bccc4581f6497319c020d4f090f292851eaca295e91a3814668574aa3ec567
+T2 form3 2b2704e5644b2a600cc1c05f91f133f54c03637cddb3aaf658a635fff068bd0a
+T3 bits32
+T4 bits64
+T5 form2 ed7f465bd391df681fba3366051d89f1cf6dbd0fa4983971d7bb14a55f889d29
+T6 form4 933b152d7a3ae1cbd182fd6ece7825ad5a2536c7395b404382763b99acb94833
+T7 form4 3f5c8e3779860667ed838f1c7bb30d71b46ddd4f748ba76b5572e95efbed172c
+T8 form4 fa9bd62ea14b1905accb9b5eba8bf112696d2e9948af7ca7d28521b5b6eaaee4
+T9 form4 4776812445978ecc4336796680f50d1e24bc77be09ec5fdaca1098edd630d6f7
+T10 form2 f615ad96e3f3b84a7bfab041dde4598988ff2ff45d2c382c57a507016ef60f6b
+T11 bits8
+T12 bits1
+end
+define @cval
+(T5,T9,T2,T5,T8,T2,T4)->(T4,T5,T9,T2,T5,T8,T2)
+B0(P0:T5,P1:T9,P2:T2,P3:T5,P4:T8,P5:T2,P6:T4)
+N0 call.direct entity=@find P0 P1 P2 P3 P4 P5 P6 -> T4,T5,T9,T2,T5,T8,T2
+N1 call.direct entity=@rhdr N0.R1 N0.R2 N0.R3 N0.R4 N0.R5 N0.R6 N0 -> T4,T5,T9,T2,T5,T8,T2
+N2 constant 18 -> T4
+N3 call.direct entity=@cg N1.R4 N1.R5 N1.R6 N2 -> T4,T5,T8,T2
+N4 call.direct entity=@ue N1.R1 N1.R2 N1.R3 N3 -> T4,T5,T9,T2
+N5 call.direct entity=@uv N4.R1 N4.R2 N4.R3 N4 -> T4,T5,T9,T2
+N6 call.direct entity=@ue N5.R1 N5.R2 N5.R3 N4 -> T4,T5,T9,T2
+N7 constant 0 -> T4
+N8 constant 1 -> T4
+br B1(N6.R1,N6.R2,N6.R3,N3.R1,N3.R2,N3.R3,N7,N7,N8)
+B1(P7:T5,P8:T9,P9:T2,P10:T5,P11:T8,P12:T2,P13:T4,P14:T4,P15:T4)
+N9 int.compare P13 N5 -> T12 [6]
+cbr N9 B3(P7,P8,P9,P10,P11,P12,P14) B2(P7,P8,P9,P10,P11,P12)
+B2(P16:T5,P17:T9,P18:T2,P19:T5,P20:T8,P21:T2)
+N10 add.wrap N6 P13 -> T4
+N11 int.truncate N10 -> T3
+N12 checked.load.bits.le P16 N11 P18 -> T11,T2 [1,1]
+N13 int.zero.extend N12 -> T4
+N14 mul.wrap N13 P15 -> T4
+N15 add.wrap P14 N14 -> T4
+N16 constant 256 -> T4
+N17 mul.wrap P15 N16 -> T4
+N18 add.wrap P13 N8 -> T4
+br B1(P16,P17,N12.R1,P19,P20,P21,N18,N15,N17)
+B3(P22:T5,P23:T9,P24:T2,P25:T5,P26:T8,P27:T2,P28:T4)
+ret P28 P22 P23 P24 P25 P26 P27
+T0 form3 ea03b918f20d0a81a33884ee817f029b0acdbece68ae2d7bd3eeb935ccf3485b
+T1 form3 c0bccc4581f6497319c020d4f090f292851eaca295e91a3814668574aa3ec567
+T2 form3 2b2704e5644b2a600cc1c05f91f133f54c03637cddb3aaf658a635fff068bd0a
+T3 bits32
+T4 bits64
+T5 form2 ed7f465bd391df681fba3366051d89f1cf6dbd0fa4983971d7bb14a55f889d29
+T6 form4 933b152d7a3ae1cbd182fd6ece7825ad5a2536c7395b404382763b99acb94833
+T7 form4 3f5c8e3779860667ed838f1c7bb30d71b46ddd4f748ba76b5572e95efbed172c
+T8 form4 fa9bd62ea14b1905accb9b5eba8bf112696d2e9948af7ca7d28521b5b6eaaee4
+T9 form4 4776812445978ecc4336796680f50d1e24bc77be09ec5fdaca1098edd630d6f7
+T10 form2 f615ad96e3f3b84a7bfab041dde4598988ff2ff45d2c382c57a507016ef60f6b
+T11 bits8
+T12 bits1
+end
+define @skv
+(T5,T9,T2,T5,T8,T2)->(T5,T9,T2,T5,T8,T2)
+B0(P0:T5,P1:T9,P2:T2,P3:T5,P4:T8,P5:T2)
+N0 call.direct entity=@u P0 P1 P2 P3 P4 P5 -> T4,T5,T9,T2,T5,T8,T2
+N1 call.direct entity=@u N0.R1 N0.R2 N0.R3 N0.R4 N0.R5 N0.R6 -> T4,T5,T9,T2,T5,T8,T2
+N2 call.direct entity=@u N1.R1 N1.R2 N1.R3 N1.R4 N1.R5 N1.R6 -> T4,T5,T9,T2,T5,T8,T2
+N3 constant 1 -> T4
+N4 int.compare N0 N3 -> T12 [1]
+cbr N4 B1(N2.R1,N2.R2,N2.R3,N2.R4,N2.R5,N2.R6) B2(N2.R1,N2.R2,N2.R3,N2.R4,N2.R5,N2.R6)
+B1(P6:T5,P7:T9,P8:T2,P9:T5,P10:T8,P11:T2)
+N5 call.direct entity=@u P6 P7 P8 P9 P10 P11 -> T4,T5,T9,T2,T5,T8,T2
+br B2(N5.R1,N5.R2,N5.R3,N5.R4,N5.R5,N5.R6)
+B2(P12:T5,P13:T9,P14:T2,P15:T5,P16:T8,P17:T2)
+ret P12 P13 P14 P15 P16 P17
+T0 form3 ea03b918f20d0a81a33884ee817f029b0acdbece68ae2d7bd3eeb935ccf3485b
+T1 form3 c0bccc4581f6497319c020d4f090f292851eaca295e91a3814668574aa3ec567
+T2 form3 2b2704e5644b2a600cc1c05f91f133f54c03637cddb3aaf658a635fff068bd0a
+T3 bits32
+T4 bits64
+T5 form2 ed7f465bd391df681fba3366051d89f1cf6dbd0fa4983971d7bb14a55f889d29
+T6 form4 933b152d7a3ae1cbd182fd6ece7825ad5a2536c7395b404382763b99acb94833
+T7 form4 3f5c8e3779860667ed838f1c7bb30d71b46ddd4f748ba76b5572e95efbed172c
+T8 form4 fa9bd62ea14b1905accb9b5eba8bf112696d2e9948af7ca7d28521b5b6eaaee4
+T9 form4 4776812445978ecc4336796680f50d1e24bc77be09ec5fdaca1098edd630d6f7
+T10 form2 f615ad96e3f3b84a7bfab041dde4598988ff2ff45d2c382c57a507016ef60f6b
+T11 bits8
+T12 bits1
+end
+define @skvs
+(T5,T9,T2,T5,T8,T2,T4)->(T5,T9,T2,T5,T8,T2)
+B0(P0:T5,P1:T9,P2:T2,P3:T5,P4:T8,P5:T2,P6:T4)
+br B1(P0,P1,P2,P3,P4,P5,P6)
+B1(P7:T5,P8:T9,P9:T2,P10:T5,P11:T8,P12:T2,P13:T4)
+N0 constant 0 -> T4
+N1 int.compare P13 N0 -> T12 [1]
+cbr N1 B3(P7,P8,P9,P10,P11,P12) B2(P7,P8,P9,P10,P11,P12)
+B2(P14:T5,P15:T9,P16:T2,P17:T5,P18:T8,P19:T2)
+N2 call.direct entity=@skv P14 P15 P16 P17 P18 P19 -> T5,T9,T2,T5,T8,T2
+N3 constant 1 -> T4
+N4 sub.wrap P13 N3 -> T4
+br B1(N2,N2.R1,N2.R2,N2.R3,N2.R4,N2.R5,N4)
+B3(P20:T5,P21:T9,P22:T2,P23:T5,P24:T8,P25:T2)
+ret P20 P21 P22 P23 P24 P25
+T0 form3 ea03b918f20d0a81a33884ee817f029b0acdbece68ae2d7bd3eeb935ccf3485b
+T1 form3 c0bccc4581f6497319c020d4f090f292851eaca295e91a3814668574aa3ec567
+T2 form3 2b2704e5644b2a600cc1c05f91f133f54c03637cddb3aaf658a635fff068bd0a
+T3 bits32
+T4 bits64
+T5 form2 ed7f465bd391df681fba3366051d89f1cf6dbd0fa4983971d7bb14a55f889d29
+T6 form4 933b152d7a3ae1cbd182fd6ece7825ad5a2536c7395b404382763b99acb94833
+T7 form4 3f5c8e3779860667ed838f1c7bb30d71b46ddd4f748ba76b5572e95efbed172c
+T8 form4 fa9bd62ea14b1905accb9b5eba8bf112696d2e9948af7ca7d28521b5b6eaaee4
+T9 form4 4776812445978ecc4336796680f50d1e24bc77be09ec5fdaca1098edd630d6f7
+T10 form2 f615ad96e3f3b84a7bfab041dde4598988ff2ff45d2c382c57a507016ef60f6b
+T11 bits8
+T12 bits1
+end
+define @sku
+(T5,T9,T2,T5,T8,T2,T4)->(T5,T9,T2,T5,T8,T2)
+B0(P0:T5,P1:T9,P2:T2,P3:T5,P4:T8,P5:T2,P6:T4)
+br B1(P0,P1,P2,P3,P4,P5,P6)
+B1(P7:T5,P8:T9,P9:T2,P10:T5,P11:T8,P12:T2,P13:T4)
+N0 constant 0 -> T4
+N1 int.compare P13 N0 -> T12 [1]
+cbr N1 B3(P7,P8,P9,P10,P11,P12) B2(P7,P8,P9,P10,P11,P12)
+B2(P14:T5,P15:T9,P16:T2,P17:T5,P18:T8,P19:T2)
+N2 call.direct entity=@u P14 P15 P16 P17 P18 P19 -> T4,T5,T9,T2,T5,T8,T2
+N3 constant 1 -> T4
+N4 sub.wrap P13 N3 -> T4
+br B1(N2.R1,N2.R2,N2.R3,N2.R4,N2.R5,N2.R6,N4)
+B3(P20:T5,P21:T9,P22:T2,P23:T5,P24:T8,P25:T2)
+ret P20 P21 P22 P23 P24 P25
+T0 form3 ea03b918f20d0a81a33884ee817f029b0acdbece68ae2d7bd3eeb935ccf3485b
+T1 form3 c0bccc4581f6497319c020d4f090f292851eaca295e91a3814668574aa3ec567
+T2 form3 2b2704e5644b2a600cc1c05f91f133f54c03637cddb3aaf658a635fff068bd0a
+T3 bits32
+T4 bits64
+T5 form2 ed7f465bd391df681fba3366051d89f1cf6dbd0fa4983971d7bb14a55f889d29
+T6 form4 933b152d7a3ae1cbd182fd6ece7825ad5a2536c7395b404382763b99acb94833
+T7 form4 3f5c8e3779860667ed838f1c7bb30d71b46ddd4f748ba76b5572e95efbed172c
+T8 form4 fa9bd62ea14b1905accb9b5eba8bf112696d2e9948af7ca7d28521b5b6eaaee4
+T9 form4 4776812445978ecc4336796680f50d1e24bc77be09ec5fdaca1098edd630d6f7
+T10 form2 f615ad96e3f3b84a7bfab041dde4598988ff2ff45d2c382c57a507016ef60f6b
+T11 bits8
+T12 bits1
+end
+define @sedge
+(T5,T9,T2,T5,T8,T2)->(T5,T9,T2,T5,T8,T2)
+B0(P0:T5,P1:T9,P2:T2,P3:T5,P4:T8,P5:T2)
+N0 call.direct entity=@u P0 P1 P2 P3 P4 P5 -> T4,T5,T9,T2,T5,T8,T2
+N1 call.direct entity=@u N0.R1 N0.R2 N0.R3 N0.R4 N0.R5 N0.R6 -> T4,T5,T9,T2,T5,T8,T2
+N2 call.direct entity=@skvs N1.R1 N1.R2 N1.R3 N1.R4 N1.R5 N1.R6 N1 -> T5,T9,T2,T5,T8,T2
+ret N2 N2.R1 N2.R2 N2.R3 N2.R4 N2.R5
+T0 form3 ea03b918f20d0a81a33884ee817f029b0acdbece68ae2d7bd3eeb935ccf3485b
+T1 form3 c0bccc4581f6497319c020d4f090f292851eaca295e91a3814668574aa3ec567
+T2 form3 2b2704e5644b2a600cc1c05f91f133f54c03637cddb3aaf658a635fff068bd0a
+T3 bits32
+T4 bits64
+T5 form2 ed7f465bd391df681fba3366051d89f1cf6dbd0fa4983971d7bb14a55f889d29
+T6 form4 933b152d7a3ae1cbd182fd6ece7825ad5a2536c7395b404382763b99acb94833
+T7 form4 3f5c8e3779860667ed838f1c7bb30d71b46ddd4f748ba76b5572e95efbed172c
+T8 form4 fa9bd62ea14b1905accb9b5eba8bf112696d2e9948af7ca7d28521b5b6eaaee4
+T9 form4 4776812445978ecc4336796680f50d1e24bc77be09ec5fdaca1098edd630d6f7
+T10 form2 f615ad96e3f3b84a7bfab041dde4598988ff2ff45d2c382c57a507016ef60f6b
+T11 bits8
+T12 bits1
+end
+define @sterm
+(T5,T9,T2,T5,T8,T2)->(T5,T9,T2,T5,T8,T2)
+B0(P0:T5,P1:T9,P2:T2,P3:T5,P4:T8,P5:T2)
+N0 call.direct entity=@u P0 P1 P2 P3 P4 P5 -> T4,T5,T9,T2,T5,T8,T2
+N1 constant 1 -> T4
+N2 int.compare N0 N1 -> T12 [1]
+cbr N2 B1(N0.R1,N0.R2,N0.R3,N0.R4,N0.R5,N0.R6) B2(N0.R1,N0.R2,N0.R3,N0.R4,N0.R5,N0.R6)
+B1(P6:T5,P7:T9,P8:T2,P9:T5,P10:T8,P11:T2)
+N3 call.direct entity=@sedge P6 P7 P8 P9 P10 P11 -> T5,T9,T2,T5,T8,T2
+br B6(N3,N3.R1,N3.R2,N3.R3,N3.R4,N3.R5)
+B2(P12:T5,P13:T9,P14:T2,P15:T5,P16:T8,P17:T2)
+N4 constant 2 -> T4
+N5 int.compare N0 N4 -> T12 [1]
+cbr N5 B3(P12,P13,P14,P15,P16,P17) B4(P12,P13,P14,P15,P16,P17)
+B3(P18:T5,P19:T9,P20:T2,P21:T5,P22:T8,P23:T2)
+N6 call.direct entity=@skv P18 P19 P20 P21 P22 P23 -> T5,T9,T2,T5,T8,T2
+N7 call.direct entity=@sedge N6 N6.R1 N6.R2 N6.R3 N6.R4 N6.R5 -> T5,T9,T2,T5,T8,T2
+N8 call.direct entity=@sedge N7 N7.R1 N7.R2 N7.R3 N7.R4 N7.R5 -> T5,T9,T2,T5,T8,T2
+br B6(N8,N8.R1,N8.R2,N8.R3,N8.R4,N8.R5)
+B4(P24:T5,P25:T9,P26:T2,P27:T5,P28:T8,P29:T2)
+N9 call.direct entity=@u P24 P25 P26 P27 P28 P29 -> T4,T5,T9,T2,T5,T8,T2
+N10 constant 3 -> T4
+N11 int.compare N0 N10 -> T12 [1]
+cbr N11 B5(N9.R1,N9.R2,N9.R3,N9.R4,N9.R5,N9.R6) B7(N9.R1,N9.R2,N9.R3,N9.R4,N9.R5,N9.R6)
+B5(P30:T5,P31:T9,P32:T2,P33:T5,P34:T8,P35:T2)
+N12 call.direct entity=@skvs P30 P31 P32 P33 P34 P35 N9 -> T5,T9,T2,T5,T8,T2
+br B6(N12,N12.R1,N12.R2,N12.R3,N12.R4,N12.R5)
+B6(P36:T5,P37:T9,P38:T2,P39:T5,P40:T8,P41:T2)
+ret P36 P37 P38 P39 P40 P41
+B7(P42:T5,P43:T9,P44:T2,P45:T5,P46:T8,P47:T2)
+N13 constant 7 -> T4
+N14 call.direct entity=@cg P45 P46 P47 N13 -> T4,T5,T8,T2
+N15 add.wrap N14 N9 -> T4
+N16 call.direct entity=@cs N14.R1 N14.R2 N14.R3 N13 N15 -> T5,T8,T2
+br B6(P42,P43,P44,N16,N16.R1,N16.R2)
+T0 form3 ea03b918f20d0a81a33884ee817f029b0acdbece68ae2d7bd3eeb935ccf3485b
+T1 form3 c0bccc4581f6497319c020d4f090f292851eaca295e91a3814668574aa3ec567
+T2 form3 2b2704e5644b2a600cc1c05f91f133f54c03637cddb3aaf658a635fff068bd0a
+T3 bits32
+T4 bits64
+T5 form2 ed7f465bd391df681fba3366051d89f1cf6dbd0fa4983971d7bb14a55f889d29
+T6 form4 933b152d7a3ae1cbd182fd6ece7825ad5a2536c7395b404382763b99acb94833
+T7 form4 3f5c8e3779860667ed838f1c7bb30d71b46ddd4f748ba76b5572e95efbed172c
+T8 form4 fa9bd62ea14b1905accb9b5eba8bf112696d2e9948af7ca7d28521b5b6eaaee4
+T9 form4 4776812445978ecc4336796680f50d1e24bc77be09ec5fdaca1098edd630d6f7
+T10 form2 f615ad96e3f3b84a7bfab041dde4598988ff2ff45d2c382c57a507016ef60f6b
+T11 bits8
+T12 bits1
+end
+define @types
+(T5,T9,T2,T5,T8,T2,T4,T4)->(T4,T5,T9,T2,T5,T8,T2)
+B0(P0:T5,P1:T9,P2:T2,P3:T5,P4:T8,P5:T2,P6:T4,P7:T4)
+N0 constant 0 -> T4
+N1 constant 1 -> T4
+br B1(P0,P1,P2,P3,P4,P5,P7,N1)
+B1(P8:T5,P9:T9,P10:T2,P11:T5,P12:T8,P13:T2,P14:T4,P15:T4)
+N2 int.compare P14 N0 -> T12 [1]
+cbr N2 B4(P8,P9,P10,P11,P12,P13,P15) B2(P8,P9,P10,P11,P12,P13)
+B2(P16:T5,P17:T9,P18:T2,P19:T5,P20:T8,P21:T2)
+N3 call.direct entity=@u P16 P17 P18 P19 P20 P21 -> T4,T5,T9,T2,T5,T8,T2
+N4 int.compare P6 N0 -> T12 [1]
+cbr N4 B5(N3.R1,N3.R2,N3.R3,N3.R4,N3.R5,N3.R6,P15) B3(N3.R1,N3.R2,N3.R3,N3.R4,N3.R5,N3.R6)
+B3(P22:T5,P23:T9,P24:T2,P25:T5,P26:T8,P27:T2)
+N5 constant 48 -> T4
+N6 add.wrap P6 N5 -> T4
+N7 call.direct entity=@wl P25 P26 P27 N6 -> T4,T5,T8,T2
+N8 constant 32 -> T4
+N9 mul.wrap N3 N8 -> T4
+N10 add.wrap N7 N9 -> T4
+N11 call.direct entity=@tmask P22 P23 P24 N7.R1 N7.R2 N7.R3 N10 -> T4,T5,T9,T2,T5,T8,T2
+N12 constant 72 -> T4
+N13 add.wrap P6 N12 -> T4
+N14 call.direct entity=@wl N11.R4 N11.R5 N11.R6 N13 -> T4,T5,T8,T2
+N15 constant 9 -> T4
+N16 call.direct entity=@cg N14.R1 N14.R2 N14.R3 N15 -> T4,T5,T8,T2
+N17 constant 16 -> T4
+N18 mul.wrap N16 N17 -> T4
+N19 add.wrap N14 N18 -> T4
+N20 call.direct entity=@ws N16.R1 N16.R2 N16.R3 N19 N0 -> T5,T8,T2
+N21 constant 8 -> T4
+N22 add.wrap N19 N21 -> T4
+N23 call.direct entity=@ws N20 N20.R1 N20.R2 N22 N11 -> T5,T8,T2
+N24 int.compare N11 N0 -> T12 [2]
+N25 int.zero.extend N24 -> T4
+N26 bit.and P15 N25 -> T4
+N27 constant 5 -> T4
+N28 call.direct entity=@cg N23 N23.R1 N23.R2 N27 -> T4,T5,T8,T2
+N29 int.compare N28 N0 -> T12 [1]
+N30 int.zero.extend N29 -> T4
+N31 sub.wrap N1 N25 -> T4
+N32 bit.and N30 N31 -> T4
+N33 constant 2 -> T4
+N34 mul.wrap N32 N33 -> T4
+N35 add.wrap N28 N34 -> T4
+N36 call.direct entity=@cs N28.R1 N28.R2 N28.R3 N27 N35 -> T5,T8,T2
+br B5(N11.R1,N11.R2,N11.R3,N36,N36.R1,N36.R2,N26)
+B4(P28:T5,P29:T9,P30:T2,P31:T5,P32:T8,P33:T2,P34:T4)
+ret P34 P28 P29 P30 P31 P32 P33
+B5(P35:T5,P36:T9,P37:T2,P38:T5,P39:T8,P40:T2,P41:T4)
+N37 constant 9 -> T4
+N38 call.direct entity=@cg P38 P39 P40 N37 -> T4,T5,T8,T2
+N39 add.wrap N38 N1 -> T4
+N40 call.direct entity=@cs N38.R1 N38.R2 N38.R3 N37 N39 -> T5,T8,T2
+N41 sub.wrap P14 N1 -> T4
+br B1(P35,P36,P37,N40,N40.R1,N40.R2,N41,P41)
+T0 form3 ea03b918f20d0a81a33884ee817f029b0acdbece68ae2d7bd3eeb935ccf3485b
+T1 form3 c0bccc4581f6497319c020d4f090f292851eaca295e91a3814668574aa3ec567
+T2 form3 2b2704e5644b2a600cc1c05f91f133f54c03637cddb3aaf658a635fff068bd0a
+T3 bits32
+T4 bits64
+T5 form2 ed7f465bd391df681fba3366051d89f1cf6dbd0fa4983971d7bb14a55f889d29
+T6 form4 933b152d7a3ae1cbd182fd6ece7825ad5a2536c7395b404382763b99acb94833
+T7 form4 3f5c8e3779860667ed838f1c7bb30d71b46ddd4f748ba76b5572e95efbed172c
+T8 form4 fa9bd62ea14b1905accb9b5eba8bf112696d2e9948af7ca7d28521b5b6eaaee4
+T9 form4 4776812445978ecc4336796680f50d1e24bc77be09ec5fdaca1098edd630d6f7
+T10 form2 f615ad96e3f3b84a7bfab041dde4598988ff2ff45d2c382c57a507016ef60f6b
+T11 bits8
+T12 bits1
+end
+define @snode
+(T5,T9,T2,T5,T8,T2,T4)->(T4,T5,T9,T2,T5,T8,T2)
+B0(P0:T5,P1:T9,P2:T2,P3:T5,P4:T8,P5:T2,P6:T4)
+N0 constant 7 -> T4
+N1 call.direct entity=@cg P3 P4 P5 N0 -> T4,T5,T8,T2
+N2 call.direct entity=@u P0 P1 P2 N1.R1 N1.R2 N1.R3 -> T4,T5,T9,T2,T5,T8,T2
+N3 constant 1 -> T4
+N4 int.compare N2 N3 -> T12 [1]
+N5 int.zero.extend N4 -> T4
+N6 constant 2 -> T4
+N7 int.compare N2 N6 -> T12 [1]
+N8 int.zero.extend N7 -> T4
+N9 bit.or N5 N8 -> T4
+N10 constant 3 -> T4
+N11 int.compare N2 N10 -> T12 [1]
+N12 int.zero.extend N11 -> T4
+N13 bit.or N9 N12 -> T4
+N14 constant 5 -> T4
+N15 int.compare N2 N14 -> T12 [1]
+N16 int.zero.extend N15 -> T4
+N17 bit.or N13 N16 -> T4
+N18 constant 6 -> T4
+N19 int.compare N2 N18 -> T12 [1]
+N20 int.zero.extend N19 -> T4
+N21 bit.or N17 N20 -> T4
+N22 constant 57 -> T4
+N23 int.compare N2 N22 -> T12 [1]
+N24 int.zero.extend N23 -> T4
+N25 bit.or N21 N24 -> T4
+N26 constant 62 -> T4
+N27 int.compare N2 N26 -> T12 [1]
+N28 int.zero.extend N27 -> T4
+N29 bit.or N25 N28 -> T4
+N30 constant 63 -> T4
+N31 int.compare N2 N30 -> T12 [1]
+N32 int.zero.extend N31 -> T4
+N33 bit.or N29 N32 -> T4
+N34 constant 67 -> T4
+N35 int.compare N2 N34 -> T12 [1]
+N36 int.zero.extend N35 -> T4
+N37 bit.or N33 N36 -> T4
+N38 constant 68 -> T4
+N39 int.compare N2 N38 -> T12 [1]
+N40 int.zero.extend N39 -> T4
+N41 bit.or N37 N40 -> T4
+N42 constant 69 -> T4
+N43 int.compare N2 N42 -> T12 [1]
+N44 int.zero.extend N43 -> T4
+N45 bit.or N41 N44 -> T4
+N46 constant 70 -> T4
+N47 int.compare N2 N46 -> T12 [1]
+N48 int.zero.extend N47 -> T4
+N49 bit.or N45 N48 -> T4
+N50 constant 71 -> T4
+N51 int.compare N2 N50 -> T12 [1]
+N52 int.zero.extend N51 -> T4
+N53 bit.or N49 N52 -> T4
+N54 constant 72 -> T4
+N55 int.compare N2 N54 -> T12 [1]
+N56 int.zero.extend N55 -> T4
+N57 bit.or N53 N56 -> T4
+N58 constant 0 -> T4
+N59 int.compare N57 N58 -> T12 [2]
+cbr N59 B1(N2.R1,N2.R2,N2.R3,N2.R4,N2.R5,N2.R6) B7(N2.R1,N2.R2,N2.R3,N2.R4,N2.R5,N2.R6)
+B1(P7:T5,P8:T9,P9:T2,P10:T5,P11:T8,P12:T2)
+N60 constant 5 -> T4
+N61 int.compare N2 N60 -> T12 [1]
+N62 constant 6 -> T4
+N63 int.compare N2 N62 -> T12 [1]
+N64 bit.or N61 N63 -> T12
+cbr N64 B2(P7,P8,P9,P10,P11,P12) B3(P7,P8,P9,P10,P11,P12)
+B2(P13:T5,P14:T9,P15:T2,P16:T5,P17:T8,P18:T2)
+N65 call.direct entity=@u P13 P14 P15 P16 P17 P18 -> T4,T5,T9,T2,T5,T8,T2
+br B3(N65.R1,N65.R2,N65.R3,N65.R4,N65.R5,N65.R6)
+B3(P19:T5,P20:T9,P21:T2,P22:T5,P23:T8,P24:T2)
+N66 call.direct entity=@u P19 P20 P21 P22 P23 P24 -> T4,T5,T9,T2,T5,T8,T2
+N67 call.direct entity=@skvs N66.R1 N66.R2 N66.R3 N66.R4 N66.R5 N66.R6 N66 -> T5,T9,T2,T5,T8,T2
+N68 call.direct entity=@u N67 N67.R1 N67.R2 N67.R3 N67.R4 N67.R5 -> T4,T5,T9,T2,T5,T8,T2
+N69 int.compare P6 N58 -> T12 [1]
+cbr N69 B5(N68.R1,N68.R2,N68.R3,N68.R4,N68.R5,N68.R6) B4(N68.R1,N68.R2,N68.R3,N68.R4,N68.R5,N68.R6)
+B4(P25:T5,P26:T9,P27:T2,P28:T5,P29:T8,P30:T2)
+N70 constant 64 -> T4
+N71 add.wrap P6 N70 -> T4
+N72 call.direct entity=@wl P28 P29 P30 N71 -> T4,T5,T8,T2
+N73 constant 8 -> T4
+N74 call.direct entity=@cg N72.R1 N72.R2 N72.R3 N73 -> T4,T5,T8,T2
+N75 constant 24 -> T4
+N76 mul.wrap N74 N75 -> T4
+N77 add.wrap N72 N76 -> T4
+N78 call.direct entity=@ws N74.R1 N74.R2 N74.R3 N77 N1 -> T5,T8,T2
+N79 constant 72 -> T4
+N80 add.wrap P6 N79 -> T4
+N81 call.direct entity=@wl N78 N78.R1 N78.R2 N80 -> T4,T5,T8,T2
+N82 constant 9 -> T4
+N83 call.direct entity=@cg N81.R1 N81.R2 N81.R3 N82 -> T4,T5,T8,T2
+N84 constant 16 -> T4
+N85 mul.wrap N83 N84 -> T4
+N86 add.wrap N81 N85 -> T4
+N87 add.wrap N77 N73 -> T4
+N88 call.direct entity=@ws N83.R1 N83.R2 N83.R3 N87 N86 -> T5,T8,T2
+N89 add.wrap N77 N84 -> T4
+N90 call.direct entity=@ws N88 N88.R1 N88.R2 N89 N2 -> T5,T8,T2
+br B5(P25,P26,P27,N90,N90.R1,N90.R2)
+B5(P31:T5,P32:T9,P33:T2,P34:T5,P35:T8,P36:T2)
+N91 call.direct entity=@types P31 P32 P33 P34 P35 P36 P6 N68 -> T4,T5,T9,T2,T5,T8,T2
+N92 constant 57 -> T4
+N93 int.compare N2 N92 -> T12 [1]
+N94 constant 63 -> T4
+N95 int.compare N2 N94 -> T12 [1]
+N96 bit.or N93 N95 -> T12
+cbr N96 B6(N91.R1,N91.R2,N91.R3,N91.R4,N91.R5,N91.R6) B8(N91.R1,N91.R2,N91.R3,N91.R4,N91.R5,N91.R6)
+B6(P37:T5,P38:T9,P39:T2,P40:T5,P41:T8,P42:T2)
+N97 call.direct entity=@u P37 P38 P39 P40 P41 P42 -> T4,T5,T9,T2,T5,T8,T2
+N98 call.direct entity=@sku N97.R1 N97.R2 N97.R3 N97.R4 N97.R5 N97.R6 N97 -> T5,T9,T2,T5,T8,T2
+br B8(N98,N98.R1,N98.R2,N98.R3,N98.R4,N98.R5)
+B7(P43:T5,P44:T9,P45:T2,P46:T5,P47:T8,P48:T2)
+N99 constant 5 -> T4
+N100 call.direct entity=@cg P46 P47 P48 N99 -> T4,T5,T8,T2
+N101 int.compare N100 N58 -> T12 [1]
+N102 int.zero.extend N101 -> T4
+N103 constant 2 -> T4
+N104 mul.wrap N102 N103 -> T4
+N105 add.wrap N100 N104 -> T4
+N106 call.direct entity=@cs N100.R1 N100.R2 N100.R3 N99 N105 -> T5,T8,T2
+N107 constant 6 -> T4
+N108 call.direct entity=@cg N106 N106.R1 N106.R2 N107 -> T4,T5,T8,T2
+N109 sub.wrap N2 N108 -> T4
+N110 mul.wrap N102 N109 -> T4
+N111 add.wrap N108 N110 -> T4
+N112 call.direct entity=@cs N108.R1 N108.R2 N108.R3 N107 N111 -> T5,T8,T2
+ret N58 P43 P44 P45 N112 N112.R1 N112.R2
+B8(P49:T5,P50:T9,P51:T2,P52:T5,P53:T8,P54:T2)
+N113 constant 8 -> T4
+N114 call.direct entity=@cg P52 P53 P54 N113 -> T4,T5,T8,T2
+N115 constant 1 -> T4
+N116 add.wrap N114 N115 -> T4
+N117 call.direct entity=@cs N114.R1 N114.R2 N114.R3 N113 N116 -> T5,T8,T2
+ret N91 P49 P50 P51 N117 N117.R1 N117.R2
+T0 form3 ea03b918f20d0a81a33884ee817f029b0acdbece68ae2d7bd3eeb935ccf3485b
+T1 form3 c0bccc4581f6497319c020d4f090f292851eaca295e91a3814668574aa3ec567
+T2 form3 2b2704e5644b2a600cc1c05f91f133f54c03637cddb3aaf658a635fff068bd0a
+T3 bits32
+T4 bits64
+T5 form2 ed7f465bd391df681fba3366051d89f1cf6dbd0fa4983971d7bb14a55f889d29
+T6 form4 933b152d7a3ae1cbd182fd6ece7825ad5a2536c7395b404382763b99acb94833
+T7 form4 3f5c8e3779860667ed838f1c7bb30d71b46ddd4f748ba76b5572e95efbed172c
+T8 form4 fa9bd62ea14b1905accb9b5eba8bf112696d2e9948af7ca7d28521b5b6eaaee4
+T9 form4 4776812445978ecc4336796680f50d1e24bc77be09ec5fdaca1098edd630d6f7
+T10 form2 f615ad96e3f3b84a7bfab041dde4598988ff2ff45d2c382c57a507016ef60f6b
+T11 bits8
+T12 bits1
+end
+define @sblock
+(T5,T9,T2,T5,T8,T2,T4)->(T4,T5,T9,T2,T5,T8,T2)
+B0(P0:T5,P1:T9,P2:T2,P3:T5,P4:T8,P5:T2,P6:T4)
+N0 constant 10 -> T4
+N1 call.direct entity=@cg P3 P4 P5 N0 -> T4,T5,T8,T2
+N2 constant 9 -> T4
+N3 call.direct entity=@cg N1.R1 N1.R2 N1.R3 N2 -> T4,T5,T8,T2
+N4 call.direct entity=@u P0 P1 P2 N3.R1 N3.R2 N3.R3 -> T4,T5,T9,T2,T5,T8,T2
+N5 call.direct entity=@types N4.R1 N4.R2 N4.R3 N4.R4 N4.R5 N4.R6 P6 N4 -> T4,T5,T9,T2,T5,T8,T2
+N6 call.direct entity=@u N5.R1 N5.R2 N5.R3 N5.R4 N5.R5 N5.R6 -> T4,T5,T9,T2,T5,T8,T2
+N7 constant 8 -> T4
+N8 call.direct entity=@cg N6.R4 N6.R5 N6.R6 N7 -> T4,T5,T8,T2
+N9 constant 0 -> T4
+N10 constant 1 -> T4
+br B1(N6.R1,N6.R2,N6.R3,N8.R1,N8.R2,N8.R3,N6,N5)
+B1(P7:T5,P8:T9,P9:T2,P10:T5,P11:T8,P12:T2,P13:T4,P14:T4)
+N11 int.compare P13 N9 -> T12 [1]
+N12 int.compare P14 N9 -> T12 [1]
+N13 bit.or N11 N12 -> T12
+cbr N13 B3(P7,P8,P9,P10,P11,P12,P14) B2(P7,P8,P9,P10,P11,P12)
+B2(P15:T5,P16:T9,P17:T2,P18:T5,P19:T8,P20:T2)
+N14 call.direct entity=@snode P15 P16 P17 P18 P19 P20 P6 -> T4,T5,T9,T2,T5,T8,T2
+N15 sub.wrap P13 N10 -> T4
+br B1(N14.R1,N14.R2,N14.R3,N14.R4,N14.R5,N14.R6,N15,N14)
+B3(P21:T5,P22:T9,P23:T2,P24:T5,P25:T8,P26:T2,P27:T4)
+N16 int.compare P27 N9 -> T12 [1]
+cbr N16 B6(P21,P22,P23,P24,P25,P26,N9) B4(P21,P22,P23,P24,P25,P26)
+B4(P28:T5,P29:T9,P30:T2,P31:T5,P32:T8,P33:T2)
+N17 constant 7 -> T4
+N18 call.direct entity=@cg P31 P32 P33 N17 -> T4,T5,T8,T2
+N19 call.direct entity=@sterm P28 P29 P30 N18.R1 N18.R2 N18.R3 -> T5,T9,T2,T5,T8,T2
+N20 int.compare P6 N9 -> T12 [1]
+cbr N20 B6(N19,N19.R1,N19.R2,N19.R3,N19.R4,N19.R5,N10) B5(N19,N19.R1,N19.R2,N19.R3,N19.R4,N19.R5)
+B5(P34:T5,P35:T9,P36:T2,P37:T5,P38:T8,P39:T2)
+N21 constant 56 -> T4
+N22 add.wrap P6 N21 -> T4
+N23 call.direct entity=@wl P37 P38 P39 N22 -> T4,T5,T8,T2
+N24 constant 40 -> T4
+N25 mul.wrap N1 N24 -> T4
+N26 add.wrap N23 N25 -> T4
+N27 constant 72 -> T4
+N28 add.wrap P6 N27 -> T4
+N29 call.direct entity=@wl N23.R1 N23.R2 N23.R3 N28 -> T4,T5,T8,T2
+N30 constant 16 -> T4
+N31 mul.wrap N3 N30 -> T4
+N32 add.wrap N29 N31 -> T4
+N33 call.direct entity=@ws N29.R1 N29.R2 N29.R3 N26 N32 -> T5,T8,T2
+N34 constant 8 -> T4
+N35 add.wrap N26 N34 -> T4
+N36 call.direct entity=@ws N33 N33.R1 N33.R2 N35 N8 -> T5,T8,T2
+N37 add.wrap N26 N30 -> T4
+N38 call.direct entity=@ws N36 N36.R1 N36.R2 N37 N6 -> T5,T8,T2
+N39 constant 24 -> T4
+N40 add.wrap N26 N39 -> T4
+N41 call.direct entity=@ws N38 N38.R1 N38.R2 N40 N18 -> T5,T8,T2
+N42 constant 32 -> T4
+N43 add.wrap N26 N42 -> T4
+N44 call.direct entity=@ws N41 N41.R1 N41.R2 N43 N4 -> T5,T8,T2
+br B6(P34,P35,P36,N44,N44.R1,N44.R2,N10)
+B6(P40:T5,P41:T9,P42:T2,P43:T5,P44:T8,P45:T2,P46:T4)
+N45 call.direct entity=@cg P43 P44 P45 N0 -> T4,T5,T8,T2
+N46 add.wrap N45 N10 -> T4
+N47 call.direct entity=@cs N45.R1 N45.R2 N45.R3 N0 N46 -> T5,T8,T2
+ret P46 P40 P41 P42 N47 N47.R1 N47.R2
+T0 form3 ea03b918f20d0a81a33884ee817f029b0acdbece68ae2d7bd3eeb935ccf3485b
+T1 form3 c0bccc4581f6497319c020d4f090f292851eaca295e91a3814668574aa3ec567
+T2 form3 2b2704e5644b2a600cc1c05f91f133f54c03637cddb3aaf658a635fff068bd0a
+T3 bits32
+T4 bits64
+T5 form2 ed7f465bd391df681fba3366051d89f1cf6dbd0fa4983971d7bb14a55f889d29
+T6 form4 933b152d7a3ae1cbd182fd6ece7825ad5a2536c7395b404382763b99acb94833
+T7 form4 3f5c8e3779860667ed838f1c7bb30d71b46ddd4f748ba76b5572e95efbed172c
+T8 form4 fa9bd62ea14b1905accb9b5eba8bf112696d2e9948af7ca7d28521b5b6eaaee4
+T9 form4 4776812445978ecc4336796680f50d1e24bc77be09ec5fdaca1098edd630d6f7
+T10 form2 f615ad96e3f3b84a7bfab041dde4598988ff2ff45d2c382c57a507016ef60f6b
+T11 bits8
+T12 bits1
+end
+define @scan
+(T5,T9,T2,T5,T8,T2,T4,T4)->(T4,T5,T9,T2,T5,T8,T2)
+B0(P0:T5,P1:T9,P2:T2,P3:T5,P4:T8,P5:T2,P6:T4,P7:T4)
+N0 constant 0 -> T4
+N1 constant 1 -> T4
+br B1(P0,P1,P2,P3,P4,P5,P7,N1)
+B1(P8:T5,P9:T9,P10:T2,P11:T5,P12:T8,P13:T2,P14:T4,P15:T4)
+N2 int.compare P14 N0 -> T12 [1]
+N3 int.compare P15 N0 -> T12 [1]
+N4 bit.or N2 N3 -> T12
+cbr N4 B3(P8,P9,P10,P11,P12,P13,P15) B2(P8,P9,P10,P11,P12,P13)
+B2(P16:T5,P17:T9,P18:T2,P19:T5,P20:T8,P21:T2)
+N5 call.direct entity=@sblock P16 P17 P18 P19 P20 P21 P6 -> T4,T5,T9,T2,T5,T8,T2
+N6 sub.wrap P14 N1 -> T4
+br B1(N5.R1,N5.R2,N5.R3,N5.R4,N5.R5,N5.R6,N6,N5)
+B3(P22:T5,P23:T9,P24:T2,P25:T5,P26:T8,P27:T2,P28:T4)
+ret P28 P22 P23 P24 P25 P26 P27
+T0 form3 ea03b918f20d0a81a33884ee817f029b0acdbece68ae2d7bd3eeb935ccf3485b
+T1 form3 c0bccc4581f6497319c020d4f090f292851eaca295e91a3814668574aa3ec567
+T2 form3 2b2704e5644b2a600cc1c05f91f133f54c03637cddb3aaf658a635fff068bd0a
+T3 bits32
+T4 bits64
+T5 form2 ed7f465bd391df681fba3366051d89f1cf6dbd0fa4983971d7bb14a55f889d29
+T6 form4 933b152d7a3ae1cbd182fd6ece7825ad5a2536c7395b404382763b99acb94833
+T7 form4 3f5c8e3779860667ed838f1c7bb30d71b46ddd4f748ba76b5572e95efbed172c
+T8 form4 fa9bd62ea14b1905accb9b5eba8bf112696d2e9948af7ca7d28521b5b6eaaee4
+T9 form4 4776812445978ecc4336796680f50d1e24bc77be09ec5fdaca1098edd630d6f7
+T10 form2 f615ad96e3f3b84a7bfab041dde4598988ff2ff45d2c382c57a507016ef60f6b
+T11 bits8
+T12 bits1
+end
+define @enter
+(T5,T9,T2,T5,T8,T2,T4)->(T4,T5,T9,T2,T5,T8,T2)
+B0(P0:T5,P1:T9,P2:T2,P3:T5,P4:T8,P5:T2,P6:T4)
+N0 call.direct entity=@find P0 P1 P2 P3 P4 P5 P6 -> T4,T5,T9,T2,T5,T8,T2
+N1 call.direct entity=@rhdr N0.R1 N0.R2 N0.R3 N0.R4 N0.R5 N0.R6 N0 -> T4,T5,T9,T2,T5,T8,T2
+N2 constant 17 -> T4
+N3 call.direct entity=@cg N1.R4 N1.R5 N1.R6 N2 -> T4,T5,T8,T2
+N4 constant 18 -> T4
+N5 call.direct entity=@cg N3.R1 N3.R2 N3.R3 N4 -> T4,T5,T8,T2
+N6 call.direct entity=@uv N1.R1 N1.R2 N1.R3 N5 -> T4,T5,T9,T2
+N7 constant 32 -> T4
+N8 mul.wrap N6 N7 -> T4
+N9 add.wrap N3 N8 -> T4
+N10 call.direct entity=@find N6.R1 N6.R2 N6.R3 N5.R1 N5.R2 N5.R3 N9 -> T4,T5,T9,T2,T5,T8,T2
+N11 call.direct entity=@rhdr N10.R1 N10.R2 N10.R3 N10.R4 N10.R5 N10.R6 N10 -> T4,T5,T9,T2,T5,T8,T2
+N12 call.direct entity=@cg N11.R4 N11.R5 N11.R6 N2 -> T4,T5,T8,T2
+N13 call.direct entity=@cg N12.R1 N12.R2 N12.R3 N4 -> T4,T5,T8,T2
+N14 call.direct entity=@uv N11.R1 N11.R2 N11.R3 N13 -> T4,T5,T9,T2
+N15 call.direct entity=@ue N14.R1 N14.R2 N14.R3 N13 -> T4,T5,T9,T2
+N16 call.direct entity=@uv N15.R1 N15.R2 N15.R3 N15 -> T4,T5,T9,T2
+N17 call.direct entity=@ue N16.R1 N16.R2 N16.R3 N15 -> T4,T5,T9,T2
+N18 constant 7 -> T4
+N19 int.compare N11 N18 -> T12 [1]
+N20 constant 0 -> T4
+N21 constant 1 -> T4
+cbr N19 B1(N17.R1,N17.R2,N17.R3,N13.R1,N13.R2,N13.R3) B4(N17.R1,N17.R2,N17.R3,N13.R1,N13.R2,N13.R3)
+B1(P7:T5,P8:T9,P9:T2,P10:T5,P11:T8,P12:T2)
+N22 call.direct entity=@cs P10 P11 P12 N18 N17 -> T5,T8,T2
+N23 constant 8 -> T4
+N24 call.direct entity=@cs N22 N22.R1 N22.R2 N23 N20 -> T5,T8,T2
+N25 constant 9 -> T4
+N26 call.direct entity=@cs N24 N24.R1 N24.R2 N25 N20 -> T5,T8,T2
+N27 constant 10 -> T4
+N28 call.direct entity=@cs N26 N26.R1 N26.R2 N27 N20 -> T5,T8,T2
+N29 call.direct entity=@scan P7 P8 P9 N28 N28.R1 N28.R2 N20 N14 -> T4,T5,T9,T2,T5,T8,T2
+N30 int.compare N29 N20 -> T12 [1]
+cbr N30 B5(N29.R1,N29.R2,N29.R3,N29.R4,N29.R5,N29.R6,N20) B2(N29.R1,N29.R2,N29.R3,N29.R4,N29.R5,N29.R6)
+B2(P13:T5,P14:T9,P15:T2,P16:T5,P17:T8,P18:T2)
+N31 constant 2 -> T4
+N32 call.direct entity=@cg P16 P17 P18 N31 -> T4,T5,T8,T2
+N33 constant 96 -> T4
+N34 add.wrap N32 N33 -> T4
+N35 constant 40 -> T4
+N36 mul.wrap N14 N35 -> T4
+N37 add.wrap N34 N36 -> T4
+N38 call.direct entity=@cg N32.R1 N32.R2 N32.R3 N23 -> T4,T5,T8,T2
+N39 constant 24 -> T4
+N40 mul.wrap N38 N39 -> T4
+N41 add.wrap N37 N40 -> T4
+N42 call.direct entity=@cg N38.R1 N38.R2 N38.R3 N25 -> T4,T5,T8,T2
+N43 constant 16 -> T4
+N44 mul.wrap N42 N43 -> T4
+N45 add.wrap N41 N44 -> T4
+N46 call.direct entity=@ws N42.R1 N42.R2 N42.R3 N32 N10 -> T5,T8,T2
+N47 add.wrap N32 N23 -> T4
+N48 call.direct entity=@ws N46 N46.R1 N46.R2 N47 N14 -> T5,T8,T2
+N49 add.wrap N32 N43 -> T4
+N50 call.direct entity=@ws N48 N48.R1 N48.R2 N49 N16 -> T5,T8,T2
+N51 add.wrap N32 N39 -> T4
+N52 call.direct entity=@ws N50 N50.R1 N50.R2 N51 N20 -> T5,T8,T2
+N53 constant 48 -> T4
+N54 add.wrap N32 N53 -> T4
+N55 call.direct entity=@ws N52 N52.R1 N52.R2 N54 N12 -> T5,T8,T2
+N56 constant 56 -> T4
+N57 add.wrap N32 N56 -> T4
+N58 call.direct entity=@ws N55 N55.R1 N55.R2 N57 N34 -> T5,T8,T2
+N59 constant 64 -> T4
+N60 add.wrap N32 N59 -> T4
+N61 call.direct entity=@ws N58 N58.R1 N58.R2 N60 N37 -> T5,T8,T2
+N62 constant 72 -> T4
+N63 add.wrap N32 N62 -> T4
+N64 call.direct entity=@ws N61 N61.R1 N61.R2 N63 N41 -> T5,T8,T2
+N65 constant 88 -> T4
+N66 add.wrap N32 N65 -> T4
+N67 call.direct entity=@ws N64 N64.R1 N64.R2 N66 N45 -> T5,T8,T2
+N68 constant 917504 -> T4
+N69 int.compare N45 N68 -> T12 [5]
+cbr N69 B6(P13,P14,P15,N67,N67.R1,N67.R2) B3(P13,P14,P15,N67,N67.R1,N67.R2)
+B3(P19:T5,P20:T9,P21:T2,P22:T5,P23:T8,P24:T2)
+N70 call.direct entity=@cs P22 P23 P24 N18 N17 -> T5,T8,T2
+N71 call.direct entity=@cs N70 N70.R1 N70.R2 N23 N20 -> T5,T8,T2
+N72 call.direct entity=@cs N71 N71.R1 N71.R2 N25 N20 -> T5,T8,T2
+N73 call.direct entity=@cs N72 N72.R1 N72.R2 N27 N20 -> T5,T8,T2
+N74 call.direct entity=@scan P19 P20 P21 N73 N73.R1 N73.R2 N32 N14 -> T4,T5,T9,T2,T5,T8,T2
+N75 call.direct entity=@cs N74.R4 N74.R5 N74.R6 N31 N45 -> T5,T8,T2
+N76 mul.wrap N32 N74 -> T4
+br B5(N74.R1,N74.R2,N74.R3,N75,N75.R1,N75.R2,N76)
+B4(P25:T5,P26:T9,P27:T2,P28:T5,P29:T8,P30:T2)
+N77 constant 5 -> T4
+N78 constant 2 -> T4
+N79 call.direct entity=@cs P28 P29 P30 N77 N78 -> T5,T8,T2
+N80 constant 6 -> T4
+N81 constant 4 -> T4
+N82 call.direct entity=@cs N79 N79.R1 N79.R2 N80 N81 -> T5,T8,T2
+br B5(P25,P26,P27,N82,N82.R1,N82.R2,N20)
+B5(P31:T5,P32:T9,P33:T2,P34:T5,P35:T8,P36:T2,P37:T4)
+ret P37 P31 P32 P33 P34 P35 P36
+B6(P38:T5,P39:T9,P40:T2,P41:T5,P42:T8,P43:T2)
+N83 constant 5 -> T4
+N84 constant 3 -> T4
+N85 call.direct entity=@cs P41 P42 P43 N83 N84 -> T5,T8,T2
+br B5(P38,P39,P40,N85,N85.R1,N85.R2,N20)
+T0 form3 ea03b918f20d0a81a33884ee817f029b0acdbece68ae2d7bd3eeb935ccf3485b
+T1 form3 c0bccc4581f6497319c020d4f090f292851eaca295e91a3814668574aa3ec567
+T2 form3 2b2704e5644b2a600cc1c05f91f133f54c03637cddb3aaf658a635fff068bd0a
+T3 bits32
+T4 bits64
+T5 form2 ed7f465bd391df681fba3366051d89f1cf6dbd0fa4983971d7bb14a55f889d29
+T6 form4 933b152d7a3ae1cbd182fd6ece7825ad5a2536c7395b404382763b99acb94833
+T7 form4 3f5c8e3779860667ed838f1c7bb30d71b46ddd4f748ba76b5572e95efbed172c
+T8 form4 fa9bd62ea14b1905accb9b5eba8bf112696d2e9948af7ca7d28521b5b6eaaee4
+T9 form4 4776812445978ecc4336796680f50d1e24bc77be09ec5fdaca1098edd630d6f7
+T10 form2 f615ad96e3f3b84a7bfab041dde4598988ff2ff45d2c382c57a507016ef60f6b
+T11 bits8
+T12 bits1
+end
+define @wput
+(T5,T8,T2,T4)->(T5,T8,T2)
+B0(P0:T5,P1:T8,P2:T2,P3:T4)
+N0 constant 4 -> T4
+N1 call.direct entity=@cg P0 P1 P2 N0 -> T4,T5,T8,T2
+N2 int.truncate N1 -> T3
+N3 int.truncate P3 -> T11
+N4 checked.store.bits.le N1.R1 N2 N3 N1.R3 -> T2 [1,1]
+N5 constant 1 -> T4
+N6 add.wrap N1 N5 -> T4
+N7 call.direct entity=@cs N1.R1 N1.R2 N4 N0 N6 -> T5,T8,T2
+ret N7 N7.R1 N7.R2
+T0 form3 ea03b918f20d0a81a33884ee817f029b0acdbece68ae2d7bd3eeb935ccf3485b
+T1 form3 c0bccc4581f6497319c020d4f090f292851eaca295e91a3814668574aa3ec567
+T2 form3 2b2704e5644b2a600cc1c05f91f133f54c03637cddb3aaf658a635fff068bd0a
+T3 bits32
+T4 bits64
+T5 form2 ed7f465bd391df681fba3366051d89f1cf6dbd0fa4983971d7bb14a55f889d29
+T6 form4 933b152d7a3ae1cbd182fd6ece7825ad5a2536c7395b404382763b99acb94833
+T7 form4 3f5c8e3779860667ed838f1c7bb30d71b46ddd4f748ba76b5572e95efbed172c
+T8 form4 fa9bd62ea14b1905accb9b5eba8bf112696d2e9948af7ca7d28521b5b6eaaee4
+T9 form4 4776812445978ecc4336796680f50d1e24bc77be09ec5fdaca1098edd630d6f7
+T10 form2 f615ad96e3f3b84a7bfab041dde4598988ff2ff45d2c382c57a507016ef60f6b
+T11 bits8
+T12 bits1
+end
+define @wdec
+(T5,T8,T2,T4)->(T5,T8,T2)
+B0(P0:T5,P1:T8,P2:T2,P3:T4)
+N0 constant 1 -> T4
+br B1(P0,P1,P2,N0)
+B1(P4:T5,P5:T8,P6:T2,P7:T4)
+N1 constant 10 -> T4
+N2 udiv P3 N1 -> T4
+N3 int.compare P7 N2 -> T12 [4]
+N4 mul.wrap P7 N1 -> T4
+cbr N3 B1(P4,P5,P6,N4) B2(P4,P5,P6,P7)
+B2(P8:T5,P9:T8,P10:T2,P11:T4)
+N5 udiv P3 P11 -> T4
+N6 constant 10 -> T4
+N7 urem N5 N6 -> T4
+N8 constant 48 -> T4
+N9 add.wrap N7 N8 -> T4
+N10 call.direct entity=@wput P8 P9 P10 N9 -> T5,T8,T2
+N11 udiv P11 N6 -> T4
+N12 constant 0 -> T4
+N13 int.compare N11 N12 -> T12 [1]
+cbr N13 B3(N10,N10.R1,N10.R2) B2(N10,N10.R1,N10.R2,N11)
+B3(P12:T5,P13:T8,P14:T2)
+ret P12 P13 P14
+T0 form3 ea03b918f20d0a81a33884ee817f029b0acdbece68ae2d7bd3eeb935ccf3485b
+T1 form3 c0bccc4581f6497319c020d4f090f292851eaca295e91a3814668574aa3ec567
+T2 form3 2b2704e5644b2a600cc1c05f91f133f54c03637cddb3aaf658a635fff068bd0a
+T3 bits32
+T4 bits64
+T5 form2 ed7f465bd391df681fba3366051d89f1cf6dbd0fa4983971d7bb14a55f889d29
+T6 form4 933b152d7a3ae1cbd182fd6ece7825ad5a2536c7395b404382763b99acb94833
+T7 form4 3f5c8e3779860667ed838f1c7bb30d71b46ddd4f748ba76b5572e95efbed172c
+T8 form4 fa9bd62ea14b1905accb9b5eba8bf112696d2e9948af7ca7d28521b5b6eaaee4
+T9 form4 4776812445978ecc4336796680f50d1e24bc77be09ec5fdaca1098edd630d6f7
+T10 form2 f615ad96e3f3b84a7bfab041dde4598988ff2ff45d2c382c57a507016ef60f6b
+T11 bits8
+T12 bits1
+end
+define @wstr
+(T5,T8,T2,T4,T4)->(T5,T8,T2)
+B0(P0:T5,P1:T8,P2:T2,P3:T4,P4:T4)
+br B1(P0,P1,P2,P3,P4)
+B1(P5:T5,P6:T8,P7:T2,P8:T4,P9:T4)
+N0 constant 0 -> T4
+N1 int.compare P9 N0 -> T12 [1]
+cbr N1 B3(P5,P6,P7) B2(P5,P6,P7)
+B2(P10:T5,P11:T8,P12:T2)
+N2 constant 256 -> T4
+N3 urem P8 N2 -> T4
+N4 call.direct entity=@wput P10 P11 P12 N3 -> T5,T8,T2
+N5 udiv P8 N2 -> T4
+N6 constant 1 -> T4
+N7 sub.wrap P9 N6 -> T4
+br B1(N4,N4.R1,N4.R2,N5,N7)
+B3(P13:T5,P14:T8,P15:T2)
+ret P13 P14 P15
+T0 form3 ea03b918f20d0a81a33884ee817f029b0acdbece68ae2d7bd3eeb935ccf3485b
+T1 form3 c0bccc4581f6497319c020d4f090f292851eaca295e91a3814668574aa3ec567
+T2 form3 2b2704e5644b2a600cc1c05f91f133f54c03637cddb3aaf658a635fff068bd0a
+T3 bits32
+T4 bits64
+T5 form2 ed7f465bd391df681fba3366051d89f1cf6dbd0fa4983971d7bb14a55f889d29
+T6 form4 933b152d7a3ae1cbd182fd6ece7825ad5a2536c7395b404382763b99acb94833
+T7 form4 3f5c8e3779860667ed838f1c7bb30d71b46ddd4f748ba76b5572e95efbed172c
+T8 form4 fa9bd62ea14b1905accb9b5eba8bf112696d2e9948af7ca7d28521b5b6eaaee4
+T9 form4 4776812445978ecc4336796680f50d1e24bc77be09ec5fdaca1098edd630d6f7
+T10 form2 f615ad96e3f3b84a7bfab041dde4598988ff2ff45d2c382c57a507016ef60f6b
+T11 bits8
+T12 bits1
+end
+define @hexcid
+(T5,T7,T2,T5,T9,T2)->(T5,T7,T2,T5,T9,T2)
+B0(P0:T5,P1:T7,P2:T2,P3:T5,P4:T9,P5:T2)
+N0 constant 0 -> T4
+br B1(P0,P1,P2,P3,P4,P5,N0)
+B1(P6:T5,P7:T7,P8:T2,P9:T5,P10:T9,P11:T2,P12:T4)
+N1 constant 32 -> T4
+N2 int.compare P12 N1 -> T12 [6]
+cbr N2 B3(P6,P7,P8,P9,P10,P11) B2(P6,P7,P8,P9,P10,P11)
+B2(P13:T5,P14:T7,P15:T2,P16:T5,P17:T9,P18:T2)
+N3 constant 2 -> T4
+N4 mul.wrap P12 N3 -> T4
+N5 int.truncate N4 -> T3
+N6 checked.load.bits.le P13 N5 P15 -> T11,T2 [1,1]
+N7 constant 1 -> T4
+N8 add.wrap N4 N7 -> T4
+N9 int.truncate N8 -> T3
+N10 checked.load.bits.le P13 N9 N6.R1 -> T11,T2 [1,1]
+N11 int.zero.extend N6 -> T4
+N12 int.zero.extend N10 -> T4
+N13 constant 48 -> T4
+N14 constant 39 -> T4
+N15 constant 57 -> T4
+N16 int.compare N11 N15 -> T12 [5]
+N17 int.zero.extend N16 -> T4
+N18 mul.wrap N17 N14 -> T4
+N19 sub.wrap N11 N13 -> T4
+N20 sub.wrap N19 N18 -> T4
+N21 int.compare N12 N15 -> T12 [5]
+N22 int.zero.extend N21 -> T4
+N23 mul.wrap N22 N14 -> T4
+N24 sub.wrap N12 N13 -> T4
+N25 sub.wrap N24 N23 -> T4
+N26 constant 16 -> T4
+N27 mul.wrap N20 N26 -> T4
+N28 add.wrap N27 N25 -> T4
+N29 int.truncate N28 -> T11
+N30 constant 268435392 -> T4
+N31 add.wrap N30 P12 -> T4
+N32 int.truncate N31 -> T3
+N33 checked.store.bits.le P16 N32 N29 P18 -> T2 [1,1]
+N34 add.wrap P12 N7 -> T4
+br B1(P13,P14,N10.R1,P16,P17,N33,N34)
+B3(P19:T5,P20:T7,P21:T2,P22:T5,P23:T9,P24:T2)
+ret P19 P20 P21 P22 P23 P24
+T0 form3 ea03b918f20d0a81a33884ee817f029b0acdbece68ae2d7bd3eeb935ccf3485b
+T1 form3 c0bccc4581f6497319c020d4f090f292851eaca295e91a3814668574aa3ec567
+T2 form3 2b2704e5644b2a600cc1c05f91f133f54c03637cddb3aaf658a635fff068bd0a
+T3 bits32
+T4 bits64
+T5 form2 ed7f465bd391df681fba3366051d89f1cf6dbd0fa4983971d7bb14a55f889d29
+T6 form4 933b152d7a3ae1cbd182fd6ece7825ad5a2536c7395b404382763b99acb94833
+T7 form4 3f5c8e3779860667ed838f1c7bb30d71b46ddd4f748ba76b5572e95efbed172c
+T8 form4 fa9bd62ea14b1905accb9b5eba8bf112696d2e9948af7ca7d28521b5b6eaaee4
+T9 form4 4776812445978ecc4336796680f50d1e24bc77be09ec5fdaca1098edd630d6f7
+T10 form2 f615ad96e3f3b84a7bfab041dde4598988ff2ff45d2c382c57a507016ef60f6b
+T11 bits8
+T12 bits1
+end
+define @sdec
+(T5,T7,T2,T4)->(T4,T5,T7,T2)
+B0(P0:T5,P1:T7,P2:T2,P3:T4)
+N0 constant 0 -> T4
+br B1(P0,P1,P2,N0,N0)
+B1(P4:T5,P5:T7,P6:T2,P7:T4,P8:T4)
+N1 int.compare P7 P3 -> T12 [6]
+cbr N1 B3(P4,P5,P6,P8) B2(P4,P5,P6)
+B2(P9:T5,P10:T7,P11:T2)
+N2 int.truncate P7 -> T3
+N3 checked.load.bits.le P9 N2 P11 -> T11,T2 [1,1]
+N4 int.zero.extend N3 -> T4
+N5 constant 48 -> T4
+N6 sub.wrap N4 N5 -> T4
+N7 constant 10 -> T4
+N8 mul.wrap P8 N7 -> T4
+N9 add.wrap N8 N6 -> T4
+N10 constant 1 -> T4
+N11 add.wrap P7 N10 -> T4
+br B1(P9,P10,N3.R1,N11,N9)
+B3(P12:T5,P13:T7,P14:T2,P15:T4)
+ret P15 P12 P13 P14
+T0 form3 ea03b918f20d0a81a33884ee817f029b0acdbece68ae2d7bd3eeb935ccf3485b
+T1 form3 c0bccc4581f6497319c020d4f090f292851eaca295e91a3814668574aa3ec567
+T2 form3 2b2704e5644b2a600cc1c05f91f133f54c03637cddb3aaf658a635fff068bd0a
+T3 bits32
+T4 bits64
+T5 form2 ed7f465bd391df681fba3366051d89f1cf6dbd0fa4983971d7bb14a55f889d29
+T6 form4 933b152d7a3ae1cbd182fd6ece7825ad5a2536c7395b404382763b99acb94833
+T7 form4 3f5c8e3779860667ed838f1c7bb30d71b46ddd4f748ba76b5572e95efbed172c
+T8 form4 fa9bd62ea14b1905accb9b5eba8bf112696d2e9948af7ca7d28521b5b6eaaee4
+T9 form4 4776812445978ecc4336796680f50d1e24bc77be09ec5fdaca1098edd630d6f7
+T10 form2 f615ad96e3f3b84a7bfab041dde4598988ff2ff45d2c382c57a507016ef60f6b
+T11 bits8
+T12 bits1
+end
+define @vslot
+(T5,T9,T2,T5,T8,T2,T4)->(T4,T5,T9,T2,T5,T8,T2)
+B0(P0:T5,P1:T9,P2:T2,P3:T5,P4:T8,P5:T2,P6:T4)
+N0 call.direct entity=@u P0 P1 P2 P3 P4 P5 -> T4,T5,T9,T2,T5,T8,T2
+N1 call.direct entity=@u N0.R1 N0.R2 N0.R3 N0.R4 N0.R5 N0.R6 -> T4,T5,T9,T2,T5,T8,T2
+N2 call.direct entity=@u N1.R1 N1.R2 N1.R3 N1.R4 N1.R5 N1.R6 -> T4,T5,T9,T2,T5,T8,T2
+N3 constant 56 -> T4
+N4 add.wrap P6 N3 -> T4
+N5 call.direct entity=@wl N2.R4 N2.R5 N2.R6 N4 -> T4,T5,T8,T2
+N6 constant 40 -> T4
+N7 mul.wrap N1 N6 -> T4
+N8 add.wrap N5 N7 -> T4
+N9 constant 16 -> T4
+N10 mul.wrap N2 N9 -> T4
+N11 constant 0 -> T4
+N12 int.compare N0 N11 -> T12 [1]
+cbr N12 B1(N2.R1,N2.R2,N2.R3,N5.R1,N5.R2,N5.R3) B2(N2.R1,N2.R2,N2.R3,N5.R1,N5.R2,N5.R3)
+B1(P7:T5,P8:T9,P9:T2,P10:T5,P11:T8,P12:T2)
+N13 call.direct entity=@wl P10 P11 P12 N8 -> T4,T5,T8,T2
+N14 add.wrap N13 N10 -> T4
+br B3(P7,P8,P9,N13.R1,N13.R2,N13.R3,N14)
+B2(P13:T5,P14:T9,P15:T2,P16:T5,P17:T8,P18:T2)
+N15 call.direct entity=@u P13 P14 P15 P16 P17 P18 -> T4,T5,T9,T2,T5,T8,T2
+N16 constant 8 -> T4
+N17 add.wrap N8 N16 -> T4
+N18 call.direct entity=@wl N15.R4 N15.R5 N15.R6 N17 -> T4,T5,T8,T2
+N19 add.wrap N18 N2 -> T4
+N20 constant 64 -> T4
+N21 add.wrap P6 N20 -> T4
+N22 call.direct entity=@wl N18.R1 N18.R2 N18.R3 N21 -> T4,T5,T8,T2
+N23 constant 24 -> T4
+N24 mul.wrap N19 N23 -> T4
+N25 add.wrap N22 N24 -> T4
+N26 add.wrap N25 N16 -> T4
+N27 call.direct entity=@wl N22.R1 N22.R2 N22.R3 N26 -> T4,T5,T8,T2
+N28 mul.wrap N15 N9 -> T4
+N29 add.wrap N27 N28 -> T4
+br B3(N15.R1,N15.R2,N15.R3,N27.R1,N27.R2,N27.R3,N29)
+B3(P19:T5,P20:T9,P21:T2,P22:T5,P23:T8,P24:T2,P25:T4)
+ret P25 P19 P20 P21 P22 P23 P24
+T0 form3 ea03b918f20d0a81a33884ee817f029b0acdbece68ae2d7bd3eeb935ccf3485b
+T1 form3 c0bccc4581f6497319c020d4f090f292851eaca295e91a3814668574aa3ec567
+T2 form3 2b2704e5644b2a600cc1c05f91f133f54c03637cddb3aaf658a635fff068bd0a
+T3 bits32
+T4 bits64
+T5 form2 ed7f465bd391df681fba3366051d89f1cf6dbd0fa4983971d7bb14a55f889d29
+T6 form4 933b152d7a3ae1cbd182fd6ece7825ad5a2536c7395b404382763b99acb94833
+T7 form4 3f5c8e3779860667ed838f1c7bb30d71b46ddd4f748ba76b5572e95efbed172c
+T8 form4 fa9bd62ea14b1905accb9b5eba8bf112696d2e9948af7ca7d28521b5b6eaaee4
+T9 form4 4776812445978ecc4336796680f50d1e24bc77be09ec5fdaca1098edd630d6f7
+T10 form2 f615ad96e3f3b84a7bfab041dde4598988ff2ff45d2c382c57a507016ef60f6b
+T11 bits8
+T12 bits1
+end
+define @evals
+(T5,T9,T2,T5,T8,T2,T4,T4)->(T5,T9,T2,T5,T8,T2)
+B0(P0:T5,P1:T9,P2:T2,P3:T5,P4:T8,P5:T2,P6:T4,P7:T4)
+N0 constant 0 -> T4
+br B1(P0,P1,P2,P3,P4,P5,N0)
+B1(P8:T5,P9:T9,P10:T2,P11:T5,P12:T8,P13:T2,P14:T4)
+N1 int.compare P14 P7 -> T12 [6]
+cbr N1 B3(P8,P9,P10,P11,P12,P13) B2(P8,P9,P10,P11,P12,P13)
+B2(P15:T5,P16:T9,P17:T2,P18:T5,P19:T8,P20:T2)
+N2 call.direct entity=@vslot P15 P16 P17 P18 P19 P20 P6 -> T4,T5,T9,T2,T5,T8,T2
+N3 call.direct entity=@wl N2.R4 N2.R5 N2.R6 N2 -> T4,T5,T8,T2
+N4 constant 8 -> T4
+N5 mul.wrap P14 N4 -> T4
+N6 constant 1040640 -> T4
+N7 add.wrap N5 N6 -> T4
+N8 call.direct entity=@ws N3.R1 N3.R2 N3.R3 N7 N3 -> T5,T8,T2
+N9 constant 1 -> T4
+N10 add.wrap P14 N9 -> T4
+br B1(N2.R1,N2.R2,N2.R3,N8,N8.R1,N8.R2,N10)
+B3(P21:T5,P22:T9,P23:T2,P24:T5,P25:T8,P26:T2)
+ret P21 P22 P23 P24 P25 P26
+T0 form3 ea03b918f20d0a81a33884ee817f029b0acdbece68ae2d7bd3eeb935ccf3485b
+T1 form3 c0bccc4581f6497319c020d4f090f292851eaca295e91a3814668574aa3ec567
+T2 form3 2b2704e5644b2a600cc1c05f91f133f54c03637cddb3aaf658a635fff068bd0a
+T3 bits32
+T4 bits64
+T5 form2 ed7f465bd391df681fba3366051d89f1cf6dbd0fa4983971d7bb14a55f889d29
+T6 form4 933b152d7a3ae1cbd182fd6ece7825ad5a2536c7395b404382763b99acb94833
+T7 form4 3f5c8e3779860667ed838f1c7bb30d71b46ddd4f748ba76b5572e95efbed172c
+T8 form4 fa9bd62ea14b1905accb9b5eba8bf112696d2e9948af7ca7d28521b5b6eaaee4
+T9 form4 4776812445978ecc4336796680f50d1e24bc77be09ec5fdaca1098edd630d6f7
+T10 form2 f615ad96e3f3b84a7bfab041dde4598988ff2ff45d2c382c57a507016ef60f6b
+T11 bits8
+T12 bits1
+end
+define @tstore
+(T5,T8,T2,T4,T4)->(T5,T8,T2)
+B0(P0:T5,P1:T8,P2:T2,P3:T4,P4:T4)
+N0 constant 0 -> T4
+br B1(P0,P1,P2,N0)
+B1(P5:T5,P6:T8,P7:T2,P8:T4)
+N1 int.compare P8 P4 -> T12 [6]
+cbr N1 B3(P5,P6,P7) B2(P5,P6,P7)
+B2(P9:T5,P10:T8,P11:T2)
+N2 constant 8 -> T4
+N3 mul.wrap P8 N2 -> T4
+N4 constant 1040640 -> T4
+N5 add.wrap N3 N4 -> T4
+N6 call.direct entity=@wl P9 P10 P11 N5 -> T4,T5,T8,T2
+N7 constant 16 -> T4
+N8 mul.wrap P8 N7 -> T4
+N9 add.wrap P3 N8 -> T4
+N10 add.wrap N9 N2 -> T4
+N11 call.direct entity=@wl N6.R1 N6.R2 N6.R3 N10 -> T4,T5,T8,T2
+N12 bit.and N6 N11 -> T4
+N13 call.direct entity=@ws N11.R1 N11.R2 N11.R3 N9 N12 -> T5,T8,T2
+N14 constant 1 -> T4
+N15 add.wrap P8 N14 -> T4
+br B1(N13,N13.R1,N13.R2,N15)
+B3(P12:T5,P13:T8,P14:T2)
+ret P12 P13 P14
+T0 form3 ea03b918f20d0a81a33884ee817f029b0acdbece68ae2d7bd3eeb935ccf3485b
+T1 form3 c0bccc4581f6497319c020d4f090f292851eaca295e91a3814668574aa3ec567
+T2 form3 2b2704e5644b2a600cc1c05f91f133f54c03637cddb3aaf658a635fff068bd0a
+T3 bits32
+T4 bits64
+T5 form2 ed7f465bd391df681fba3366051d89f1cf6dbd0fa4983971d7bb14a55f889d29
+T6 form4 933b152d7a3ae1cbd182fd6ece7825ad5a2536c7395b404382763b99acb94833
+T7 form4 3f5c8e3779860667ed838f1c7bb30d71b46ddd4f748ba76b5572e95efbed172c
+T8 form4 fa9bd62ea14b1905accb9b5eba8bf112696d2e9948af7ca7d28521b5b6eaaee4
+T9 form4 4776812445978ecc4336796680f50d1e24bc77be09ec5fdaca1098edd630d6f7
+T10 form2 f615ad96e3f3b84a7bfab041dde4598988ff2ff45d2c382c57a507016ef60f6b
+T11 bits8
+T12 bits1
+end
+define @edge
+(T5,T9,T2,T5,T8,T2,T4,T4)->(T4,T5,T9,T2,T5,T8,T2)
+B0(P0:T5,P1:T9,P2:T2,P3:T5,P4:T8,P5:T2,P6:T4,P7:T4)
+N0 call.direct entity=@u P0 P1 P2 P3 P4 P5 -> T4,T5,T9,T2,T5,T8,T2
+N1 call.direct entity=@u N0.R1 N0.R2 N0.R3 N0.R4 N0.R5 N0.R6 -> T4,T5,T9,T2,T5,T8,T2
+N2 call.direct entity=@evals N1.R1 N1.R2 N1.R3 N1.R4 N1.R5 N1.R6 P6 N1 -> T5,T9,T2,T5,T8,T2
+N3 constant 0 -> T4
+N4 int.compare P7 N3 -> T12 [1]
+cbr N4 B2(N2,N2.R1,N2.R2,N2.R3,N2.R4,N2.R5) B1(N2,N2.R1,N2.R2,N2.R3,N2.R4,N2.R5)
+B1(P8:T5,P9:T9,P10:T2,P11:T5,P12:T8,P13:T2)
+N5 constant 56 -> T4
+N6 add.wrap P6 N5 -> T4
+N7 call.direct entity=@wl P11 P12 P13 N6 -> T4,T5,T8,T2
+N8 constant 40 -> T4
+N9 mul.wrap N0 N8 -> T4
+N10 add.wrap N7 N9 -> T4
+N11 call.direct entity=@wl N7.R1 N7.R2 N7.R3 N10 -> T4,T5,T8,T2
+N12 call.direct entity=@tstore N11.R1 N11.R2 N11.R3 N11 N1 -> T5,T8,T2
+br B2(P8,P9,P10,N12,N12.R1,N12.R2)
+B2(P14:T5,P15:T9,P16:T2,P17:T5,P18:T8,P19:T2)
+ret N0 P14 P15 P16 P17 P18 P19
+T0 form3 ea03b918f20d0a81a33884ee817f029b0acdbece68ae2d7bd3eeb935ccf3485b
+T1 form3 c0bccc4581f6497319c020d4f090f292851eaca295e91a3814668574aa3ec567
+T2 form3 2b2704e5644b2a600cc1c05f91f133f54c03637cddb3aaf658a635fff068bd0a
+T3 bits32
+T4 bits64
+T5 form2 ed7f465bd391df681fba3366051d89f1cf6dbd0fa4983971d7bb14a55f889d29
+T6 form4 933b152d7a3ae1cbd182fd6ece7825ad5a2536c7395b404382763b99acb94833
+T7 form4 3f5c8e3779860667ed838f1c7bb30d71b46ddd4f748ba76b5572e95efbed172c
+T8 form4 fa9bd62ea14b1905accb9b5eba8bf112696d2e9948af7ca7d28521b5b6eaaee4
+T9 form4 4776812445978ecc4336796680f50d1e24bc77be09ec5fdaca1098edd630d6f7
+T10 form2 f615ad96e3f3b84a7bfab041dde4598988ff2ff45d2c382c57a507016ef60f6b
+T11 bits8
+T12 bits1
+end
+define @op1
+(T5,T9,T2,T5,T8,T2,T4,T4)->(T4,T5,T9,T2,T5,T8,T2)
+B0(P0:T5,P1:T9,P2:T2,P3:T5,P4:T8,P5:T2,P6:T4,P7:T4)
+N0 constant 64 -> T4
+N1 add.wrap P6 N0 -> T4
+N2 call.direct entity=@wl P3 P4 P5 N1 -> T4,T5,T8,T2
+N3 constant 24 -> T4
+N4 mul.wrap P7 N3 -> T4
+N5 add.wrap N2 N4 -> T4
+N6 call.direct entity=@wl N2.R1 N2.R2 N2.R3 N5 -> T4,T5,T8,T2
+N7 constant 8 -> T4
+N8 add.wrap N5 N7 -> T4
+N9 call.direct entity=@wl N6.R1 N6.R2 N6.R3 N8 -> T4,T5,T8,T2
+N10 constant 16 -> T4
+N11 add.wrap N5 N10 -> T4
+N12 call.direct entity=@wl N9.R1 N9.R2 N9.R3 N11 -> T4,T5,T8,T2
+N13 add.wrap N9 N7 -> T4
+N14 call.direct entity=@wl N12.R1 N12.R2 N12.R3 N13 -> T4,T5,T8,T2
+N15 constant 7 -> T4
+N16 call.direct entity=@cs N14.R1 N14.R2 N14.R3 N15 N6 -> T5,T8,T2
+N17 call.direct entity=@u P0 P1 P2 N16 N16.R1 N16.R2 -> T4,T5,T9,T2,T5,T8,T2
+N18 constant 0 -> T4
+N19 constant 1 -> T4
+N20 constant 6 -> T4
+N21 int.compare N12 N20 -> T12 [1]
+cbr N21 B1(N17.R1,N17.R2,N17.R3,N17.R4,N17.R5,N17.R6) B2(N17.R1,N17.R2,N17.R3,N17.R4,N17.R5,N17.R6)
+B1(P8:T5,P9:T9,P10:T2,P11:T5,P12:T8,P13:T2)
+N22 call.direct entity=@u P8 P9 P10 P11 P12 P13 -> T4,T5,T9,T2,T5,T8,T2
+N23 constant 48 -> T4
+N24 add.wrap P6 N23 -> T4
+N25 call.direct entity=@wl N22.R4 N22.R5 N22.R6 N24 -> T4,T5,T8,T2
+N26 constant 32 -> T4
+N27 mul.wrap N22 N26 -> T4
+N28 add.wrap N25 N27 -> T4
+N29 call.direct entity=@cval N22.R1 N22.R2 N22.R3 N25.R1 N25.R2 N25.R3 N28 -> T4,T5,T9,T2,T5,T8,T2
+N30 bit.and N29 N14 -> T4
+N31 call.direct entity=@ws N29.R4 N29.R5 N29.R6 N9 N30 -> T5,T8,T2
+br B5(N29.R1,N29.R2,N29.R3,N31,N31.R1,N31.R2,N18)
+B2(P14:T5,P15:T9,P16:T2,P17:T5,P18:T8,P19:T2)
+N32 call.direct entity=@u P14 P15 P16 P17 P18 P19 -> T4,T5,T9,T2,T5,T8,T2
+N33 call.direct entity=@vslot N32.R1 N32.R2 N32.R3 N32.R4 N32.R5 N32.R6 P6 -> T4,T5,T9,T2,T5,T8,T2
+N34 call.direct entity=@wl N33.R4 N33.R5 N33.R6 N33 -> T4,T5,T8,T2
+N35 add.wrap N33 N7 -> T4
+N36 call.direct entity=@wl N34.R1 N34.R2 N34.R3 N35 -> T4,T5,T8,T2
+N37 constant 2 -> T4
+N38 int.compare N32 N37 -> T12 [6]
+cbr N38 B3(N33.R1,N33.R2,N33.R3,N36.R1,N36.R2,N36.R3) B4(N33.R1,N33.R2,N33.R3,N36.R1,N36.R2,N36.R3,N18)
+B3(P20:T5,P21:T9,P22:T2,P23:T5,P24:T8,P25:T2)
+N39 call.direct entity=@vslot P20 P21 P22 P23 P24 P25 P6 -> T4,T5,T9,T2,T5,T8,T2
+N40 call.direct entity=@wl N39.R4 N39.R5 N39.R6 N39 -> T4,T5,T8,T2
+br B4(N39.R1,N39.R2,N39.R3,N40.R1,N40.R2,N40.R3,N40)
+B4(P26:T5,P27:T9,P28:T2,P29:T5,P30:T8,P31:T2,P32:T4)
+N41 call.direct entity=@u P26 P27 P28 P29 P30 P31 -> T4,T5,T9,T2,T5,T8,T2
+N42 call.direct entity=@u N41.R1 N41.R2 N41.R3 N41.R4 N41.R5 N41.R6 -> T4,T5,T9,T2,T5,T8,T2
+N43 constant 57 -> T4
+N44 int.compare N12 N43 -> T12 [1]
+N45 constant 63 -> T4
+N46 int.compare N12 N45 -> T12 [1]
+N47 bit.or N44 N46 -> T12
+cbr N47 B6(N42.R1,N42.R2,N42.R3,N42.R4,N42.R5,N42.R6) B7(N42.R1,N42.R2,N42.R3,N42.R4,N42.R5,N42.R6,N18)
+B5(P33:T5,P34:T9,P35:T2,P36:T5,P37:T8,P38:T2,P39:T4)
+ret P39 P33 P34 P35 P36 P37 P38
+B6(P40:T5,P41:T9,P42:T2,P43:T5,P44:T8,P45:T2)
+N48 call.direct entity=@u P40 P41 P42 P43 P44 P45 -> T4,T5,T9,T2,T5,T8,T2
+N49 call.direct entity=@u N48.R1 N48.R2 N48.R3 N48.R4 N48.R5 N48.R6 -> T4,T5,T9,T2,T5,T8,T2
+br B7(N49.R1,N49.R2,N49.R3,N49.R4,N49.R5,N49.R6,N49)
+B7(P46:T5,P47:T9,P48:T2,P49:T5,P50:T8,P51:T2,P52:T4)
+N50 constant 0 -> T4
+N51 constant 1 -> T4
+N52 add.wrap N34 P32 -> T4
+N53 sub.wrap N34 P32 -> T4
+N54 mul.wrap N34 P32 -> T4
+N55 bit.xor N34 P32 -> T4
+N56 bit.and N34 P32 -> T4
+N57 bit.or N34 P32 -> T4
+N58 int.compare P32 N50 -> T12 [1]
+N59 int.zero.extend N58 -> T4
+N60 add.wrap P32 N59 -> T4
+N61 udiv N34 N60 -> T4
+N62 urem N34 N60 -> T4
+N63 constant 2 -> T4
+N64 udiv N36 N63 -> T4
+N65 sub.wrap N36 N64 -> T4
+N66 bit.xor N34 N65 -> T4
+N67 bit.xor P32 N65 -> T4
+N68 int.compare N34 P32 -> T12 [1]
+N69 int.zero.extend N68 -> T4
+N70 constant 1 -> T4
+N71 int.compare P52 N70 -> T12 [1]
+N72 int.zero.extend N71 -> T4
+N73 mul.wrap N69 N72 -> T4
+N74 int.compare N34 P32 -> T12 [2]
+N75 int.zero.extend N74 -> T4
+N76 constant 2 -> T4
+N77 int.compare P52 N76 -> T12 [1]
+N78 int.zero.extend N77 -> T4
+N79 mul.wrap N75 N78 -> T4
+N80 bit.or N73 N79 -> T4
+N81 int.compare N34 P32 -> T12 [3]
+N82 int.zero.extend N81 -> T4
+N83 constant 3 -> T4
+N84 int.compare P52 N83 -> T12 [1]
+N85 int.zero.extend N84 -> T4
+N86 mul.wrap N82 N85 -> T4
+N87 bit.or N80 N86 -> T4
+N88 int.compare N34 P32 -> T12 [4]
+N89 int.zero.extend N88 -> T4
+N90 constant 4 -> T4
+N91 int.compare P52 N90 -> T12 [1]
+N92 int.zero.extend N91 -> T4
+N93 mul.wrap N89 N92 -> T4
+N94 bit.or N87 N93 -> T4
+N95 int.compare N34 P32 -> T12 [5]
+N96 int.zero.extend N95 -> T4
+N97 constant 5 -> T4
+N98 int.compare P52 N97 -> T12 [1]
+N99 int.zero.extend N98 -> T4
+N100 mul.wrap N96 N99 -> T4
+N101 bit.or N94 N100 -> T4
+N102 int.compare N34 P32 -> T12 [6]
+N103 int.zero.extend N102 -> T4
+N104 constant 6 -> T4
+N105 int.compare P52 N104 -> T12 [1]
+N106 int.zero.extend N105 -> T4
+N107 mul.wrap N103 N106 -> T4
+N108 bit.or N101 N107 -> T4
+N109 int.compare N66 N67 -> T12 [3]
+N110 int.zero.extend N109 -> T4
+N111 constant 7 -> T4
+N112 int.compare P52 N111 -> T12 [1]
+N113 int.zero.extend N112 -> T4
+N114 mul.wrap N110 N113 -> T4
+N115 bit.or N108 N114 -> T4
+N116 int.compare N66 N67 -> T12 [4]
+N117 int.zero.extend N116 -> T4
+N118 constant 8 -> T4
+N119 int.compare P52 N118 -> T12 [1]
+N120 int.zero.extend N119 -> T4
+N121 mul.wrap N117 N120 -> T4
+N122 bit.or N115 N121 -> T4
+N123 int.compare N66 N67 -> T12 [5]
+N124 int.zero.extend N123 -> T4
+N125 constant 9 -> T4
+N126 int.compare P52 N125 -> T12 [1]
+N127 int.zero.extend N126 -> T4
+N128 mul.wrap N124 N127 -> T4
+N129 bit.or N122 N128 -> T4
+N130 int.compare N66 N67 -> T12 [6]
+N131 int.zero.extend N130 -> T4
+N132 constant 10 -> T4
+N133 int.compare P52 N132 -> T12 [1]
+N134 int.zero.extend N133 -> T4
+N135 mul.wrap N131 N134 -> T4
+N136 bit.or N129 N135 -> T4
+N137 udiv N14 N63 -> T4
+N138 sub.wrap N14 N137 -> T4
+N139 int.compare P52 N50 -> T12 [1]
+N140 int.zero.extend N139 -> T4
+N141 sub.wrap P52 N51 -> T4
+N142 add.wrap N141 N140 -> T4
+N143 add.wrap P52 N140 -> T4
+N144 call.direct entity=@pow2 N143 -> T4
+N145 call.direct entity=@pow2 N142 -> T4
+N146 udiv N34 N144 -> T4
+N147 udiv N138 N145 -> T4
+N148 mul.wrap N34 N147 -> T4
+N149 bit.and N148 N14 -> T4
+N150 bit.or N146 N149 -> T4
+N151 sub.wrap N51 N140 -> T4
+N152 mul.wrap N150 N151 -> T4
+N153 mul.wrap N34 N140 -> T4
+N154 add.wrap N152 N153 -> T4
+N155 constant 1 -> T4
+N156 int.compare N12 N155 -> T12 [1]
+N157 int.zero.extend N156 -> T4
+N158 mul.wrap N52 N157 -> T4
+N159 constant 2 -> T4
+N160 int.compare N12 N159 -> T12 [1]
+N161 int.zero.extend N160 -> T4
+N162 mul.wrap N53 N161 -> T4
+N163 add.wrap N158 N162 -> T4
+N164 constant 3 -> T4
+N165 int.compare N12 N164 -> T12 [1]
+N166 int.zero.extend N165 -> T4
+N167 mul.wrap N54 N166 -> T4
+N168 add.wrap N163 N167 -> T4
+N169 constant 62 -> T4
+N170 int.compare N12 N169 -> T12 [1]
+N171 int.zero.extend N170 -> T4
+N172 mul.wrap N55 N171 -> T4
+N173 add.wrap N168 N172 -> T4
+N174 constant 67 -> T4
+N175 int.compare N12 N174 -> T12 [1]
+N176 int.zero.extend N175 -> T4
+N177 mul.wrap N56 N176 -> T4
+N178 add.wrap N173 N177 -> T4
+N179 constant 68 -> T4
+N180 int.compare N12 N179 -> T12 [1]
+N181 int.zero.extend N180 -> T4
+N182 mul.wrap N57 N181 -> T4
+N183 add.wrap N178 N182 -> T4
+N184 constant 69 -> T4
+N185 int.compare N12 N184 -> T12 [1]
+N186 int.zero.extend N185 -> T4
+N187 mul.wrap N61 N186 -> T4
+N188 add.wrap N183 N187 -> T4
+N189 constant 70 -> T4
+N190 int.compare N12 N189 -> T12 [1]
+N191 int.zero.extend N190 -> T4
+N192 mul.wrap N62 N191 -> T4
+N193 add.wrap N188 N192 -> T4
+N194 constant 71 -> T4
+N195 int.compare N12 N194 -> T12 [1]
+N196 int.zero.extend N195 -> T4
+N197 mul.wrap N34 N196 -> T4
+N198 add.wrap N193 N197 -> T4
+N199 constant 72 -> T4
+N200 int.compare N12 N199 -> T12 [1]
+N201 int.zero.extend N200 -> T4
+N202 mul.wrap N34 N201 -> T4
+N203 add.wrap N198 N202 -> T4
+N204 constant 57 -> T4
+N205 int.compare N12 N204 -> T12 [1]
+N206 int.zero.extend N205 -> T4
+N207 mul.wrap N136 N206 -> T4
+N208 add.wrap N203 N207 -> T4
+N209 constant 63 -> T4
+N210 int.compare N12 N209 -> T12 [1]
+N211 int.zero.extend N210 -> T4
+N212 mul.wrap N154 N211 -> T4
+N213 add.wrap N208 N212 -> T4
+N214 bit.and N213 N14 -> T4
+N215 constant 69 -> T4
+N216 int.compare N12 N215 -> T12 [1]
+N217 int.zero.extend N216 -> T4
+N218 constant 70 -> T4
+N219 int.compare N12 N218 -> T12 [1]
+N220 int.zero.extend N219 -> T4
+N221 bit.or N217 N220 -> T4
+N222 bit.and N221 N59 -> T4
+N223 call.direct entity=@ws P49 P50 P51 N9 N214 -> T5,T8,T2
+br B5(P46,P47,P48,N223,N223.R1,N223.R2,N222)
+T0 form3 ea03b918f20d0a81a33884ee817f029b0acdbece68ae2d7bd3eeb935ccf3485b
+T1 form3 c0bccc4581f6497319c020d4f090f292851eaca295e91a3814668574aa3ec567
+T2 form3 2b2704e5644b2a600cc1c05f91f133f54c03637cddb3aaf658a635fff068bd0a
+T3 bits32
+T4 bits64
+T5 form2 ed7f465bd391df681fba3366051d89f1cf6dbd0fa4983971d7bb14a55f889d29
+T6 form4 933b152d7a3ae1cbd182fd6ece7825ad5a2536c7395b404382763b99acb94833
+T7 form4 3f5c8e3779860667ed838f1c7bb30d71b46ddd4f748ba76b5572e95efbed172c
+T8 form4 fa9bd62ea14b1905accb9b5eba8bf112696d2e9948af7ca7d28521b5b6eaaee4
+T9 form4 4776812445978ecc4336796680f50d1e24bc77be09ec5fdaca1098edd630d6f7
+T10 form2 f615ad96e3f3b84a7bfab041dde4598988ff2ff45d2c382c57a507016ef60f6b
+T11 bits8
+T12 bits1
+end
+define @callin
+(T5,T9,T2,T5,T8,T2,T4,T4)->(T4,T5,T9,T2,T5,T8,T2)
+B0(P0:T5,P1:T9,P2:T2,P3:T5,P4:T8,P5:T2,P6:T4,P7:T4)
+N0 constant 64 -> T4
+N1 add.wrap P6 N0 -> T4
+N2 call.direct entity=@wl P3 P4 P5 N1 -> T4,T5,T8,T2
+N3 constant 24 -> T4
+N4 mul.wrap P7 N3 -> T4
+N5 add.wrap N2 N4 -> T4
+N6 call.direct entity=@wl N2.R1 N2.R2 N2.R3 N5 -> T4,T5,T8,T2
+N7 constant 8 -> T4
+N8 add.wrap N5 N7 -> T4
+N9 call.direct entity=@wl N6.R1 N6.R2 N6.R3 N8 -> T4,T5,T8,T2
+N10 constant 7 -> T4
+N11 call.direct entity=@cs N9.R1 N9.R2 N9.R3 N10 N6 -> T5,T8,T2
+N12 call.direct entity=@u P0 P1 P2 N11 N11.R1 N11.R2 -> T4,T5,T9,T2,T5,T8,T2
+N13 call.direct entity=@u N12.R1 N12.R2 N12.R3 N12.R4 N12.R5 N12.R6 -> T4,T5,T9,T2,T5,T8,T2
+N14 constant 48 -> T4
+N15 add.wrap P6 N14 -> T4
+N16 call.direct entity=@wl N13.R4 N13.R5 N13.R6 N15 -> T4,T5,T8,T2
+N17 constant 32 -> T4
+N18 mul.wrap N13 N17 -> T4
+N19 add.wrap N16 N18 -> T4
+N20 call.direct entity=@u N13.R1 N13.R2 N13.R3 N16.R1 N16.R2 N16.R3 -> T4,T5,T9,T2,T5,T8,T2
+N21 call.direct entity=@evals N20.R1 N20.R2 N20.R3 N20.R4 N20.R5 N20.R6 P6 N20 -> T5,T9,T2,T5,T8,T2
+N22 call.direct entity=@enter N21 N21.R1 N21.R2 N21.R3 N21.R4 N21.R5 N19 -> T4,T5,T9,T2,T5,T8,T2
+N23 constant 0 -> T4
+N24 int.compare N22 N23 -> T12 [1]
+cbr N24 B2(N22.R1,N22.R2,N22.R3,N22.R4,N22.R5,N22.R6) B1(N22.R1,N22.R2,N22.R3,N22.R4,N22.R5,N22.R6)
+B1(P8:T5,P9:T9,P10:T2,P11:T5,P12:T8,P13:T2)
+N25 constant 16 -> T4
+N26 add.wrap N22 N25 -> T4
+N27 call.direct entity=@wl P11 P12 P13 N26 -> T4,T5,T8,T2
+N28 constant 56 -> T4
+N29 add.wrap N22 N28 -> T4
+N30 call.direct entity=@wl N27.R1 N27.R2 N27.R3 N29 -> T4,T5,T8,T2
+N31 constant 40 -> T4
+N32 mul.wrap N27 N31 -> T4
+N33 add.wrap N30 N32 -> T4
+N34 call.direct entity=@wl N30.R1 N30.R2 N30.R3 N33 -> T4,T5,T8,T2
+N35 call.direct entity=@tstore N34.R1 N34.R2 N34.R3 N34 N20 -> T5,T8,T2
+N36 add.wrap N22 N3 -> T4
+N37 call.direct entity=@ws N35 N35.R1 N35.R2 N36 P6 -> T5,T8,T2
+N38 add.wrap N22 N17 -> T4
+N39 call.direct entity=@ws N37 N37.R1 N37.R2 N38 N9 -> T5,T8,T2
+N40 constant 1 -> T4
+N41 add.wrap P7 N40 -> T4
+N42 add.wrap N22 N31 -> T4
+N43 call.direct entity=@ws N39 N39.R1 N39.R2 N42 N41 -> T5,T8,T2
+br B2(P8,P9,P10,N43,N43.R1,N43.R2)
+B2(P14:T5,P15:T9,P16:T2,P17:T5,P18:T8,P19:T2)
+ret N22 P14 P15 P16 P17 P18 P19
+T0 form3 ea03b918f20d0a81a33884ee817f029b0acdbece68ae2d7bd3eeb935ccf3485b
+T1 form3 c0bccc4581f6497319c020d4f090f292851eaca295e91a3814668574aa3ec567
+T2 form3 2b2704e5644b2a600cc1c05f91f133f54c03637cddb3aaf658a635fff068bd0a
+T3 bits32
+T4 bits64
+T5 form2 ed7f465bd391df681fba3366051d89f1cf6dbd0fa4983971d7bb14a55f889d29
+T6 form4 933b152d7a3ae1cbd182fd6ece7825ad5a2536c7395b404382763b99acb94833
+T7 form4 3f5c8e3779860667ed838f1c7bb30d71b46ddd4f748ba76b5572e95efbed172c
+T8 form4 fa9bd62ea14b1905accb9b5eba8bf112696d2e9948af7ca7d28521b5b6eaaee4
+T9 form4 4776812445978ecc4336796680f50d1e24bc77be09ec5fdaca1098edd630d6f7
+T10 form2 f615ad96e3f3b84a7bfab041dde4598988ff2ff45d2c382c57a507016ef60f6b
+T11 bits8
+T12 bits1
+end
+define @prints
+(T5,T8,T2,T4)->(T5,T8,T2)
+B0(P0:T5,P1:T8,P2:T2,P3:T4)
+N0 constant 0 -> T4
+br B1(P0,P1,P2,N0)
+B1(P4:T5,P5:T8,P6:T2,P7:T4)
+N1 int.compare P7 P3 -> T12 [6]
+cbr N1 B3(P4,P5,P6) B2(P4,P5,P6)
+B2(P8:T5,P9:T8,P10:T2)
+N2 constant 8 -> T4
+N3 mul.wrap P7 N2 -> T4
+N4 constant 1040640 -> T4
+N5 add.wrap N3 N4 -> T4
+N6 call.direct entity=@wl P8 P9 P10 N5 -> T4,T5,T8,T2
+N7 call.direct entity=@wdec N6.R1 N6.R2 N6.R3 N6 -> T5,T8,T2
+N8 constant 10 -> T4
+N9 call.direct entity=@wput N7 N7.R1 N7.R2 N8 -> T5,T8,T2
+N10 constant 1 -> T4
+N11 add.wrap P7 N10 -> T4
+br B1(N9,N9.R1,N9.R2,N11)
+B3(P11:T5,P12:T8,P13:T2)
+ret P11 P12 P13
+T0 form3 ea03b918f20d0a81a33884ee817f029b0acdbece68ae2d7bd3eeb935ccf3485b
+T1 form3 c0bccc4581f6497319c020d4f090f292851eaca295e91a3814668574aa3ec567
+T2 form3 2b2704e5644b2a600cc1c05f91f133f54c03637cddb3aaf658a635fff068bd0a
+T3 bits32
+T4 bits64
+T5 form2 ed7f465bd391df681fba3366051d89f1cf6dbd0fa4983971d7bb14a55f889d29
+T6 form4 933b152d7a3ae1cbd182fd6ece7825ad5a2536c7395b404382763b99acb94833
+T7 form4 3f5c8e3779860667ed838f1c7bb30d71b46ddd4f748ba76b5572e95efbed172c
+T8 form4 fa9bd62ea14b1905accb9b5eba8bf112696d2e9948af7ca7d28521b5b6eaaee4
+T9 form4 4776812445978ecc4336796680f50d1e24bc77be09ec5fdaca1098edd630d6f7
+T10 form2 f615ad96e3f3b84a7bfab041dde4598988ff2ff45d2c382c57a507016ef60f6b
+T11 bits8
+T12 bits1
+end
+define @exec
+(T5,T9,T2,T5,T8,T2,T4)->(T4,T5,T9,T2,T5,T8,T2)
+B0(P0:T5,P1:T9,P2:T2,P3:T5,P4:T8,P5:T2,P6:T4)
+N0 constant 0 -> T4
+N1 constant 1 -> T4
+N2 constant 2 -> T4
+N3 constant 3 -> T4
+N4 constant 4 -> T4
+N5 constant 5 -> T4
+N6 constant 7 -> T4
+N7 constant 8 -> T4
+N8 constant 16 -> T4
+N9 constant 24 -> T4
+N10 constant 32 -> T4
+N11 constant 40 -> T4
+N12 constant 56 -> T4
+N13 constant 64 -> T4
+N14 constant 80 -> T4
+N15 add.wrap P6 N8 -> T4
+N16 call.direct entity=@wl P3 P4 P5 N15 -> T4,T5,T8,T2
+br B1(P0,P1,P2,N16.R1,N16.R2,N16.R3,P6,N16)
+B1(P7:T5,P8:T9,P9:T2,P10:T5,P11:T8,P12:T2,P13:T4,P14:T4)
+N17 call.direct entity=@cg P10 P11 P12 N3 -> T4,T5,T8,T2
+N18 int.compare N17 N0 -> T12 [1]
+N19 sub.wrap N17 N1 -> T4
+N20 call.direct entity=@cs N17.R1 N17.R2 N17.R3 N3 N19 -> T5,T8,T2
+N21 add.wrap P13 N12 -> T4
+N22 call.direct entity=@wl N20 N20.R1 N20.R2 N21 -> T4,T5,T8,T2
+N23 mul.wrap P14 N11 -> T4
+N24 add.wrap N22 N23 -> T4
+N25 add.wrap N24 N7 -> T4
+N26 call.direct entity=@wl N22.R1 N22.R2 N22.R3 N25 -> T4,T5,T8,T2
+N27 add.wrap N24 N8 -> T4
+N28 call.direct entity=@wl N26.R1 N26.R2 N26.R3 N27 -> T4,T5,T8,T2
+N29 add.wrap N26 N28 -> T4
+cbr N18 B19(P7,P8,P9,N28.R1,N28.R2,N28.R3) B2(P7,P8,P9,N28.R1,N28.R2,N28.R3,P13,P14,N26,N29)
+B2(P15:T5,P16:T9,P17:T2,P18:T5,P19:T8,P20:T2,P21:T4,P22:T4,P23:T4,P24:T4)
+N30 int.compare P23 P24 -> T12 [6]
+cbr N30 B7(P15,P16,P17,P18,P19,P20,P21,P22) B3(P15,P16,P17,P18,P19,P20,P21,P22,P23,P24)
+B3(P25:T5,P26:T9,P27:T2,P28:T5,P29:T8,P30:T2,P31:T4,P32:T4,P33:T4,P34:T4)
+N31 call.direct entity=@cg P28 P29 P30 N3 -> T4,T5,T8,T2
+N32 int.compare N31 N0 -> T12 [1]
+N33 sub.wrap N31 N1 -> T4
+N34 call.direct entity=@cs N31.R1 N31.R2 N31.R3 N3 N33 -> T5,T8,T2
+cbr N32 B19(P25,P26,P27,N34,N34.R1,N34.R2) B4(P25,P26,P27,N34,N34.R1,N34.R2,P31,P32,P33,P34)
+B4(P35:T5,P36:T9,P37:T2,P38:T5,P39:T8,P40:T2,P41:T4,P42:T4,P43:T4,P44:T4)
+N35 add.wrap P41 N13 -> T4
+N36 call.direct entity=@wl P38 P39 P40 N35 -> T4,T5,T8,T2
+N37 mul.wrap P43 N9 -> T4
+N38 add.wrap N36 N37 -> T4
+N39 add.wrap N38 N8 -> T4
+N40 call.direct entity=@wl N36.R1 N36.R2 N36.R3 N39 -> T4,T5,T8,T2
+N41 int.compare N40 N5 -> T12 [1]
+cbr N41 B5(P35,P36,P37,N40.R1,N40.R2,N40.R3,P41,P42,P43) B6(P35,P36,P37,N40.R1,N40.R2,N40.R3,P41,P42,P43,P44)
+B5(P45:T5,P46:T9,P47:T2,P48:T5,P49:T8,P50:T2,P51:T4,P52:T4,P53:T4)
+N42 add.wrap P51 N14 -> T4
+N43 call.direct entity=@ws P48 P49 P50 N42 P52 -> T5,T8,T2
+N44 call.direct entity=@callin P45 P46 P47 N43 N43.R1 N43.R2 P51 P53 -> T4,T5,T9,T2,T5,T8,T2
+N45 int.compare N44 N0 -> T12 [1]
+N46 call.direct entity=@cg N44.R4 N44.R5 N44.R6 N5 -> T4,T5,T8,T2
+N47 add.wrap N44 N8 -> T4
+N48 call.direct entity=@wl N46.R1 N46.R2 N46.R3 N47 -> T4,T5,T8,T2
+cbr N45 B20(N44.R1,N44.R2,N44.R3,N48.R1,N48.R2,N48.R3,N46) B1(N44.R1,N44.R2,N44.R3,N48.R1,N48.R2,N48.R3,N44,N48)
+B6(P54:T5,P55:T9,P56:T2,P57:T5,P58:T8,P59:T2,P60:T4,P61:T4,P62:T4,P63:T4)
+N49 call.direct entity=@op1 P54 P55 P56 P57 P58 P59 P60 P62 -> T4,T5,T9,T2,T5,T8,T2
+N50 int.compare N49 N0 -> T12 [2]
+N51 add.wrap P62 N1 -> T4
+cbr N50 B18(N49.R1,N49.R2,N49.R3,N49.R4,N49.R5,N49.R6) B2(N49.R1,N49.R2,N49.R3,N49.R4,N49.R5,N49.R6,P60,P61,N51,P63)
+B7(P64:T5,P65:T9,P66:T2,P67:T5,P68:T8,P69:T2,P70:T4,P71:T4)
+N52 add.wrap P70 N12 -> T4
+N53 call.direct entity=@wl P67 P68 P69 N52 -> T4,T5,T8,T2
+N54 mul.wrap P71 N11 -> T4
+N55 add.wrap N53 N54 -> T4
+N56 add.wrap N55 N9 -> T4
+N57 call.direct entity=@wl N53.R1 N53.R2 N53.R3 N56 -> T4,T5,T8,T2
+N58 call.direct entity=@cs N57.R1 N57.R2 N57.R3 N6 N57 -> T5,T8,T2
+N59 call.direct entity=@u P64 P65 P66 N58 N58.R1 N58.R2 -> T4,T5,T9,T2,T5,T8,T2
+N60 int.compare N59 N1 -> T12 [1]
+cbr N60 B8(N59.R1,N59.R2,N59.R3,N59.R4,N59.R5,N59.R6,P70) B9(N59.R1,N59.R2,N59.R3,N59.R4,N59.R5,N59.R6,P70)
+B8(P72:T5,P73:T9,P74:T2,P75:T5,P76:T8,P77:T2,P78:T4)
+N61 call.direct entity=@edge P72 P73 P74 P75 P76 P77 P78 N1 -> T4,T5,T9,T2,T5,T8,T2
+br B1(N61.R1,N61.R2,N61.R3,N61.R4,N61.R5,N61.R6,P78,N61)
+B9(P79:T5,P80:T9,P81:T2,P82:T5,P83:T8,P84:T2,P85:T4)
+N62 int.compare N59 N2 -> T12 [1]
+cbr N62 B10(P79,P80,P81,P82,P83,P84,P85) B13(P79,P80,P81,P82,P83,P84,P85)
+B10(P86:T5,P87:T9,P88:T2,P89:T5,P90:T8,P91:T2,P92:T4)
+N63 call.direct entity=@vslot P86 P87 P88 P89 P90 P91 P92 -> T4,T5,T9,T2,T5,T8,T2
+N64 call.direct entity=@wl N63.R4 N63.R5 N63.R6 N63 -> T4,T5,T8,T2
+N65 int.compare N64 N0 -> T12 [1]
+cbr N65 B11(N63.R1,N63.R2,N63.R3,N64.R1,N64.R2,N64.R3,P92) B12(N63.R1,N63.R2,N63.R3,N64.R1,N64.R2,N64.R3,P92)
+B11(P93:T5,P94:T9,P95:T2,P96:T5,P97:T8,P98:T2,P99:T4)
+N66 call.direct entity=@edge P93 P94 P95 P96 P97 P98 P99 N0 -> T4,T5,T9,T2,T5,T8,T2
+N67 call.direct entity=@edge N66.R1 N66.R2 N66.R3 N66.R4 N66.R5 N66.R6 P99 N1 -> T4,T5,T9,T2,T5,T8,T2
+br B1(N67.R1,N67.R2,N67.R3,N67.R4,N67.R5,N67.R6,P99,N67)
+B12(P100:T5,P101:T9,P102:T2,P103:T5,P104:T8,P105:T2,P106:T4)
+N68 call.direct entity=@edge P100 P101 P102 P103 P104 P105 P106 N1 -> T4,T5,T9,T2,T5,T8,T2
+br B1(N68.R1,N68.R2,N68.R3,N68.R4,N68.R5,N68.R6,P106,N68)
+B13(P107:T5,P108:T9,P109:T2,P110:T5,P111:T8,P112:T2,P113:T4)
+N69 int.compare N59 N3 -> T12 [1]
+cbr N69 B14(P107,P108,P109,P110,P111,P112,P113) B17(P107,P108,P109,P110,P111,P112)
+B14(P114:T5,P115:T9,P116:T2,P117:T5,P118:T8,P119:T2,P120:T4)
+N70 call.direct entity=@u P114 P115 P116 P117 P118 P119 -> T4,T5,T9,T2,T5,T8,T2
+N71 call.direct entity=@evals N70.R1 N70.R2 N70.R3 N70.R4 N70.R5 N70.R6 P120 N70 -> T5,T9,T2,T5,T8,T2
+N72 add.wrap P120 N9 -> T4
+N73 call.direct entity=@wl N71.R3 N71.R4 N71.R5 N72 -> T4,T5,T8,T2
+N74 int.compare N73 N0 -> T12 [1]
+cbr N74 B15(N71,N71.R1,N71.R2,N73.R1,N73.R2,N73.R3,N70) B16(N71,N71.R1,N71.R2,N73.R1,N73.R2,N73.R3,P120,N70)
+B15(P121:T5,P122:T9,P123:T2,P124:T5,P125:T8,P126:T2,P127:T4)
+N75 call.direct entity=@prints P124 P125 P126 P127 -> T5,T8,T2
+br B20(P121,P122,P123,N75,N75.R1,N75.R2,N0)
+B16(P128:T5,P129:T9,P130:T2,P131:T5,P132:T8,P133:T2,P134:T4,P135:T4)
+N76 add.wrap P134 N10 -> T4
+N77 call.direct entity=@wl P131 P132 P133 N76 -> T4,T5,T8,T2
+N78 call.direct entity=@tstore N77.R1 N77.R2 N77.R3 N77 P135 -> T5,T8,T2
+N79 add.wrap P134 N11 -> T4
+N80 call.direct entity=@wl N78 N78.R1 N78.R2 N79 -> T4,T5,T8,T2
+N81 add.wrap P134 N9 -> T4
+N82 call.direct entity=@wl N80.R1 N80.R2 N80.R3 N81 -> T4,T5,T8,T2
+N83 call.direct entity=@cs N82.R1 N82.R2 N82.R3 N2 P134 -> T5,T8,T2
+N84 add.wrap N82 N14 -> T4
+N85 call.direct entity=@wl N83 N83.R1 N83.R2 N84 -> T4,T5,T8,T2
+N86 add.wrap N82 N12 -> T4
+N87 call.direct entity=@wl N85.R1 N85.R2 N85.R3 N86 -> T4,T5,T8,T2
+N88 mul.wrap N85 N11 -> T4
+N89 add.wrap N87 N88 -> T4
+N90 add.wrap N89 N7 -> T4
+N91 call.direct entity=@wl N87.R1 N87.R2 N87.R3 N90 -> T4,T5,T8,T2
+N92 add.wrap N89 N8 -> T4
+N93 call.direct entity=@wl N91.R1 N91.R2 N91.R3 N92 -> T4,T5,T8,T2
+N94 add.wrap N91 N93 -> T4
+br B2(P128,P129,P130,N93.R1,N93.R2,N93.R3,N82,N85,N80,N94)
+B17(P136:T5,P137:T9,P138:T2,P139:T5,P140:T8,P141:T2)
+N95 call.direct entity=@u P136 P137 P138 P139 P140 P141 -> T4,T5,T9,T2,T5,T8,T2
+N96 call.direct entity=@cg N95.R4 N95.R5 N95.R6 N6 -> T4,T5,T8,T2
+N97 constant 14 -> T4
+N98 call.direct entity=@cs N96.R1 N96.R2 N96.R3 N97 N96 -> T5,T8,T2
+N99 constant 15 -> T4
+N100 call.direct entity=@cs N98 N98.R1 N98.R2 N99 N95 -> T5,T8,T2
+N101 constant 19 -> T4
+N102 call.direct entity=@cs N100 N100.R1 N100.R2 N101 N1 -> T5,T8,T2
+br B20(N95.R1,N95.R2,N95.R3,N102,N102.R1,N102.R2,N1)
+B18(P142:T5,P143:T9,P144:T2,P145:T5,P146:T8,P147:T2)
+N103 constant 19 -> T4
+N104 call.direct entity=@cs P145 P146 P147 N103 N2 -> T5,T8,T2
+br B20(P142,P143,P144,N104,N104.R1,N104.R2,N1)
+B19(P148:T5,P149:T9,P150:T2,P151:T5,P152:T8,P153:T2)
+N105 constant 20 -> T4
+N106 call.direct entity=@cs P151 P152 P153 N105 N1 -> T5,T8,T2
+br B20(P148,P149,P150,N106,N106.R1,N106.R2,N3)
+B20(P154:T5,P155:T9,P156:T2,P157:T5,P158:T8,P159:T2,P160:T4)
+N107 call.direct entity=@cs P157 P158 P159 N5 P160 -> T5,T8,T2
+ret P160 P154 P155 P156 N107 N107.R1 N107.R2
+T0 form3 ea03b918f20d0a81a33884ee817f029b0acdbece68ae2d7bd3eeb935ccf3485b
+T1 form3 c0bccc4581f6497319c020d4f090f292851eaca295e91a3814668574aa3ec567
+T2 form3 2b2704e5644b2a600cc1c05f91f133f54c03637cddb3aaf658a635fff068bd0a
+T3 bits32
+T4 bits64
+T5 form2 ed7f465bd391df681fba3366051d89f1cf6dbd0fa4983971d7bb14a55f889d29
+T6 form4 933b152d7a3ae1cbd182fd6ece7825ad5a2536c7395b404382763b99acb94833
+T7 form4 3f5c8e3779860667ed838f1c7bb30d71b46ddd4f748ba76b5572e95efbed172c
+T8 form4 fa9bd62ea14b1905accb9b5eba8bf112696d2e9948af7ca7d28521b5b6eaaee4
+T9 form4 4776812445978ecc4336796680f50d1e24bc77be09ec5fdaca1098edd630d6f7
+T10 form2 f615ad96e3f3b84a7bfab041dde4598988ff2ff45d2c382c57a507016ef60f6b
+T11 bits8
+T12 bits1
+end
+define @argn
+(T5,T8,T2,T4)->(T4,T5,T8,T2)
+B0(P0:T5,P1:T8,P2:T2,P3:T4)
+N0 constant 16 -> T4
+N1 add.wrap P3 N0 -> T4
+N2 call.direct entity=@wl P0 P1 P2 N1 -> T4,T5,T8,T2
+N3 constant 56 -> T4
+N4 add.wrap P3 N3 -> T4
+N5 call.direct entity=@wl N2.R1 N2.R2 N2.R3 N4 -> T4,T5,T8,T2
+N6 constant 40 -> T4
+N7 mul.wrap N2 N6 -> T4
+N8 add.wrap N5 N7 -> T4
+N9 constant 32 -> T4
+N10 add.wrap N8 N9 -> T4
+N11 call.direct entity=@wl N5.R1 N5.R2 N5.R3 N10 -> T4,T5,T8,T2
+ret N11 N11.R1 N11.R2 N11.R3
+T0 form3 ea03b918f20d0a81a33884ee817f029b0acdbece68ae2d7bd3eeb935ccf3485b
+T1 form3 c0bccc4581f6497319c020d4f090f292851eaca295e91a3814668574aa3ec567
+T2 form3 2b2704e5644b2a600cc1c05f91f133f54c03637cddb3aaf658a635fff068bd0a
+T3 bits32
+T4 bits64
+T5 form2 ed7f465bd391df681fba3366051d89f1cf6dbd0fa4983971d7bb14a55f889d29
+T6 form4 933b152d7a3ae1cbd182fd6ece7825ad5a2536c7395b404382763b99acb94833
+T7 form4 3f5c8e3779860667ed838f1c7bb30d71b46ddd4f748ba76b5572e95efbed172c
+T8 form4 fa9bd62ea14b1905accb9b5eba8bf112696d2e9948af7ca7d28521b5b6eaaee4
+T9 form4 4776812445978ecc4336796680f50d1e24bc77be09ec5fdaca1098edd630d6f7
+T10 form2 f615ad96e3f3b84a7bfab041dde4598988ff2ff45d2c382c57a507016ef60f6b
+T11 bits8
+T12 bits1
+end
+define @argset
+(T5,T7,T2,T5,T8,T2,T4,T4)->(T5,T7,T2,T5,T8,T2)
+B0(P0:T5,P1:T7,P2:T2,P3:T5,P4:T8,P5:T2,P6:T4,P7:T4)
+N0 constant 4294967296 -> T4
+N1 udiv P7 N0 -> T4
+N2 urem P7 N0 -> T4
+N3 call.direct entity=@sdec P0 P1 P2 N2 -> T4,T5,T7,T2
+N4 constant 16 -> T4
+N5 add.wrap P6 N4 -> T4
+N6 call.direct entity=@wl P3 P4 P5 N5 -> T4,T5,T8,T2
+N7 constant 56 -> T4
+N8 add.wrap P6 N7 -> T4
+N9 call.direct entity=@wl N6.R1 N6.R2 N6.R3 N8 -> T4,T5,T8,T2
+N10 constant 40 -> T4
+N11 mul.wrap N6 N10 -> T4
+N12 add.wrap N9 N11 -> T4
+N13 call.direct entity=@wl N9.R1 N9.R2 N9.R3 N12 -> T4,T5,T8,T2
+N14 mul.wrap N1 N4 -> T4
+N15 add.wrap N13 N14 -> T4
+N16 constant 8 -> T4
+N17 add.wrap N15 N16 -> T4
+N18 call.direct entity=@wl N13.R1 N13.R2 N13.R3 N17 -> T4,T5,T8,T2
+N19 bit.and N3 N18 -> T4
+N20 call.direct entity=@ws N18.R1 N18.R2 N18.R3 N15 N19 -> T5,T8,T2
+ret N3.R1 N3.R2 N3.R3 N20 N20.R1 N20.R2
+T0 form3 ea03b918f20d0a81a33884ee817f029b0acdbece68ae2d7bd3eeb935ccf3485b
+T1 form3 c0bccc4581f6497319c020d4f090f292851eaca295e91a3814668574aa3ec567
+T2 form3 2b2704e5644b2a600cc1c05f91f133f54c03637cddb3aaf658a635fff068bd0a
+T3 bits32
+T4 bits64
+T5 form2 ed7f465bd391df681fba3366051d89f1cf6dbd0fa4983971d7bb14a55f889d29
+T6 form4 933b152d7a3ae1cbd182fd6ece7825ad5a2536c7395b404382763b99acb94833
+T7 form4 3f5c8e3779860667ed838f1c7bb30d71b46ddd4f748ba76b5572e95efbed172c
+T8 form4 fa9bd62ea14b1905accb9b5eba8bf112696d2e9948af7ca7d28521b5b6eaaee4
+T9 form4 4776812445978ecc4336796680f50d1e24bc77be09ec5fdaca1098edd630d6f7
+T10 form2 f615ad96e3f3b84a7bfab041dde4598988ff2ff45d2c382c57a507016ef60f6b
+T11 bits8
+T12 bits1
+end
+define @whex
+(T5,T8,T2,T4)->(T5,T8,T2)
+B0(P0:T5,P1:T8,P2:T2,P3:T4)
+N0 constant 16 -> T4
+N1 udiv P3 N0 -> T4
+N2 urem P3 N0 -> T4
+N3 constant 9 -> T4
+N4 constant 48 -> T4
+N5 constant 39 -> T4
+N6 int.compare N1 N3 -> T12 [5]
+N7 int.zero.extend N6 -> T4
+N8 mul.wrap N7 N5 -> T4
+N9 add.wrap N1 N4 -> T4
+N10 add.wrap N9 N8 -> T4
+N11 call.direct entity=@wput P0 P1 P2 N10 -> T5,T8,T2
+N12 int.compare N2 N3 -> T12 [5]
+N13 int.zero.extend N12 -> T4
+N14 mul.wrap N13 N5 -> T4
+N15 add.wrap N2 N4 -> T4
+N16 add.wrap N15 N14 -> T4
+N17 call.direct entity=@wput N11 N11.R1 N11.R2 N16 -> T5,T8,T2
+ret N17 N17.R1 N17.R2
+T0 form3 ea03b918f20d0a81a33884ee817f029b0acdbece68ae2d7bd3eeb935ccf3485b
+T1 form3 c0bccc4581f6497319c020d4f090f292851eaca295e91a3814668574aa3ec567
+T2 form3 2b2704e5644b2a600cc1c05f91f133f54c03637cddb3aaf658a635fff068bd0a
+T3 bits32
+T4 bits64
+T5 form2 ed7f465bd391df681fba3366051d89f1cf6dbd0fa4983971d7bb14a55f889d29
+T6 form4 933b152d7a3ae1cbd182fd6ece7825ad5a2536c7395b404382763b99acb94833
+T7 form4 3f5c8e3779860667ed838f1c7bb30d71b46ddd4f748ba76b5572e95efbed172c
+T8 form4 fa9bd62ea14b1905accb9b5eba8bf112696d2e9948af7ca7d28521b5b6eaaee4
+T9 form4 4776812445978ecc4336796680f50d1e24bc77be09ec5fdaca1098edd630d6f7
+T10 form2 f615ad96e3f3b84a7bfab041dde4598988ff2ff45d2c382c57a507016ef60f6b
+T11 bits8
+T12 bits1
+end
+define @wtb
+(T5,T9,T2,T5,T8,T2,T4,T4)->(T5,T9,T2,T5,T8,T2)
+B0(P0:T5,P1:T9,P2:T2,P3:T5,P4:T8,P5:T2,P6:T4,P7:T4)
+N0 constant 0 -> T4
+br B1(P0,P1,P2,P3,P4,P5,N0)
+B1(P8:T5,P9:T9,P10:T2,P11:T5,P12:T8,P13:T2,P14:T4)
+N1 int.compare P14 P7 -> T12 [6]
+cbr N1 B3(P8,P9,P10,P11,P12,P13) B2(P8,P9,P10,P11,P12,P13)
+B2(P15:T5,P16:T9,P17:T2,P18:T5,P19:T8,P20:T2)
+N2 add.wrap P6 P14 -> T4
+N3 int.truncate N2 -> T3
+N4 checked.load.bits.le P15 N3 P17 -> T11,T2 [1,1]
+N5 int.zero.extend N4 -> T4
+N6 call.direct entity=@whex P18 P19 P20 N5 -> T5,T8,T2
+N7 constant 1 -> T4
+N8 add.wrap P14 N7 -> T4
+br B1(P15,P16,N4.R1,N6,N6.R1,N6.R2,N8)
+B3(P21:T5,P22:T9,P23:T2,P24:T5,P25:T8,P26:T2)
+ret P21 P22 P23 P24 P25 P26
+T0 form3 ea03b918f20d0a81a33884ee817f029b0acdbece68ae2d7bd3eeb935ccf3485b
+T1 form3 c0bccc4581f6497319c020d4f090f292851eaca295e91a3814668574aa3ec567
+T2 form3 2b2704e5644b2a600cc1c05f91f133f54c03637cddb3aaf658a635fff068bd0a
+T3 bits32
+T4 bits64
+T5 form2 ed7f465bd391df681fba3366051d89f1cf6dbd0fa4983971d7bb14a55f889d29
+T6 form4 933b152d7a3ae1cbd182fd6ece7825ad5a2536c7395b404382763b99acb94833
+T7 form4 3f5c8e3779860667ed838f1c7bb30d71b46ddd4f748ba76b5572e95efbed172c
+T8 form4 fa9bd62ea14b1905accb9b5eba8bf112696d2e9948af7ca7d28521b5b6eaaee4
+T9 form4 4776812445978ecc4336796680f50d1e24bc77be09ec5fdaca1098edd630d6f7
+T10 form2 f615ad96e3f3b84a7bfab041dde4598988ff2ff45d2c382c57a507016ef60f6b
+T11 bits8
+T12 bits1
+end
+define @wstatus
+(T5,T9,T2,T5,T8,T2,T4)->(T5,T9,T2,T5,T8,T2)
+B0(P0:T5,P1:T9,P2:T2,P3:T5,P4:T8,P5:T2,P6:T4)
+N0 constant 1 -> T4
+N1 int.compare P6 N0 -> T12 [1]
+cbr N1 B1(P0,P1,P2,P3,P4,P5) B4(P0,P1,P2,P3,P4,P5)
+B1(P7:T5,P8:T9,P9:T2,P10:T5,P11:T8,P12:T2)
+N2 constant 139324387956 -> T4
+N3 constant 5 -> T4
+N4 call.direct entity=@wstr P10 P11 P12 N2 N3 -> T5,T8,T2
+N5 constant 19 -> T4
+N6 call.direct entity=@cg N4 N4.R1 N4.R2 N5 -> T4,T5,T8,T2
+N7 constant 2 -> T4
+N8 int.compare N6 N7 -> T12 [1]
+cbr N8 B2(P7,P8,P9,N6.R1,N6.R2,N6.R3) B3(P7,P8,P9,N6.R1,N6.R2,N6.R3)
+B2(P13:T5,P14:T9,P15:T2,P16:T5,P17:T8,P18:T2)
+N9 call.direct entity=@whex P16 P17 P18 N7 -> T5,T8,T2
+br B7(P13,P14,P15,N9,N9.R1,N9.R2)
+B3(P19:T5,P20:T9,P21:T2,P22:T5,P23:T8,P24:T2)
+N10 constant 14 -> T4
+N11 call.direct entity=@cg P22 P23 P24 N10 -> T4,T5,T8,T2
+N12 constant 15 -> T4
+N13 call.direct entity=@cg N11.R1 N11.R2 N11.R3 N12 -> T4,T5,T8,T2
+N14 call.direct entity=@wtb P19 P20 P21 N13.R1 N13.R2 N13.R3 N11 N13 -> T5,T9,T2,T5,T8,T2
+br B7(N14,N14.R1,N14.R2,N14.R3,N14.R4,N14.R5)
+B4(P25:T5,P26:T9,P27:T2,P28:T5,P29:T8,P30:T2)
+N15 constant 2 -> T4
+N16 int.compare P6 N15 -> T12 [1]
+cbr N16 B5(P25,P26,P27,P28,P29,P30) B6(P25,P26,P27,P28,P29,P30)
+B5(P31:T5,P32:T9,P33:T2,P34:T5,P35:T8,P36:T2)
+N17 constant 2334393380930544996 -> T4
+N18 constant 8 -> T4
+N19 call.direct entity=@wstr P34 P35 P36 N17 N18 -> T5,T8,T2
+N20 constant 6 -> T4
+N21 call.direct entity=@cg N19 N19.R1 N19.R2 N20 -> T4,T5,T8,T2
+N22 call.direct entity=@wdec N21.R1 N21.R2 N21.R3 N21 -> T5,T8,T2
+br B7(P31,P32,P33,N22,N22.R1,N22.R2)
+B6(P37:T5,P38:T9,P39:T2,P40:T5,P41:T8,P42:T2)
+N23 constant 3 -> T4
+N24 int.compare P6 N23 -> T12 [1]
+N25 int.zero.extend N24 -> T4
+N26 constant 20 -> T4
+N27 call.direct entity=@cg P40 P41 P42 N26 -> T4,T5,T8,T2
+N28 bit.and N27 N25 -> T4
+N29 constant 44768261478 -> T4
+N30 constant 11486612320869 -> T4
+N31 sub.wrap N29 N30 -> T4
+N32 mul.wrap N28 N31 -> T4
+N33 add.wrap N30 N32 -> T4
+N34 constant 6 -> T4
+N35 sub.wrap N34 N28 -> T4
+N36 mul.wrap N25 N35 -> T4
+N37 call.direct entity=@wstr N27.R1 N27.R2 N27.R3 N33 N36 -> T5,T8,T2
+br B8(P37,P38,P39,N37,N37.R1,N37.R2)
+B7(P43:T5,P44:T9,P45:T2,P46:T5,P47:T8,P48:T2)
+N38 constant 10 -> T4
+N39 call.direct entity=@wput P46 P47 P48 N38 -> T5,T8,T2
+br B8(P43,P44,P45,N39,N39.R1,N39.R2)
+B8(P49:T5,P50:T9,P51:T2,P52:T5,P53:T8,P54:T2)
+ret P49 P50 P51 P52 P53 P54
+T0 form3 ea03b918f20d0a81a33884ee817f029b0acdbece68ae2d7bd3eeb935ccf3485b
+T1 form3 c0bccc4581f6497319c020d4f090f292851eaca295e91a3814668574aa3ec567
+T2 form3 2b2704e5644b2a600cc1c05f91f133f54c03637cddb3aaf658a635fff068bd0a
+T3 bits32
+T4 bits64
+T5 form2 ed7f465bd391df681fba3366051d89f1cf6dbd0fa4983971d7bb14a55f889d29
+T6 form4 933b152d7a3ae1cbd182fd6ece7825ad5a2536c7395b404382763b99acb94833
+T7 form4 3f5c8e3779860667ed838f1c7bb30d71b46ddd4f748ba76b5572e95efbed172c
+T8 form4 fa9bd62ea14b1905accb9b5eba8bf112696d2e9948af7ca7d28521b5b6eaaee4
+T9 form4 4776812445978ecc4336796680f50d1e24bc77be09ec5fdaca1098edd630d6f7
+T10 form2 f615ad96e3f3b84a7bfab041dde4598988ff2ff45d2c382c57a507016ef60f6b
+T11 bits8
+T12 bits1
+end
+define @main
+(T0,T1,T2,T2,T2)->(T3,T0,T1,T2,T2,T2)
+B0(P0:T0,P1:T1,P2:T2,P3:T2,P4:T2)
+N0 constant 65536 -> T4
+N1 call.foreign entity=d2ab6da2a2c7760febc915176eee30adb7deaf0164642fb0cbab62740aab5d57 N0 P2 -> T5,T6,T2
+N2 heap.view N1 N1.R1 N1.R2 -> T5,T7,T2 [65536,1]
+N3 constant 1048576 -> T4
+N4 call.foreign entity=d2ab6da2a2c7760febc915176eee30adb7deaf0164642fb0cbab62740aab5d57 N3 P3 -> T5,T6,T2
+N5 heap.view N4 N4.R1 N4.R2 -> T5,T8,T2 [1048576,1]
+N6 constant 268435456 -> T4
+N7 call.foreign entity=d2ab6da2a2c7760febc915176eee30adb7deaf0164642fb0cbab62740aab5d57 N6 P4 -> T5,T6,T2
+N8 heap.view N7 N7.R1 N7.R2 -> T5,T9,T2 [268435456,1]
+N9 constant 2 -> T4
+N10 call.foreign entity=95b9f4cd5c613e7e345c132b43d74c8e5f2a518999b9a1331274f975d845c00c N9 N2 N2.R2 -> T4,T2
+N11 int.truncate N10 -> T3
+N12 constant 0 -> T11
+N13 checked.store.bits.le N2 N11 N12 N10.R1 -> T2 [1,1]
+N14 pointer.cast N2 -> T10
+N15 constant 4294967196 -> T3
+N16 constant 0 -> T3
+N17 call.foreign entity=6c2c231f440408a9f71b3adf4cd033199eb93d252da64e02d1ec0f9618bc0cb3 N15 N14 N16 N16 P1 N13 -> T4,T1,T2
+N18 int.truncate N17 -> T3
+N19 constant 268435391 -> T4
+N20 call.foreign entity=a2ec858abb6c96ff5a0e5ece0b6a329f25ca35a8bb617959cf7eb1543aa66ca7 N18 N8 N19 N17.R1 N8.R2 -> T4,T1,T2
+N21 call.foreign entity=bc6de0fc2f9b4382d221a8d7b0ef3c0eb83fe724ebf5263035e26dc00bc2d685 N18 N20.R1 -> T4,T1
+N22 constant 4 -> T4
+N23 call.direct entity=@ue N8 N8.R1 N20.R2 N22 -> T4,T5,T9,T2
+N24 call.direct entity=@ue N23.R1 N23.R2 N23.R3 N23 -> T4,T5,T9,T2
+N25 call.direct entity=@ue N24.R1 N24.R2 N24.R3 N24 -> T4,T5,T9,T2
+N26 constant 32 -> T4
+N27 add.wrap N25 N26 -> T4
+N28 call.direct entity=@uv N25.R1 N25.R2 N25.R3 N27 -> T4,T5,T9,T2
+N29 call.direct entity=@ue N28.R1 N28.R2 N28.R3 N27 -> T4,T5,T9,T2
+N30 call.direct entity=@ue N29.R1 N29.R2 N29.R3 N29 -> T4,T5,T9,T2
+N31 call.direct entity=@ue N30.R1 N30.R2 N30.R3 N30 -> T4,T5,T9,T2
+N32 constant 0 -> T4
+N33 call.direct entity=@cs N5 N5.R1 N5.R2 N32 N31 -> T5,T8,T2
+N34 constant 1 -> T4
+N35 call.direct entity=@cs N33 N33.R1 N33.R2 N34 N28 -> T5,T8,T2
+N36 constant 2 -> T4
+N37 constant 8 -> T4
+N38 call.direct entity=@cs N35 N35.R1 N35.R2 N36 N37 -> T5,T8,T2
+N39 constant 3 -> T4
+N40 constant 100000 -> T4
+N41 call.direct entity=@cs N38 N38.R1 N38.R2 N39 N40 -> T5,T8,T2
+N42 constant 4 -> T4
+N43 constant 917504 -> T4
+N44 call.direct entity=@cs N41 N41.R1 N41.R2 N42 N43 -> T5,T8,T2
+N45 constant 3 -> T4
+N46 call.foreign entity=95b9f4cd5c613e7e345c132b43d74c8e5f2a518999b9a1331274f975d845c00c N45 N2 N17.R2 -> T4,T2
+N47 call.direct entity=@hexcid N2 N2.R1 N46.R1 N31.R1 N31.R2 N31.R3 -> T5,T7,T2,T5,T9,T2
+N48 constant 268435392 -> T4
+N49 call.direct entity=@enter N47.R3 N47.R4 N47.R5 N44 N44.R1 N44.R2 N48 -> T4,T5,T9,T2,T5,T8,T2
+N50 constant 0 -> T4
+N51 int.compare N49 N50 -> T12 [1]
+cbr N51 B2(N47,N47.R1,N47.R2,N49.R1,N49.R2,N49.R3,N49.R4,N49.R5,N49.R6,N21.R1,P0) B1(N47,N47.R1,N47.R2,N49.R1,N49.R2,N49.R3,N49.R4,N49.R5,N49.R6,N21.R1,P0)
+B1(P5:T5,P6:T7,P7:T2,P8:T5,P9:T9,P10:T2,P11:T5,P12:T8,P13:T2,P14:T1,P15:T0)
+N52 call.direct entity=@argn P11 P12 P13 N49 -> T4,T5,T8,T2
+N53 constant 0 -> T4
+br B4(P5,P6,P7,P8,P9,P10,N52.R1,N52.R2,N52.R3,P14,P15,N53)
+B2(P16:T5,P17:T7,P18:T2,P19:T5,P20:T9,P21:T2,P22:T5,P23:T8,P24:T2,P25:T1,P26:T0)
+N54 constant 5 -> T4
+N55 call.direct entity=@cg P22 P23 P24 N54 -> T4,T5,T8,T2
+br B3(P16,P17,P18,P19,P20,P21,N55.R1,N55.R2,N55.R3,P25,P26,N55)
+B3(P27:T5,P28:T7,P29:T2,P30:T5,P31:T9,P32:T2,P33:T5,P34:T8,P35:T2,P36:T1,P37:T0,P38:T4)
+N56 call.direct entity=@wstatus P30 P31 P32 P33 P34 P35 P38 -> T5,T9,T2,T5,T8,T2
+N57 constant 4 -> T4
+N58 call.direct entity=@cg N56.R3 N56.R4 N56.R5 N57 -> T4,T5,T8,T2
+N59 constant 917504 -> T4
+N60 sub.wrap N58 N59 -> T4
+N61 address.offset N58.R1 -> T5 [917504]
+N62 pointer.cast N61 -> T10
+N63 constant 1 -> T3
+N64 call.foreign entity=8492ebafd8b957353335ec2e64676ac65cbf374df897aada72299e9585f2d37e N63 N62 N60 P36 N58.R3 -> T4,T1,T2
+N65 call.foreign entity=9e907c65f411319d33248c419df8c3444d5fe6a249b75d26fb9a84a5751f57ab P27 P28 P29 -> T4,T2
+N66 call.foreign entity=237cd5c92079d28050a682a81fa1b36f725e968566d4d94b4b33f1a15aaad89c N58.R1 N58.R2 N64.R2 -> T4,T2
+N67 call.foreign entity=ad09bab189f988bab3ff2063ff02695c346d7a62041ac9c5ec369141e4e927c8 N56 N56.R1 N56.R2 -> T4,T2
+N68 int.truncate P38 -> T3
+N69 call.foreign entity=5d5071125f01d292b590cd994ca90d3a531408f8e39031ff2f0537209abff1ac N68 P37 -> T0
+ret N68 N69 N64.R1 N65.R1 N66.R1 N67.R1
+B4(P39:T5,P40:T7,P41:T2,P42:T5,P43:T9,P44:T2,P45:T5,P46:T8,P47:T2,P48:T1,P49:T0,P50:T4)
+N70 int.compare P50 N52 -> T12 [6]
+cbr N70 B6(P39,P40,P41,P42,P43,P44,P45,P46,P47,P48,P49) B5(P39,P40,P41,P42,P43,P44,P45,P46,P47,P48,P49)
+B5(P51:T5,P52:T7,P53:T2,P54:T5,P55:T9,P56:T2,P57:T5,P58:T8,P59:T2,P60:T1,P61:T0)
+N71 constant 4 -> T4
+N72 add.wrap P50 N71 -> T4
+N73 call.foreign entity=95b9f4cd5c613e7e345c132b43d74c8e5f2a518999b9a1331274f975d845c00c N72 P51 P53 -> T4,T2
+N74 constant 4294967296 -> T4
+N75 mul.wrap P50 N74 -> T4
+N76 add.wrap N75 N73 -> T4
+N77 call.direct entity=@argset P51 P52 N73.R1 P57 P58 P59 N49 N76 -> T5,T7,T2,T5,T8,T2
+N78 constant 1 -> T4
+N79 add.wrap P50 N78 -> T4
+br B4(N77,N77.R1,N77.R2,P54,P55,P56,N77.R3,N77.R4,N77.R5,P60,P61,N79)
+B6(P62:T5,P63:T7,P64:T2,P65:T5,P66:T9,P67:T2,P68:T5,P69:T8,P70:T2,P71:T1,P72:T0)
+N80 call.direct entity=@exec P65 P66 P67 P68 P69 P70 N49 -> T4,T5,T9,T2,T5,T8,T2
+br B3(P62,P63,P64,N80.R1,N80.R2,N80.R3,N80.R4,N80.R5,N80.R6,P71,P72,N80)
+T0 form3 ea03b918f20d0a81a33884ee817f029b0acdbece68ae2d7bd3eeb935ccf3485b
+T1 form3 c0bccc4581f6497319c020d4f090f292851eaca295e91a3814668574aa3ec567
+T2 form3 2b2704e5644b2a600cc1c05f91f133f54c03637cddb3aaf658a635fff068bd0a
+T3 bits32
+T4 bits64
+T5 form2 ed7f465bd391df681fba3366051d89f1cf6dbd0fa4983971d7bb14a55f889d29
+T6 form4 933b152d7a3ae1cbd182fd6ece7825ad5a2536c7395b404382763b99acb94833
+T7 form4 3f5c8e3779860667ed838f1c7bb30d71b46ddd4f748ba76b5572e95efbed172c
+T8 form4 fa9bd62ea14b1905accb9b5eba8bf112696d2e9948af7ca7d28521b5b6eaaee4
+T9 form4 4776812445978ecc4336796680f50d1e24bc77be09ec5fdaca1098edd630d6f7
+T10 form2 f615ad96e3f3b84a7bfab041dde4598988ff2ff45d2c382c57a507016ef60f6b
+T11 bits8
+T12 bits1
+end
+replace F0 @main
