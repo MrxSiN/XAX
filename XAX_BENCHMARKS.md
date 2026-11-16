@@ -1067,6 +1067,46 @@ exactly); wall time is the median of 15 interleaved rounds and includes about 45
 matches the expected output with exit 0. The host copy of `bbc.exe` has its stack commit patched (OI-56). One
 device, one session, on battery; not an R4 claim.
 
+#### 15.39 Linux `chains` after ledger 0033 (OI-58 slot rule; MEASURED, 2026-11-16)
+
+The loop-slot rule of ledger 0033 changes two of the four XAX `chains` executables: `xax_link` (`43211a74…` →
+`6698581b…`) and `xax_soa` (`bf6b1e21…` → `b6dc1dea…`). `xax` and `xax_pointer` are unchanged. The new record is
+`compiler/benchmarks/oi37_chains_evidence_0033.json` (`linux_chains.EVIDENCE` now names it).
+`oi37_chains_evidence.json` is the ADR-212 run on another host (a shared 4-vCPU Xeon at 2.10 GHz) and is kept
+unchanged. It still holds the matrix's R4 citation for the old executables until the release re-records the
+evidence.
+
+The run was `python -m benchmarks.linux_chains` with `XAX_REQUIRE_NATIVE=1` on `c-x86-loop-slot-writes`
+(`2220530`): WSL 2 on a Ryzen 9 5900HS laptop, 31 repetitions and 3 warm-ups, gcc, clang 18.1.3 and rustc 1.97.0.
+
+| arm | median (s) |
+|---|---|
+| rustc -O3 | 0.154 |
+| xax-soa | 0.157 |
+| gcc -O2 static | 0.247 |
+| gcc -O2 | 0.253 |
+| xax-link | 0.254 |
+| gcc -O3 | 0.258 |
+| clang -O2 | 0.350 |
+| xax-pointer | 0.411 |
+| xax | 0.421 |
+
+In the new `soa` lookup loop, `found` and `steps` stay in `r8` and `r9`: two loads and two stores fewer per lookup
+than the old executable, which kept them at `0x20(%rsp)` and `0x28(%rsp)`. Interleaved on the same host, though, the
+old `soa` timed min/median 110.9/151.3 ms against the new one's 125.4/154.1 ms (61 runs; rustc 108.8/147.2 ms). The
+loop moved by two bytes, and OI-58 item 4 records up to 25% between placements of the same instructions, so a
+few percent here is not attributed to the rule. On this host neither executable leads rustc clearly; the lead needs
+more than one placement per arm (OI-58).
+
+#### 15.40 Linux `filestat` after release 0033 (MEASURED, 2026-11-16)
+
+Release 0033's x86-64 changes give the `filestat` executable new bytes (`7a267511…` → `e29f9c30…`). The new record is
+`compiler/benchmarks/u1_linux_filestat_evidence_0033.json` (`linux_filestat.EVIDENCE` names it).
+`u1_linux_filestat_evidence.json` (the shared Xeon host) is kept unchanged and still holds the matrix's R4 citation.
+The run was `python -m benchmarks.linux_filestat` with `XAX_REQUIRE_NATIVE=1` on the release tree: WSL 2 on a Ryzen 9
+5900HS, 31 repetitions, a 32 MiB input. Medians: XAX 0.0419 s; gcc -O3 0.0585, clang -O2 0.0599, gcc -O2 static 0.0620,
+gcc -O2 0.0622, rustc -O3 0.0624. XAX is 0.716x the fastest other arm, so the lead holds on this host.
+
 ## Part III — Host setup
 
 ### Host setup for the full test and benchmark suite

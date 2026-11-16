@@ -622,3 +622,16 @@ including binary input and depth-512 nesting. The fixed points, artifact
 identities and exact scope are recorded in
 `../../benchmarks/snapshot_mutation_20261113_evidence.json`. Android device output
 was not re-run by this increment.
+
+## BBC's driver after release 0033 (ledgers 0033 to 0035) — 2026-11-16
+
+The four driver transactions of release 0033 (the OI-58 loop-slot rule, the two PE stack-probe batches and the OI-49
+AArch64 copy register) were applied to `bbc.xax` and `bbc_request.xax` with `rebuild.sh`, in ledger order (about
+165 s each, all verified). The intermediate driver after 0034 (a) is not a committed blob; it was rebuilt with `xaxc
+edit` and its blob checked (`6356e7e6…`). The new Linux seed (`36e2b756…`) built `bbc.exe` from the request in 245 s:
+35,847,168 bytes, SHA-256 `54a84a1f…` (`bbc.xax` `0b5b4b89…`, `bbc_request.xax` `776657f7…`).
+
+Checks (EXECUTED): `tools/check.py` with the Windows outputs and `bbc.exe` run natively on Windows 11 through WSL
+interop (a `wine` shim that executes the file), and the Android outputs under `qemu-aarch64`: 93 programs, 372 of 372
+compiles, 488 runs, 0 mismatches, and the five error paths as expected (222 s). On a Pixel 8 Pro, 14 Android ARM64
+executables (BBC's tests and examples at -O0 and -O1) gave the same output and exit status as under QEMU.

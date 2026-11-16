@@ -418,12 +418,15 @@ def _chunk(remaining: int, *offsets: int) -> int:
 
 
 def _copy_memory(destination_base: int, destination: int, source_base: int, source: int, size: int) -> list[int]:
+    # The data goes through x16 unless x16 holds one of the addresses (a >16-byte result through the return
+    # pointer, a caller copy passed on the stack): then through x17 (OI-49).
+    data = _TEMP2 if _TEMP in (destination_base, source_base) else _TEMP
     words: list[int] = []
     done = 0
     while done < size:
         chunk = _chunk(size - done, destination + done, source + done)
-        words.append(_base_access(True, _TEMP, source_base, source + done, chunk))
-        words.append(_base_access(False, _TEMP, destination_base, destination + done, chunk))
+        words.append(_base_access(True, data, source_base, source + done, chunk))
+        words.append(_base_access(False, data, destination_base, destination + done, chunk))
         done += chunk
     return words
 

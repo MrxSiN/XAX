@@ -711,6 +711,15 @@ Each closes only with the acceptance test named in the register, EXECUTED on Win
 
 ## OI-49 — Android ARM64 large composite return copy
 
+**Status: FIXED IN THE STORES (2026-11-16, ledger 0035 on `release/0033`); closes when the release's seed ships it.** The
+copy function of the AArch64 frame path (`xax_aarch64_general.xax`, `xax_android.xax`, the driver) and the reference
+`_copy_memory` move the data through x17 when x16 holds the destination or source address: the return copy through
+the result pointer, and the entry copy of a composite argument passed on the stack (the same fault). On a Pixel 8 Pro
+(`adb`), 18 programs returning 24-, 32- and 64-byte composites from leaf and non-leaf makers: 0 of 18 right with
+`main`'s backend (SIGSEGV), 18 of 18 right after ledger 0035, three repeats identical (EXECUTED, `XAX_STATE.md`
+2026-11-16). Static Linux AArch64 executables on the device's kernel; the Android-target build of the same programs was
+NOT RUN. The earlier status follows.
+
 **Status: OPEN (2026-10-19).** The generic ARM64 frame path's return of a
 composite larger than 16 bytes loads its destination into the same temporary
 used by the memory-copy data load. Pixel 8 Pro execution of a 64-byte BLAKE3

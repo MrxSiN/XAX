@@ -28,7 +28,7 @@ supersedes an earlier figure, and a superseded entry is kept rather than rewritt
 
 ### Bootstrap levels
 
-<!-- xax-status:bootstrap -->Bootstrap status (derived by `xax_selfhost.bootstrap_status` from `compiler/benchmarks/full_selfhost_evidence.json` and `compiler/benchmarks/python_free_seed_evidence.json`): whole production compiler: B0, B1, B2, B3, B4, B5, B6 established (derived from the Linux x86-64 production compiler, whose executed record covers every target and artifact `build` makes (S15g, ADR-358)); Linux x86-64 production compiler (`benchmarks/full_selfhost_evidence.json`): B0, B1, B2, B3, B4, B5, B6 hold, none do not; its seed requires Python: no; S-step component fixed points are not B milestones (`XAX_SPEC.md` §16.5). Bootstrap seed: native-elf `compiler/bootstrap/seed/xaxc-linux-x86_64`, 31,942,651 bytes, requires Python: no.<!-- /xax-status:bootstrap -->
+<!-- xax-status:bootstrap -->Bootstrap status (derived by `xax_selfhost.bootstrap_status` from `compiler/benchmarks/full_selfhost_evidence.json` and `compiler/benchmarks/python_free_seed_evidence.json`): whole production compiler: B0, B1, B2, B3, B4, B5, B6 established (derived from the Linux x86-64 production compiler, whose executed record covers every target and artifact `build` makes (S15g, ADR-358)); Linux x86-64 production compiler (`benchmarks/full_selfhost_evidence.json`): B0, B1, B2, B3, B4, B5, B6 hold, none do not; its seed requires Python: no; S-step component fixed points are not B milestones (`XAX_SPEC.md` §16.5). Bootstrap seed: native-elf `compiler/bootstrap/seed/xaxc-linux-x86_64`, 31,549,147 bytes, requires Python: no.<!-- /xax-status:bootstrap -->
 
 ### Self-hosting
 
@@ -81,7 +81,7 @@ U1 — universal-replacement proof set: **in progress**. Step status is in `XAX_
 
 S — compiler migration ladder: **S0–S5 EXECUTED** on the production path (native XAX leaves on Linux x86-64 only; Python on every other host) and **S6 EXECUTED** with component fixed points for the RISC-V backend and the store verifier on RV64 under emulation (ADR-116–ADR-151). BLAKE3 also closes on RV64 (ADR-151). **S7a EXECUTED** (ADR-152): the x86-64 views backend is an XAX program with a native component fixed point on x86-64; it lowers every native helper except its own production image, which the bootstrap generator lowers (byte-identical by that fixed point). These are S-step component results, not B milestones (`XAX_SPEC.md` §16.5; ADR-177 renamed the earlier "B1–B4" wording). **S7b.1 EXECUTED** (ADR-179): on Linux x86-64 the XAX x86-64 views program decides its own target legality and writes the exact rejection diagnostic. **S7b.2 EXECUTED** (ADR-181): both views programs resolve references, place the target, find the entry, and produce the image record themselves. **S7b.3 EXECUTED** (ADR-182): the RISC-V views program decides its rejections too, so S7b is complete for the views profiles. **S8a EXECUTED** (ADR-183): every store-container rejection is decided by XAX with the exact diagnostic. **S8b.1 EXECUTED** (ADR-184): object envelopes and their CID check are decided by XAX on `get`. **S8b.2 EXECUTED** (ADR-185): graph-body syntax rejections are decided by XAX through the shared site mechanism. Next: S8c (resolution, typing, facts, and object verification). Since ADR-180, S3–S7a count as migrated for acceptance only (`XAX_SPEC.md` §16.5 condition 5); the ladder continues with S8–S15, and migration is reported as SH1. The typing store was stale against its builder until ADR-177 regenerated it; its native and emulated evidence was re-run on Linux x86-64 on 2026-10-07 and matches (OI-45, self-hosting half).
 
-<!-- xax-status:bootstrap -->Bootstrap status (derived by `xax_selfhost.bootstrap_status` from `compiler/benchmarks/full_selfhost_evidence.json` and `compiler/benchmarks/python_free_seed_evidence.json`): whole production compiler: B0, B1, B2, B3, B4, B5, B6 established (derived from the Linux x86-64 production compiler, whose executed record covers every target and artifact `build` makes (S15g, ADR-358)); Linux x86-64 production compiler (`benchmarks/full_selfhost_evidence.json`): B0, B1, B2, B3, B4, B5, B6 hold, none do not; its seed requires Python: no; S-step component fixed points are not B milestones (`XAX_SPEC.md` §16.5). Bootstrap seed: native-elf `compiler/bootstrap/seed/xaxc-linux-x86_64`, 31,942,651 bytes, requires Python: no.<!-- /xax-status:bootstrap -->
+<!-- xax-status:bootstrap -->Bootstrap status (derived by `xax_selfhost.bootstrap_status` from `compiler/benchmarks/full_selfhost_evidence.json` and `compiler/benchmarks/python_free_seed_evidence.json`): whole production compiler: B0, B1, B2, B3, B4, B5, B6 established (derived from the Linux x86-64 production compiler, whose executed record covers every target and artifact `build` makes (S15g, ADR-358)); Linux x86-64 production compiler (`benchmarks/full_selfhost_evidence.json`): B0, B1, B2, B3, B4, B5, B6 hold, none do not; its seed requires Python: no; S-step component fixed points are not B milestones (`XAX_SPEC.md` §16.5). Bootstrap seed: native-elf `compiler/bootstrap/seed/xaxc-linux-x86_64`, 31,549,147 bytes, requires Python: no.<!-- /xax-status:bootstrap -->
 
 Dated sections below are historical records: a figure in them (a ratio, a level, a test count) is current only if no later section supersedes it.
 
@@ -2562,3 +2562,36 @@ and [#71](https://github.com/MrxSiN/XAX/pull/71). Nothing is on `main` yet, and 
   stores (inspected), a 65 MiB zero store and 113,168 bytes of committed fixtures. About 411 KB is generated by the
   reference and the test helpers. The external input files of the build cases are not in that count (NOT RUN).
 - **NOT RUN:** the Windows measurements (OI-58), a DLL frame over 4 KiB on Windows 11 (OI-56 note), and BBC.
+
+## Release 0033: ledgers 0033 to 0035, both seeds rotated — 2026-11-16
+
+Linux x86-64 (WSL 2), Windows 11 (build 26300) and a Pixel 8 Pro over `adb`. Ships C-x86 (OI-58 item 1, the
+OI-56 note) and C-a64 (OI-49). C-jvm and C-cap move to the next release (RFC §13.7 plan change, ADR-406).
+
+- **Strict replay** (EXECUTED): `replayed 151 of 151 LEDGER=0ab63aff67ac19f064f2e3d8bb23a579b1f5c265
+  xaxc=0ecdcd6bcc8180d3727881dbea7c2d1042d2a403`, no `FAIL`, 1:15:57, peak 2.45 GB.
+- **Linux seed**: the pinned seed (`0cd26742…`) built C1 `1729392e…`, then C2 = C3 = `36e2b756…` (31,549,147 bytes,
+  about 212 s and 2.83 GB per generation). `rotate-seed` twice gives the same file; `SEED_SHA256` and `SEED_SIZE`
+  follow.
+- **Windows seed**: `generate.sh` gave request `67f7cfa4…`; the new Linux seed cross-built `ae43e32f…` (31,602,176
+  bytes, 210 s). On Windows 11 (native, no Wine) it rebuilt itself byte for byte (197 s), and that build rebuilt the
+  next one identically (195 s). Recorded in `windows/seed.json`.
+- **Evidence** (`XAX_REQUIRE_NATIVE=1`): `python_free_seed_evidence.json` (395 s) and `full_selfhost_evidence.json`
+  (2:45:55, peak 6.1 GB) re-recorded; B0 to B6 hold.
+- **New MEASURED records** for executables the release changed: `oi37_chains_evidence_0033.json` (XAX_BENCHMARKS
+  15.39) and `u1_linux_filestat_evidence_0033.json` (15.40: XAX 0.716x the fastest other arm on this host).
+- **Full suite** (once, `-n 4`, `XAX_REQUIRE_NATIVE=1`, 1:32:55, peak 8.5 GB): 1,543 passed, 257 skipped, 13 failed,
+  526,171 subtests.
+  - 8 of the failures fail on `main` too (`75ac6e4`): `test_audit_remediation`'s B1 binding, two OI-16, three Wasm and
+    two OI-06 tests. The Wasm ones need Node, which this host lacks.
+  - 5 pass on their own or after a fix. Filestat's artifact identity: the new record. The graph decoder's mutation
+    count: 10 bodies still parsed, not more than 10, with native equal to the reference on every trial; the trials
+    doubled to 3,000 and it passes. The large-image test passes alone (30:51, peak 12.1 GB) and `verify_exact`
+    object sites passes alone; under `-n 4` both were short of memory.
+- **BBC**: `bbc.xax` and `bbc_request.xax` follow the four driver transactions (`rebuild.sh`); `bbc.exe`
+  `54a84a1f…`. `check.py` (Windows outputs native through WSL interop, Android under `qemu-aarch64`): 372 of 372
+  compiles, 488 runs, 0 mismatches, 5 error paths. On the Pixel 8 Pro, 14 Android executables matched QEMU's output
+  and status.
+- **Device** (OI-49): 18 composite-return programs; 0 of 18 right on `main`'s backend, 18 of 18 after ledger 0035.
+- **NOT RUN**: the Windows `chains` measurement without its workaround and the lead over every arm (OI-58); a DLL with
+  a frame over 4 KiB on Windows (the OI-56 note); the Android-target build of the OI-49 programs.
