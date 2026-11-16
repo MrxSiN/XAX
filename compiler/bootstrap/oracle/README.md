@@ -11,8 +11,8 @@ xax_oracle run <store> <function CID> <argument>...
 - Arguments and results are unsigned decimals, one per `bits<N>` parameter or result.
 - Exit 0 prints the results, one per line.
 - Exit 1 prints `trap <payload hex>`: the trap terminator's payload, or `02` for a division by zero.
-- Exit 2 prints `decline <operation>`. An operation outside slice 1, or `decline 0` for a type that is not
-  `bits<1..64>`, a group member function or a callee that is not a function.
+- Exit 2 prints `decline <operation>`. An operation outside the slices, or `decline 0` for a type that is not
+  `bits<1..64>` or a callee that is not a function.
 - Exit 3 prints `fuel` (100,000 block entries and nodes) or `error`.
 
 The store is not verified here; run `xaxc verify` on it first, as `execute` verifies first.
@@ -22,6 +22,9 @@ The store is not verified here; run `xaxc verify` on it first, as `execute` veri
 - `constant`, `add.wrap`, `sub.wrap`, `mul.wrap`, `bit.xor`, `bit.and`, `bit.or`, `udiv`, `urem`, `rotate.right`,
   `int.compare` (all ten predicates), `int.truncate`, `int.zero.extend` and `call.direct`;
 - the terminators `br`, `cbr`, `ret` and `trap`.
+
+**Slice 2** adds recursion groups. A group member function's graph is its group's member, and `call.group.member`
+calls a member of the caller's own group: each frame records its group.
 
 How it works:
 
@@ -63,3 +66,7 @@ Limits:
   `test_native_branch_fusion`) agree in both executors (`../../benchmarks/oracle_x86_64_compare_evidence.json`).
   Both tests now take their expected values from `oracle_execute`: the native oracle on Linux x86-64, and the Python
   executor on Windows, where this Linux program cannot run.
+- Slice 2: recursion groups agree in both executors (10 cases of `test_xax_recursion`, among them mutual recursion
+  200 calls deep; `../../benchmarks/oracle_recursion_evidence.json`), and the register-lowering corpus still agrees
+  160 of 160. `test_xax_recursion`'s execution check uses `oracle_execute`. Frames take about 0.5 KiB each, so about
+  1,800 calls fit; the Python executor stops at its host recursion limit sooner.

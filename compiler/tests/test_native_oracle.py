@@ -120,6 +120,20 @@ class NativeOracleTests(unittest.TestCase):
                     data = built.reader.canonical_bytes()
                     self.assertEqual(native_run(data, cid, arguments), _reference(built.reader, cid, arguments))
 
+    def test_both_oracles_agree_on_recursion_groups(self):
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        import test_xax_recursion as recursion
+        from xax_compiler import x86_64_linux_exec_target
+
+        target = x86_64_linux_exec_target()
+        parity, even, odd = recursion.parity_group()
+        cases = [(recursion.factorial_group(), 0, n) for n in (0, 1, 5, 10, 12)]
+        cases += [(parity, member, value) for member, value in ((even, 10), (even, 7), (odd, 7), (odd, 0), (even, 200))]
+        for group, member, value in cases:
+            with self.subTest(member=member, value=value):
+                reader, entry = recursion.program(group, member, target)
+                self.assertEqual(native_run(reader.data, entry.cid, (value,)), _reference(reader, entry.cid, (value,)))
+
     def test_traps_compares_rotations_results_and_declines(self):
         from xax_compiler import FloatFormat, IntCompare, Operation, TrapReason, bits_type, float_type, trap_payload, x86_64_linux_exec_target
         from xax_graph_builder import GraphBuilder, program_store

@@ -69,8 +69,8 @@ generated from the compiler's stores:
 
 | Slice | Covers | Replaces the Python executor in |
 |---|---|---|
-| 1 | `constant`, `add.wrap`, `sub.wrap`, `mul.wrap`, `bit.xor`, `bit.and`, `bit.or`, `udiv`, `urem` (trap on zero), `rotate.right`, `int.compare` (all ten predicates), `int.truncate`, `int.zero.extend`, `call.direct`; `br`, `cbr`, `ret`, `trap`; `bits<1..64>` | `test_xax_regalloc_differential` (x86-64 register lowering), then `test_x86_64_narrow_signed_compare`, `test_native_branch_fusion` |
-| 2 | recursion groups (`call.group.member`) | `test_xax_recursion` |
+| 1 (done 2026-11-16) | `constant`, `add.wrap`, `sub.wrap`, `mul.wrap`, `bit.xor`, `bit.and`, `bit.or`, `udiv`, `urem` (trap on zero), `rotate.right`, `int.compare` (all ten predicates), `int.truncate`, `int.zero.extend`, `call.direct`; `br`, `cbr`, `ret`, `trap`; `bits<1..64>` | `test_xax_regalloc_differential` (x86-64 register lowering), then `test_x86_64_narrow_signed_compare`, `test_native_branch_fusion` |
+| 2 (done 2026-11-16) | recursion groups (`call.group.member`) | `test_xax_recursion` |
 | 3 | heap views and checked or growable loads and stores, stack allocation | `test_xax_x86_64_views`, `test_xax_byte_view_widening`, `test_xax_pointer_rebase` |
 | 4 | aggregates, sums, floats | `test_xax_general_language` |
 | — | foreign calls, target operations, meta operations | declined for good: a host or target is not graph semantics |

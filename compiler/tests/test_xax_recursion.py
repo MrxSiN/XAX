@@ -128,6 +128,10 @@ class GroupMemberFunctionTests(unittest.TestCase):
         self.assertEqual(decode_group_member_function(member, {group.cid: group}.__getitem__), (group, 0))
 
     def test_reference_execution(self):
+        # ADR-405 (4): the native oracle where it runs (benchmarks/oracle_recursion_evidence.json), else ``execute``.
+        sys.path.insert(0, __import__("os").path.dirname(__file__))
+        from test_native_oracle import oracle_execute as execute
+
         reader, entry = program(factorial_group(), 0, target(b"probe"))
         self.assertEqual(execute(reader, entry.cid, (10,)), (3628800,))
         parity, even, odd = parity_group()
