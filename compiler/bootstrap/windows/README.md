@@ -1,3 +1,11 @@
+# Current Windows seed — ledger 0035 (release 0033), 2026-11-16
+
+`xaxc-windows-x86_64.exe`: 31,602,176 bytes, SHA-256 `ae43e32f21ccd2d7e333ebf30a114d329ca5b5912c388ae167c24d12d2e9f665`.
+It is built from `generator/generate.sh`'s request (`67f7cfa4…`) for the ledger 0035 shared request. The new Linux
+fixed point (`36e2b756…`) cross-built it in WSL 2 (210 s). On Windows 11 it rebuilt itself byte for byte (197 s), and
+that generation rebuilt the next one identically (195 s); no Python, WSL or Wine took part. Identities are in
+[seed.json](seed.json). The sections below are historical.
+
 # The Windows request is generated — 2026-11-15
 
 `hosting.batch` and `pe_target.edit` are no longer written by hand; they are deleted. `generator/generate.sh`

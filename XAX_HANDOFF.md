@@ -29,7 +29,7 @@
 
 <!-- xax-status:levels -->Replacement levels (generated from `XAX_REPLACEMENT_MATRIX.json`): R6: jvm, linux-aarch64, linux-x86_64; R3: aarch64-baremetal, android-arm64, browser-web, gpu-spirv-cuda-metal-dxil, wasm32-wasi, windows-x86_64-pe; R1: riscv64; no level yet: bsd-unix, dotnet-clr, macos-ios-apple, rtos-embedded-mcu.<!-- /xax-status:levels -->
 
-<!-- xax-status:bootstrap -->Bootstrap status (derived by `xax_selfhost.bootstrap_status` from `compiler/benchmarks/full_selfhost_evidence.json` and `compiler/benchmarks/python_free_seed_evidence.json`): whole production compiler: B0, B1, B2, B3, B4, B5, B6 established (derived from the Linux x86-64 production compiler, whose executed record covers every target and artifact `build` makes (S15g, ADR-358)); Linux x86-64 production compiler (`benchmarks/full_selfhost_evidence.json`): B0, B1, B2, B3, B4, B5, B6 hold, none do not; its seed requires Python: no; S-step component fixed points are not B milestones (`XAX_SPEC.md` §16.5). Bootstrap seed: native-elf `compiler/bootstrap/seed/xaxc-linux-x86_64`, 31,942,651 bytes, requires Python: no.<!-- /xax-status:bootstrap -->
+<!-- xax-status:bootstrap -->Bootstrap status (derived by `xax_selfhost.bootstrap_status` from `compiler/benchmarks/full_selfhost_evidence.json` and `compiler/benchmarks/python_free_seed_evidence.json`): whole production compiler: B0, B1, B2, B3, B4, B5, B6 established (derived from the Linux x86-64 production compiler, whose executed record covers every target and artifact `build` makes (S15g, ADR-358)); Linux x86-64 production compiler (`benchmarks/full_selfhost_evidence.json`): B0, B1, B2, B3, B4, B5, B6 hold, none do not; its seed requires Python: no; S-step component fixed points are not B milestones (`XAX_SPEC.md` §16.5). Bootstrap seed: native-elf `compiler/bootstrap/seed/xaxc-linux-x86_64`, 31,549,147 bytes, requires Python: no.<!-- /xax-status:bootstrap -->
 
 Sections below are dated; a later section supersedes an earlier figure. The current full-suite result is under "Multi-language performance rule" and later entries in `XAX_STATE.md`.
 
@@ -2205,3 +2205,59 @@ only, applied with `evolve.sh apply`, which rewrites the request. Windows reques
   x86-64 code generation). Step 8 (V2 evidence runner, `rotate.sh`) can run in parallel on `main`.
 - Runs in progress: none. WSL scratch: `/root/work/step6b` (a copy of `bootstrap/` with a test transaction; it can
   be deleted) and `/root/work/step6.log`.
+
+## Build/rotation campaign: step 7 started (C-x86) — 2026-11-16
+
+`main` = `660f9eb`, unchanged this session. `release/0033` is cut from it and pushed. Re-verified at the start:
+no open PRs; issues #47, #48, #49, #51, #55 open; both seeds at their pins (`0cd26742…`, `e88877d1…`);
+`evolve.sh check` passes.
+
+- **Done (PRs open, owner to merge):**
+  - [#69](https://github.com/MrxSiN/XAX/pull/69) into `release/0033` (`2220530`): ledger 0033, OI-58 item 1, the
+    loop-slot rule, native and reference.
+  - [#71](https://github.com/MrxSiN/XAX/pull/71), stacked on #69 (`0bc8e85`): ledger 0034, the OI-56 note, PE stack
+    probes. Retarget it to `release/0033` after #69 merges.
+- **Tests run:** listed in `XAX_STATE.md` (2026-11-16). Known failure on the release branch:
+  `test_xax_chains.py::test_committed_artifact_identity_reproduces`. The `xax_link` chains executable has new bytes,
+  `oi37_chains_evidence.json` is historical, and a new chains record is due at the release.
+- **Compilers in use:** the pinned Linux seed. Candidates (WSL, not seeds): 0033 C1 `64fb4180…`, C2 = C3
+  `daeeff12…` (`/root/work/sb0033a`); 0033+0034 C1 `738a89f5…`, C2 `e64a0291…` (`/root/work/sb0034`).
+- **WSL working clone:** `/root/work/campaign` is on `c-x86-pe-probes` (equal to the pushed branch). A `main`
+  worktree is at `/root/work/mainwt`. `/root/work/x86v` holds the 0033 views of `xax_x86_64_general.xax`.
+- **Runs in progress:** none.
+- **Blockers:** none. OI-58 stays open: the Windows `chains` measurement without its workaround, and the lead over
+  every arm, need the release's Windows seed. The OI-56 note's DLL run also waits for the release's Windows confirm.
+- **Learned:** the native edit engine rejects a batch that redefines both a function and a caller of it, in either
+  `replace` order. Split such a change into two transactions. Driver functions are often not byte-twins of the
+  backend store's (31 of 235 differ). Find a driver twin read-only with the reference reader, by walking up from a
+  distinctive constant to its functions.
+- **Next step:** C-a64 (OI-49), a branch from `release/0033` (stacked on #71 until #69 and #71 merge). After it,
+  C-jvm (#49 with an ADR, then #48) and C-cap (OI-54 steps, OI-52 R2). In parallel on `main`, step 8's phase 3: the
+  corpus input measurement is done (`XAX_STATE.md`). The external input files of the build cases still need
+  counting, then the decision whether to freeze the corpus as data.
+
+## Build/rotation campaign: release 0033 done — 2026-11-16
+
+Merged by the agent on the owner's chat instruction ("merge it yourself with gh pr merge --merge" once a PR's
+targeted tests pass). PRs: [#69](https://github.com/MrxSiN/XAX/pull/69), [#71](https://github.com/MrxSiN/XAX/pull/71)
+(C-x86) and [#73](https://github.com/MrxSiN/XAX/pull/73) (C-a64) into `release/0033`;
+[#70](https://github.com/MrxSiN/XAX/pull/70) (the owner's ADR-405), [#72](https://github.com/MrxSiN/XAX/pull/72) and
+[#74](https://github.com/MrxSiN/XAX/pull/74) (ADR-406, the plan change) into `main`; then the rotation PR and the
+release PR (this section's).
+
+- **Seeds now**: Linux `36e2b756…` (31,549,147 bytes), Windows `ae43e32f…` (31,602,176 bytes), both at ledger 0035.
+  Results are in `XAX_STATE.md` (2026-11-16, release 0033).
+- **Calls made overnight** (recorded):
+  1. C-jvm and C-cap were moved to the next release, because the JVM backend's emission is in single 41,000–46,000-line
+     functions and OI-54 needs new layouts. ADR-406 designs #49.
+  2. The chains and filestat evidence go into new files; the old records and the matrix's R4 citations stay.
+  3. The graph-decoder fuzz test runs 3,000 trials, not 1,500.
+  4. `qemu-user-static` is installed in WSL, with a `qemu-aarch64` link in `/usr/local/bin`.
+  5. BBC's `check.py` ran in WSL with a scratch `wine` shim that executes Windows files natively through interop.
+  6. BBC's local `build/bbc.exe` is the new one; the old one is `build/bbc.exe.0032`.
+- **Runs in progress**: none. Logs: `/root/work/logs/{replay-0035,rotation-0033,full-0033,pfs-0033,suite-0033,bbc-check-0033b}.log`.
+- **Open**: OI-58 (the Windows measurement), the OI-56 note's DLL run, OI-49 closes once the Android-target build is
+  run (the fix is in the seed now), #47, #48, #49, #51, #55.
+- **Next step**: step 8 on `main`. For phase 3, count the build cases' external input files (the corpus stores are
+  about 411 KB generated), then write the V2 runner and evaluator; then phase 6 (`rotate.sh`, `RELEASES`, `POLICY`).
+  After that, the next release branch with C-jvm (#49 per ADR-406, then #48) and C-cap.
