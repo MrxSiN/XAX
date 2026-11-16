@@ -99,7 +99,7 @@ from the record as a claim. With E = the record has `end`, and C1 = generation 1
 - **B0**: E, generation 1 resolved and built, and either generation 2 resolved or C1 is the seed (fixed point 1).
 - **B1**: B2, and C1's context reproduces every `diag` expectation (status 1 and the expected record digest).
 - **B3**: B2; the contexts agree (each has every case, all contexts' outcomes are equal, and every repeat equals
-  its context's outcome); C1's context meets every `image` and `rejected` expectation; no `diag` case is rejected
+  its context's outcome); C1's context meets every `image` and `rejected` expectation (the probe's is B6's); no `diag` case is rejected
   with a diagnostic other than the bootstrap's and other than `XAX.DRIVER.VERIFY`; the corpus has positive and
   negative cases.
 - **B4**: B2 and a fixed point F (the first generation whose artifact is its producer), with every later generation
@@ -107,7 +107,7 @@ from the record as a claim. With E = the record has `end`, and C1 = generation 1
 - **B5**: B2, and no executable (the seed and every generation) has an ELF interpreter.
 - **B6**: B5, the replay exited 0 with `replayed N of N` for N ≥ 1, and C1's context meets the probe's expectation.
 - **python** (the seed requires Python): not (the record's seed is the pinned seed file, has no interpreter, and
-  both empty-environment runs resolved and built C1).
+  both empty-environment runs resolved and built the last generation's artifact).
 
 The reference evaluator `compiler/reference/xax_selfhost.py` evaluates V1 records as before. `tests/test_evidence_v2.py`
 writes the committed V1 record and mutated copies of it as V2 records and requires `levels` to give the reference's
