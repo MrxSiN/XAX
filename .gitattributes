@@ -67,3 +67,5 @@ compiler/bootstrap/evidence/CORPUS text eol=lf
 compiler/bootstrap/evidence/SNAPSHOTS text eol=lf
 compiler/bootstrap/evidence/*.batch text eol=lf
 compiler/bootstrap/evidence/*.sh text eol=lf
+compiler/bootstrap/POLICY text eol=lf
+compiler/bootstrap/RELEASES text eol=lf
