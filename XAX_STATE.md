@@ -2657,3 +2657,10 @@ on the op-typing store, the driver and the derived request. The seed is not rota
 | `bench_full_selfhost.corpus()`, seed against C1 (status and outputs) | 0 of 198 differ |
 | `evolve.sh check` | every chain ends at its committed store |
 | JVM backends on a catching call | both reject with `JVM-FOREIGN-ABI` (lowering: #49 parts 2–7) |
+
+## #49 parts 2+3: the JVM call path mapped (ADR-406) — 2026-11-16
+
+Analysis only, NOT RUN against any test (no store changed). Release 0036 is still at `e53833a` with ledger 0036 and
+0036 b, and no catching call lowers yet. Seeds unchanged (Linux `36e2b756…`, Windows `ae43e32f…`); `rotate.sh state`
+on the release: validated 0033, candidate none; `evolve.sh check` passes. The JVM program's foreign-call path,
+the free words it can use and the planned change set are in `XAX_HANDOFF.md`, same date.
