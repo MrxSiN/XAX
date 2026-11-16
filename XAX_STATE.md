@@ -2644,3 +2644,16 @@ EXECUTED in WSL 2 with the pinned seed `36e2b756…` (`main` `c2bdb48`).
 | narrow and signed `int.compare` | 3,840 / 3,840 |
 | compare reused after its branch (OI-50) | 6 / 6 |
 | recursion groups (slice 2) | 10 / 10 |
+
+## Release 0036: catching JVM ABIs verify (#49 part 1, ADR-406) — 2026-11-16
+
+EXECUTED in WSL 2 on `release/0036` `e53833a` ([#88](https://github.com/MrxSiN/XAX/pull/88)). These are ledger 0036 and 0036 b,
+on the op-typing store, the driver and the derived request. The seed is not rotated.
+
+| Check | Result |
+|---|---|
+| `tests/test_jvm_catch_abis.py` + store regeneration, facts, typing, verify, verify-exact (`XAX_REQUIRE_NATIVE=1`) | 94 passed, 0 failed |
+| C1 `verify` of the three catching stores | accepted (the seed rejects them: `FOREIGN-CALL-ABI`) |
+| `bench_full_selfhost.corpus()`, seed against C1 (status and outputs) | 0 of 198 differ |
+| `evolve.sh check` | every chain ends at its committed store |
+| JVM backends on a catching call | both reject with `JVM-FOREIGN-ABI` (lowering: #49 parts 2–7) |
