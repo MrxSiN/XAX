@@ -48,6 +48,15 @@ def native_execute(reader, function_cid: bytes, arguments) -> tuple[int, ...]:
     return tuple(int(line) for line in text.splitlines())
 
 
+def oracle_execute(reader, function_cid: bytes, arguments) -> tuple[int, ...]:
+    """The area's oracle: the native one where it runs (Linux x86-64), else the Python executor (ADR-405 (3))."""
+    if LINUX_X86_64:
+        return native_execute(reader, function_cid, arguments)
+    from xax_compiler import execute
+
+    return execute(reader, function_cid, arguments)
+
+
 def _reference(reader, function_cid, arguments) -> tuple[int, str]:
     from xax_compiler import XaxError, XaxTrap, execute
 
@@ -79,6 +88,37 @@ class NativeOracleTests(unittest.TestCase):
             with self.subTest(program=index):
                 reader = program_store(function, target, objects)
                 self.assertEqual(native_run(reader.data, function.cid, arguments), _reference(reader, function.cid, arguments))
+
+    def test_both_oracles_agree_on_the_narrow_compare_corpus(self):
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        from test_x86_64_narrow_signed_compare import WIDTHS, _compare_program, _values
+        from xax_compiler import IntCompare
+
+        for width in WIDTHS:
+            for kind in IntCompare:
+                reader, entry, _target = _compare_program(width, kind)
+                for left in _values(width):
+                    for right in _values(width):
+                        with self.subTest(width=width, kind=kind.name, left=left, right=right):
+                            self.assertEqual(native_run(reader.data, entry.cid, (left, right)), _reference(reader, entry.cid, (left, right)))
+
+    def test_both_oracles_agree_on_the_branch_fusion_corpus(self):
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        from test_native_branch_fusion import BRANCH_ONLY, INPUTS, REUSED
+        from xax_construct import construct
+
+        effects = ["linux.process_effect", "linux.filesystem_effect"]
+        main = {"name": "main", "params": effects, "returns": ["b32", *effects], "blocks": [{"params": effects, "nodes": [
+            ["call.direct", [["b32", 1], ["b32", 2]], ["b32"], {"entity": {"fn": "f"}}],
+            ["call.foreign", ["n0", "p0"], [effects[0]], {"entity": "linux.exit_group"}]], "end": ["ret", ["n0", "n1", "p1"]]}]}
+        for function in (REUSED, BRANCH_ONLY):
+            built = construct({"format": "xax-construct-v1", "platform": "linux-x86_64", "functions": [function, main],
+                               "package": {"name": "oi50", "entries": {"app": "main"}, "release": "app"}})
+            cid = built.functions["f"].cid
+            for arguments in INPUTS:
+                with self.subTest(blocks=len(function["blocks"]), arguments=arguments):
+                    data = built.reader.canonical_bytes()
+                    self.assertEqual(native_run(data, cid, arguments), _reference(built.reader, cid, arguments))
 
     def test_traps_compares_rotations_results_and_declines(self):
         from xax_compiler import FloatFormat, IntCompare, Operation, TrapReason, bits_type, float_type, trap_payload, x86_64_linux_exec_target

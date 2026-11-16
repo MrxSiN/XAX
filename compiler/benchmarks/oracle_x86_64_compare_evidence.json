@@ -1,0 +1,22 @@
+{
+  "format": "xax-native-oracle-agreement-v1",
+  "label": "EXECUTED",
+  "adr": "ADR-405",
+  "design": "docs/proposals/native-oracle.md, slice 1",
+  "date": "2026-11-16",
+  "areas": [
+    {"area": "x86-64 narrow and signed int.compare", "corpus": "tests/test_x86_64_narrow_signed_compare.py: widths 5, 8, 16, 24, 32, 64; all ten predicates; 64 value pairs each",
+     "cases": 3840, "agree": 3840, "disagree": 0},
+    {"area": "compare reused after its branch (OI-50, ADR-376)", "corpus": "tests/test_native_branch_fusion.py: REUSED and BRANCH_ONLY on INPUTS",
+     "cases": 6, "agree": 6, "disagree": 0}
+  ],
+  "oracles": {
+    "python": "reference/xax_compiler.py execute (verify_store first)",
+    "native": {"store": "compiler/bootstrap/oracle/xax_oracle.xax", "store_sha256": "b4b79c59b73e8d7353fcce0fc829ac7a88ad088f19cd0b821eaf7732aee5e738",
+               "executable_sha256": "44f5f45655e1b31d381c488e3fefe93c51ccf295e14d0725eafb59ca9291575c",
+               "built_by": "the pinned seed 36e2b756e97377c3955aeb6af9605468107a44bfbf6192b17439911c63c120c2"}
+  },
+  "comparison": "each case's store and arguments: the native oracle's exit status and output equal the Python executor's results",
+  "windows": "the native oracle is a Linux x86-64 program; on Windows these tests keep the Python executor (ADR-405 (3)) until the oracle runs there",
+  "host_nonsemantic": "Linux 6.18.58.1-microsoft-standard-WSL2 x86_64, Python 3.12.3"
+}

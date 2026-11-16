@@ -123,8 +123,13 @@ class SeedBranchFusionTests(unittest.TestCase):
         import tempfile
         from pathlib import Path
 
-        from xax_compiler import execute
+        import sys
+
         from xax_construct import construct
+
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        # ADR-405 (4): the native oracle where it runs (benchmarks/oracle_x86_64_compare_evidence.json), else the Python executor.
+        from test_native_oracle import oracle_execute as execute
 
         command = _seed_command()
         if command is None:
