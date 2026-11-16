@@ -1,0 +1,11 @@
+# xax-releases-v1: the release record (RFC docs/proposals/build-bootstrap-rotation-rfc.md section 3). Append only.
+# host <target> <seed path>; candidate <n> ledger=<last record> driver=<blob> policy=<sha256> <target>=<sha256>:<size>...;
+# confirmed <n> <target> <sha256> <evidence sha256>; validated <n> evidence=<full record sha256>; blocked <n> <gate> <reason>.
+# Release 0033 (ledgers 0033 to 0035) was rotated before this file existed; its lines below restate its committed
+# records: the Linux and Windows seed evidence and the V1 full record (2026-11-16).
+host x86_64-linux-elf-exec-v1 seed/xaxc-linux-x86_64
+host x86_64-windows-pe-v1 windows/xaxc-windows-x86_64.exe
+candidate 0033 ledger=0035-aarch64-copy-data-register.batch driver=f908368bacc721c5a662ff39258b18a423d7a008 policy=0c6df095d9e0a00625b057c24e57eaa45b3b15fa31cbb67c28ace51aa3676bdd x86_64-linux-elf-exec-v1=36e2b756e97377c3955aeb6af9605468107a44bfbf6192b17439911c63c120c2:31549147 x86_64-windows-pe-v1=ae43e32f21ccd2d7e333ebf30a114d329ca5b5912c388ae167c24d12d2e9f665:31602176
+confirmed 0033 x86_64-linux-elf-exec-v1 36e2b756e97377c3955aeb6af9605468107a44bfbf6192b17439911c63c120c2 ea269e144a6d4797781ddfb11b5552ad7fceb0ecdd69a7c30d24bc107aab64f8
+confirmed 0033 x86_64-windows-pe-v1 ae43e32f21ccd2d7e333ebf30a114d329ca5b5912c388ae167c24d12d2e9f665 aa48b900179ac34c32e26d0e949e44018c20e0739f22000db52b5ba783838e17
+validated 0033 evidence=ec2593111225620430737fa1110899d49f5ae25940e64f88caec43743f2216f2
