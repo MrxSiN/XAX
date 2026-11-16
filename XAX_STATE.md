@@ -2595,3 +2595,18 @@ OI-56 note) and C-a64 (OI-49). C-jvm and C-cap move to the next release (RFC §1
 - **Device** (OI-49): 18 composite-return programs; 0 of 18 right on `main`'s backend, 18 of 18 after ledger 0035.
 - **NOT RUN**: the Windows `chains` measurement without its workaround and the lead over every arm (OI-58); a DLL with
   a frame over 4 KiB on Windows (the OI-56 note); the Android-target build of the OI-49 programs.
+
+## Evidence V2: frozen corpus, native runner and evaluator (RFC phase 3) — 2026-11-16
+
+EXECUTED on Linux x86-64 (WSL 2) with the pinned seed `36e2b756…` (`main` `92ae7cd`, [#78](https://github.com/MrxSiN/XAX/pull/78), ADR-407).
+
+| Item | Result |
+|---|---|
+| Frozen corpus | 199 cases (198 from V1 plus B6's probe); 133 generated inputs, 474,994 bytes; `SNAPSHOTS` gives request `41709ade…` → snapshot `8f530b26…`, the V1 record's reference |
+| `xax_evidence sha` | equals `sha256sum` on test inputs, the 31,549,147-byte seed and the 62 MB driver (0.34 s) |
+| `xax_evidence plan` | byte-equal to an awk reading of `CORPUS` |
+| `sh run.sh <out> quick` | 10 min 50 s; fixed point at generation 1 (C1 = seed); both empty-environment rebuilds equal the seed |
+| `xax_evidence levels` on that record | B0–B5 1, B6 0 (replay not run), rotated 1, python 0 |
+| `test_evidence_v2` | native levels equal the reference on the V1 record and 15 mutations |
+
+The committed bootstrap records are still V1 (release 0033). B levels in the status docs are unchanged.
