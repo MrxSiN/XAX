@@ -2277,3 +2277,31 @@ Seeds: Linux `36e2b756…`, Windows `ae43e32f…` (ledger 0035). `evolve.sh chec
   with a scratch script that is not committed, and record that command in the PR as the oracle's. Then move the Python
   evaluator to `reference/` and make the native evaluator agree with it on the V1 record and on mutated copies. After
   phase 3: phase 6 (`rotate.sh`, `RELEASES`, `POLICY`), then the next release branch with C-jvm (ADR-406) and C-cap.
+
+## Build/rotation campaign: phase 3 done (evidence V2) — 2026-11-16
+
+`main` = `92ae7cd` ([#78](https://github.com/MrxSiN/XAX/pull/78), merged by the agent on the owner's standing
+instruction). No compiler store, CID or seed byte changed. Seeds unchanged: Linux `36e2b756…`, Windows `ae43e32f…`
+(ledger 0035). `evolve.sh check` passes on `92ae7cd` (WSL).
+
+- **Done:** `compiler/bootstrap/evidence/`: the frozen corpus (`CORPUS`, `inputs/`, `SNAPSHOTS`), the native program
+  `xax_evidence` (`sha`, `elf`, `diag`, `plan`, `levels`; SHA-256 written in XAX), and `run.sh`, which writes the V2
+  line record. `src/xax_selfhost.py` moved to `reference/` as the oracle. ADR-407 records the calls; the RFC has a
+  phase 3 note. The oracle's export command and scratch script are in #78's description.
+- **Calls made** (ADR-407): the V2 record is line text, not JSON. The native evaluator reads only V2. Agreement on V1
+  is shown in `tests/test_evidence_v2.py` by writing the V1 record and 15 mutated copies as V2 records. B6's probe
+  now edits the status program, a frozen store. The corpus directory is `inputs/`, because `CORPUS` and `corpus/`
+  collide on Windows. `RELEASES` and `POLICY` move to phase 6.
+- **Tests:** `test_evidence_v2` passes (4 tests, 16 subtests). The WSL targeted run gave 24 passed and 1 failed; the
+  failure is the baseline `test_every_b1_entry_is_bound_to_the_committed_store`. `run.sh quick` took 10 min 50 s
+  and the record's levels are B0–B5 1, B6 0 (replay not run), rotated 1, python 0.
+- **Runs in progress:** none. Logs: `/root/work/logs/ev-run1.log`, `/root/work/logs/ev-tests.log`; the quick record
+  is at `/root/work/p3/run1/record` (WSL).
+- **Not done yet:** `bootstrap_status` still reads the V1 JSON record. The next rotation records V2 with
+  `sh compiler/bootstrap/evidence/run.sh <out>` (a full run, about 90 min including C1's ledger replay), commits the
+  record, and points the status derivation at its native `levels`.
+- **Exact next step:** phase 6 on `main`. Write `rotate.sh build|confirm|state|gate` in `bootstrap/seed/`, with
+  `RELEASES` and `POLICY` (RFC §3, §8, §9). Put its logic in a native batch on `../evolution/ledger-tool/seed.xax`
+  and reuse `evidence/evidence.batch`'s helpers (`@fend`, `@nextline`, `@fld`, `@dnum`, `@put`, `@s256`); see
+  `bootstrap/evidence/README.md`. Probe running the Windows seed through WSL interop (§8). After that: the native
+  oracle (ADR-405), then `release/0036` (C-jvm, C-cap).
