@@ -2305,3 +2305,32 @@ instruction). No compiler store, CID or seed byte changed. Seeds unchanged: Linu
   and reuse `evidence/evidence.batch`'s helpers (`@fend`, `@nextline`, `@fld`, `@dnum`, `@put`, `@s256`); see
   `bootstrap/evidence/README.md`. Probe running the Windows seed through WSL interop (§8). After that: the native
   oracle (ADR-405), then `release/0036` (C-jvm, C-cap).
+
+## Build/rotation campaign: phase 6 done (RELEASES, POLICY, rotate.sh) — 2026-11-16
+
+`main` = `552234a` ([#80](https://github.com/MrxSiN/XAX/pull/80)). No compiler store or seed changed. Seeds unchanged:
+Linux `36e2b756…`, Windows `ae43e32f…` (ledger 0035). `rotate.sh gate` passes on the committed tree (profile released).
+
+- **Done:** `compiler/bootstrap/RELEASES` (release 0033 restated from its committed evidence) and `POLICY`. The
+  native `seed/rotate-tool/xax_rotate` provides `state`, `tests`, `pin`, `id` and `valid`, and `seed/rotate.sh` runs
+  `build [--dry]`, `confirm`, `gate`, `state` and `validate`. Decisions are in ADR-408.
+- **Executed:** the interop probe (the Windows seed from WSL gives the same bytes as from Git Bash and as the Linux
+  seed); a dry rotation that rebuilt both pins byte for byte (9 min 42 s); and on a scratch copy, `confirm` for
+  both hosts (Windows through interop, 9 min 35 s; Linux, 6 min 17 s), after which the state read
+  `profile candidate`. `test_rotate_tool` passes (4 tests).
+- **Calls made:**
+  - `SEED_SHA256` and `windows/seed.json` stay until the first release made by `rotate.sh`; a test requires them
+    to equal the pins.
+  - The §9 repair-diff guard is not built.
+  - `selfbuild.sh` is unchanged.
+  - `confirm` runs an executable copy of the Windows seed, because a Linux checkout drops the `.exe`'s execute bit.
+- **Runs in progress:** none. Logs: `/root/work/logs/rot-{dry,confirm-win,confirm-win2,confirm-linux}.log`; the scratch
+  copy is `/root/work/p6/boot` (WSL).
+- **Next release, with the new tools:** cut `release/0036`; land the C-jvm and C-cap sub-batches; run
+  `rotate.sh build 0036`; run `confirm` for both hosts; run `sh evidence/run.sh <out>` (full, with the replay); run
+  `validate <out>/record`. Then commit the V2 record, point `bootstrap_status` at the native levels, retire the older
+  pins, and amend AGENTS.md's seed rule.
+- **Exact next step:** step 3, the native oracle (ADR-405), a roadmap item. Begin with a design note for a native XAX
+  reference executor that interprets canonical graphs (no code shared with the backends, nothing generated from the
+  compiler's stores), scoped first to x86-64 register lowering's corpus. Alternatively, start step 4
+  (`release/0036`, #49 per ADR-406) if the release is more urgent; neither depends on the other.
