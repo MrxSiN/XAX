@@ -1057,3 +1057,16 @@ tool or new test glue that the language rule does not allow in Python:
 
 **Evidence that closes it.** A native ledger tool and seed check that run on the Windows seed, and one test that
 runs a Windows-seed command against its pin.
+
+## OI-61 — The JVM program does not check a catching call's throwable output type
+
+**Status: OPEN (2026-11-18).** ADR-406 (2) makes a catching JVM declaration's last output `jvm-ref:Ljava/lang/Throwable;`.
+The XAX JVM program (`jk_member`, F38 of `xax_jvm_general.xax` and its copies in `xax_android.xax` and the driver) takes
+one off the output count for a catching ABI (ledger 0036 d) but does not compare that output's type text. A
+declaration with another reference type there lowers to a class whose handler stores a `Throwable` into a local of
+that type, and the JVM or ART rejects the class at load (`VerifyError`); no program runs with a wrong value. Fixing it
+is one more transaction on F38 (about 45,600 view lines) in three stores, outside the DEX change of ADR-409, so it was
+left for the C-cap step of release 0036.
+
+**Evidence that closes it.** A transaction on the three stores that rejects such a declaration with
+`JVM-FOREIGN-ARITY` (or a new diagnostic), and a test that builds one and gets the rejection.
