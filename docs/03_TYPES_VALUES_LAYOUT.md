@@ -164,6 +164,13 @@ Arbitrary widths are normative. Implementations MAY impose explicit compilation-
 
 Implemented kernel integer operations (2026-10-02, ADR-084): `add.wrap`, `sub.wrap`, `mul.wrap`, `bit.and`, `bit.or`, `bit.xor`, `rotate.right k`, `udiv`, `urem` (zero divisor → trap, portable reason 2), `int.truncate`, `int.zero_extend`, and `int.compare` (unsigned and signed predicates). The interpretations named above that are not in this list — `lshr`, `ashr`, `sext`, signed division — are, for now, exact compositions or future admissions under the kernel admission rule (`XAX_SPEC.md` §21.5, OI-39). They are not implicit behaviors of any existing operation.
 
+Sign extension of `x: bits<M>` to `bits<N>` (N > M) is the exact composition `sub.wrap(bit.xor(int.zero_extend(x), s), s)` with
+`s` the `bits<N>` constant `2^(M-1)`: zero extension puts the sign bit at bit M-1, and the XOR then subtraction of that bit
+fills bits M to N-1 with it. For `bits<32>` to `bits<64>`, `s` is `2147483648`. `tests/test_sign_extend_composition.py`
+checks it on both executors for `0`, `1`, `-1`, `INT_MIN` and `INT_MAX`. A dedicated `int.sign_extend` operation is an
+admission under §21.5 (issue #96), to be justified by a measured cost, such as the JVM's single `i2l` against these three
+operations.
+
 ### 4.3 Integer constants
 
 A `bits<N>` constant is canonically identified by:

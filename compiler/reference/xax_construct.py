@@ -25,6 +25,8 @@ they are valid only in the process entry function, and a build rejects them else
 Operands name values: ``"p<i>"``/``"n<i>"``/``"n<i>.r<k>"`` in the current block, or ``"B<b>.p<i>"`` and
 ``"B<b>.n<i>[.r<k>]"`` in a dominating block.  A literal operand ``[TYPE, INTEGER]`` is a constant.
 ``TERMINATOR``: ``["ret", [V...]]``, ``["br", B, [V...]]``, ``["cbr", V, B, [V...], B, [V...]]``.
+There is no sign-extend operation: write ``int.zero.extend``, then ``bit.xor`` and ``sub.wrap`` with ``2^(M-1)`` in the
+wide type (docs/03 §4.2).
 
 Platform ``linux-aarch64`` (ADR-258) builds an ``aarch64-linux-elf-exec-v1`` static executable from the same ``linux.``
 names, resolved in ``xax_linux_aarch64.linux_aarch64_api`` (same names and shapes); it has no startup reads.
