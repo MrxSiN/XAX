@@ -2637,3 +2637,66 @@ Issues #49, #95 and #96 are answered and closed. Still open: #47, #48, #51, #55.
   - also fix the stale `xax_selfhost.py` entry in the Python authority inventory (it fails on `main` since 978bd60).
 
   After that: OI-61, #55 (command budget: `compile.xax` and `bbc.xax`), #48, C-cap, and native oracle slice 3.
+
+## ADR-410 pin retirement, OI-61 and #55 on release 0037 — 2026-11-18
+
+`main` = `d605a6b` (PR [#103](https://github.com/MrxSiN/XAX/pull/103)). `release/0037` = `47e5451`, cut from `main`
+at `d605a6b`, with PRs [#104](https://github.com/MrxSiN/XAX/pull/104) (OI-61) and
+[#105](https://github.com/MrxSiN/XAX/pull/105) (#55). Each was merged by the agent under the standing merge
+authority once its tests passed. The seeds are unchanged (Linux `92375288…`, Windows `8f0d23e1…`); release 0037 is
+not built, confirmed or rotated yet.
+
+- **ADR-410 (#103, on `main`).**
+  - `SEED_SHA256`/`SEED_SIZE` and `bootstrap/windows/seed.json` are deleted; `xax_selfhost_seed.pin()` reads the pin
+    with the native rotate tool (built from the seed once per process, 0.04 s).
+  - `bootstrap_status` is `xax_selfhost_seed.bootstrap_status`, from `xax_evidence levels` of
+    `bootstrap/evidence/records/<latest validated>.record`.
+  - `reference/xax_selfhost.py` is now only the V1 oracle (inventory class C), which fixes that inventory test's
+    baseline failure.
+  - AGENTS.md's seed rule names `rotate.sh build`, `confirm`, `run.sh` and `validate`; `rotate_seed` and
+    `write-request` are gone.
+  - The status blocks and every pin read need Linux x86-64.
+- **OI-61 (#104, ledger 0037 `jvm-throwable`).**
+  - It is three transactions: `-jvm`, `-android` and the driver.
+  - `jk_member` is F68 in `xax_jvm_general.xax`, F325 in Android and F705 in the driver (CID `b1db2f96…` before;
+    the OI-61 text's "F38" was wrong). A guarded region before B723 runs `jk_matches` (F71/F339/F736) on the last
+    machine output against `Ljava/lang/Throwable;` and sets `mb[18]` = 2 on a mismatch, so B723's arity check
+    rejects with `JVM-FOREIGN-ARITY`.
+  - Generator: `/root/work/oi61/mk_oi61.py` (scratch, on `catch/chain.py`).
+  - Checks:
+    - the new `test_xax_jvm_program_rejects_another_throwable_type` fails 6 of 6 on the old stores and passes on the
+      new ones;
+    - `test_jvm_catch_run` still passes on the JBR;
+    - store regeneration, `test_xax_selfhost_jvm`, `test_xax_selfhost_android_jvm` and `test_dex_catch_run`: 84
+      passed, 1 failed (the known `test_callback_programs`);
+    - C1 `e61543f9…` verifies the three stores, and the 198-case differential seed against C1 shows 0 differences.
+- **#55 (#105, `integration/bfx/transactions/budget/`).**
+  - The budget is N = 524,288. The record view is N + 10 (a new type, `3e380ee0…`) and the decoder scratch 8N (the
+    existing type `6dff1135…`).
+  - It is one batch each on `compile.xax`, `bbc.xax` and `bbc_request.xax`. Each defines the changed functions under
+    new names and replaces only the top caller (F103; F1 in `compile.xax`). The README lists per function what
+    changed.
+  - Found on the way: the hosts' `VirtualFree` declarations embed the view type in their bodies (`object 6`), so the
+    record one is supplied anew.
+  - Generator: `/root/work/b55/mk55.py` (scratch).
+  - Checks: `bbc.exe` `e1fb321b…` passes all six ThreadsHideAds programs and the N/N+1/bracket edge cases;
+    `check.py` shows 372 of 372 compiles and 0 mismatches. `COMPILE.md` has the details.
+- **Calls made (recorded):**
+  1. #55's batches go on `release/0037`, not `main`, because the release rebuilds `bbc.xax` from the released
+     driver, and a `main` change would conflict with that binary.
+  2. N = 2^19, not the 1 MiB source limit. A smaller decoder scratch (4 MiB) keeps the capacity path reachable and
+     testable.
+  3. The standalone `bfx.xax`, `import_bfx.xax`, `pack.xax` and the Android hosts keep 65,536 (YAGNI). The issue
+     names only `compile.xax` and BBC's stores.
+  4. BBC's fixtures wait for release 0037 on `main`, because BBC pins exact XAX commits.
+  5. #55 stays open (progress comment posted). OI-61 closes when release 0037 reaches `main`.
+- **Open:** #47, #48, #51, #55, OI-61 (fixed on the release branch), C-cap, and native oracle slice 3.
+- **Next step:**
+  1. #48: write the v3 carrier design (an ADR). The carrier is `android-libxposed-jvm-module-v3` with optional
+     `onModuleLoaded`/`onSystemServerStarting` entries; its native decoding goes in the Android program and the
+     driver (a transaction on `release/0037`). Installing a `system_server` hook on the Pixel needs the owner: record
+     it as BLOCKED.
+  2. Then C-cap and native oracle slice 3.
+  3. Then release 0037: `rotate.sh build 0037`, `confirm` both targets, `run.sh`, the SNAPSHOTS line,
+     `validate`, rebuild BBC, `check.py`, the Pixel session, the full suite, and the release PR.
+  4. After that, BBC's fixtures and pin.
