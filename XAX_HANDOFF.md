@@ -2719,3 +2719,30 @@ Supersedes the 524,288 budget in the section above. `release/0037` = `95c35fd`; 
      JVM closure roots, then the driver copies. Check each with C1, `dexdump` and ART.
   2. Then C-cap and native oracle slice 3.
   3. Then the release 0037 run, then BBC's pin and fixtures.
+
+## ADR-411 (#48) mapped in the native programs — 2026-11-18
+
+Read-only; no store changed. Old builder sources, a map for reading views and never a generator: `git show
+4a5d4b8^:compiler/src/xax_selfhost_android.py` (lines ~5560–5700) and `git show f6d5b08:compiler/src/xax_selfhost_jvm.py`.
+
+- **Android program, JVM-module path (J2–J3).**
+  - It lowers the entry through the JVM layer (class `xax/P<entry CID's first 16 hex>`).
+  - It reads the `entry` method's descriptor back from the lowered class (`an_entry_desc`) and rejects
+    `LIBXPOSED-JVM-ENTRY` on a mismatch.
+  - Then it writes the `Module` bridge: one method `onPackageReady`, 2 registers, `invoke-static {v0, v1}` of
+    `entry`, then `return-void`. A lifecycle entry adds the same block with its parameter type and method name, and
+    the method count goes from 1 to 1 + entries.
+  - The managed profile already knows `onModuleLoaded` (`CALLBACKS`, line 124), but that is another path.
+- **JVM program.**
+  - The closure is walked twice from one `entry`: `jf_scan` (the bootstrap's rejection order, a LIFO stack seeded
+    with `entry`) and the depth-first frame walk (`_push(entry)`).
+  - Methods are `entry` and `f<k>` in closure CID order.
+  - Multiple roots: seed both walks with every root.
+- **Open design point for ADR-411 (4).** The Android program must find each lifecycle entry's method. Either the JVM
+  layer takes (root CID, method name) pairs and names extra roots `xaxOnModuleLoaded`/`xaxOnSystemServerStarting`,
+  or it reports each root's `f<k>`. The first keeps `an_entry_desc`'s lookup by name and needs no new output, so
+  prefer it. The layer's input words (where the entry CID is passed today) gain a root count and the pairs. Write
+  this as an ADR-411 amendment before the first transaction.
+- **Order:** the JVM program's roots (`xax_jvm_general.xax`, Android's and the driver's copies, mapped by CID), then
+  the Android program's v3 parse and `Module` methods. Check each with C1, `dexdump` and ART. The device check
+  stays BLOCKED.
