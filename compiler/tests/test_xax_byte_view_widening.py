@@ -24,6 +24,7 @@ from xax_compiler import (
 from xax_graph_builder import GraphBuilder, program_store
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 LINUX_X86_64 = sys.platform.startswith("linux") and platform.machine().lower() in ("x86_64", "amd64")
 B8, B16, B32, B64 = (bits_type(width) for width in (8, 16, 32, 64))
@@ -169,6 +170,9 @@ class ByteViewVerifierTests(unittest.TestCase):
 
 class ByteViewExecutionTests(unittest.TestCase):
     def test_reference_executor(self):
+        """The area's oracle (ADR-405 (4)): the native one on Linux x86-64 (slice 3), else the Python executor."""
+        from test_native_oracle import LINUX_X86_64 as NATIVE, native_run
+
         for size in CHECKED_BYTE_VIEW_WIDTHS:
             for store in (False, True):
                 function, objects = _stack_callee(size, store=store)
@@ -177,7 +181,10 @@ class ByteViewExecutionTests(unittest.TestCase):
                     for k in range(size) if store else (0,):
                         arguments = (offset, k) if store else (offset,)
                         expected = _expected(size, offset, store=store, k=k)
-                        if expected is None:
+                        if NATIVE:
+                            outcome = (1, "trap %s\n" % b"memory-check".hex()) if expected is None else (0, "%d\n" % expected)
+                            self.assertEqual(native_run(reader.data, function.cid, arguments), outcome, (size, store, arguments))
+                        elif expected is None:
                             with self.assertRaises(XaxTrap):
                                 execute(reader, function.cid, arguments)
                         else:

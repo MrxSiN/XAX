@@ -26,6 +26,12 @@ The store is not verified here; run `xaxc verify` on it first, as `execute` veri
 **Slice 2** adds recursion groups. A group member function's graph is its group's member, and `call.group.member`
 calls a member of the caller's own group: each frame records its group.
 
+**Slice 3** adds stack memory: `stack.alloc`, `address.offset`, `store.bits.le`, `load.bits.le`, `stack.end`,
+`checked.load.bits.le` and `checked.store.bits.le`, with pointer, effect and resource types as values. A checked access
+past its allocation, or misaligned within it, traps with the payload `memory-check` (exit 1, `trap 6d656d6f72792d636865636b`),
+as `execute` does. Pointers into the target's address space (`pointer.address`, `pointer.rebase`), heap views and growable
+accesses stay declined.
+
 How it works:
 
 - The store is read into one view. Objects are found by CID through a walk of the records.
@@ -33,6 +39,9 @@ How it works:
   the block table (parameter slots, first node, node count, terminator position), the node table (position,
   result slot, operation) and the slots (value, mask).
 - Frames are on an explicit stack with caller, destination and resume fields, because tools cannot recurse.
+- A stack allocation takes zeroed words from the top of the same frame stack, after its extent word, and is released
+  when its frame returns. A pointer is the allocation's data address times 2^32 plus its offset, so a checked access
+  finds the allocation's extent and its own offset from the pointer alone.
 - An edge copies its values through a buffer, so that parallel block arguments are correct.
 - A binary operation computes every candidate result and keeps the one its operation selects; division by zero
   traps.
@@ -48,7 +57,7 @@ and `xaxc verify` accepts it. Change it by a further batch on `xax_oracle.xax`, 
 Limits:
 
 - a store under 256 MiB;
-- frames under 896 KiB in all;
+- frames and stack allocations under 896 KiB in all (more exits 3, `error`);
 - at most 512 values on one edge, call or return;
 - a 32-byte CID argument in hexadecimal.
 
@@ -70,3 +79,7 @@ Limits:
   200 calls deep; `../../benchmarks/oracle_recursion_evidence.json`), and the register-lowering corpus still agrees
   160 of 160. `test_xax_recursion`'s execution check uses `oracle_execute`. Frames take about 0.5 KiB each, so about
   1,800 calls fit; the Python executor stops at its host recursion limit sooner.
+- Slice 3: on the stack-memory corpus of `test_xax_byte_view_widening` (sizes 1, 2, 4 and 8, loads and stores, offsets
+  0 to 33, 646 cases) both executors give the same results and traps (`../../benchmarks/oracle_memory_evidence.json`).
+  The earlier areas still agree. That test's execution check now takes its expected values from the native oracle on
+  Linux x86-64, and `tests/test_native_oracle.py` keeps checking that both oracles agree.
