@@ -2700,3 +2700,22 @@ not built, confirmed or rotated yet.
   3. Then release 0037: `rotate.sh build 0037`, `confirm` both targets, `run.sh`, the SNAPSHOTS line,
      `validate`, rebuild BBC, `check.py`, the Pixel session, the full suite, and the release PR.
   4. After that, BBC's fixtures and pin.
+
+## #55 at 1,048,576 and the #48 design — 2026-11-18
+
+Supersedes the 524,288 budget in the section above. `release/0037` = `95c35fd`; `main` = `e674dd9`.
+
+- **#55 (PR [#107](https://github.com/MrxSiN/XAX/pull/107), on the owner's request):**
+  - The budget is now 1,048,576, the source limit. The record is 1,048,586 bytes and the scratch 8,388,608.
+  - It is batch step 2 in `integration/bfx/transactions/budget/` (generator `/root/work/b55/mk55b.py`, scratch).
+  - `bbc.exe` `31c90bae…`: 1,048,576 `+` passes; 1,048,577 exits 2. Overflow beats a bracket error through the
+    frame's 1 MiB check. ThreadsHideAds is unchanged. `check.py` shows 372 of 372 compiles and 0 mismatches.
+  - BBC's overflow fixtures become 1,048,577-byte sources once release 0037 is on `main`.
+- **#48 (PR [#108](https://github.com/MrxSiN/XAX/pull/108), ADR-411, proposed):** the v3 carrier with `entries` by
+  function CID, closure roots for every entry, and two more `Module` forwarding methods. The device check is
+  BLOCKED on the owner.
+- **Next step:**
+  1. ADR-411's native steps on `release/0037`: the Android program's record parse and `Module` methods, then the
+     JVM closure roots, then the driver copies. Check each with C1, `dexdump` and ART.
+  2. Then C-cap and native oracle slice 3.
+  3. Then the release 0037 run, then BBC's pin and fixtures.
