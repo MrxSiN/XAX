@@ -7,8 +7,8 @@ test xax_x86_64_general.xax tests/test_x86_64_narrow_signed_compare.py tests/tes
 test xax_aarch64_general.xax tests/test_xax_selfhost_aarch64.py
 test xax_android.xax tests/test_xax_selfhost_android.py
 test xax_jvm_general.xax tests/test_xax_jvm_general.py
-test xax_dex_jvm.xax tests/test_xax_selfhost_dex_jvm.py
-test xax_dex_writer.xax tests/test_xax_selfhost_dex_writer.py
+test xax_dex_jvm.xax tests/test_xax_selfhost_dex_jvm.py tests/test_dex_catch_run.py
+test xax_dex_writer.xax tests/test_xax_selfhost_dex_writer.py tests/test_dex_catch_run.py
 test xax_riscv64_backend.xax tests/test_xax_selfhost_riscv64.py
 test xax_blake3_hash.xax tests/test_xax_selfhost_blake3.py
 test xax_cfg_analysis.xax tests/test_xax_selfhost_cfg.py

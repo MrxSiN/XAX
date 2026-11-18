@@ -2952,6 +2952,8 @@ JVM_FOREIGN_ABIS = (
 FOREIGN_ABIS = (
     ANDROID_AAPCS64_C_ABI, b"win64-c", b"wasm32-import", LINUX_X86_64_SYSCALL_ABI, SYSV_X86_64_C_ABI, LINUX_X86_64_STARTUP_ABI,
     *JVM_FOREIGN_ABIS, LINUX_AARCH64_SYSCALL_ABI, AAPCS64_LINUX_C_ABI, AAPCS64_STATIC_C_ABI, XAX_HOST_ABI,
+    # ADR-406: catching JVM calls verify here; the reference JVM backend does not lower them (JVM-FOREIGN-ABI).
+    b"jvm-invokestatic-catch", b"jvm-invokevirtual-catch", b"jvm-invokeinterface-catch",
 )
 
 # Conventions a foreign caller may use to enter an XAX function (ADR-102).
