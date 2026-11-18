@@ -2677,3 +2677,21 @@ android and driver stores). The seed is not rotated.
 | C1 `verify` of the three stores | accepted |
 | `bench_full_selfhost.corpus()`, seed against C1 | 0 of 198 differ |
 | DEX lowering of a catching call | NOT RUN: still rejected (`DEX-EXCEPTION-TABLE`, part 6) |
+
+## Release 0036: catching JVM calls on the JVM and Android, seeds rotated — 2026-11-18
+
+`main` `9720d90`. This is the first release made with `rotate.sh` and validated by V2 evidence (ADR-408).
+
+| Check | Result |
+|---|---|
+| Shipped | ledger 0036 to 0036 dex-catch c: the three catching JVM ABIs, verified (#88), lowered by the JVM program (#93) and to DEX (#97) |
+| `rotate.sh build 0036` | Linux `92375288d8e5c0f323145d7ff0ddfbc5ce725bb3aa711cb6a601a46e5122ea3c` (31,614,043 bytes), fixed point at generation 2 from the pinned seed; Windows `8f0d23e1b749a10969b7cdd1db4d4a57705c4aa9a15cc04906ad497963409f9f` (31,667,200 bytes) from request `15cd8772…` |
+| `rotate.sh confirm`, both targets | EXECUTED: each seed rebuilds itself twice. Windows ran as a Windows process through WSL interop (`bootstrap/evidence/confirm/0036-*.txt`) |
+| V2 `evidence/run.sh` (full, 95 min) | EXECUTED: generation 1 is the seed's fixed point; 198 cases and the 10-case repeat in C0; replay 179 of 179 |
+| `rotate.sh validate` | B0–B6 hold, rotated 1, python 0: `validated 0036 evidence=88ae1a59…` (`bootstrap/evidence/records/0036.record`). Needs the `SNAPSHOTS` line `226bf2ca… 4c09bd49…` (the reference resolver's snapshot, equal to the native one) |
+| V1 records | `bench_full_selfhost` (10,738 s) and `bench_python_free_seed` (409 s). Derived: B0–B6 hold; the seed requires no Python |
+| BBC | `bbc.xax` and `bbc_request.xax` through the ten driver transactions; `bbc.exe` `0a72abc9…`. `check.py`: 372 of 372 compiles, 488 runs, 0 mismatches, 5 of 5 error paths |
+| Pixel 8 Pro | 14 of 14 BBC Android executables equal to QEMU. The 8 catching programs run on ART (`dalvikvm64`) with the expected lines, throwable class and exit status |
+| DEX lowering (#97) | 8 of 8 lower and write, and `dexdump` accepts each with one `<any>` handler. DEX equality tests: 5 passed, 76 subtests. C1 verifies the five changed stores. Corpus differential: 0 of 197 differ |
+| Full suite (`-n 4`, WSL 2) | 1,566 passed, 12 failed. 9 are the known baseline (audit B1 binding, 2 OI-16, 3 Wasm, 2 OI-06, `test_callback_programs`). 1 is the stale `xax_selfhost.py` inventory entry, which also fails on `main`. 2 were killed for memory and pass alone: `test_xax_selfhost_stores` (283 s) and `test_native_large_image` (31:46, peak 13.1 GB) |
+| NOT RUN | #48 (needs a `system_server` hook on the owner's device); C-cap (OI-54, OI-52 R2); the ADR-408 pin retirement (next PR on `main`) |

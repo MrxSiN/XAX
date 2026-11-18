@@ -2577,3 +2577,63 @@ of the two sections above, with these differences from that plan.
   - Part 7 on ART (Pixel) waits for part 6.
 - **Next step:** part 6 on a new branch from `release/0036` (`xax_dex_jvm.xax`: a `try_item` and an encoded handler
   whose code starts with `move-exception`). Then ART on the Pixel, #48, C-cap, and the release.
+
+## #49 part 6, issues #95 and #96, release 0036 done — 2026-11-18
+
+`main` = `9720d90` (release PR [#101](https://github.com/MrxSiN/XAX/pull/101)). Merged by the agent under the owner's
+standing merge authority once each PR's tests passed:
+- [#97](https://github.com/MrxSiN/XAX/pull/97) (DEX lowering) into `release/0036`;
+- [#98](https://github.com/MrxSiN/XAX/pull/98) and [#99](https://github.com/MrxSiN/XAX/pull/99) into `main`;
+- [#100](https://github.com/MrxSiN/XAX/pull/100) (rotation) into `release/0036`;
+- [#101](https://github.com/MrxSiN/XAX/pull/101) (the release) into `main`.
+
+Issues #49, #95 and #96 are answered and closed. Still open: #47, #48, #51, #55.
+
+- **#49 part 6 (#97, ADR-409, ledger 0036 dex-catch a–c).** Each step is a transaction on three stores: `-dexjvm` or
+  `-dexwriter`, `-android`, and the driver (no suffix).
+  - a: `dj_stack_map` accepts a full frame with one stack item. `dj_translate` makes each handler pc a target
+    (`targets[h] = 2`); there it pushes the throwable, emits `move-exception`, and records `targets[h] = 4 + unit`.
+  - b: `dj_method` parses the exception table into globals `STATE_AT + 48` (entries) and `+ 49` (count), accepting
+    only a Class catch type named `java/lang/Throwable`. After the last pass it appends the tail units and emits
+    code flag 2.
+  - c: the writer entry keeps the flag at `us[2·nu]` and writes `tries_size`, `insns_size` and every unit but the
+    last two. This is writer F15; it is Android F465 and driver F1012, all with CID `f8b84da3…`.
+  - The record tail is in ADR-409. `an_entry_desc` walks it unchanged.
+- **#96 (#98):** sign extension is the exact composition of docs/03 §4.2, tested on both executors. A dedicated
+  operation stays a §21.5 admission.
+- **#95 (#99):** floats are written with native `xaxc edit` batches: `object 4 0x0701`, `form7` type lines, IEEE
+  constant bytes, and `object 6` declarations, as documented in docs/09 §16. `xax_construct.py` was not extended
+  (AGENTS.md, ADR-405).
+- **Release 0036 (#100):**
+  - seeds: Linux `92375288…`, Windows `8f0d23e1…`;
+  - `RELEASES` reads `validated 0036 evidence=88ae1a59…`; `rotate.sh state` reads `profile released`;
+  - results in `XAX_STATE.md` (2026-11-18).
+- **OI-61 (new):** the JVM program does not check a catching declaration's throwable output type. A wrong type gives
+  a `VerifyError` at load, never a wrong value.
+- **Calls made (recorded):**
+  1. **#48 not started.** It needs a v3 carrier, native carrier decoding and Android-program and driver transactions.
+     Its oracle is a `system_server` hook on the owner's Pixel and a reboot, which was not installed unattended.
+  2. **C-cap (OI-54 steps, OI-52 R2) deferred.** It is multi-release layout work, so release 0036 shipped C-jvm only.
+  3. **ADR-408's pin retirement deferred to a PR on `main`.** That covers `SEED_SHA256`, `windows/seed.json`, the
+     AGENTS.md seed rule, and pointing `bootstrap_status` at the V2 levels. Eight Python consumers read the pins, so
+     this release updated both pins and the V1 records as release 0033 did, and committed the V2 record beside them.
+  4. **The DEX handler is catch-all with fixed-width LEB128** (ADR-409), checked by `dexdump` and ART.
+  5. **V2 needs a `SNAPSHOTS` line for each release's request.** The first `validate` refused, with B1–B6 at 0, until
+     the reference oracle's line for the 0036 request was added in its own commit. A diagnostic showed the record
+     needed nothing else.
+  6. **Intermediate driver blobs of #93 were never committed.** The BBC rebuild replayed the driver from the batches
+     instead, and checked each blob against the LEDGER.
+  7. **A WSL VM restart killed the first V1 full run.** The rerun used a log named per run
+     (`rel0036-full-v1b.log`).
+- **Unexplained:** the corpus differential counts 197 cases where earlier runs had 198. It was not investigated.
+- **Runs in progress:** none.
+- **Logs:** `/root/work/logs/rel0036-*.log`, `dex-*.log`, `c1-dex.log`, `diff-dex.log`. The scratch generators are in
+  `/root/work/dex` (`mk_jv.py`, `mk_wr.py`, `build_dex.py`) and `/root/work/rel0036`; they are not committed.
+- **Exact next step:** a PR on `main` for the ADR-408 retirement:
+  - every Python reader of `SEED_SHA256`/`SEED_SIZE` and `windows/seed.json` reads the pin from the native rotate
+    tool's `pin` (from `RELEASES`), then the two pins are deleted;
+  - `bootstrap_status` derives B0–B6 from the native `levels` of the latest validated V2 record;
+  - AGENTS.md's seed rule names `rotate.sh` and drops `rotate-seed`;
+  - also fix the stale `xax_selfhost.py` entry in the Python authority inventory (it fails on `main` since 978bd60).
+
+  After that: OI-61, #55 (command budget: `compile.xax` and `bbc.xax`), #48, C-cap, and native oracle slice 3.
