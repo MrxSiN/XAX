@@ -3,7 +3,8 @@
 A declaration ``jvm-invokestatic-catch java/lang/Integer parseInt(Ljava/lang/String;)I`` with outputs ``int`` and
 ``jvm-ref:Ljava/lang/Throwable;`` verifies (``verify_store``: the reference and, on Linux x86-64, the native typing
 program).  The reference JVM backend does not lower it (``JVM-FOREIGN-ABI``; ADR-405 adds no Python); the XAX JVM
-program does (#49 parts 2-3), for all three ABIs, and ``test_jvm_catch_run`` runs what it builds.
+program does (#49 parts 2-3), for all three ABIs, and ``test_jvm_catch_run`` runs what it builds.  A last output of
+another type rejects with ``JVM-FOREIGN-ARITY`` (OI-61, ledger 0037).
 """
 
 from __future__ import annotations
@@ -22,15 +23,16 @@ CATCH_ABIS = (b"jvm-invokestatic-catch", b"jvm-invokevirtual-catch", b"jvm-invok
 LINUX_X86_64 = sys.platform.startswith("linux") and platform.machine().lower() in ("x86_64", "amd64")
 
 
-def catching_program(abi: bytes):
+def catching_program(abi: bytes, thrown: bytes = b"Ljava/lang/Throwable;"):
+    """``thrown``: the descriptor of the last output's reference type (OI-61: anything but Throwable rejects)."""
     b32 = bits_type(32)
-    string, throwable = jvm_reference_type(b"Ljava/lang/String;"), jvm_reference_type(b"Ljava/lang/Throwable;")
+    string, throwable = jvm_reference_type(b"Ljava/lang/String;"), jvm_reference_type(thrown)
     receiver = (string,) if abi == CATCH_ABIS[0] else (jvm_reference_type(b"Ljava/lang/CharSequence;"),)
     member = b"parseInt(Ljava/lang/String;)I" if abi == CATCH_ABIS[0] else b"length()I"
     library = b"java/lang/Integer" if abi == CATCH_ABIS[0] else b"java/lang/CharSequence"
     carrier = foreign_function_symbol(library, member, receiver, (b32, throwable), abi=abi)
     graph = GraphBuilder()
-    texts = (b"Ljava/lang/String;", b"Ljava/lang/CharSequence;", b"Ljava/lang/Throwable;")
+    texts = tuple(dict.fromkeys((b"Ljava/lang/String;", b"Ljava/lang/CharSequence;", thrown)))
     graph.track(b32, throwable, *receiver, *(opaque_identity_type(REFERENCE_PREFIX + text) for text in texts))
     block = graph.block(*receiver)
     value, _thrown = block.op(Operation.CALL_FOREIGN, block.params, (b32, throwable), entity=carrier)
@@ -61,6 +63,18 @@ class CatchAbiTests(unittest.TestCase):
                 entry, target, reader = catching_program(abi)
                 jar = jvm_jar(reader, entry.cid, target, process_entry=False, frontend="xax")
                 self.assertTrue(jar.startswith(b"PK"))
+
+    @unittest.skipUnless(LINUX_X86_64, "the XAX JVM program runs natively on Linux x86-64")
+    def test_xax_jvm_program_rejects_another_throwable_type(self):
+        """OI-61: the last output of a catching declaration must be ``jvm-ref:Ljava/lang/Throwable;``."""
+        from xax_selfhost_jvm import jvm_jar
+        for abi in CATCH_ABIS:
+            for thrown in (b"Ljava/lang/String;", b"Ljava/lang/Exception;"):
+                with self.subTest(abi=abi, thrown=thrown):
+                    entry, target, reader = catching_program(abi, thrown)
+                    with self.assertRaises(XaxError) as raised:
+                        jvm_jar(reader, entry.cid, target, process_entry=False, frontend="xax")
+                    self.assertEqual(raised.exception.diagnostic.rule, "JVM-FOREIGN-ARITY")
 
 
 if __name__ == "__main__":
