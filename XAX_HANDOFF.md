@@ -2637,3 +2637,37 @@ Issues #49, #95 and #96 are answered and closed. Still open: #47, #48, #51, #55.
   - also fix the stale `xax_selfhost.py` entry in the Python authority inventory (it fails on `main` since 978bd60).
 
   After that: OI-61, #55 (command budget: `compile.xax` and `bbc.xax`), #48, C-cap, and native oracle slice 3.
+
+## Release 0037 rotated — 2026-11-19
+
+`release/0037` + PR #119 (`rotation-0037`). Owner's instruction for this run: work autonomously overnight, make
+reasonable calls and record them here.
+
+- **Rotation (EXECUTED, WSL 2):**
+  - `rotate.sh build 0037`: Linux seed `8e0a4cf3…` (31,811,019 bytes), Windows `06ece4cf…` (31,864,320).
+  - Confirmed on both targets.
+  - `evidence/run.sh` full: the ledger replay passed 189 of 189.
+  - `rotate.sh validate`: `validated 0037 evidence=82fccd30…`, with B0–B6 holding.
+  - The SNAPSHOTS line `f4b649c8… d6fc3dc7…` is in its own commit. Status blocks were re-derived.
+- **BBC:**
+  - `bbc.xax` and `bbc_request.xax` follow the four 0037 driver transactions. The driver was replayed from
+    `2cd6c8f…`, because the state between lifecycle b and c was never committed, and each blob was checked against
+    the LEDGER.
+  - `bbc.exe` `4b73ad61…` (36,109,312 bytes) was built by the new Windows seed.
+  - `check.py`: 372 of 372 compiles, 488 runs, 0 mismatches, 5 of 5 error paths.
+  - On the Pixel, BBC's Android outputs match qemu in 14 of 14 cases.
+- **Full suite:** 33 failures in the full run (`-n 2`, 2 h 36 min). It overlapped validation and the status
+  regeneration, so state tests saw a half-finished release. Rerun on the final tree: everything passes but the
+  baseline (Wasm 3, OI-16 2, OI-06 2, the B1 binding, `test_callback_programs`) and the two V1 records, which
+  describe the old seed until they are regenerated.
+- **Calls made:**
+  1. The first full suite at `-n 4` ran alongside the evidence replay and exhausted WSL's memory (0 GB available).
+     I stopped it so the replay would survive and reran it at `-n 2`.
+  2. The V1 records (`bench_python_free_seed`, `bench_full_selfhost`) are regenerated as in release 0036, because
+     their tests still read them.
+  3. `test_rotate_tool`'s fictional lifecycle moved to 0038 and 0039.
+- **Next step:** commit the two V1 records on `rotation-0037`, then:
+  1. merge #119 into `release/0037`;
+  2. the release PR `release/0037` → `main` (#48's lifecycle entries reach `main`);
+  3. BBC's pin and its 1,048,577-byte overflow fixtures (#55) once 0037 is on `main`;
+  4. then C-cap's ADR for the next release.
