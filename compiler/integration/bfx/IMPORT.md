@@ -18,6 +18,8 @@ Raw native pointers alone do not prove these properties. Before import, write
 logical record length into scratch u32 at offset zero. Before source compilation,
 copy raw source to source/work offset 65,536 and write source length into record
 u32 at offset zero. Source limit is 1 MiB; instruction limit is 65,536.
+In BBC's stores (`bbc.xax`) the record is 524,298 bytes, the scratch 4,194,304 and the instruction limit 524,288
+(2026-11-18, issue #55; [COMPILE.md](COMPILE.md)).
 
 Decoder returns `(count << 32) | validation_status`. Other components return
 `(written_bytes << 32) | status`; discard all provisional output on failure.
