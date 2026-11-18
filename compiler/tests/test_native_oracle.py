@@ -76,6 +76,23 @@ class NativeOracleTests(unittest.TestCase):
             subprocess.run([str(SEED), "edit", str(BOOTSTRAP / "evolution" / "ledger-tool" / "seed.xax"), str(ORACLE / "oracle.batch"), str(out)], check=True)
             self.assertEqual(out.read_bytes(), (ORACLE / "xax_oracle.xax").read_bytes())
 
+    def test_both_oracles_agree_on_stack_memory(self):
+        """Slice 3: stack allocations, offsets, plain and checked loads and stores, memory-check traps."""
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        from test_xax_byte_view_widening import EXTENT, _stack_callee
+        from xax_compiler import CHECKED_BYTE_VIEW_WIDTHS, x86_64_linux_exec_target
+        from xax_graph_builder import program_store
+
+        for size in CHECKED_BYTE_VIEW_WIDTHS:
+            for store in (False, True):
+                function, objects = _stack_callee(size, store=store)
+                reader = program_store(function, x86_64_linux_exec_target(), objects)
+                for offset in (0, 1, EXTENT - size, EXTENT - size + 1, EXTENT + 1):
+                    for k in (0, size - 1) if store else (0,):
+                        arguments = (offset, k) if store else (offset,)
+                        with self.subTest(size=size, store=store, arguments=arguments):
+                            self.assertEqual(native_run(reader.data, function.cid, arguments), _reference(reader, function.cid, arguments))
+
     def test_both_oracles_agree_on_the_register_lowering_corpus(self):
         sys.path.insert(0, str(Path(__file__).resolve().parent))
         from test_xax_regalloc_differential import RegisterAllocatorDifferentialTests

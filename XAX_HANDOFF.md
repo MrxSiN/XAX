@@ -2638,6 +2638,205 @@ Issues #49, #95 and #96 are answered and closed. Still open: #47, #48, #51, #55.
 
   After that: OI-61, #55 (command budget: `compile.xax` and `bbc.xax`), #48, C-cap, and native oracle slice 3.
 
+## ADR-410 pin retirement, OI-61 and #55 on release 0037 — 2026-11-18
+
+`main` = `d605a6b` (PR [#103](https://github.com/MrxSiN/XAX/pull/103)). `release/0037` = `47e5451`, cut from `main`
+at `d605a6b`, with PRs [#104](https://github.com/MrxSiN/XAX/pull/104) (OI-61) and
+[#105](https://github.com/MrxSiN/XAX/pull/105) (#55). Each was merged by the agent under the standing merge
+authority once its tests passed. The seeds are unchanged (Linux `92375288…`, Windows `8f0d23e1…`); release 0037 is
+not built, confirmed or rotated yet.
+
+- **ADR-410 (#103, on `main`).**
+  - `SEED_SHA256`/`SEED_SIZE` and `bootstrap/windows/seed.json` are deleted; `xax_selfhost_seed.pin()` reads the pin
+    with the native rotate tool (built from the seed once per process, 0.04 s).
+  - `bootstrap_status` is `xax_selfhost_seed.bootstrap_status`, from `xax_evidence levels` of
+    `bootstrap/evidence/records/<latest validated>.record`.
+  - `reference/xax_selfhost.py` is now only the V1 oracle (inventory class C), which fixes that inventory test's
+    baseline failure.
+  - AGENTS.md's seed rule names `rotate.sh build`, `confirm`, `run.sh` and `validate`; `rotate_seed` and
+    `write-request` are gone.
+  - The status blocks and every pin read need Linux x86-64.
+- **OI-61 (#104, ledger 0037 `jvm-throwable`).**
+  - It is three transactions: `-jvm`, `-android` and the driver.
+  - `jk_member` is F68 in `xax_jvm_general.xax`, F325 in Android and F705 in the driver (CID `b1db2f96…` before;
+    the OI-61 text's "F38" was wrong). A guarded region before B723 runs `jk_matches` (F71/F339/F736) on the last
+    machine output against `Ljava/lang/Throwable;` and sets `mb[18]` = 2 on a mismatch, so B723's arity check
+    rejects with `JVM-FOREIGN-ARITY`.
+  - Generator: `/root/work/oi61/mk_oi61.py` (scratch, on `catch/chain.py`).
+  - Checks:
+    - the new `test_xax_jvm_program_rejects_another_throwable_type` fails 6 of 6 on the old stores and passes on the
+      new ones;
+    - `test_jvm_catch_run` still passes on the JBR;
+    - store regeneration, `test_xax_selfhost_jvm`, `test_xax_selfhost_android_jvm` and `test_dex_catch_run`: 84
+      passed, 1 failed (the known `test_callback_programs`);
+    - C1 `e61543f9…` verifies the three stores, and the 198-case differential seed against C1 shows 0 differences.
+- **#55 (#105, `integration/bfx/transactions/budget/`).**
+  - The budget is N = 524,288. The record view is N + 10 (a new type, `3e380ee0…`) and the decoder scratch 8N (the
+    existing type `6dff1135…`).
+  - It is one batch each on `compile.xax`, `bbc.xax` and `bbc_request.xax`. Each defines the changed functions under
+    new names and replaces only the top caller (F103; F1 in `compile.xax`). The README lists per function what
+    changed.
+  - Found on the way: the hosts' `VirtualFree` declarations embed the view type in their bodies (`object 6`), so the
+    record one is supplied anew.
+  - Generator: `/root/work/b55/mk55.py` (scratch).
+  - Checks: `bbc.exe` `e1fb321b…` passes all six ThreadsHideAds programs and the N/N+1/bracket edge cases;
+    `check.py` shows 372 of 372 compiles and 0 mismatches. `COMPILE.md` has the details.
+- **Calls made (recorded):**
+  1. #55's batches go on `release/0037`, not `main`, because the release rebuilds `bbc.xax` from the released
+     driver, and a `main` change would conflict with that binary.
+  2. N = 2^19, not the 1 MiB source limit. A smaller decoder scratch (4 MiB) keeps the capacity path reachable and
+     testable.
+  3. The standalone `bfx.xax`, `import_bfx.xax`, `pack.xax` and the Android hosts keep 65,536 (YAGNI). The issue
+     names only `compile.xax` and BBC's stores.
+  4. BBC's fixtures wait for release 0037 on `main`, because BBC pins exact XAX commits.
+  5. #55 stays open (progress comment posted). OI-61 closes when release 0037 reaches `main`.
+- **Open:** #47, #48, #51, #55, OI-61 (fixed on the release branch), C-cap, and native oracle slice 3.
+- **Next step:**
+  1. #48: write the v3 carrier design (an ADR). The carrier is `android-libxposed-jvm-module-v3` with optional
+     `onModuleLoaded`/`onSystemServerStarting` entries; its native decoding goes in the Android program and the
+     driver (a transaction on `release/0037`). Installing a `system_server` hook on the Pixel needs the owner: record
+     it as BLOCKED.
+  2. Then C-cap and native oracle slice 3.
+  3. Then release 0037: `rotate.sh build 0037`, `confirm` both targets, `run.sh`, the SNAPSHOTS line,
+     `validate`, rebuild BBC, `check.py`, the Pixel session, the full suite, and the release PR.
+  4. After that, BBC's fixtures and pin.
+
+## #55 at 1,048,576 and the #48 design — 2026-11-18
+
+Supersedes the 524,288 budget in the section above. `release/0037` = `95c35fd`; `main` = `e674dd9`.
+
+- **#55 (PR [#107](https://github.com/MrxSiN/XAX/pull/107), on the owner's request):**
+  - The budget is now 1,048,576, the source limit. The record is 1,048,586 bytes and the scratch 8,388,608.
+  - It is batch step 2 in `integration/bfx/transactions/budget/` (generator `/root/work/b55/mk55b.py`, scratch).
+  - `bbc.exe` `31c90bae…`: 1,048,576 `+` passes; 1,048,577 exits 2. Overflow beats a bracket error through the
+    frame's 1 MiB check. ThreadsHideAds is unchanged. `check.py` shows 372 of 372 compiles and 0 mismatches.
+  - BBC's overflow fixtures become 1,048,577-byte sources once release 0037 is on `main`.
+- **#48 (PR [#108](https://github.com/MrxSiN/XAX/pull/108), ADR-411, proposed):** the v3 carrier with `entries` by
+  function CID, closure roots for every entry, and two more `Module` forwarding methods. The device check is
+  BLOCKED on the owner.
+- **Next step:**
+  1. ADR-411's native steps on `release/0037`: the Android program's record parse and `Module` methods, then the
+     JVM closure roots, then the driver copies. Check each with C1, `dexdump` and ART.
+  2. Then C-cap and native oracle slice 3.
+  3. Then the release 0037 run, then BBC's pin and fixtures.
+
+## ADR-411 (#48) mapped in the native programs — 2026-11-18
+
+Read-only; no store changed. Old builder sources, a map for reading views and never a generator: `git show
+4a5d4b8^:compiler/src/xax_selfhost_android.py` (lines ~5560–5700) and `git show f6d5b08:compiler/src/xax_selfhost_jvm.py`.
+
+- **Android program, JVM-module path (J2–J3).**
+  - It lowers the entry through the JVM layer (class `xax/P<entry CID's first 16 hex>`).
+  - It reads the `entry` method's descriptor back from the lowered class (`an_entry_desc`) and rejects
+    `LIBXPOSED-JVM-ENTRY` on a mismatch.
+  - Then it writes the `Module` bridge: one method `onPackageReady`, 2 registers, `invoke-static {v0, v1}` of
+    `entry`, then `return-void`. A lifecycle entry adds the same block with its parameter type and method name, and
+    the method count goes from 1 to 1 + entries.
+  - The managed profile already knows `onModuleLoaded` (`CALLBACKS`, line 124), but that is another path.
+- **JVM program.**
+  - The closure is walked twice from one `entry`: `jf_scan` (the bootstrap's rejection order, a LIFO stack seeded
+    with `entry`) and the depth-first frame walk (`_push(entry)`).
+  - Methods are `entry` and `f<k>` in closure CID order.
+  - Multiple roots: seed both walks with every root.
+- **Open design point for ADR-411 (4).** The Android program must find each lifecycle entry's method. Either the JVM
+  layer takes (root CID, method name) pairs and names extra roots `xaxOnModuleLoaded`/`xaxOnSystemServerStarting`,
+  or it reports each root's `f<k>`. The first keeps `an_entry_desc`'s lookup by name and needs no new output, so
+  prefer it. The layer's input words (where the entry CID is passed today) gain a root count and the pairs. Write
+  this as an ADR-411 amendment before the first transaction.
+- **Order:** the JVM program's roots (`xax_jvm_general.xax`, Android's and the driver's copies, mapped by CID), then
+  the Android program's v3 parse and `Module` methods. Check each with C1, `dexdump` and ART. The device check
+  stays BLOCKED.
+
+## ADR-411 implementation: the entry-word question — 2026-11-18
+
+Read-only; no store changed. ADR-411's amendment (#111) runs the JVM layer once per lifecycle entry. Before the first
+transaction, settle how that run gets its entry:
+
+- The JVM program finds its entry with `find(1)`, which reads the CID at word 1 of the program's input view
+  (`rd`). The Android program never writes that view. In the old builder (`git show
+  4a5d4b8^:compiler/src/xax_selfhost_android.py`, J2 around line 5500) the JVM layer is called directly, without
+  `G_INBASE`.
+- Option A: write the lifecycle CID's words into input words 1..4, run the layer, then restore them. This needs the
+  input view's type to allow stores (it has the same `04 81 02 01 04` flags as the writable views; check it), and
+  every later phase must see the restored table.
+- Option B, preferred: a small JVM-program transaction. `find(1)` becomes `find(entry_at)`, with `entry_at` a
+  global word (default 1 when it is 0) that the Android program sets to a memory copy of the CID. But `find` takes
+  an input position, so it would first need a variant that matches a CID held in memory. Size that change first.
+- Useful facts:
+  - The Android program keeps its variables in memory slots (`SLOT_AT` = `CO_AT + 4096`, `CO_AT` = 252 MiB),
+    so regions can read and write them without block parameters.
+  - Texts are `K(value)` handles at `G_K + index` (`CO_AT + 64`), written once at the start. New texts (the v3
+    prefix, `entries`, the two parameter types and method names) can be built inline, as OI-61 built its text.
+  - `an_jparse`/`an_jin`/`an_jhex` parse the record.
+- Dumping all 484 views of `xax_android.xax` takes over an hour. Find the J1–J3 phase functions with the reference
+  reader instead (walk up from a distinctive constant, for example `0x71` beside `0x0E` in the Module bridge, or
+  `CO_AT`-relative slot stores).
+
+## #48 libxposed lifecycle entries on release 0037 — 2026-11-18
+
+Supersedes "ADR-411 implementation: the entry-word question" above. `release/0037` = `f55ed07`; `main` = `3aa3f7a`.
+Issue #48 is closed.
+
+- **Decision (ADR-411 amendment 2, #115):** option A cannot verify (the input view's pointer type is read only). The
+  JVM main's `find(1)` uses the input position in word `CO_AT + 24` when it is nonzero. The Android program gets
+  J0b (before J1: a v3 carrier is shown to J1 under the v1 or v2 branding rule) and J2b (after J2: `entries`, then J2
+  again per entry with its CID, descriptor and input position swapped in), and J3 writes 1 + entries `Module`
+  methods. J1 and J2 are not edited.
+- **Transactions:**
+  - #113: `0037-lifecycle-a` on the JVM, Android and driver stores.
+  - #114: `-b` and `-c` on Android and the driver, plus `tests/test_libxposed_lifecycle.py`. b and c share one PR,
+    because b alone builds lifecycle classes with no forwarders.
+- **Function map (pre-0037-lifecycle numbering):**
+  - Android: main F116, J1 F70, J2 F403, J3 F234, JVM main F207.
+  - Helpers: `put` F431, `text` F158, `an_dtext` F429 (raw in word 268435424), `an_jget` F412, `an_jhex` F101,
+    `an_prefix` F371.
+  - Driver: main F281, J2 F894, JVM main F649.
+  - Slots: `entry` 10, `lid` 14, `kids` 26, `managed` 55, `lowered` 916, `jv_cdesc` 926, `jv_desc` 927. Slots
+    0–1007 are used; the new phases use `SLOT_AT + 2000` on.
+- **Evidence (EXECUTED):**
+  - C1 verifies all changed stores; corpus differential seed vs C1: 197 cases, 0 differ.
+  - The targeted suite passes but the baseline `test_callback_programs`.
+  - `dexdump` and the ART harness on the Pixel pass.
+  - LSPosed (Vector v2.2, Android 17) after a reboot: `org.xax.lifecycle: onModuleLoaded ran` and
+    `onSystemServerStarting ran` from `system_server`, in `/data/adb/lspd/log/modules_*.log`.
+- **Device notes:**
+  - logcat's main buffer (256 KiB) rotates seconds after boot. Vector's persistent module log keeps only its own
+    tags, so a test module logs through `XposedInterface.log` with tag `VectorModuleManager`.
+  - The wireless adb port changes on each reboot: pick the serial from `adb devices` each time.
+- **Next step:**
+  1. C-cap and native oracle slice 3.
+  2. Release 0037: build, confirm both targets, V2 evidence and the SNAPSHOTS line, validate, rebuild BBC,
+     `check.py`, the Pixel session, the full suite, the release PR.
+  3. Then the consumer (SyncthingLiveUpdate's `PromotionPolicyPatch`) on the released compiler.
+
+## Native oracle slice 3 done; C-cap moved to the next release — 2026-11-18
+
+`main` = `3ae5c16` (PR #117). `release/0037` is unchanged at `f55ed07`.
+
+- **Slice 3 (stack memory):**
+  - The native oracle runs `stack.alloc`, `address.offset`, `store`/`load.bits.le`, `stack.end` and
+    `checked.load`/`store.bits.le`, with pointer, effect and resource values.
+  - A checked access out of its allocation, or misaligned, traps `memory-check`.
+  - Allocations take zeroed words from the frame stack (global 2) and are released when their frame returns. A
+    pointer is (data address << 32) + offset, and the extent is the word before the data.
+  - New functions `@mem` and `@opx` (scratch globals 900–939). `@exec`'s trap block takes the code: 2 is a
+    division, 3 is `memory-check`, 4 is an error.
+- **Evidence (EXECUTED):** 646 of 646 stack-memory cases agree (`benchmarks/oracle_memory_evidence.json`), and the
+  earlier areas still agree (24 tests, 8,033 subtests). `test_xax_byte_view_widening` now uses the native oracle on
+  Linux x86-64. NOT RUN: the Windows side, which keeps the Python executor.
+- **The design's slice-3 test list was wrong in two places, now corrected:**
+  - `test_xax_x86_64_views` needs slices 1 and 4.
+  - `test_xax_pointer_rebase` runs executables (target addresses, `mmap`), so it never compares with `execute`.
+- **Still declined:** `pointer.address` and `pointer.rebase` (target-only, also in Python), heap views and
+  growable accesses. Their programs reach memory through foreign `mmap`.
+- **C-cap (OI-54, OI-52 R2) moved to the next release**, on the owner's decision. It spans the semantic index, the
+  edit engine, the x86-64 arena, AArch64 liveness, typing and both backends, and OI-52 R2 needs an ADR first.
+- **Next step:**
+  1. Release 0037 as it stands: build, confirm both targets, V2 evidence and the SNAPSHOTS line, validate,
+     rebuild BBC, `check.py`, the Pixel session, the full suite, the release PR.
+  2. Then the next release, starting with C-cap's ADR.
+  3. Oracle slice 4 (aggregates, sums, floats) is independent and can go to `main` at any time.
+
 ## Release 0037 rotated — 2026-11-19
 
 `release/0037` + PR #119 (`rotation-0037`). Owner's instruction for this run: work autonomously overnight, make

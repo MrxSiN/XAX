@@ -2695,3 +2695,12 @@ android and driver stores). The seed is not rotated.
 | DEX lowering (#97) | 8 of 8 lower and write, and `dexdump` accepts each with one `<any>` handler. DEX equality tests: 5 passed, 76 subtests. C1 verifies the five changed stores. Corpus differential: 0 of 197 differ |
 | Full suite (`-n 4`, WSL 2) | 1,566 passed, 12 failed. 9 are the known baseline (audit B1 binding, 2 OI-16, 3 Wasm, 2 OI-06, `test_callback_programs`). 1 is the stale `xax_selfhost.py` inventory entry, which also fails on `main`. 2 were killed for memory and pass alone: `test_xax_selfhost_stores` (283 s) and `test_native_large_image` (31:46, peak 13.1 GB) |
 | NOT RUN | #48 (needs a `system_server` hook on the owner's device); C-cap (OI-54, OI-52 R2); the ADR-408 pin retirement (next PR on `main`) |
+
+## ADR-410 pin retirement; release 0037 in progress (OI-61, #55) — 2026-11-18
+
+| Label | Result |
+|---|---|
+| EXECUTED | ADR-410 (#103, `main`): the targeted tests (status docs, rotate tool, Python-free seed, evidence V2, the authority inventory, audit remediation, Windows generator, branch fusion, full-selfhost status): 35 passed; 1 failed, the known `test_every_b1_entry_is_bound_to_the_committed_store`. The inventory's `xax_selfhost.py` failure is fixed |
+| EXECUTED | OI-61 (#104, `release/0037`, ledger 0037 `jvm-throwable`): the catch tests pass (the new rejection test fails 6 of 6 on the old stores); store regeneration and the JVM/Android/DEX selfhost tests: 84 passed, 1 failed (`test_callback_programs`); C1 `e61543f9…` verifies the three stores; seed against C1 on the corpus: 0 of 198 differ |
+| EXECUTED | #55 (#105, `release/0037`): `bbc.exe` `e1fb321b…` on Windows 11: ThreadsHideAds' six programs pass `check`, `emit-bfx -O0`/`-O1` and `info`; 524,289 commands exits 2; `check.py`: 372 of 372 compiles, 488 runs, 0 mismatches, 5 of 5 error paths |
+| NOT RUN | release 0037's build, confirm, V2 evidence and rotation; BBC's fixture move (waits for release 0037 on `main`); #48; C-cap; native oracle slice 3 |

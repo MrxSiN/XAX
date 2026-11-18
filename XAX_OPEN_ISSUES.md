@@ -1060,7 +1060,7 @@ runs a Windows-seed command against its pin.
 
 ## OI-61 — The JVM program does not check a catching call's throwable output type
 
-**Status: OPEN (2026-11-18).** ADR-406 (2) makes a catching JVM declaration's last output `jvm-ref:Ljava/lang/Throwable;`.
+**Status: FIXED on `release/0037` (2026-11-18, PR #104, ledger 0037 `jvm-throwable`); closes when release 0037 reaches `main`.** ADR-406 (2) makes a catching JVM declaration's last output `jvm-ref:Ljava/lang/Throwable;`.
 The XAX JVM program (`jk_member`, F38 of `xax_jvm_general.xax` and its copies in `xax_android.xax` and the driver) takes
 one off the output count for a catching ABI (ledger 0036 d) but does not compare that output's type text. A
 declaration with another reference type there lowers to a class whose handler stores a `Throwable` into a local of
