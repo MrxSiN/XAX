@@ -132,11 +132,11 @@ class NativeGeneralDriver(NativeDriver):
             return
         import hashlib
 
-        from xax_selfhost_seed import SEED_PATH, SEED_SHA256
+        from xax_selfhost_seed import SEED_PATH, pin
 
         executable = SEED_PATH.read_bytes()
-        if hashlib.sha256(executable).hexdigest() != SEED_SHA256:
-            raise RuntimeError(f"{SEED_PATH} is not the pinned seed {SEED_SHA256}")
+        if (hashlib.sha256(executable).hexdigest(), len(executable)) != pin():
+            raise RuntimeError(f"{SEED_PATH} is not the pinned seed {pin()[0]}")
         self.image = None
         self._install(executable)
 

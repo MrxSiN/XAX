@@ -55,8 +55,9 @@ How it was made, without a generator of its logic:
 - `validate <record>`: with a fully confirmed candidate, the V2 record's levels must all hold
   (`xax_evidence levels`, then `valid`); it appends `validated <n> evidence=<record sha256>`.
 
-Until `rotate.sh` has made one release, `SEED_SHA256` (`src/xax_selfhost_seed.py`) and `../../windows/seed.json` stay
-and must equal the pins (`tests/test_rotate_tool.py`); they are retired by the first release `rotate.sh` makes.
+ADR-410: release 0036, the first `rotate.sh` made, retired the older pins (`SEED_SHA256` and `windows/seed.json`).
+`pin` is the only one; Python reads it with `xax_selfhost_seed.pin`, and `tests/test_rotate_tool.py` requires both
+committed seeds to equal it.
 
 Checked on Linux x86-64 (WSL 2, the pinned seed `36e2b756…`), EXECUTED, 2026-11-16, at ledger 0035:
 

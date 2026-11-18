@@ -63,7 +63,8 @@ def canonical_state() -> dict:
 
 def selfhost_claims() -> dict:
     """W3 (ADR-362): B levels are derived from the executed records alone (no M14 evidence file exists to compare)."""
-    from xax_selfhost import FULL_SELFHOST_EVIDENCE, SEED_EVIDENCE, bootstrap_status
+    from xax_selfhost import FULL_SELFHOST_EVIDENCE, SEED_EVIDENCE
+    from xax_selfhost_seed import bootstrap_status
 
     status = bootstrap_status()
     records = [json.loads(path.read_text(encoding="utf-8")) for path in (FULL_SELFHOST_EVIDENCE, SEED_EVIDENCE)]
@@ -77,8 +78,7 @@ def selfhost_claims() -> dict:
 
 def seed() -> dict:
     """W3 (ADR-362): the bootstrap seed is the pinned native compiler (ADR-286); the M14 Python zipapp is retired."""
-    from xax_selfhost import bootstrap_status
-    from xax_selfhost_seed import SEED_PATH, SEED_SHA256, SEED_SIZE
+    from xax_selfhost_seed import SEED_PATH, bootstrap_status, pin
 
     data = SEED_PATH.read_bytes()
     status = bootstrap_status()["bootstrap_seed"]
@@ -87,7 +87,7 @@ def seed() -> dict:
         "path": status["path"],
         "digest_sha256": hashlib.sha256(data).hexdigest(),
         "size": len(data),
-        "pinned": hashlib.sha256(data).hexdigest() == SEED_SHA256 and len(data) == SEED_SIZE,
+        "pinned": (hashlib.sha256(data).hexdigest(), len(data)) == pin(),
         "requires_python": status["requires_python"],
         "python_seeds_in_bootstrap": sorted(path.name for path in (COMPILER / "bootstrap").rglob("*.pyz")),
     }

@@ -1,3 +1,10 @@
+# Current Windows seed — the release record, 2026-11-18
+
+`xaxc-windows-x86_64.exe` is pinned only by `../RELEASES` (`sh ../seed/rotate.sh state`, `pin x86_64-windows-pe-v1`).
+Its confirmation, with the generated request it rebuilt itself from, is the release's
+`../evidence/confirm/<n>-x86_64-windows-pe-v1.txt`. `seed.json` is retired (ADR-410); the sections below are
+historical, and their links to it name the file as it was in git history.
+
 # Current Windows seed — ledger 0035 (release 0033), 2026-11-16
 
 `xaxc-windows-x86_64.exe`: 31,602,176 bytes, SHA-256 `ae43e32f21ccd2d7e333ebf30a114d329ca5b5912c388ae167c24d12d2e9f665`.

@@ -93,18 +93,12 @@ INPUTS = ((1, 2), (3, 2), (2, 2))
 
 
 def _seed_command():
-    """The pinned native compiler of this host (an object with its ``path``, kept alive while it runs), or None."""
-    import hashlib
-    import json
-
+    """The committed native compiler of this host (an object with its ``path``, kept alive while it runs), or None.
+    ADR-410: the release tool, which runs on Linux, checks the Windows seed against its pin (``test_rotate_tool``)."""
     from xax_native import bootstrap_dir
 
     if platform.system() == "Windows" and platform.machine() in ("AMD64", "x86_64"):
-        directory = bootstrap_dir() / "windows"
-        seed = directory / "xaxc-windows-x86_64.exe"
-        pin = json.loads((directory / "seed.json").read_text())["sha256"]
-        if hashlib.sha256(seed.read_bytes()).hexdigest() != pin:
-            raise RuntimeError(f"{seed} is not the pinned seed {pin}")
+        seed = bootstrap_dir() / "windows" / "xaxc-windows-x86_64.exe"
         from types import SimpleNamespace
 
         return "windows-x86_64", "win32.", "exit_process", SimpleNamespace(path=seed)

@@ -1,8 +1,9 @@
-"""The bootstrap levels B0-B6 of the production compiler, derived from executed records (``XAX_SPEC.md`` §16.2).
+"""The reference evaluator of the V1 self-hosting records (``XAX_SPEC.md`` §16.2): B0-B6 from
+``benchmarks/full_selfhost_evidence.json`` (``bench_full_selfhost``) and ``benchmarks/python_free_seed_evidence.json``
+(``bench_python_free_seed``).
 
-Bootstrap labels are evidence claims.  Nothing here asserts a level: ``bootstrap_status`` computes every level from two
-committed records the native compiler produced, ``benchmarks/full_selfhost_evidence.json`` (``bench_full_selfhost``) and
-``benchmarks/python_free_seed_evidence.json`` (``bench_python_free_seed``).
+ADR-410: the released B levels are the native ``xax_evidence levels`` of a V2 record (``xax_selfhost_seed.bootstrap_status``);
+this module stays only as the oracle ``tests/test_evidence_v2.py`` compares that program with.
 
 W3 (ADR-362): the M14 Python bootstrap is retired.  Until then this module also built the M14 semantic-image META
 wrapper (``m14_selfhost_compiler.xax``), executed its recursive generations in Python and fed a Python zipapp seed;
@@ -31,13 +32,13 @@ def seed_requires_python(full: dict, seed: dict | None) -> bool:
     """False only when ``seed`` records the pinned seed, without an ELF interpreter, rebuilding the compiler of ``full``
     (the same request store, the same executable as its generations) twice with an environment of ``PATH`` alone, on
     which no Python resolves.  ADR-382: ``full``'s C0 is that pinned seed, so without ``seed`` nothing shows it."""
-    from xax_selfhost_seed import SEED_SHA256
+    from xax_selfhost_seed import pin
 
     if seed is None:
         return True
     compiler = full["generations"][-1]["artifact_sha256"]
     return not (
-        seed["seed"]["sha256"] == SEED_SHA256 and not seed["seed"]["has_interpreter"]
+        seed["seed"]["sha256"] == pin()[0] and not seed["seed"]["has_interpreter"]
         and seed["environment"]["variables"] == ["PATH"] and seed["environment"]["python_on_path"] is None
         and seed["selfbuild_status"] == 0 and seed["request_store_sha256"] == full["compiler"]["request_store_sha256"]
         and all(item["sha256"] == compiler for item in seed["generations"])
@@ -112,40 +113,3 @@ def linux_x86_64_status(full: dict, seed: dict | None = None) -> dict:
             **{f"B{n}": level for n, level in enumerate((b0, b1, b2, b3, b4, b5, b6))},
             "blockers": {level: reason for level, reason in blockers.items() if reason},
             "seed_requires_python": seed_requires_python(full, seed)}
-
-def bootstrap_seed(seed: dict | None, linux: dict | None) -> dict:
-    """The bootstrap seed as the Python-free seed record names it."""
-    if seed is None:
-        return {"kind": "none recorded", "path": None, "bytes": 0, "requires_python": True}
-    return {"kind": "native-elf" if not seed["seed"]["has_interpreter"] else "elf-with-interpreter", "path": seed["seed"]["path"],
-            "bytes": seed["seed"]["bytes"], "sha256": seed["seed"]["sha256"],
-            "requires_python": True if linux is None else linux["seed_requires_python"]}
-
-
-def bootstrap_status() -> dict:
-    """The one derivation of B0-B6 (XAX_SPEC.md 16.2), from the committed executed records; the generated status
-    blocks consume it and nothing else asserts a B level.  S-step component fixed points are not B milestones (16.5)."""
-    import json
-
-    seed = json.loads(SEED_EVIDENCE.read_text(encoding="utf-8")) if SEED_EVIDENCE.exists() else None
-    record = json.loads(FULL_SELFHOST_EVIDENCE.read_text(encoding="utf-8")) if FULL_SELFHOST_EVIDENCE.exists() else None
-    linux = linux_x86_64_status(record, seed) if record is not None else None
-    # S15g (ADR-358): the Linux x86-64 production compiler builds every target and artifact ``build`` makes (its
-    # record's scope has nothing outside it), so the whole production compiler's levels are that compiler's, derived
-    # from the same executed record; until then none is established.
-    if linux is not None and record["scope"].get("outside_scope") is None:
-        reasons = "; ".join(f"{level}: {reason}" for level, reason in linux["blockers"].items())
-        full = {**{f"B{level}": linux[f"B{level}"] for level in range(7)},
-                "blocker": "derived from the Linux x86-64 production compiler, whose executed record covers every target and artifact "
-                           "`build` makes (S15g, ADR-358)" + (f"; {reasons}" if reasons else "")}
-    else:
-        full = {**{f"B{level}": False for level in range(7)},
-                "blocker": "the Linux x86-64 production compiler's executed record does not cover every target and artifact (its "
-                           "scope's outside_scope: " + (str(record["scope"].get("outside_scope")) if record is not None else "no record") + ")"}
-    return {
-        "derivation_source": "xax_selfhost.bootstrap_status",
-        "records": ["compiler/benchmarks/full_selfhost_evidence.json", "compiler/benchmarks/python_free_seed_evidence.json"],
-        "full_production_compiler": full,
-        **({"linux_x86_64_production_compiler": linux} if linux is not None else {}),
-        "bootstrap_seed": bootstrap_seed(seed, linux),
-    }
