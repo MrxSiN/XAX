@@ -2771,3 +2771,40 @@ transaction, settle how that run gets its entry:
 - Dumping all 484 views of `xax_android.xax` takes over an hour. Find the J1–J3 phase functions with the reference
   reader instead (walk up from a distinctive constant, for example `0x71` beside `0x0E` in the Module bridge, or
   `CO_AT`-relative slot stores).
+
+## #48 libxposed lifecycle entries on release 0037 — 2026-11-18
+
+Supersedes "ADR-411 implementation: the entry-word question" above. `release/0037` = `f55ed07`; `main` = `3aa3f7a`.
+Issue #48 is closed.
+
+- **Decision (ADR-411 amendment 2, #115):** option A cannot verify (the input view's pointer type is read only). The
+  JVM main's `find(1)` uses the input position in word `CO_AT + 24` when it is nonzero. The Android program gets
+  J0b (before J1: a v3 carrier is shown to J1 under the v1 or v2 branding rule) and J2b (after J2: `entries`, then J2
+  again per entry with its CID, descriptor and input position swapped in), and J3 writes 1 + entries `Module`
+  methods. J1 and J2 are not edited.
+- **Transactions:**
+  - #113: `0037-lifecycle-a` on the JVM, Android and driver stores.
+  - #114: `-b` and `-c` on Android and the driver, plus `tests/test_libxposed_lifecycle.py`. b and c share one PR,
+    because b alone builds lifecycle classes with no forwarders.
+- **Function map (pre-0037-lifecycle numbering):**
+  - Android: main F116, J1 F70, J2 F403, J3 F234, JVM main F207.
+  - Helpers: `put` F431, `text` F158, `an_dtext` F429 (raw in word 268435424), `an_jget` F412, `an_jhex` F101,
+    `an_prefix` F371.
+  - Driver: main F281, J2 F894, JVM main F649.
+  - Slots: `entry` 10, `lid` 14, `kids` 26, `managed` 55, `lowered` 916, `jv_cdesc` 926, `jv_desc` 927. Slots
+    0–1007 are used; the new phases use `SLOT_AT + 2000` on.
+- **Evidence (EXECUTED):**
+  - C1 verifies all changed stores; corpus differential seed vs C1: 197 cases, 0 differ.
+  - The targeted suite passes but the baseline `test_callback_programs`.
+  - `dexdump` and the ART harness on the Pixel pass.
+  - LSPosed (Vector v2.2, Android 17) after a reboot: `org.xax.lifecycle: onModuleLoaded ran` and
+    `onSystemServerStarting ran` from `system_server`, in `/data/adb/lspd/log/modules_*.log`.
+- **Device notes:**
+  - logcat's main buffer (256 KiB) rotates seconds after boot. Vector's persistent module log keeps only its own
+    tags, so a test module logs through `XposedInterface.log` with tag `VectorModuleManager`.
+  - The wireless adb port changes on each reboot: pick the serial from `adb devices` each time.
+- **Next step:**
+  1. C-cap and native oracle slice 3.
+  2. Release 0037: build, confirm both targets, V2 evidence and the SNAPSHOTS line, validate, rebuild BBC,
+     `check.py`, the Pixel session, the full suite, the release PR.
+  3. Then the consumer (SyncthingLiveUpdate's `PromotionPolicyPatch`) on the released compiler.
