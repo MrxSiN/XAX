@@ -2808,3 +2808,31 @@ Issue #48 is closed.
   2. Release 0037: build, confirm both targets, V2 evidence and the SNAPSHOTS line, validate, rebuild BBC,
      `check.py`, the Pixel session, the full suite, the release PR.
   3. Then the consumer (SyncthingLiveUpdate's `PromotionPolicyPatch`) on the released compiler.
+
+## Native oracle slice 3 done; C-cap moved to the next release — 2026-11-18
+
+`main` = `3ae5c16` (PR #117). `release/0037` is unchanged at `f55ed07`.
+
+- **Slice 3 (stack memory):**
+  - The native oracle runs `stack.alloc`, `address.offset`, `store`/`load.bits.le`, `stack.end` and
+    `checked.load`/`store.bits.le`, with pointer, effect and resource values.
+  - A checked access out of its allocation, or misaligned, traps `memory-check`.
+  - Allocations take zeroed words from the frame stack (global 2) and are released when their frame returns. A
+    pointer is (data address << 32) + offset, and the extent is the word before the data.
+  - New functions `@mem` and `@opx` (scratch globals 900–939). `@exec`'s trap block takes the code: 2 is a
+    division, 3 is `memory-check`, 4 is an error.
+- **Evidence (EXECUTED):** 646 of 646 stack-memory cases agree (`benchmarks/oracle_memory_evidence.json`), and the
+  earlier areas still agree (24 tests, 8,033 subtests). `test_xax_byte_view_widening` now uses the native oracle on
+  Linux x86-64. NOT RUN: the Windows side, which keeps the Python executor.
+- **The design's slice-3 test list was wrong in two places, now corrected:**
+  - `test_xax_x86_64_views` needs slices 1 and 4.
+  - `test_xax_pointer_rebase` runs executables (target addresses, `mmap`), so it never compares with `execute`.
+- **Still declined:** `pointer.address` and `pointer.rebase` (target-only, also in Python), heap views and
+  growable accesses. Their programs reach memory through foreign `mmap`.
+- **C-cap (OI-54, OI-52 R2) moved to the next release**, on the owner's decision. It spans the semantic index, the
+  edit engine, the x86-64 arena, AArch64 liveness, typing and both backends, and OI-52 R2 needs an ADR first.
+- **Next step:**
+  1. Release 0037 as it stands: build, confirm both targets, V2 evidence and the SNAPSHOTS line, validate,
+     rebuild BBC, `check.py`, the Pixel session, the full suite, the release PR.
+  2. Then the next release, starting with C-cap's ADR.
+  3. Oracle slice 4 (aggregates, sums, floats) is independent and can go to `main` at any time.
