@@ -635,3 +635,27 @@ Checks (EXECUTED): `tools/check.py` with the Windows outputs and `bbc.exe` run n
 interop (a `wine` shim that executes the file), and the Android outputs under `qemu-aarch64`: 93 programs, 372 of 372
 compiles, 488 runs, 0 mismatches, and the five error paths as expected (222 s). On a Pixel 8 Pro, 14 Android ARM64
 executables (BBC's tests and examples at -O0 and -O1) gave the same output and exit status as under QEMU.
+
+## The command budget is 524,288 — 2026-11-18
+
+Issue #55 (BBC issue #4): `compile_bfx` now accepts up to N = 524,288 commands before folding, not 65,536, and the
+record view it shares with the strict decoder, the importer and BBC's hosts is N + 10 = 524,298 bytes; the decoder's
+scratch is 8N = 4,194,304 bytes. The check order, the sticky bracket status across chunks and "too big beats an
+earlier bracket error" are unchanged. The transactions and what each changes are in
+[transactions/budget/README.md](transactions/budget/README.md). The standalone stores (`bfx.xax`, `import_bfx.xax`,
+`pack.xax`, the Android and older Windows hosts) keep 65,536; the sections above describe them.
+
+Checks (EXECUTED, Windows 11; `bbc.exe` `e1fb321b…`, 5,912,192 bytes, built by the pinned Linux seed from the new
+`bbc_request.xax`):
+
+- Edge cases, `check`, `emit-bfx -O0` and `-O1` (old `bbc.exe` in brackets): 65,537, 300,000 and 524,288 `+` exit 0
+  (2); 524,289 `+` exits 2 (2); N + 2 commands with a bracket error before or after exits 2 (2); N commands with an
+  unmatched `]` or `[` exits 1 (2). `info` decodes each record: 524,288 instructions at O0.
+- ThreadsHideAds `cf28f66`, all six policy programs: `check` exits 0, and `info` on the O0 record gives exactly the
+  issue's command counts (core 155,368, detect 231,216, nested 296,307, pando 113,160, sanitize 69,343, text
+  225,546); the O1 records hold 26,181, 26,283, 37,061, 14,830, 9,077 and 104,371 instructions.
+- `tools/check.py` (Windows outputs through WSL interop, Android under `qemu-aarch64`): 93 programs, 372 of 372
+  compiles, 488 runs, 0 mismatches, 5 of 5 error paths, as before.
+
+Not run: `bbc compile` of the ThreadsHideAds programs (OI-54: one function view holds 2^18 values). BBC's capacity
+fixtures (`tests/compile/*`) still pin the 65,536 edge; they move in BBC with the new `bbc.exe`.
