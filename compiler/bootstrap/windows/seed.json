@@ -1,14 +1,14 @@
 {
   "schema": "xax-native-windows-seed-v4",
-  "sha256": "ae43e32f21ccd2d7e333ebf30a114d329ca5b5912c388ae167c24d12d2e9f665",
-  "bytes": 31602176,
+  "sha256": "8f0d23e1b749a10969b7cdd1db4d4a57705c4aa9a15cc04906ad497963409f9f",
+  "bytes": 31667200,
   "source": {
     "request": "compiler/bootstrap/seed/xax_compiler_request.xax",
     "generator": "compiler/bootstrap/windows/generator/generate.sh",
-    "result_sha256": "67f7cfa469a5092c89e7affc82ce2fdf73a7311a2c9105458486b430b5b0c8e9"
+    "result_sha256": "15cd87724d320aa6cab5788a5d0121240320fa611a55133edc34255459b9f6a9"
   },
-  "production_ledger": "0035",
-  "native_self_build": "EXECUTED on Windows 11 (2026-11-16): the Linux ledger 0035 compiler (36e2b756...) cross-built this file from generate.sh's request; natively on Windows it rebuilt itself byte for byte (generation 1 in 197 s) and generation 1 rebuilt generation 2 identically (195 s).",
+  "production_ledger": "0036",
+  "native_self_build": "EXECUTED from WSL 2 through Windows interop (2026-11-18, rotate.sh confirm, release 0036; bootstrap/evidence/confirm/0036-x86_64-windows-pe-v1.txt): the Linux release 0036 compiler (92375288...) cross-built this file from the generator's request; run as a Windows process, it rebuilt itself byte for byte (generation 1) and generation 1 rebuilt generation 2 identically.",
   "commands": [
     "verify",
     "inspect",
