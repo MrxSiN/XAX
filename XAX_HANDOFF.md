@@ -2746,3 +2746,28 @@ Read-only; no store changed. Old builder sources, a map for reading views and ne
 - **Order:** the JVM program's roots (`xax_jvm_general.xax`, Android's and the driver's copies, mapped by CID), then
   the Android program's v3 parse and `Module` methods. Check each with C1, `dexdump` and ART. The device check
   stays BLOCKED.
+
+## ADR-411 implementation: the entry-word question — 2026-11-18
+
+Read-only; no store changed. ADR-411's amendment (#111) runs the JVM layer once per lifecycle entry. Before the first
+transaction, settle how that run gets its entry:
+
+- The JVM program finds its entry with `find(1)`, which reads the CID at word 1 of the program's input view
+  (`rd`). The Android program never writes that view. In the old builder (`git show
+  4a5d4b8^:compiler/src/xax_selfhost_android.py`, J2 around line 5500) the JVM layer is called directly, without
+  `G_INBASE`.
+- Option A: write the lifecycle CID's words into input words 1..4, run the layer, then restore them. This needs the
+  input view's type to allow stores (it has the same `04 81 02 01 04` flags as the writable views; check it), and
+  every later phase must see the restored table.
+- Option B, preferred: a small JVM-program transaction. `find(1)` becomes `find(entry_at)`, with `entry_at` a
+  global word (default 1 when it is 0) that the Android program sets to a memory copy of the CID. But `find` takes
+  an input position, so it would first need a variant that matches a CID held in memory. Size that change first.
+- Useful facts:
+  - The Android program keeps its variables in memory slots (`SLOT_AT` = `CO_AT + 4096`, `CO_AT` = 252 MiB),
+    so regions can read and write them without block parameters.
+  - Texts are `K(value)` handles at `G_K + index` (`CO_AT + 64`), written once at the start. New texts (the v3
+    prefix, `entries`, the two parameter types and method names) can be built inline, as OI-61 built its text.
+  - `an_jparse`/`an_jin`/`an_jhex` parse the record.
+- Dumping all 484 views of `xax_android.xax` takes over an hour. Find the J1–J3 phase functions with the reference
+  reader instead (walk up from a distinctive constant, for example `0x71` beside `0x0E` in the Module bridge, or
+  `CO_AT`-relative slot stores).
