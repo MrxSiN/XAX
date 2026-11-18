@@ -1,14 +1,14 @@
 """RFC phase 6: the native release-state program (``bootstrap/seed/rotate-tool``).
 
 On Linux x86-64 with the pinned seed: the committed program is the seed's ``xaxc edit`` of its batch; the committed
-state is release 0036, released, with pins equal to ``SEED_SHA256`` and ``windows/seed.json``; and on copies of
+state is release 0036, released, with pins equal to the committed seeds (ADR-410); and on copies of
 RELEASES and LEDGER the lifecycle reads as RFC section 3 says: development and its POLICY tests, a candidate with
 pending hosts, a confirmation with the wrong hash, a confirmed candidate, a stale one, and a blocked one.
 """
 
 from __future__ import annotations
 
-import json
+import hashlib
 import platform
 import shutil
 import subprocess
@@ -50,16 +50,14 @@ class RotateToolTests(unittest.TestCase):
             self.assertEqual(out.read_bytes(), (TOOL / "xax_rotate.xax").read_bytes())
 
     def test_the_committed_state_and_pins(self):
-        from xax_selfhost_seed import SEED_SHA256, SEED_SIZE
-
         status, text = self.run_tool("state", BOOTSTRAP)
         self.assertEqual(status, 0)
         self.assertIn("validated 0036\ncandidate none\nprofile released\n", text)
-        self.assertEqual(self.run_tool("pin", BOOTSTRAP, "x86_64-linux-elf-exec-v1"), (0, f"{SEED_SHA256}:{SEED_SIZE}\n"))
-        windows = json.loads((BOOTSTRAP / "windows" / "seed.json").read_text(encoding="utf-8"))
-        self.assertEqual(self.run_tool("pin", BOOTSTRAP, "x86_64-windows-pe-v1"), (0, f"{windows['sha256']}:{windows['bytes']}\n"))
+        for target, seed in (("x86_64-linux-elf-exec-v1", SEED), ("x86_64-windows-pe-v1", BOOTSTRAP / "windows" / "xaxc-windows-x86_64.exe")):
+            data = seed.read_bytes()
+            self.assertEqual(self.run_tool("pin", BOOTSTRAP, target), (0, f"{hashlib.sha256(data).hexdigest()}:{len(data)}\n"), target)
+            self.assertEqual(self.run_tool("id", seed), self.run_tool("pin", BOOTSTRAP, target), target)
         self.assertEqual(self.run_tool("pin", BOOTSTRAP, "no-such-target")[0], 1)
-        self.assertEqual(self.run_tool("id", SEED), (0, f"{SEED_SHA256}:{SEED_SIZE}\n"))
 
     def test_the_lifecycle(self):
         with tempfile.TemporaryDirectory() as directory:

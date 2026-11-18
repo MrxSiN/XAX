@@ -35,7 +35,7 @@ PROBE = "ab" * 32
 def _v2(full: dict, seed: dict) -> tuple[str, str, str, bool]:
     """The V2 record, corpus and snapshot list holding ``full``'s and ``seed``'s facts, and whether the seed record
     names the pinned seed."""
-    from xax_selfhost_seed import SEED_SHA256
+    from xax_selfhost_seed import pin
 
     interpreters = full["executables_have_interpreter"]
     lines = ["xax-full-selfhost-evidence-v2", "ledger -", "corpus -", f"seed {full['seed']['sha256']} {int(interpreters['C0'])}",
@@ -84,7 +84,7 @@ def _v2(full: dict, seed: dict) -> tuple[str, str, str, bool]:
                         for item in transactions))
     lines += [f"replay {0 if replayed else 1} replayed {len(transactions) if replayed else 0} of {len(transactions)}", "end"]
     snapshots = f"{full['compiler']['request_store_sha256']} {full['references']['python_resolver_snapshot_sha256']}\n"
-    return "\n".join(lines) + "\n", "\n".join(corpus) + "\n", snapshots, seed["seed"]["sha256"] == SEED_SHA256
+    return "\n".join(lines) + "\n", "\n".join(corpus) + "\n", snapshots, seed["seed"]["sha256"] == pin()[0]
 
 
 def _mutations(full: dict, seed: dict):

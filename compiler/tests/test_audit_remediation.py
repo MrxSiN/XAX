@@ -45,7 +45,7 @@ class SeedTests(unittest.TestCase):
         """W3 (ADR-362): the M14 Python zipapp seed is retired; the only bootstrap seed is the pinned native compiler
         (``test_python_free_seed`` checks its pin and its Python-free self-build), and no Python seed or generator is
         left in ``bootstrap/``."""
-        from xax_selfhost import bootstrap_status
+        from xax_selfhost_seed import bootstrap_status
 
         self.assertEqual(sorted(path.name for path in BOOTSTRAP.rglob("*.pyz")), [])
         self.assertFalse((BOOTSTRAP / "generate_m14.py").exists())

@@ -1,6 +1,6 @@
 """S15a (ADR-286): the Linux x86-64 production compiler's seed is a pinned XAX-built compiler; no Python builds it.
 
-The seed is pinned; the request store is the committed driver store's canonical build request; the record of the
+The seed is the release record's pin (ADR-410); the request store is the committed driver store's canonical build request; the record of the
 seed's Python-free self-build describes both; and, on Linux x86-64, ``selfbuild.sh`` runs with ``PATH`` holding only
 its tools: no Python can run.
 """
@@ -20,23 +20,25 @@ import unittest
 from pathlib import Path
 
 from xax_selfhost import FULL_SELFHOST_EVIDENCE, SEED_EVIDENCE, seed_requires_python
-from xax_selfhost_seed import REQUEST_PATH, SEED_PATH, SEED_SHA256, SEED_SIZE, SELFBUILD_PATH, SELFBUILD_TOOLS
+from xax_selfhost_seed import REQUEST_PATH, SEED_PATH, SELFBUILD_PATH, SELFBUILD_TOOLS, pin
 
 LINUX_X86_64 = sys.platform.startswith("linux") and platform.machine().lower() in ("x86_64", "amd64")
 
 
 class PythonFreeSeedTests(unittest.TestCase):
+    @unittest.skipUnless(LINUX_X86_64, "UNAVAILABLE: the release tool that reads the pin runs on Linux x86-64 only")
     def test_the_seed_is_pinned(self):
         data = SEED_PATH.read_bytes()
-        self.assertEqual((hashlib.sha256(data).hexdigest(), len(data)), (SEED_SHA256, SEED_SIZE))
+        self.assertEqual((hashlib.sha256(data).hexdigest(), len(data)), pin())
         self.assertTrue(os.access(SEED_PATH, os.X_OK))
         self.assertEqual(data[:4], b"\x7fELF")
 
     def test_the_request_store_is_the_committed_compilers(self):
         from xax_selfhost_compiler import compiler_request
 
-        self.assertEqual(REQUEST_PATH.read_bytes(), compiler_request()[0].data, "regenerate it: python -m xax_selfhost_seed write-request")
+        self.assertEqual(REQUEST_PATH.read_bytes(), compiler_request()[0].data, "evolve.sh apply derives it from the driver")
 
+    @unittest.skipUnless(LINUX_X86_64, "UNAVAILABLE: the release tool that reads the pin runs on Linux x86-64 only")
     def test_the_record_decides_whether_the_seed_requires_python(self):
         full = json.loads(FULL_SELFHOST_EVIDENCE.read_text(encoding="utf-8"))
         seed = json.loads(SEED_EVIDENCE.read_text(encoding="utf-8"))

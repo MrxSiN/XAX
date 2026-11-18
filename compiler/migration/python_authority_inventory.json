@@ -263,8 +263,8 @@
       "note": "Bootstrap reference for the S5 XAX RISC-V backend. Since S7b.2, _object_table and image_record only copy words: the XAX programs resolve references, pick the target and entry, and produce the image record."
     },
     "xax_selfhost.py": {
-      "class": "D",
-      "note": "bootstrap_status: B levels derived from the native compiler's executed records (the M14 Python bootstrap was retired, ADR-362)."
+      "class": "C",
+      "note": "The reference evaluator of the V1 self-hosting records, the oracle tests/test_evidence_v2.py compares xax_evidence levels with; the released B levels are native (ADR-410)."
     },
     "xax_selfhost_blake3.py": {
       "class": "G",
@@ -288,7 +288,7 @@
     },
     "xax_selfhost_seed.py": {
       "class": "F",
-      "note": "Pins of the XAX-built Linux x86-64 compiler seed (bootstrap/seed/) and its rotation; it builds nothing itself (S15a, ADR-286)."
+      "note": "Paths of the XAX-built compiler seed (bootstrap/seed/), and the pins and B levels as the native release and evidence tools read them from RELEASES and the validated V2 record; it builds and derives nothing itself (S15a, ADR-286, ADR-410)."
     },
     "xax_selfhost_request.py": {
       "class": "G",

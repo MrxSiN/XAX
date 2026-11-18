@@ -47,19 +47,9 @@ def targets_table(matrix: dict) -> str:
     return "\n".join(lines)
 
 
-def linux_text(linux: dict | None) -> str:
-    """The Linux x86-64 production compiler's derived levels (ADR-285), or nothing before its evidence exists."""
-    if linux is None:
-        return ""
-    held = [f"B{n}" for n in range(7) if linux[f"B{n}"]]
-    missing = [f"B{n}" for n in range(7) if not linux[f"B{n}"]]
-    return (f"Linux x86-64 production compiler (`benchmarks/full_selfhost_evidence.json`): {', '.join(held) or 'none'} hold, "
-            f"{', '.join(missing) or 'none'} do not; its seed requires Python: {'yes' if linux['seed_requires_python'] else 'no'}; ")
-
-
 def bootstrap_summary(status: dict) -> str:
-    """One line from ``bootstrap_status`` (``xax_selfhost``), computed from the executed records: no hand-written B level
-    (W3, ADR-362: until then it was read from the M14 evidence)."""
+    """One line from ``bootstrap_status`` (``xax_selfhost_seed``), computed natively from the latest validated release's
+    V2 record: no hand-written B level (ADR-410; W3, ADR-362: before that from the V1 records, and the M14 evidence)."""
     full, seed = status["full_production_compiler"], status["bootstrap_seed"]
     established = [f"B{n}" for n in range(7) if full[f"B{n}"]]
     full_text = f"{', '.join(established)} established" if established else "none of B0-B6 is established"
@@ -67,7 +57,6 @@ def bootstrap_summary(status: dict) -> str:
     return (
         f"Bootstrap status (derived by `{status['derivation_source']}` from {records}): "
         f"whole production compiler: {full_text} ({full['blocker']}); "
-        f"{linux_text(status.get('linux_x86_64_production_compiler'))}"
         "S-step component fixed points are not B milestones (`XAX_SPEC.md` §16.5). "
         f"Bootstrap seed: {seed['kind']} `{seed['path']}`, {seed['bytes']:,} bytes, requires Python: {'yes' if seed['requires_python'] else 'no'}."
     )
@@ -76,7 +65,7 @@ def bootstrap_summary(status: dict) -> str:
 GENERATORS = {
     "levels": lambda repo: levels_summary(load(repo / MATRIX.name)),
     "targets": lambda repo: targets_table(load(repo / MATRIX.name)),
-    "bootstrap": lambda repo: bootstrap_summary(__import__("xax_selfhost").bootstrap_status()),
+    "bootstrap": lambda repo: bootstrap_summary(__import__("xax_selfhost_seed").bootstrap_status()),
 }
 
 

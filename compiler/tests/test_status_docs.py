@@ -38,7 +38,7 @@ class StatusDocsTests(unittest.TestCase):
     def test_bootstrap_block_is_the_derived_status(self):
         """STATUS_DOCS_SYNCHRONIZED for B levels: the block comes from ``bootstrap_status`` over the executed records,
         never prose (W3, ADR-362: no M14 evidence, and the bootstrap seed is the native compiler)."""
-        from xax_selfhost import bootstrap_status
+        from xax_selfhost_seed import bootstrap_status
 
         status = bootstrap_status()
         with tempfile.TemporaryDirectory() as directory:

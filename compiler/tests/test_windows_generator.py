@@ -1,14 +1,12 @@
 """RFC step 5: the Windows seed's build request generated natively (``bootstrap/windows/generator``).
 
 On Linux x86-64 with the pinned seed: the committed generator store is its batch, and ``generate.sh`` makes, from the
-committed shared request, the Windows request ``windows/seed.json`` records (``source.result_sha256``), the one the
-pinned Windows seed is built from.
+committed shared request, the Windows request the released Windows seed was confirmed with (the ``request`` line of
+``evidence/confirm/<release>-x86_64-windows-pe-v1.txt``, ADR-410).
 """
 
 from __future__ import annotations
 
-import hashlib
-import json
 import platform
 import subprocess
 import sys
@@ -31,11 +29,14 @@ class WindowsGeneratorTests(unittest.TestCase):
             self.assertEqual(out.read_bytes(), (GENERATOR / "xax_hosting.xax").read_bytes())
 
     def test_the_request_is_the_recorded_one(self):
-        recorded = json.loads((BOOTSTRAP / "windows" / "seed.json").read_text())["source"]["result_sha256"]
+        from xax_selfhost_seed import WINDOWS_TARGET, identity, released
+
+        confirmation = (BOOTSTRAP / "evidence" / "confirm" / f"{released()}-{WINDOWS_TARGET}.txt").read_text(encoding="ascii")
+        recorded = next(line.split()[1] for line in confirmation.splitlines() if line.startswith("request "))
         with tempfile.TemporaryDirectory() as directory:
             out = Path(directory) / "request.xax"
             subprocess.run(["sh", str(GENERATOR / "generate.sh"), str(BOOTSTRAP / "seed" / "xax_compiler_request.xax"), str(out)], check=True, timeout=3600)
-            self.assertEqual(hashlib.sha256(out.read_bytes()).hexdigest(), recorded)
+            self.assertEqual("%s:%d" % identity(out), recorded)
 
 
 if __name__ == "__main__":
