@@ -2666,7 +2666,9 @@ reasonable calls and record them here.
   2. The V1 records (`bench_python_free_seed`, `bench_full_selfhost`) are regenerated as in release 0036, because
      their tests still read them.
   3. `test_rotate_tool`'s fictional lifecycle moved to 0038 and 0039.
-- **Next step:** commit the two V1 records on `rotation-0037`, then:
+- **V1 records regenerated (EXECUTED):** `python_free_seed_evidence.json` (392 s) and `full_selfhost_evidence.json`
+  (11,390 s); their tests and `test_status_docs` pass (11 of 11).
+- **Next step:**
   1. merge #119 into `release/0037`;
   2. the release PR `release/0037` → `main` (#48's lifecycle entries reach `main`);
   3. BBC's pin and its 1,048,577-byte overflow fixtures (#55) once 0037 is on `main`;
