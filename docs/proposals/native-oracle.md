@@ -71,7 +71,7 @@ generated from the compiler's stores:
 |---|---|---|
 | 1 (done 2026-11-16) | `constant`, `add.wrap`, `sub.wrap`, `mul.wrap`, `bit.xor`, `bit.and`, `bit.or`, `udiv`, `urem` (trap on zero), `rotate.right`, `int.compare` (all ten predicates), `int.truncate`, `int.zero.extend`, `call.direct`; `br`, `cbr`, `ret`, `trap`; `bits<1..64>` | `test_xax_regalloc_differential` (x86-64 register lowering), then `test_x86_64_narrow_signed_compare`, `test_native_branch_fusion` |
 | 2 (done 2026-11-16) | recursion groups (`call.group.member`) | `test_xax_recursion` |
-| 3 | heap views and checked or growable loads and stores, stack allocation | `test_xax_x86_64_views`, `test_xax_byte_view_widening`, `test_xax_pointer_rebase` |
+| 3 (done 2026-11-18) | stack allocation, address offsets, plain and checked loads and stores (`memory-check` traps) | `test_xax_byte_view_widening`; `test_xax_x86_64_views` needs only slices 1 and 4, and `test_xax_pointer_rebase` runs executables (target addresses and `mmap`), so neither compares with `execute` here |
 | 4 | aggregates, sums, floats | `test_xax_general_language` |
 | — | foreign calls, target operations, meta operations | declined for good: a host or target is not graph semantics |
 
