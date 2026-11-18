@@ -30,3 +30,23 @@ the root line and the top handle differ. Apply one with `xaxc edit <store> <batc
 Not changed: the standalone stores (`bfx.xax`, `import_bfx.xax`, `pack.xax`, the Android and older Windows hosts)
 keep the 65,536 budget. `bbc compile` of a program this large still meets OI-54 (a function view holds 2^18
 values); `check`, `emit-bfx` and `info` need only this change.
+
+## Step 2: 1,048,576, the source limit (2026-11-18)
+
+The owner chose the largest budget the buffers allow: N = 1,048,576, the 1 MiB source limit (a command is one source
+byte, and O0's instructions fit `output/work`'s 1,114,112 bytes). The record view is N + 10 = 1,048,586 bytes
+(`5a76e8d9…`) and the decoder scratch 8N = 8,388,608 (`e9ce063c…`). Both types and both `VirtualFree` declarations
+are supplied (`@rec`, `@scr`, `@free_rec`, `@free_scr`).
+
+| Batch | Store | Parent root |
+|---|---|---|
+| `0037-bfx-budget-1m-compile.batch` | `../../compile.xax` | `2397a010…` (step 1's result) |
+| `0037-bfx-budget-1m-bbc.batch` | `../../bbc.xax` | step 1's result |
+| `0037-bfx-budget-1m-request.batch` | `../../bbc_request.xax` | step 1's result |
+
+The changed nodes are step 1's, with step 1's values as the old ones; the handles are those of step 1's results
+(`bbc.xax`: F625, F786, F838, F554, F130, F64, F741, top F195; `compile.xax`: F2 and the top, F3).
+
+No source can now have more commands than the budget, but "too big beats a bracket error" still holds: a source over
+1 MiB fails the frame's declared-capacity check (status 3), which comes before the bracket check. The overflow cases
+are therefore 1,048,577-byte sources.
