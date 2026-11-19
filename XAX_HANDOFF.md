@@ -2872,3 +2872,38 @@ reasonable calls and record them here.
   2. the release PR `release/0037` → `main` (#48's lifecycle entries reach `main`);
   3. BBC's pin and its 1,048,577-byte overflow fixtures (#55) once 0037 is on `main`;
   4. then C-cap's ADR for the next release.
+
+## Release 0037 on `main`; #55 closed; C-cap designed — 2026-11-19
+
+`main` = merge of #121 (release 0037) plus #120 (ADR-412). `rotate.sh state`: `validated 0037`, `profile released`.
+Seeds: Linux `8e0a4cf3…`, Windows `06ece4cf…`. Open issues: #47, #51. The owner asked for an autonomous run; the
+calls below were made without asking.
+
+- **Release 0037 merged** (#119 into `release/0037`, then #121 into `main`).
+  - `main` had gained #115–#118 and #120 meanwhile, so the release branch got a merge of `main` first. The only
+    conflict was this file's appended sections, kept in date order.
+  - The section I had appended from WSL had CRLF lines, but the repository stores this file LF (the Windows
+    checkout converts it). A follow-up commit normalized it, so the diff is just the new text.
+- **#55 closed** with the release evidence. BBC's capacity fixtures moved to the 1,048,576 edge (MrxSiN/BBC#6,
+  merged), and its docs state the new budget.
+  - EXECUTED: 1,048,577 commands exit 2, and 1,048,576 with an unmatched bracket exit 1, at `check`,
+    `emit-bfx -O0` and `-O1` (BBC `evidence/instruction_cap_2026-11-19.json`, `bbc.exe` `4b73ad61…`).
+  - NOT RUN: the ThreadsHideAds programs (no checkout on this host).
+- **ADR-412 (proposed, #120):** C-cap for the next release.
+  - OI-52 R2: checked and growable offsets may be `bits<64>` under the same bound. JVM, Wasm32, RISC-V and SPIR-V
+    reject them.
+  - OI-54's three limits, in the order a build meets them.
+  - Before R2 lands, the native oracle's `@mem` must evaluate the bound without a 64-bit wrap.
+- **Calls made:**
+  1. BBC has no machine-readable XAX pin file. I did not invent one; BBC's evidence names the XAX commit (`bfddb32`)
+     and the `bbc.exe` hash. Adding a real pin (one file, read by BBC's tools) is a small BBC change for later.
+  2. The full suite ran once alongside the evidence replay, and state tests were rerun after validation (see the
+     section above).
+- **Next step (a new release branch from `main`, ADR-404):**
+  1. Cut `release/0038`.
+  2. Fix the oracle bound first, on `main` (ADR-412 (4)).
+  3. OI-52 R2: verifier/facts and typing programs, then the x86-64 general backend (64-bit compare), then AArch64.
+     Each is a ledger sub-batch with C1, plus C2 for x86-64.
+  4. Then OI-54 step 1: the semantic index's graph-stream region, the edit engine's body limit and the decoder's
+     body view.
+  5. Oracle slice 4 (aggregates, sums, floats) is independent and can go to `main` at any time.
