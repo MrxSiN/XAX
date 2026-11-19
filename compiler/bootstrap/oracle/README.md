@@ -29,7 +29,8 @@ calls a member of the caller's own group: each frame records its group.
 **Slice 3** adds stack memory: `stack.alloc`, `address.offset`, `store.bits.le`, `load.bits.le`, `stack.end`,
 `checked.load.bits.le` and `checked.store.bits.le`, with pointer, effect and resource types as values. A checked access
 past its allocation, or misaligned within it, traps with the payload `memory-check` (exit 1, `trap 6d656d6f72792d636865636b`),
-as `execute` does. Pointers into the target's address space (`pointer.address`, `pointer.rebase`), heap views and growable
+as `execute` does. The bound `offset + size <= extent` is evaluated without a 64-bit wrap, so a `bits<64>` offset near
+2^64 traps (ADR-412 (4)). Pointers into the target's address space (`pointer.address`, `pointer.rebase`), heap views and growable
 accesses stay declined.
 
 How it works:

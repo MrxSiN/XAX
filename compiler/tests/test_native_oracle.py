@@ -14,6 +14,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest import mock
 from pathlib import Path
 
 BOOTSTRAP = Path(__file__).resolve().parents[1] / "bootstrap"
@@ -92,6 +93,28 @@ class NativeOracleTests(unittest.TestCase):
                         arguments = (offset, k) if store else (offset,)
                         with self.subTest(size=size, store=store, arguments=arguments):
                             self.assertEqual(native_run(reader.data, function.cid, arguments), _reference(reader, function.cid, arguments))
+
+    def test_a_64_bit_offset_bound_does_not_wrap(self):
+        """ADR-412 (4): ``offset + size <= extent`` holds without a 64-bit wrap, so offsets near 2^64 trap.
+
+        A ``bits<64>`` offset is R2's, so the store is not verified, and the expected values are the area's own
+        (``_expected``, unbounded integers), as the Python verifier still rejects the width."""
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        from test_xax_byte_view_widening import B64, EXTENT, _expected, _stack_callee
+        from xax_compiler import x86_64_linux_exec_target
+        from xax_graph_builder import program_store
+
+        top = 1 << 64
+        for size in (1, 8):
+            for store in (False, True):
+                function, objects = _stack_callee(size, store=store, offset_type=B64)
+                with mock.patch("xax_graph_builder.verify_store", lambda reader: None):
+                    reader = program_store(function, x86_64_linux_exec_target(), objects)
+                for offset in (0, EXTENT - size, EXTENT - size + 1, 1 << 32, top - size, top - 1, top - EXTENT):
+                    value = _expected(size, offset, store=store)
+                    expected = (1, "trap 6d656d6f72792d636865636b\n") if value is None else (0, f"{value}\n")
+                    with self.subTest(size=size, store=store, offset=offset):
+                        self.assertEqual(native_run(reader.data, function.cid, (offset, 0) if store else (offset,)), expected)
 
     def test_both_oracles_agree_on_the_register_lowering_corpus(self):
         sys.path.insert(0, str(Path(__file__).resolve().parent))
