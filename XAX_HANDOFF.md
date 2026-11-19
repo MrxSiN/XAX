@@ -2907,3 +2907,53 @@ calls below were made without asking.
   4. Then OI-54 step 1: the semantic index's graph-stream region, the edit engine's body limit and the decoder's
      body view.
   5. Oracle slice 4 (aggregates, sums, floats) is independent and can go to `main` at any time.
+
+## C-cap: OI-52 R2 on `release/0038`, sub-batches a–c — 2026-11-19
+
+`main` = merge of #123. `release/0038` was cut from it and holds #124–#126. The seed is still release 0037's
+(`validated 0037`). The owner asked for an autonomous run, so the calls below were made without asking.
+
+- **#123 (on `main`), ADR-412 (4):** the native oracle's `@mem` checks a checked access as
+  `ptroff + size > extent` or `dyn > extent - (ptroff + size)`, so the bound never wraps.
+  - New probes in `test_native_oracle` use a `bits<64>` offset near 2^64 on an unverified store. The old oracle
+    fails 7 of them.
+  - `_stack_callee` takes an `offset_type`.
+- **#124, sub-batch a (ledger `0038-checked-offset64`, `-typing`): the verifier.**
+  - The four facts functions of the checked forms (typing F25, F33, F61, F74, the same objects in the driver) accept
+    width 32 or 64 as `((width - 32) & ~32) == 0`.
+  - The renderer (typing F1) writes the expected value as `[32, 64]`.
+  - The Python reference verifier and `src/xax_selfhost_facts.py`'s site table say the same. Python decodes
+    host-side records with that table, so it had to change too; these are two literals, not new logic.
+- **#125, sub-batch b (`0038-checked-offset64-frame-{a,b}`, `-x86-64`): the x86-64 frame path.**
+  - The register path already compared a 64-bit index.
+  - The frame path loaded the index with `mov r10d` (4 bytes). Its three `frame_access(0x8B, r10, slot, 4)` sites
+    (`fr_memory` once, `fr_tail` twice) now load 8 bytes.
+  - That is three `const` mutations. Values stay zero-extended in slots (ADR-393), so `bits<32>` reads the same.
+  - The reference `xax_x86_64.py` has the same three sites and changed with them, because the general-build tests
+    compare bytes.
+- **#126 (test only): AArch64 needs no change.**
+  - Under qemu-aarch64, 14 of 14 probes pass on both paths, built in-process and by C1/C2.
+  - Under Unicorn, the Android ARM64 stack probes give 0 mismatches.
+- **Gates (EXECUTED, WSL 2):**
+  - C1 of a against the seed: 197 of 197 corpus cases identical.
+  - b: C2 = C3 (fixed point). C2 passes 14 of 14 x86-64 probes, and the seed rejects them at verification.
+  - C2 against the seed on the corpus: one Windows load image differed once while another test run was going. Three
+    reruns on each compiler are identical.
+  - The driver tests were rerun with C1/C2 installed as `NativeGeneralDriver`, using the scratch
+    `/root/work/r2/withc1.py`; it works without `-n`, because xdist workers do not inherit the patch.
+- **Expected until rotation:** with the pinned seed as the driver, `test_xax_selfhost_verify_exact` program 124
+  expects `32` where the reference now says `[32, 64]`.
+- **Not reproduced:** `test_object_sites` failed once in a `-n 2` run. It passes alone with the seed, a's C1 and C2.
+- **Open in R2: sub-batch d, the rejections** (ADR-412 (2)). With C1:
+  - JVM (`jvm_classfile_memory_target`), RISC-V views and Wasm32 (`oi06`) all build a `bits<64>` offset.
+  - Wasm32 emits an invalid module (an `i64` parameter compared with `i32.gt_u`), not a silently wrong one.
+  - Each needs its own `*-CHECKED-OFFSET-BITS` rejection, natively and in its Python reference.
+  - The renderers that write each backend's `*-OP-TARGET-SUPPORTED` text are driver F10 (JVM), F589 (Wasm, one
+    straight-line function of 10,322 lines), F610 (RISC-V), and F744/F1033 (SPIR-V), as of the driver after #125.
+    The rejection itself is set where each backend checks a node's operation against its target.
+  - Scratch probes: `/root/work/r2/tprobes2.py` (heap views: RISC-V views, JVM), `tprobes.py` (stack: Wasm).
+- **Next:**
+  1. Sub-batch d.
+  2. Then the release: `selfbuild.sh`, rotation, V2 evidence, and the Windows x86-64 and Android ARM64 device runs
+     of `test_xax_oi52_r2`'s program (OI-52's closing evidence).
+  3. Then OI-54 step 1.
