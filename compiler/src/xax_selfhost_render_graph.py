@@ -979,7 +979,7 @@ def _memory_part(tables, part: int):
             "STORE_TYPE": ("XAX.MEMORY.VALUE_TYPE", "MEMORY-STORE-TYPE", h(x), h(y)),
             "STORE_EFFECT_TYPE": ("XAX.MEMORY.EFFECT_TYPE", "MEMORY-EFFECT-TYPE", const("one matching effect<memory> result"), listing(h(x))),
             "CHECKED_ALIGNMENT": ("XAX.MEMORY.CHECKED_ALIGNMENT", "MEMORY-CHECKED-ALIGNMENT-BOOTSTRAP", const(1), integer(x)),
-            "CHECKED_OFFSET": ("XAX.MEMORY.CHECKED_OFFSET", "MEMORY-CHECKED-OFFSET-BITS", const(32), integer(x)),
+            "CHECKED_OFFSET": ("XAX.MEMORY.CHECKED_OFFSET", "MEMORY-CHECKED-OFFSET-BITS", const([32, 64]), integer(x)),
             "GROWABLE_LIMIT_BITS": ("XAX.MEMORY.CHECKED_OFFSET", "MEMORY-GROWABLE-LIMIT-BITS", const(64), h(x)),
             "CHECKED_LOAD_TYPE": ("XAX.MEMORY.VALUE_TYPE", "MEMORY-CHECKED-LOAD-TYPE", checked_type, h(y)),
             "CHECKED_STORE_TYPE": ("XAX.MEMORY.VALUE_TYPE", "MEMORY-CHECKED-STORE-TYPE", checked_type, h(y)),

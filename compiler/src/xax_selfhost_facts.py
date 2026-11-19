@@ -3470,7 +3470,7 @@ def memory_diagnostic(site: int, payload, operation, refs, storages, read, cids=
     if name == "CHECKED_ALIGNMENT":
         return "XAX.MEMORY.CHECKED_ALIGNMENT", "MEMORY-CHECKED-ALIGNMENT-BOOTSTRAP", 1, x
     if name == "CHECKED_OFFSET":
-        return "XAX.MEMORY.CHECKED_OFFSET", "MEMORY-CHECKED-OFFSET-BITS", 32, x
+        return "XAX.MEMORY.CHECKED_OFFSET", "MEMORY-CHECKED-OFFSET-BITS", [32, 64], x
     if name == "GROWABLE_LIMIT_BITS":
         return "XAX.MEMORY.CHECKED_OFFSET", "MEMORY-GROWABLE-LIMIT-BITS", 64, h(x)
     if name in ("CHECKED_LOAD_TYPE", "CHECKED_STORE_TYPE"):

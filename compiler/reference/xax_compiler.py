@@ -5479,8 +5479,8 @@ def _verify_memory_node(
             fail("XAX.MEMORY.CHECKED_ALIGNMENT", graph.cid.hex(), "MEMORY-CHECKED-ALIGNMENT-BOOTSTRAP", 1, alignment)
         offset_type = node.operand_types[1]
         offset_width = decode_bits_width(resolve(offset_type))
-        if offset_width != 32:
-            fail("XAX.MEMORY.CHECKED_OFFSET", graph.cid.hex(), "MEMORY-CHECKED-OFFSET-BITS", 32, offset_width)
+        if offset_width not in (32, 64):  # OI-52 R2 (ADR-412)
+            fail("XAX.MEMORY.CHECKED_OFFSET", graph.cid.hex(), "MEMORY-CHECKED-OFFSET-BITS", [32, 64], offset_width)
         if is_load:
             if not pointer_fact.permission & Permission.READ:
                 fail("XAX.MEMORY.PERMISSION", graph.cid.hex(), "MEMORY-READ-PERMISSION", "read", int(pointer_fact.permission))

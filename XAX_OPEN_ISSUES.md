@@ -843,7 +843,13 @@ three present XAX limits, measured with the native driver on 2026-10-29:
   materialize the bound in a register (`mov r64, imm64`) and compare 64-bit. This
   alone lifts x86-64 to the 4 GiB offset limit. Test: the 2^31 and 4 GiB−4 KiB
   probes above, plus first-crossing traps at both edges.
-- **R2 (64-bit checked offsets).** Allow `bits<64>` offsets on byte views with
+- **R2 (64-bit checked offsets). DONE 2026-11-19 (ADR-412, ledger 0038, release 0038):** the verifier accepts a
+  `bits<64>` offset; the x86-64 frame path loads the index whole; AArch64, RISC-V, the JVM and general Wasm32 already
+  compared 64 bits; SPIR-V rejects (`SPIRV-VALUE`); the legacy Wasm32 profile is OI-62. EXECUTED: the release's
+  Windows seed builds a 5 GiB view probe that answers at its last byte and past 2^32 and traps at the edge and at
+  2^64 - 1, natively on Windows 11 (10 of 10, both x86-64 paths); Linux AArch64 under qemu (14 of 14). The Android
+  ARM64 device run is BLOCKED (no adb device reachable on 2026-11-19).
+  The original item: allow `bits<64>` offsets on byte views with
   the unchanged rule `offset + size <= extent`, evaluated without overflow.
   Requires an ADR, verifier and both native backends; `bits<32>` stays valid.
 - **R3 (growable views).** A view whose extent is a run-time value bounded by a
@@ -1070,3 +1076,20 @@ left for the C-cap step of release 0036.
 
 **Evidence that closes it.** A transaction on the three stores that rejects such a declaration with
 `JVM-FOREIGN-ARITY` (or a new diagnostic), and a test that builds one and gets the rejection.
+
+## OI-62 — The legacy Wasm32 profile emits an invalid module for a `bits<64>` checked offset
+
+**Status: OPEN (2026-11-19).** Since OI-52 R2 (ADR-412) a checked offset may be `bits<64>`. The general Wasm32 profile
+lowers it (`i64.gt_u`, then `i32.wrap_i64`), but the legacy profile that `oi06_wasm32_target` and other targets
+without the general operations select (`xax_wasm_legacy.py`; in the driver, the per-node lowering F784 as of
+`release/0038` after #126) pushes the `i64` local and compares it with `i32.const` and `i32.gt_u`. Wasm validation
+rejects the module (`i32.gt_u[0] expected type i32, found local.get of type i64`), so no program runs with a wrong
+value, but the compiler should reject the program instead of emitting the module.
+
+The legacy lowering decodes each type's width inline from its body, so the native fix copies the general profile's
+width lookup (F112's blocks before its `i64.gt_u` choice) into F784's checked-access case and rejects when the offset's
+width is not 32, with a `WASM-CHECKED-OFFSET-BITS` diagnostic in the Wasm renderer (F589); the Python legacy
+reference rejects the same way.
+
+**Evidence that closes it.** A transaction on the driver that rejects such a program for the legacy profile with
+`WASM-CHECKED-OFFSET-BITS`, the same rejection in the reference, and a test that builds one and gets it.
