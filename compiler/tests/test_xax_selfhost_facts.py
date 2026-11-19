@@ -342,7 +342,7 @@ def _typed_program(variant: str):
         graph.track(view, VIEW_POINTER, B64, B8, B32)
         entry = graph.block(B32, VIEW_POINTER, view, MEM)
         seed, pointer, token, memory = entry.params
-        offset = entry.const(B64 if variant == "checked_offset" else B32, 1)
+        offset = entry.const(B8 if variant == "checked_offset" else B32, 1)  # bits<64> is valid (OI-52 R2)
         alignment = 2 if variant == "checked_alignment" else 1
         if variant == "checked_store_type":
             memory = entry.op1(Operation.CHECKED_STORE_BITS_LE, (pointer, offset, entry.const(B32, 5), memory), MEM, attributes=(1, 1))
