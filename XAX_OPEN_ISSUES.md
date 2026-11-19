@@ -848,7 +848,10 @@ three present XAX limits, measured with the native driver on 2026-10-29:
   compared 64 bits; SPIR-V rejects (`SPIRV-VALUE`); the legacy Wasm32 profile is OI-62. EXECUTED: the release's
   Windows seed builds a 5 GiB view probe that answers at its last byte and past 2^32 and traps at the edge and at
   2^64 - 1, natively on Windows 11 (10 of 10, both x86-64 paths); Linux AArch64 under qemu (14 of 14). The Android
-  ARM64 device run is BLOCKED (no adb device reachable on 2026-11-19).
+  ARM64 device run, first BLOCKED (no adb device), ran later on 2026-11-19 on a Pixel 8 Pro (`XAX_AARCH64_ADB=1`): an
+  8 GiB view answers 42 at its last byte and past 2^32 and traps (`brk`, SIGTRAP) at the edge and near 2^64, 14 of 14
+  built in-process and 14 of 14 built by the release's Linux seed `15b6c6d9…`. R2's evidence is complete; OI-52 stays
+  open for R3 and R4.
   The original item: allow `bits<64>` offsets on byte views with
   the unchanged rule `offset + size <= extent`, evaluated without overflow.
   Requires an ADR, verifier and both native backends; `bits<32>` stays valid.

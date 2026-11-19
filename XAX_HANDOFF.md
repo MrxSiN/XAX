@@ -3011,3 +3011,16 @@ without asking.
   2. OI-54 step 1 on a new `release/0039`: the semantic index's graph-stream region, the edit engine's 4 MiB body
      limit, and the decoder's body view (prepared as ledger 0021).
   3. OI-62 (legacy Wasm32 rejection) and oracle slice 4 can go at any time.
+
+## OI-52 R2 on an Android device — 2026-11-19
+
+Supersedes step 1 of "Release 0038 on `main`" above: the Pixel 8 Pro came back on adb (`adb-38021FDJG00610-…`).
+
+- **EXECUTED on the device** (`XAX_AARCH64_ADB=1`, `/root/work/bin/adb` pinned to that serial):
+  - `test_xax_oi52_r2.AArch64Tests` passes 14 of 14: an 8 GiB view answers 42 at its last byte and past 2^32, and
+    traps (`brk`, SIGTRAP) at the edge and near 2^64, for one and five parameters.
+  - The same probes built by the release's Linux seed `15b6c6d9…`: 14 of 14.
+- The adb runner needs `/data/local/tmp/xax-exec-status`. WSL has no Linux NDK, so I built it with the Windows NDK
+  (28.2, `aarch64-linux-android28-clang`) from `integration/android/exec_status.c` and pushed it.
+- R2's closing evidence is complete (`XAX_OPEN_ISSUES.md`). OI-52 stays open for R3 and R4.
+- **Next:** OI-54 step 1 on `release/0039`, then OI-62 and oracle slice 4.
