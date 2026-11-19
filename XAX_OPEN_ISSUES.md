@@ -843,7 +843,13 @@ three present XAX limits, measured with the native driver on 2026-10-29:
   materialize the bound in a register (`mov r64, imm64`) and compare 64-bit. This
   alone lifts x86-64 to the 4 GiB offset limit. Test: the 2^31 and 4 GiB−4 KiB
   probes above, plus first-crossing traps at both edges.
-- **R2 (64-bit checked offsets).** Allow `bits<64>` offsets on byte views with
+- **R2 (64-bit checked offsets). DONE 2026-11-19 (ADR-412, ledger 0038, release 0038):** the verifier accepts a
+  `bits<64>` offset; the x86-64 frame path loads the index whole; AArch64, RISC-V, the JVM and general Wasm32 already
+  compared 64 bits; SPIR-V rejects (`SPIRV-VALUE`); the legacy Wasm32 profile is OI-62. EXECUTED: the release's
+  Windows seed builds a 5 GiB view probe that answers at its last byte and past 2^32 and traps at the edge and at
+  2^64 - 1, natively on Windows 11 (10 of 10, both x86-64 paths); Linux AArch64 under qemu (14 of 14). The Android
+  ARM64 device run is BLOCKED (no adb device reachable on 2026-11-19).
+  The original item: allow `bits<64>` offsets on byte views with
   the unchanged rule `offset + size <= extent`, evaluated without overflow.
   Requires an ADR, verifier and both native backends; `bits<32>` stays valid.
 - **R3 (growable views).** A view whose extent is a run-time value bounded by a

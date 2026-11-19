@@ -118,6 +118,102 @@ class AArch64Tests(unittest.TestCase):
         self.run_cases(extra=4)
 
 
+PE_EXTENT = 5 * GIB  # committed lazily by Windows: only touched pages use memory
+PE_CASES = ((PE_EXTENT - 1, 42), ((1 << 32) + 7, 42), (PE_EXTENT, None), ((1 << 64) - 1, None), (4095, 42))
+ILLEGAL_INSTRUCTION = 0xC000001D  # ud2, the checked access's trap
+
+
+def pe_program(offset: int, extra: int = 0):
+    """A Windows x86-64 process: ``VirtualAlloc`` a ``PE_EXTENT`` byte view, then a helper with a ``bits<64>`` offset
+    (and ``extra`` more machine parameters, for the frame path) stores 42 there and loads it back; the exit status."""
+    from xax_compiler import Kind, StoreReader, object_with_refs, write_store, x86_64_windows_pe_target
+    from xax_platform import win32_kernel32_api
+
+    api = win32_kernel32_api()
+    view_type = heap_view_type(PE_EXTENT)
+    pointer = pointer_type(B8, Permission.READ_WRITE, 8, space=2)
+    mem = api.memory_effect
+    graph = GraphBuilder()
+    graph.track(*api.types, B8, B32, B64, pointer, view_type)
+    h = graph.block(B64, *(B64,) * extra, pointer, view_type, mem)
+    at, p, v, m = h.params[0], h.params[-3], h.params[-2], h.params[-1]
+    m = h.op1(Operation.CHECKED_STORE_BITS_LE, (p, at, h.const(B8, 42), m), mem, attributes=(1, 1))
+    value, m = h.op(Operation.CHECKED_LOAD_BITS_LE, (p, at, m), (B8, mem), attributes=(1, 1))
+    h.ret(value, p, v, m)
+    helper = graph.function((B64, *(B64,) * extra, pointer, view_type, mem), (B8, pointer, view_type, mem))
+    objects = list(graph.objects.values())
+    graph = GraphBuilder()
+    graph.track(*api.types, B8, B32, B64, pointer, view_type)
+    block = graph.block(api.process_effect, api.filesystem_effect, mem)
+    process, fs, memory = block.params
+    raw, owner, memory = block.op(Operation.CALL_FOREIGN, (block.const(B64, 0), block.const(B64, PE_EXTENT), block.const(B32, 0x3000),
+                                                           block.const(B32, 4), memory), (api.heap_ptr_rw, api.heap_resource, mem), entity=api.virtual_alloc)
+    view, token, memory = block.op(Operation.HEAP_VIEW, (raw, owner, memory), (pointer, view_type, mem), attributes=(PE_EXTENT, 8))
+    arguments = (block.const(B64, offset), *(block.const(B64, k) for k in range(extra)))
+    value, view, token, memory = block.op(Operation.CALL_DIRECT, (*arguments, view, token, memory), (B8, pointer, view_type, mem), entity=helper)
+    free = api.virtual_free_view(view_type, pointer)
+    memory = block.op(Operation.CALL_FOREIGN, (view, block.const(B64, 0), block.const(B32, 0x8000), token, memory), (B32, mem), entity=free)[1]
+    status = block.op1(Operation.INT_ZERO_EXTEND, (value,), B32)
+    process = block.op1(Operation.CALL_FOREIGN, (status, process), api.process_effect, entity=api.exit_process)
+    block.ret(status, process, fs, memory)
+    entry = graph.function((api.process_effect, api.filesystem_effect, mem), (B32, api.process_effect, api.filesystem_effect, mem))
+    target = x86_64_windows_pe_target()
+    module = object_with_refs(Kind.MODULE, [entry, target])
+    root = object_with_refs(Kind.PROGRAM_ROOT, [module])
+    by_cid = {o.cid: o for o in (*api.types, *api.symbols, free, *objects, helper, *graph.objects.values(), entry, target, module, root)}
+    kept, pending = {}, [root.cid]
+    while pending:
+        cid = pending.pop()
+        if cid not in kept:
+            kept[cid] = by_cid[cid]
+            pending.extend(kept[cid].references)
+    return StoreReader(write_store(root.cid, list(kept.values()))), entry, target
+
+
+def _windows_runner():
+    """How to run a PE executable here: natively (Windows, or WSL interop), else wine, else None."""
+    import os
+    import shutil
+
+    if platform.system() == "Windows" or os.path.exists("/proc/sys/fs/binfmt_misc/WSLInterop"):
+        return []
+    wine = shutil.which("wine")
+    return [wine] if wine else None
+
+
+@unittest.skipUnless(platform.system() == "Linux" and platform.machine() in ("x86_64", "AMD64"), "the XAX general program runs on Linux x86-64")
+class WindowsTests(unittest.TestCase):
+    """OI-52's closing evidence on Windows x86-64: a view past 4 GiB, run as a Windows process."""
+
+    def run_cases(self, extra=0):
+        import os
+        import subprocess
+        import tempfile
+        from pathlib import Path
+
+        from xax_pe import compile_pe_executable
+
+        runner = _windows_runner()
+        if runner is None:
+            self.skipTest("requires Windows, WSL interop or wine")
+        with tempfile.TemporaryDirectory(dir=os.environ.get("XAX_WINDOWS_TMP")) as work:
+            for offset, expected in PE_CASES:
+                with self.subTest(offset=offset):
+                    reader, entry, target = pe_program(offset, extra)
+                    verify_store(reader)
+                    path = Path(work) / "r2.exe"
+                    path.write_bytes(compile_pe_executable(reader, entry.cid, target, frontend="xax"))
+                    path.chmod(0o755)
+                    run = subprocess.run([*runner, str(path)], capture_output=True, timeout=300, env={**os.environ, "WINEDEBUG": "-all"})
+                    self.assertEqual(run.returncode & 0xFF, (ILLEGAL_INSTRUCTION if expected is None else expected) & 0xFF)  # interop and wine keep the low byte
+
+    def test_register_path(self):
+        self.run_cases()
+
+    def test_frame_path(self):
+        self.run_cases(extra=4)
+
+
 SMALL = 64  # the 32-bit-index targets' views
 NEAR = (0, 1, SMALL - 1, SMALL, 1 << 31, (1 << 32) - 1, 1 << 32, (1 << 32) + 1, (1 << 64) - SMALL, (1 << 64) - 1)
 DATA = bytes(((k * 37) + 11) & 255 for k in range(SMALL))
