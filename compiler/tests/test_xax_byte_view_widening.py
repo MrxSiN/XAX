@@ -55,16 +55,16 @@ def _engine(native):
 
 
 def _stack_callee(size: int, *, store: bool = False, element=B8, value_type=None, alignment: int = 1, initialized: int = EXTENT,
-                  offset=None):
-    """``(offset: bits<32>[, k: bits<32>]) -> T``: a 32-byte stack view of ``element``, its first ``initialized`` bytes
+                  offset=None, offset_type=B32):
+    """``(offset: bits<32>[, k: bits<32>]) -> T`` (``offset_type`` for both parameters): a 32-byte stack view of ``element``, its first ``initialized`` bytes
     written by ordinary stores, then one checked access of ``size`` bytes at ``offset``.  A load returns the value; a
     store returns the byte at ``offset + k`` read back with a 1-byte checked load."""
     graph = GraphBuilder()
     pointer = pointer_type(element, Permission.READ_WRITE, 1)
     value_type = value_type or bits_type(8 * size)
-    graph.track(pointer, OWNER, MEM, B8, B32, value_type, element)
-    block = graph.block(B32, B32) if store else graph.block(B32)
-    index = block.params[0] if offset is None else block.const(B32, offset)
+    graph.track(pointer, OWNER, MEM, B8, offset_type, value_type, element)
+    block = graph.block(offset_type, offset_type) if store else graph.block(offset_type)
+    index = block.params[0] if offset is None else block.const(offset_type, offset)
     p, owner, memory = block.op(Operation.STACK_ALLOC, (), (pointer, OWNER, MEM), attributes=(EXTENT, 1))
     if element == B8:  # other elements are rejected before initialization matters
         for k in range(initialized):
@@ -74,13 +74,13 @@ def _stack_callee(size: int, *, store: bool = False, element=B8, value_type=None
         width = int.from_bytes(value_type.body[1:2], "little")  # a bits<N> value type, N < 128
         stored = block.const(value_type, VALUE & ((1 << width) - 1))
         memory = block.op1(Operation.CHECKED_STORE_BITS_LE, (p, index, stored, memory), MEM, attributes=(size, alignment))
-        at = block.op1(Operation.ADD_WRAP, (index, block.params[1]), B32)
+        at = block.op1(Operation.ADD_WRAP, (index, block.params[1]), offset_type)
         out, memory = block.op(Operation.CHECKED_LOAD_BITS_LE, (p, at, memory), (B8, MEM), attributes=(1, 1))
     else:
         out, memory = block.op(Operation.CHECKED_LOAD_BITS_LE, (p, index, memory), (value_type, MEM), attributes=(size, alignment))
     block.op(Operation.STACK_END, (owner, memory), ())
     block.ret(out)
-    function = graph.function((B32, B32) if store else (B32,), (B8 if store else value_type,))
+    function = graph.function((offset_type, offset_type) if store else (offset_type,), (B8 if store else value_type,))
     return function, tuple(graph.objects.values())
 
 
