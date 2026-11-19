@@ -7,11 +7,12 @@ answers 42, and the first byte past the extent and offsets near 2^64 trap.  ``bi
 
 from __future__ import annotations
 
+import platform
 import unittest
 
 from xax_compiler import Operation, Permission, XaxError, bits_type, heap_view_type, pointer_type, verify_store, x86_64_linux_exec_target
 from xax_graph_builder import GraphBuilder, program_store
-from xax_linux import linux_api
+from xax_linux import compile_linux_executable, linux_api, run_linux_executable
 
 B8, B32, B64 = bits_type(8), bits_type(32), bits_type(64)
 GIB = 1 << 30
@@ -64,6 +65,29 @@ class VerifierTests(unittest.TestCase):
                     program_store(entry, x86_64_linux_exec_target(), objects)
                 diagnostic = raised.exception.diagnostic
                 self.assertEqual((diagnostic.rule, diagnostic.expected, diagnostic.actual), ("MEMORY-CHECKED-OFFSET-BITS", [32, 64], width))
+
+
+@unittest.skipUnless(platform.system() == "Linux" and platform.machine() in ("x86_64", "AMD64"), "requires Linux x86-64")
+class X86_64Tests(unittest.TestCase):
+    def run_cases(self, extra=0, frontends=("xax",)):
+        target = x86_64_linux_exec_target()
+        for frontend in frontends:
+            for extent, offset, expected in CASES:
+                with self.subTest(frontend=frontend, extent=extent, offset=offset):
+                    entry, objects = program(extent, offset, extra)
+                    reader = program_store(entry, target, objects)
+                    completed = run_linux_executable(compile_linux_executable(reader, entry.cid, target.cid, frontend=frontend).data)
+                    if expected is None:
+                        self.assertLess(completed.returncode, 0)  # the checked access's trap
+                    else:
+                        self.assertEqual(completed.returncode, expected)
+
+    def test_register_path(self):
+        self.run_cases()
+
+    def test_frame_path(self):
+        """A callee of five machine parameters is lowered on the frame path."""
+        self.run_cases(extra=4)
 
 
 if __name__ == "__main__":
