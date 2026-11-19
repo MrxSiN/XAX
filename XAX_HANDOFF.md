@@ -2957,3 +2957,57 @@ calls below were made without asking.
   2. Then the release: `selfbuild.sh`, rotation, V2 evidence, and the Windows x86-64 and Android ARM64 device runs
      of `test_xax_oi52_r2`'s program (OI-52's closing evidence).
   3. Then OI-54 step 1.
+
+## Release 0038 on `main`: 64-bit checked offsets — 2026-11-19
+
+`main` = merge of #130 (`c3fdaab`). `rotate.sh state`: `validated 0038`, `profile released`.
+Seeds: Linux `15b6c6d9…` (31,811,995 bytes), Windows `1aa1f9dc…` (31,865,344).
+BBC pins it (MrxSiN/BBC#8). Open issues: #47, #51. The owner asked for an autonomous run, so the calls below were made
+without asking.
+
+- **Sub-batch d (#128): no new rejections.** I measured instead of assuming ADR-412 (2):
+  - RISC-V views (`bgeu` on the whole register), the JVM (`Long.compareUnsigned` before `l2i`) and general Wasm32
+    (`i64.gt_u`, then `i32.wrap_i64`) already lower a `bits<64>` offset correctly. SPIR-V rejects it as
+    `SPIRV-VALUE`.
+  - Their evidence tests are in `test_xax_oi52_r2`, and ADR-412 is amended and accepted.
+  - The only wrong target is the legacy Wasm32 profile (`oi06`). Its module fails Wasm validation, so it never runs.
+    That is OI-62. The fix copies F112's width lookup into F784, which was not tractable in this run.
+- **Rotation (#129, EXECUTED):**
+  - `rotate.sh build 0038` took 16.5 min; `confirm` passed on both targets.
+  - The first `evidence/run.sh` gave B3 0. The frozen corpus case 167, a random Windows load image with one
+    frame-path checked access, still had the 0037 bytes: one byte, `0x44` → `0x4c`, the intended index load. The
+    expectation moved in its own commit, and the rerun (97 min, replay 195 of 195) validated:
+    `validated 0038 evidence=b0b0d849…`.
+  - The SNAPSHOTS line (`a7a4a1a0…` → `7afa1b98…`) is in its own commit.
+  - The V1 records were regenerated: python-free seed 7 min, full self-host 194 min.
+- **BBC:**
+  - The driver follows the three 0038 driver transactions.
+  - `bbc.exe` `0ec701ee…` (36,110,336 bytes) was built by the new Windows seed.
+  - `check.py`: 372 of 372 compiles, 488 runs, 0 mismatches.
+  - The capacity fixtures and all six ThreadsHideAds programs match (the latter cloned read-only at cf28f66).
+  - BBC's `XAX_PIN.json` moved to `c3fdaab`.
+- **OI-52 closing evidence:**
+  - Windows x86-64 EXECUTED: the release's Windows seed builds the 5 GiB-view probes (`WindowsTests`, both paths).
+    10 of 10 give the expected result natively on Windows 11; interop keeps only the exit code's low byte.
+  - Android ARM64 BLOCKED: no adb device on 2026-11-19, and nothing on mDNS. The Pixel's wireless debugging needs to
+    be on.
+  - Linux AArch64 under qemu: 14 of 14 (an emulator run).
+  - OI-52 stays open for the device run and for R3/R4.
+- **Full suite** (`-n 2`, 2 h 36 min, on the final tree): 1,657 passed, 11 failed.
+  - Two are the baseline: the B1 binding and `test_callback_programs`.
+  - One was `test_rotate_tool`'s pinned release, fixed in #129.
+  - Seven JVM/JDWP failures came only from `/root/work/bin`'s Windows-`java` wrapper on PATH. Without it they pass or
+    skip.
+  - The Wasm, OI-16 and OI-06 baseline failures did not reproduce, because node was on PATH through a wrapper.
+- **Calls made:**
+  1. RISC-V and the JVM accept rather than reject: they are correct, and rejecting would remove a working
+     capability. The ADR amendment says so.
+  2. The first full suite ran next to `bench_full_selfhost`. A worker reached 9.5 GB and left 1 GB free, so I killed
+     the suite by PID and reran it after the bench.
+  3. The ThreadsHideAds checkout is a scratch clone, never committed.
+- **Next step:**
+  1. The Android ARM64 device run of `test_xax_oi52_r2.AArch64Tests` with `XAX_AARCH64_ADB=1`, once the Pixel is
+     on adb. Update `/root/work/bin/adb`'s serial. It closes OI-52 R2's evidence.
+  2. OI-54 step 1 on a new `release/0039`: the semantic index's graph-stream region, the edit engine's 4 MiB body
+     limit, and the decoder's body view (prepared as ledger 0021).
+  3. OI-62 (legacy Wasm32 rejection) and oracle slice 4 can go at any time.
