@@ -1,7 +1,7 @@
 """RFC phase 6: the native release-state program (``bootstrap/seed/rotate-tool``).
 
 On Linux x86-64 with the pinned seed: the committed program is the seed's ``xaxc edit`` of its batch; the committed
-state is release 0037, released, with pins equal to the committed seeds (ADR-410); and on copies of
+state is release 0038, released, with pins equal to the committed seeds (ADR-410); and on copies of
 RELEASES and LEDGER the lifecycle reads as RFC section 3 says: development and its POLICY tests, a candidate with
 pending hosts, a confirmation with the wrong hash, a confirmed candidate, a stale one, and a blocked one.
 """
@@ -52,7 +52,7 @@ class RotateToolTests(unittest.TestCase):
     def test_the_committed_state_and_pins(self):
         status, text = self.run_tool("state", BOOTSTRAP)
         self.assertEqual(status, 0)
-        self.assertIn("validated 0037\ncandidate none\nprofile released\n", text)
+        self.assertIn("validated 0038\ncandidate none\nprofile released\n", text)
         for target, seed in (("x86_64-linux-elf-exec-v1", SEED), ("x86_64-windows-pe-v1", BOOTSTRAP / "windows" / "xaxc-windows-x86_64.exe")):
             data = seed.read_bytes()
             self.assertEqual(self.run_tool("pin", BOOTSTRAP, target), (0, f"{hashlib.sha256(data).hexdigest()}:{len(data)}\n"), target)
