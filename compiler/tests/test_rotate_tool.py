@@ -1,7 +1,7 @@
 """RFC phase 6: the native release-state program (``bootstrap/seed/rotate-tool``).
 
 On Linux x86-64 with the pinned seed: the committed program is the seed's ``xaxc edit`` of its batch; the committed
-state is release 0037, released, with pins equal to the committed seeds (ADR-410); and on copies of
+state is release 0038, released, with pins equal to the committed seeds (ADR-410); and on copies of
 RELEASES and LEDGER the lifecycle reads as RFC section 3 says: development and its POLICY tests, a candidate with
 pending hosts, a confirmation with the wrong hash, a confirmed candidate, a stale one, and a blocked one.
 """
@@ -52,7 +52,7 @@ class RotateToolTests(unittest.TestCase):
     def test_the_committed_state_and_pins(self):
         status, text = self.run_tool("state", BOOTSTRAP)
         self.assertEqual(status, 0)
-        self.assertIn("validated 0037\ncandidate none\nprofile released\n", text)
+        self.assertIn("validated 0038\ncandidate none\nprofile released\n", text)
         for target, seed in (("x86_64-linux-elf-exec-v1", SEED), ("x86_64-windows-pe-v1", BOOTSTRAP / "windows" / "xaxc-windows-x86_64.exe")):
             data = seed.read_bytes()
             self.assertEqual(self.run_tool("pin", BOOTSTRAP, target), (0, f"{hashlib.sha256(data).hexdigest()}:{len(data)}\n"), target)
@@ -80,19 +80,19 @@ class RotateToolTests(unittest.TestCase):
                     self.assertEqual(self.run_tool("tests", root), (0, tests))
 
             policy = {line.split()[1]: " ".join(line.split()[2:]) for line in (BOOTSTRAP / "POLICY").read_text().splitlines() if line.startswith("test ")}
-            append("evolution/LEDGER", "0038-x.batch xax_x86_64_general.xax aaaa bbbb")
+            append("evolution/LEDGER", "0039-x.batch xax_x86_64_general.xax aaaa bbbb")
             append("evolution/LEDGER", "derived seed/xax_compiler_request.xax cccc dddd")
             check("profile development", tests=f"{policy['*']}\n{policy['xax_x86_64_general.xax']}\n")
-            append("RELEASES", f"candidate 0038 ledger=0038-x.batch driver=ff policy=00 x86_64-linux-elf-exec-v1={H1}:10 x86_64-windows-pe-v1={H2}:20")
+            append("RELEASES", f"candidate 0039 ledger=0039-x.batch driver=ff policy=00 x86_64-linux-elf-exec-v1={H1}:10 x86_64-windows-pe-v1={H2}:20")
             check("unmet confirm", ("x86_64-linux-elf-exec-v1", "x86_64-windows-pe-v1"), "all\n", 1)
-            append("RELEASES", f"confirmed 0038 x86_64-linux-elf-exec-v1 {H1} ee")
-            append("RELEASES", f"confirmed 0038 x86_64-windows-pe-v1 {H1} ee")
+            append("RELEASES", f"confirmed 0039 x86_64-linux-elf-exec-v1 {H1} ee")
+            append("RELEASES", f"confirmed 0039 x86_64-windows-pe-v1 {H1} ee")
             check("unmet confirm", ("x86_64-windows-pe-v1",), status=1)
-            append("RELEASES", f"confirmed 0038 x86_64-windows-pe-v1 {H2} ee")
+            append("RELEASES", f"confirmed 0039 x86_64-windows-pe-v1 {H2} ee")
             check("profile candidate", tests="all\n")
-            append("evolution/LEDGER", "0039-y.batch xax_android.xax aaaa bbbb")
+            append("evolution/LEDGER", "0040-y.batch xax_android.xax aaaa bbbb")
             check("profile development", tests=f"{policy['*']}\n{policy['xax_x86_64_general.xax']}\n{policy['xax_android.xax']}\n")
-            append("RELEASES", "blocked 0038 c1 three repairs failed")
+            append("RELEASES", "blocked 0039 c1 three repairs failed")
             check("unmet blocked", tests="", status=1)
 
     def test_valid_levels(self):
