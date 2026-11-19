@@ -21,9 +21,10 @@ CASES = ((EXTENT, EXTENT - 1, 42), (EXTENT, EXTENT, None), (EXTENT, (1 << 32) + 
          (EXTENT, (1 << 64) - EXTENT, None), (4096, 4095, 42), (4096, 4096, None))
 
 
-def program(extent: int, offset: int, extra: int = 0, offset_type=B64):
-    """``program`` of ``test_xax_oi52_r1`` with the offset (and ``extra`` machine parameters) of ``offset_type``."""
-    api = linux_api()
+def program(extent: int, offset: int, extra: int = 0, offset_type=B64, api=None):
+    """``program`` of ``test_xax_oi52_r1`` with the offset (and ``extra`` machine parameters) of ``offset_type``, for
+    ``api`` (Linux x86-64 by default)."""
+    api = api or linux_api()
     mem = api.memory_effect
     view_type = heap_view_type(extent)
     bytes_view = pointer_type(B8, Permission.READ_WRITE, 16, space=2)
@@ -87,6 +88,33 @@ class X86_64Tests(unittest.TestCase):
 
     def test_frame_path(self):
         """A callee of five machine parameters is lowered on the frame path."""
+        self.run_cases(extra=4)
+
+
+class AArch64Tests(unittest.TestCase):
+    """The AArch64 general backend under Linux (qemu-aarch64 or an adb device), heap views past 4 GiB."""
+
+    def run_cases(self, extra=0):
+        from xax_compiler import aarch64_linux_exec_target
+        from xax_linux_aarch64 import aarch64_runner, compile_linux_aarch64_executable, linux_aarch64_api, run_linux_aarch64_executable
+
+        if aarch64_runner() is None:
+            self.skipTest("requires qemu-aarch64 or an AArch64 device")
+        target = aarch64_linux_exec_target()
+        for extent, offset, expected in CASES:
+            with self.subTest(extent=extent, offset=offset):
+                entry, objects = program(extent, offset, extra, api=linux_aarch64_api())
+                data = compile_linux_aarch64_executable(program_store(entry, target, objects), entry.cid, target.cid, frontend="xax").data
+                completed = run_linux_aarch64_executable(data)
+                if expected is None:
+                    self.assertNotIn(completed.returncode, (0, 42))  # the checked access's trap
+                else:
+                    self.assertEqual(completed.returncode, expected)
+
+    def test_register_path(self):
+        self.run_cases()
+
+    def test_five_parameters(self):
         self.run_cases(extra=4)
 
 
