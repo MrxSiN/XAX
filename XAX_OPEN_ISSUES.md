@@ -1070,3 +1070,20 @@ left for the C-cap step of release 0036.
 
 **Evidence that closes it.** A transaction on the three stores that rejects such a declaration with
 `JVM-FOREIGN-ARITY` (or a new diagnostic), and a test that builds one and gets the rejection.
+
+## OI-62 — The legacy Wasm32 profile emits an invalid module for a `bits<64>` checked offset
+
+**Status: OPEN (2026-11-19).** Since OI-52 R2 (ADR-412) a checked offset may be `bits<64>`. The general Wasm32 profile
+lowers it (`i64.gt_u`, then `i32.wrap_i64`), but the legacy profile that `oi06_wasm32_target` and other targets
+without the general operations select (`xax_wasm_legacy.py`; in the driver, the per-node lowering F784 as of
+`release/0038` after #126) pushes the `i64` local and compares it with `i32.const` and `i32.gt_u`. Wasm validation
+rejects the module (`i32.gt_u[0] expected type i32, found local.get of type i64`), so no program runs with a wrong
+value, but the compiler should reject the program instead of emitting the module.
+
+The legacy lowering decodes each type's width inline from its body, so the native fix copies the general profile's
+width lookup (F112's blocks before its `i64.gt_u` choice) into F784's checked-access case and rejects when the offset's
+width is not 32, with a `WASM-CHECKED-OFFSET-BITS` diagnostic in the Wasm renderer (F589); the Python legacy
+reference rejects the same way.
+
+**Evidence that closes it.** A transaction on the driver that rejects such a program for the legacy profile with
+`WASM-CHECKED-OFFSET-BITS`, the same rejection in the reference, and a test that builds one and gets it.
