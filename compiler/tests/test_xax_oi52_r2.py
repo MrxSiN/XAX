@@ -118,5 +118,106 @@ class AArch64Tests(unittest.TestCase):
         self.run_cases(extra=4)
 
 
+SMALL = 64  # the 32-bit-index targets' views
+NEAR = (0, 1, SMALL - 1, SMALL, 1 << 31, (1 << 32) - 1, 1 << 32, (1 << 32) + 1, (1 << 64) - SMALL, (1 << 64) - 1)
+DATA = bytes(((k * 37) + 11) & 255 for k in range(SMALL))
+
+
+def _expected(offset):
+    return DATA[offset] if offset < SMALL else None
+
+
+class RiscvTests(unittest.TestCase):
+    """RV64 compares the whole register (``bgeu``), so the views profile lowers a ``bits<64>`` offset as it is; the XAX
+    backend program and the reference make the same image (ADR-412, amended)."""
+
+    def test_views_profile(self):
+        try:
+            import unicorn  # noqa: F401
+        except ImportError:
+            self.skipTest("requires unicorn")
+        from xax_compiler import memory_effect_type, riscv64_views_target
+        from xax_riscv64 import compile_riscv64_bound_target, run_riscv64_views
+
+        mem, target = memory_effect_type(), riscv64_views_target()
+        view_in, view_out = heap_view_type(SMALL, initialized=True), heap_view_type(2 * SMALL, initialized=True)
+        pointer = pointer_type(B8, Permission.READ_WRITE, 1, space=2)
+        words = [int.from_bytes(DATA[k:k + 8], "little") for k in range(0, SMALL, 8)]
+        graph = GraphBuilder()
+        graph.track(view_in, view_out, pointer, B8, B64, mem)
+        block = graph.block(pointer, view_in, mem, pointer, view_out, mem, B64)
+        p, tin, memory, q, tout, mout, offset = block.params
+        value, memory = block.op(Operation.CHECKED_LOAD_BITS_LE, (p, offset, memory), (B8, mem), attributes=(1, 1))
+        block.ret(value, p, tin, memory, q, tout, mout)
+        function = graph.function((pointer, view_in, mem, pointer, view_out, mem, B64), (B8, pointer, view_in, mem, pointer, view_out, mem))
+        reader = program_store(function, target, tuple(graph.objects.values()))
+        image = compile_riscv64_bound_target(reader, function.cid, target, backend="xax")
+        self.assertEqual(image, compile_riscv64_bound_target(reader, function.cid, target, backend="python"))
+        for offset in NEAR:
+            with self.subTest(offset=offset):
+                status, _ = run_riscv64_views(image, words, SMALL, 2 * SMALL, lambda read: None, extra_arguments=(offset,))
+                expected = _expected(offset)
+                self.assertEqual(status if expected is None else status & 255, "trap" if expected is None else expected)
+
+
+class JvmTests(unittest.TestCase):
+    """The JVM backend compares the ``long`` offset unsigned against ``extent - size`` before it narrows it."""
+
+    def test_memory_target(self):
+        import shutil
+
+        if not (shutil.which("java") and shutil.which("javac")):
+            self.skipTest("requires a JDK")
+        from xax_compiler import jvm_classfile_memory_target
+        from xax_jvm import compile_jvm_bound_target, jvm_memory_api, run_jvm_calls
+        from xax_structured import Proc
+
+        api = jvm_memory_api()
+        view = heap_view_type(SMALL)
+        proc = Proc((("i", B64), ("m", api.memory_effect)))
+        raw, owner, effect = proc.op(Operation.CALL_FOREIGN, (proc.const(SMALL, B64), proc.drop("m")), (api.bytes_rw, api.heap_owner, api.memory_effect),
+                                     entity=api.mmap_anonymous)
+        p, token, memory = proc.op(Operation.HEAP_VIEW, (raw, owner, effect), (api.bytes_rw, view, api.memory_effect), attributes=(SMALL, 1))
+        for k in range(SMALL):
+            memory = proc.op1(Operation.CHECKED_STORE_BITS_LE, (p, proc.const(k), proc.const(DATA[k], B8), memory), api.memory_effect, attributes=(1, 1))
+        out, memory = proc.op(Operation.CHECKED_LOAD_BITS_LE, (p, proc["i"], memory), (B8, api.memory_effect), attributes=(1, 1))
+        _status, memory = proc.op(Operation.CALL_FOREIGN, (p, token, memory), (B64, api.memory_effect), entity=api.munmap_view(api.bytes_rw, SMALL))
+        proc.ret(out, memory)
+        function = proc.function((B8, api.memory_effect))
+        target = jvm_classfile_memory_target()
+        reader = program_store(function, target, (*api.types, *proc.graph.objects.values(), B8, B32, B64, view))
+        image = compile_jvm_bound_target(reader, function.cid, target)
+        expected = tuple("trap java.lang.Error" if _expected(offset) is None else _expected(offset) for offset in NEAR)
+        self.assertEqual(run_jvm_calls(image, [(offset,) for offset in NEAR], result_width=8), expected)
+
+
+class WasmTests(unittest.TestCase):
+    """The general Wasm32 profile compares a ``bits<64>`` offset with ``i64.gt_u`` and then wraps it (the reference and
+    the XAX backend program make the same module).  The legacy ``oi06`` profile does not: OI-62."""
+
+    def test_general_profile(self):
+        import shutil
+        import sys
+        from pathlib import Path
+
+        if not shutil.which("node"):
+            self.skipTest("requires node")
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        from test_xax_byte_view_widening import BYTES, EXTENT as STACK, _stack_callee
+        from xax_compiler import wasm32_general_target
+        from xax_wasm import compile_wasm_bound_target, run_wasm_isolated
+
+        target = wasm32_general_target()
+        function, objects = _stack_callee(1, offset_type=B64)
+        image = compile_wasm_bound_target(program_store(function, target, objects), function.cid, target)
+        for offset in (0, STACK - 1, STACK, 1 << 32, (1 << 32) + 1, (1 << 64) - STACK, (1 << 64) - 1):
+            with self.subTest(offset=offset):
+                if offset >= STACK:
+                    with self.assertRaises(Exception):
+                        run_wasm_isolated(image, (offset,))
+                else:
+                    self.assertEqual(run_wasm_isolated(image, (offset,))[0] & 255, BYTES[offset])
+
+
 if __name__ == "__main__":
     unittest.main()
