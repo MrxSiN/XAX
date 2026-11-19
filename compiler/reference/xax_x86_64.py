@@ -690,7 +690,7 @@ def _emit_dynamic_memory(
         assembler.emit(b"\x0f\x0b")
         return
     index = target.scratch_registers[0]
-    assembler.emit(_load(index, value_slot(node.operands[1]), 4))
+    assembler.emit(_load(index, value_slot(node.operands[1])))  # 8 bytes: a bits<64> offset (OI-52 R2)
     assembler.emit(_cmp_imm32(index, maximum))
     in_bounds = f"dynamic-checked-{block_index}-{node_index}"
     assembler.relative(b"\x0f\x86", in_bounds)
@@ -2162,7 +2162,7 @@ def _compile_function(
                     assembler.emit(b"\x0f\x0b")
                 else:
                     index_register = target.scratch_registers[0]
-                    assembler.emit(_load(index_register, value_slot(node.operands[1]), 4))
+                    assembler.emit(_load(index_register, value_slot(node.operands[1])))  # 8 bytes (OI-52 R2)
                     assembler.emit(_cmp_imm32(index_register, maximum))
                     ok = f"checked-load-{block_index}-{node_index}"
                     assembler.relative(b"\x0f\x86", ok)
@@ -2183,7 +2183,7 @@ def _compile_function(
                     assembler.emit(b"\x0f\x0b")
                 else:
                     index_register = target.scratch_registers[0]
-                    assembler.emit(_load(index_register, value_slot(node.operands[1]), 4))
+                    assembler.emit(_load(index_register, value_slot(node.operands[1])))  # 8 bytes (OI-52 R2)
                     assembler.emit(_cmp_imm32(index_register, maximum))
                     ok = f"checked-store-{block_index}-{node_index}"
                     assembler.relative(b"\x0f\x86", ok)
