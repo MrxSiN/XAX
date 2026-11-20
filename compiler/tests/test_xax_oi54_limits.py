@@ -14,8 +14,10 @@ seed, or a candidate compiler under C1).  Before release 0039 the driver decline
   bound after it.  20,000 blocks of 37 values make a body of about 4.2 MB.
 - the edit engine's body region (ledgers 0039-edit-body-8m-a and -b): ``edit`` re-encodes a changed graph body into
   4M words at word 54.125M, directly below the new objects' preimages, and a larger body ran into them: the output
-  store failed verification (``XAX.STRUCT.VALUE_TAG``).  The region is 8M + 64K words, the preimages start at
-  62.1875M and keep their end (12,517,376 words, was 16M).  One constant of the 4.2 MB body is changed.
+  store failed verification (``XAX.STRUCT.VALUE_TAG``).  The region is 8M + 64K words; the preimages (16M words),
+  the new-object table and the batch move up by 4,259,840 words, and the batch keeps its end (ledgers -c to -h: -a and
+  -b had taken the words from the preimages, and ledger 0006's transaction no longer fit).  One constant of the 4.2 MB
+  body is changed.
 
 Python here is test scaffolding: it builds the input graph with the reference builder and runs the native driver.
 The stores are written without the reference verifier, which is too slow on graphs of this size.
