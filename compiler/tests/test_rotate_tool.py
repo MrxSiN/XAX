@@ -80,19 +80,19 @@ class RotateToolTests(unittest.TestCase):
                     self.assertEqual(self.run_tool("tests", root), (0, tests))
 
             policy = {line.split()[1]: " ".join(line.split()[2:]) for line in (BOOTSTRAP / "POLICY").read_text().splitlines() if line.startswith("test ")}
-            append("evolution/LEDGER", "0040-x.batch xax_x86_64_general.xax aaaa bbbb")
+            append("evolution/LEDGER", "0041-x.batch xax_x86_64_general.xax aaaa bbbb")
             append("evolution/LEDGER", "derived seed/xax_compiler_request.xax cccc dddd")
             check("profile development", tests=f"{policy['*']}\n{policy['xax_x86_64_general.xax']}\n")
-            append("RELEASES", f"candidate 0040 ledger=0040-x.batch driver=ff policy=00 x86_64-linux-elf-exec-v1={H1}:10 x86_64-windows-pe-v1={H2}:20")
+            append("RELEASES", f"candidate 0041 ledger=0041-x.batch driver=ff policy=00 x86_64-linux-elf-exec-v1={H1}:10 x86_64-windows-pe-v1={H2}:20")
             check("unmet confirm", ("x86_64-linux-elf-exec-v1", "x86_64-windows-pe-v1"), "all\n", 1)
-            append("RELEASES", f"confirmed 0040 x86_64-linux-elf-exec-v1 {H1} ee")
-            append("RELEASES", f"confirmed 0040 x86_64-windows-pe-v1 {H1} ee")
+            append("RELEASES", f"confirmed 0041 x86_64-linux-elf-exec-v1 {H1} ee")
+            append("RELEASES", f"confirmed 0041 x86_64-windows-pe-v1 {H1} ee")
             check("unmet confirm", ("x86_64-windows-pe-v1",), status=1)
-            append("RELEASES", f"confirmed 0040 x86_64-windows-pe-v1 {H2} ee")
+            append("RELEASES", f"confirmed 0041 x86_64-windows-pe-v1 {H2} ee")
             check("profile candidate", tests="all\n")
-            append("evolution/LEDGER", "0041-y.batch xax_android.xax aaaa bbbb")
+            append("evolution/LEDGER", "0042-y.batch xax_android.xax aaaa bbbb")
             check("profile development", tests=f"{policy['*']}\n{policy['xax_x86_64_general.xax']}\n{policy['xax_android.xax']}\n")
-            append("RELEASES", "blocked 0040 c1 three repairs failed")
+            append("RELEASES", "blocked 0041 c1 three repairs failed")
             check("unmet blocked", tests="", status=1)
 
     def test_valid_levels(self):
