@@ -108,5 +108,9 @@ def test_kept_helper_generators_make_the_frozen_functions(module):
 
 # After N0 (ADR-367) a kept generator does not follow a native transaction: these helpers changed natively (ledger
 # 0012: ``define``'s ``object`` form reached ``ws_translate`` and ``ws_command`` through ``ws_tr_define``;
-# 0028: snapshot ancestry and body rebuilding changed ``edit_begin`` and ``edit_next``).
-NATIVELY_EVOLVED = {"xax_selfhost_edit": {"ws_translate", "ws_command", "edit_begin", "edit_next"}}
+# 0028: snapshot ancestry and body rebuilding changed ``edit_begin`` and ``edit_next``; 0039, OI-54 step 1: the 8M-word
+# body region changed ``edit_batch``, ``edit_place``, ``ws_explain`` and ``ws_view``, and the moved block section
+# changed the semantic index's ``graph_marshal``).
+NATIVELY_EVOLVED = {"xax_selfhost_edit": {"ws_translate", "ws_command", "edit_begin", "edit_next", "edit_batch", "edit_place",
+                                          "ws_explain", "ws_view"},
+                    "xax_selfhost_semantic": {"graph_marshal"}}
