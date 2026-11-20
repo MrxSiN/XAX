@@ -879,6 +879,16 @@ same objects, so the difference is in the tables the driver builds for them. BBC
 
 ## OI-54 — Function views past 2^18 values (BBC's hanoi -O0)
 
+**Status: OPEN; step 1 done (2026-11-20, release 0039, ADR-413).** BBC's hanoi -O0 decision (one 7.25 MB graph
+fragment) now verifies, resolves and takes a native edit. The front end's limits were measured rather than taken from
+the list below, and four were lifted, each with a test just past its old value (`tests/test_xax_oi54_limits.py`):
+the CFG program's output view (128 MiB to 1 GiB; it was the first limit for every O0 function past 22,238
+instructions), the semantic index's block section (1M to 3M words, moved to 29M–32M), the graph decoder's body
+buffers (4 to 8 MiB), and the edit engine's body region (4M to 8M + 64K words; a larger body had been silently
+overwritten by the preimages). The index's node stream (step 1's first item) was never binding for hanoi.
+Still open: steps 2 and 3 below; and a 4.5 MB chain of 21,000 blocks of 37 values that declines after the facts
+engine, not located. The record of 2026-11-08 follows.
+
 **Status: OPEN (2026-11-08).** One function view holds at most 2^18 values. Since ledger 0023 (ADR-391) that capacity is
 a workspace word (globals slot 170) that the backend prologues set, not a constant in 18 functions; its value is
 still 262,144. BBC's hanoi at -O0 is one decision of about 620,000 values (7.25 MB, 54,000 blocks) and declines.
