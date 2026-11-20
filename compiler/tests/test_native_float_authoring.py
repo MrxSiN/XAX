@@ -142,9 +142,16 @@ class NativeFloatAuthoringTests(unittest.TestCase):
                 "trap payload": lambda v: define([f"trap {v}"]),
                 "object body": lambda v: define(["N0 call.foreign entity=@round P0 -> T0", "ret N0"], f"define @round\nobject 6 {v}\nend\n"),
                 "integer": lambda v: f"{root}\n{main}\nconst {seven} {v}\n",
+                # ledger 0041: the CIDs of entities, type lines and the root line
+                "entity CID": lambda v: "\n".join([root, g, "define @h", "(T0)->(T0)", "B0(P0:T0)", f"N0 call.direct entity={v[2:]} P0 -> T0",
+                                                   "ret N0", "T0 bits32", "end", f"replace {g} @h", ""]),
+                "type line CID": lambda v: define(["N0 sint.to.float P0 -> T1", "N1 float.to.sint.trunc N0 -> T0", "ret N1"]).replace(
+                    f"T1 form7 {f64.cid.hex()}", f"T1 form7 {v[2:]}"),
+                "root CID": lambda v: f"R {v[2:]}\n{main}\nconst {seven} 9\n",
             }
             digits = {"float constant": ("0x0123456789abcdef", "0xfedcba9876543210"), "trap payload": ("0x0123456789abcdef", "0xfedcba9876543210"),
-                      "object body": ("0x" + ROUND.body.hex(),), "integer": ("0x1f", "0xab")}
+                      "object body": ("0x" + ROUND.body.hex(),), "integer": ("0x1f", "0xab"), "entity CID": tuple("0x" + cid.hex() for _, cid in functions.values() if cid.hex()[0] != "f")[:1],  # an uppercase F starts F<n>
+                      "type line CID": ("0x" + f64.cid.hex(),), "root CID": ("0x" + constructed.reader.root_cid.hex(),)}
             for form, batch in forms.items():
                 for value in digits[form]:
                     with self.subTest(form=form, value=value):
