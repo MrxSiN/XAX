@@ -9,6 +9,9 @@ seed, or a candidate compiler under C1).  Before release 0039 the driver decline
 - the semantic index's block section (ledger 0039-index-section-region): each block's parameter and edge argument
   types, 1M words at word 23M.  It moves to words 29M-32M (3M words); the node stream grows to 4M words (20M-24M) and
   the facts end at 28M, where the globals begin.  12,500 blocks of 37 values need about 1.1M section words.
+- the graph decoder's body view (ledger 0039-decoder-body-8m, ledger 0021 regenerated): the driver read a graph body
+  into 4 MiB buffers.  They are 8 MiB; the decoder's own output (one word per body byte, 8M words less 4,096) is the
+  bound after it.  20,000 blocks of 37 values make a body of about 4.2 MB.
 
 Python here is test scaffolding: it builds the input graph with the reference builder and runs the native driver.
 The stores are written without the reference verifier, which is too slow on graphs of this size.
@@ -82,6 +85,9 @@ class FrontEndLimitTests(unittest.TestCase):
 
     def test_block_section_past_the_old_region(self):
         self.assertVerifies(chain_store(12_500, 37))
+
+    def test_graph_body_past_the_old_view(self):
+        self.assertVerifies(chain_store(20_000, 37))
 
 
 if __name__ == "__main__":
