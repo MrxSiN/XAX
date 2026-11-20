@@ -3024,3 +3024,57 @@ Supersedes step 1 of "Release 0038 on `main`" above: the Pixel 8 Pro came back o
   (28.2, `aarch64-linux-android28-clang`) from `integration/android/exec_status.c` and pushed it.
 - R2's closing evidence is complete (`XAX_OPEN_ISSUES.md`). OI-52 stays open for R3 and R4.
 - **Next:** OI-54 step 1 on `release/0039`, then OI-62 and oracle slice 4.
+
+## Release 0039 on `main`: OI-54 step 1 — 2026-11-20
+
+`main` = merge of #144 (`a134f24`). `rotate.sh state`: `validated 0039`, `profile released`.
+Seeds: Linux `5657768e…` (31,812,331 bytes), Windows `d4a433db…` (31,865,856). BBC pins it (MrxSiN/BBC9).
+The owner asked for an autonomous run, so the calls below were made without asking.
+
+- **What landed** (ADR-413; eleven driver transactions in five PRs into `release/0039`, #138–#142):
+  - `0039-cfg-view-1g`: the CFG program's output view is 1 GiB (was 128 MiB).
+  - `0039-index-section-region`: the semantic index's block section is 3M words at 29M–32M (was 1M at 23M).
+  - `0039-decoder-body-8m`: the graph decoder's body buffers are 8 MiB (ledger 0021 regenerated).
+  - `0039-edit-body-8m-a`…`-h`: the edit engine's body region is 8M + 64K words.
+- **Measurements** (they replaced OI-54's list as the order of work):
+  - Every command declined an O0 function past 22,238 instructions, the same for a `+` chain and for the hanoi
+    prefix: the CFG program keeps n·⌈n/64⌉ dominator words beside its other tables, and that ran out of the 128 MiB
+    view first. Found with a ptrace snapshot of every workspace view at the first `munmap`.
+  - hanoi -O0's estimated streams: 1.2M node words, 2.1M block words, 2.8M edge words. The index's 3M-word node
+    stream (OI-54 step 1's first item) is not binding for hanoi.
+- **The ledger-0006 regression.** The first rotation's replay failed on ledger 0006 with `DRIVER-EDIT-CAPACITY`:
+  #141 had moved the 16M-word preimage region to make room for the larger body. #142 puts the preimages back and
+  moves the new-object table and the batch up instead; the second rotation replayed 206 of 206.
+- **Rotation (EXECUTED):** `rotate.sh build 0039`, `confirm` on both targets, `evidence/run.sh` (replay 206 of 206),
+  `validated 0039 evidence=32a05f79…`. The SNAPSHOTS line (`0a4b9fab…` → `771c15d8…`) is its own commit. V1 records:
+  python-free seed 393 s, full self-host 12,843 s, three generations to the same bytes.
+- **BBC:**
+  - The driver follows all eleven 0039 transactions (`3e2e71a`). `rebuild.sh` applied the index and the eight
+    edit-engine transactions. The CFG-view and decoder transactions replace the production entry, which is past
+    `rebuild.sh`'s ceiling, so BBC's five Windows copies of it (its driver entry and the four step variants) each took
+    one batch written from that function's view: the CFG view's `VirtualAlloc` length, view and `VirtualFree`; the
+    three body buffers' lengths, views, bounds and capacities; the new CFG function and decode, defined once with the
+    production CIDs. `0039-edit-body-8m-e` moves the batch base in a production host function that BBC's Windows
+    layer replaces, so the same two `const` mutations went into BBC's five copies. No old edit-engine region constant
+    is left in either store. The generators were scratch (`mkbbc.py`, driven by `bbc0039-entry.sh`), never committed.
+  - `bbc.exe` `a3a1c70c…` (36,111,872 bytes) was built by the 0039 Windows seed from the rotated `bbc_request.xax`.
+  - `check.py`: 93 programs, 372 of 372 compiles, 488 runs, 0 mismatches, 5 of 5 error paths.
+  - The capacity fixtures are unchanged from 0038, and all six ThreadsHideAds programs match at O0 and O1 (a
+    read-only clone at cf28f66).
+  - hanoi -O1 builds (23.5 s on Windows 11); hanoi -O0 now gets past the front end and declines in the backend
+    (exit 5 after 4.6–8.1 s): OI-54 step 2.
+  - The CFG view's 1 GiB is reserved, not committed: hanoi -O1 peaks at 499 MB of commit with the 0039 `bbc.exe`
+    and 495 MB with 0038's.
+- **Full suite** (`-n 2`, 2 h 53 min, on the final tree): 1,660 passed, 11 failed.
+  - The B1 binding is the known baseline (`test_callback_programs` passed this time).
+  - Eight JVM/JDWP tests fail only with `/root/work/bin`'s Windows-`java` wrapper on PATH (`ClassNotFoundException`);
+    without it they skip.
+  - The two kept-generator pins (`test_store_regeneration`, `xax_selfhost_edit` and `xax_selfhost_semantic`) failed
+    because 0039 changed edit-engine and index helpers natively. The helpers joined `NATIVELY_EVOLVED` (#143), and
+    the file passes.
+- **Still open:** OI-54 steps 2 (x86-64 per-value tables and `VCAP`) and 3 (AArch64 liveness); the 21,000×37 chain
+  that declines after the facts engine, not located; the edit engine's body region has no bound check of its own
+  (today's bodies cannot reach it: the decoder caps them at 8M − 4,096 words).
+- **Calls made:** the previous session's bench pipeline woke at 18:30 and committed and pushed the V1 records itself
+  (`75322ce`); nothing else ran from it, so I continued from that commit.
+- **Next:** release 0040 (consumer issues #133–#137) on `release/0040`; see the next section.
