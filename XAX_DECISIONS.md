@@ -4132,3 +4132,12 @@ Superseded by [ADR-369](#adr-369--n03-growable-views-as-limit-bounded-checked-ac
 ` (`G_K + 85`) to the `module.prop` buffer with the same append function. 298 nodes; F964 gains one call. |
 | Evidence (2) | EXECUTED (WSL 2): the 0039 seed fails `test_libxposed_lifecycle.test_module_prop_hot_reload_and_min_api` at the `true` case (no line); see the release 0040 record for the candidate. |
 | Status | (1) holds today; (2) is release 0040. |
+
+## ADR-416 — Native carrier replacement: `replace <CID> @name` (issue #135, design, 2026-11-20)
+
+| Field | Record |
+|---|---|
+| Decision | The batch form `replace` takes, as its first operand, either `F<n>` (today) or a 64-digit CID of an identity-only TARGET object (kind 6) the store holds; the second operand is `@name` defined in the same batch as `object 6 0x<body>`. It is translated to the `REPLACE_REFERENCE` edit-record operations (owner, old CID, new CID; one per object that refers to the old CID) that the engine already applies for `F<n>`, so every object referring to the old CID refers to the new one, and the MODULE, PACKAGE and REQUEST ancestors are rebuilt as `ReplaceTarget` (`CARRIER_TRANSACTIONS.md`) does. A CID that is not a TARGET, a new object of another kind, or a signature or provenance ancestor rejects `WORKSPACE-BATCH-REPLACE`. This is the issue's first option; a native `construct` is a later step. |
+| Rationale | The engine applies `REPLACE_REFERENCE` by CID already: consumers swap carriers natively today, but only with an `XAXEDIT1` record whose CIDs the Python SDK computes. Only the batch parser lacks the form, so the change is confined to the edit command's parser (F74/F744 and their helpers, reached only from F426). A `replace-target` keyword would duplicate `replace`. |
+| Evidence so far | EXECUTED (0039 seed): `replace <carrier CID> @c` with `define @c` / `object 6 0x<v3 body>` is rejected at the operand, `WORKSPACE-BATCH-FUNCTION`, expected `F<n>`; #135 reports that the same carrier swap by a Python-made `XAXEDIT1` record is applied natively. |
+| Status | Design. Not implemented in release 0040; #135 stays open with this plan. |
