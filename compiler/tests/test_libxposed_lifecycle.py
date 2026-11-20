@@ -34,6 +34,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 LINUX_X86_64 = sys.platform.startswith("linux") and platform.machine().lower() in ("x86_64", "amd64")
+SEED = Path(__file__).resolve().parents[1] / "bootstrap" / "seed" / "xaxc-linux-x86_64"
 API = "Lio/github/libxposed/api/"
 IFACE = "jvm:%sXposedInterface;" % API
 PARAM = {"ready": "PackageReadyParam", "module_loaded": "ModuleLoadedParam", "system_server_starting": "SystemServerStartingParam"}
@@ -237,6 +238,72 @@ class LifecycleTests(unittest.TestCase):
         self.assertEqual(outcome.rule, "LIBXPOSED-JVM-ENTRY")
         self.assertEqual(outcome.expected, "(%sXposedInterface;%sXposedModuleInterface$ModuleLoadedParam;)V" % (API, API))
         self.assertIn("SystemServerStartingParam", str(outcome.actual))
+
+    def test_two_result_function_rejects_with_its_cid(self):
+        """Issue #137: ``xaxc build`` of a module with a two-result function rejects with the reference's
+        ``JVM-SINGLE-RESULT`` record (``xax_jvm._signature``), naming the function, instead of declining with none."""
+        two = {"name": "two", "params": ["b32"], "returns": ["b32", "b32"], "blocks": [{"params": ["b32"], "nodes": [], "end": ["ret", ["p0", "p0"]]}]}
+        main = _function("main", "ready")
+        main["blocks"][0]["nodes"] = [["call.direct", [["b32", 7]], ["b32", "b32"], {"entity": {"fn": "two"}}]]
+        built = _constructed([two, main])
+        with tempfile.TemporaryDirectory() as directory:
+            work = Path(directory)
+            (work / "module.xax").write_bytes(built.reader.data)
+            status = subprocess.run([str(SEED), "build", "module.xax", "out", "provenance"], cwd=work, capture_output=True).returncode
+            self.assertEqual(status, 1)  # a rejection: the output is the record
+            subprocess.run([str(SEED), "edit", "module.xax", "out", "out.txt"], cwd=work, check=True, capture_output=True)
+            lines = dict(line.split(" ", 1) for line in (work / "out.txt").read_text().splitlines())
+        self.assertEqual((lines["code"], lines["rule"], lines["entity"]), ("XAX.JVM.ABI", "JVM-SINGLE-RESULT", built.functions["two"].cid.hex()))
+        self.assertEqual((lines["expected"], lines["actual"]), ("at most one machine result", "2"))
+
+    def test_module_prop_hot_reload_and_min_api(self):
+        """Issue #133 (ADR-415): a v3 record's ``"auto_hot_reload": true`` adds ``autoHotReload=true`` to module.prop;
+        false, absent or v1 add nothing; ``minApiVersion`` is the metadata carrier's ``min_api_version``. The carriers
+        are swapped by one XAXEDIT1 record (a test fixture), and ``xaxc build`` makes the APK."""
+        from xax_android_libxposed_jvm import find_carriers
+        from xax_build import decode_package, decode_request, decode_snapshot
+        from xax_compiler import Cursor
+        from xax_libxposed import LibxposedModuleDescription, decode_libxposed_module, libxposed_module_semantics
+        from xax_selfhost_edit import REPLACE_REFERENCE, edit_record
+        from xax_compiler import target
+
+        built = _constructed([_function("main", "ready"), _function("ml", "module_loaded", "loaded")])
+        reader = built.reader
+        snapshot = decode_snapshot(reader.get(reader.root_cid), reader.get)
+        package = decode_package(reader.get(decode_request(reader.get(snapshot.request_root), reader.get).package_root), reader.get)
+        (module,) = package.modules
+        carrier, metadata = find_carriers(reader, package)
+        record = json.loads(Cursor(carrier.body, "carrier").byte_string().split(b"\0", 1)[1])
+
+        def module_prop(hot=None, v3=True, min_api=None) -> bytes:
+            swaps = []
+            if v3:
+                fields = dict(record, entries={"module_loaded": built.functions["ml"].cid.hex()})
+                if hot is not None:
+                    fields["auto_hot_reload"] = hot
+                swaps.append((carrier, target(PREFIX_V3 + json.dumps(fields, sort_keys=True, separators=(",", ":")).encode())))
+            if min_api is not None:
+                old = decode_libxposed_module(metadata)
+                swaps.append((metadata, libxposed_module_semantics(LibxposedModuleDescription(
+                    min_api, old.target_api_version, old.static_scope, old.java_entries, old.native_entries, old.scopes))))
+            with tempfile.TemporaryDirectory() as directory:
+                work = Path(directory)
+                (work / "m.xax").write_bytes(reader.data)
+                commands = [["build", "m.xax", "o.apk", "o.prov"]]
+                if swaps:
+                    (work / "e.edit").write_bytes(edit_record([(REPLACE_REFERENCE, module, a.cid, b.cid) for a, b in swaps], reader.root_cid, [b for _, b in swaps]))
+                    commands = [["edit", "m.xax", "e.edit", "o.xax"], ["verify", "o.xax", "o.rec"], ["build", "o.xax", "o.apk", "o.prov"]]
+                for command in commands:
+                    subprocess.run([str(SEED), *command], cwd=work, check=True, capture_output=True)
+                with zipfile.ZipFile(io.BytesIO((work / "o.apk").read_bytes())) as archive:
+                    return archive.read("META-INF/xposed/module.prop")
+
+        base = b"minApiVersion=102\ntargetApiVersion=102\nstaticScope=true\n"
+        self.assertEqual(module_prop(hot=True), base + b"autoHotReload=true\n")
+        for case in ({"hot": False}, {}, {"v3": False}):
+            with self.subTest(**case):
+                self.assertEqual(module_prop(**case), base)
+        self.assertEqual(module_prop(min_api=101), base.replace(b"102\nt", b"101\nt"))
 
 
 if __name__ == "__main__":

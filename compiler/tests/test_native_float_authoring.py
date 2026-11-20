@@ -26,7 +26,7 @@ import platform
 import shutil
 import sys
 
-from xax_compiler import FloatFormat, StoreReader, bits_type, execute, float_type, foreign_function_symbol, jvm_classfile_target
+from xax_compiler import FloatFormat, Kind, StoreReader, bits_type, execute, float_type, foreign_function_symbol, jvm_classfile_target
 from xax_construct import construct
 
 LINUX_X86_64 = sys.platform.startswith("linux") and platform.machine().lower() in ("x86_64", "amd64")
@@ -112,6 +112,52 @@ class NativeFloatAuthoringTests(unittest.TestCase):
                     jar = jvm_jar(reader, main, jvm_classfile_target(), process_entry=True, frontend="xax")
                     if java:
                         self.assertEqual(_exit_status(jar, java), status)
+
+    def test_hex_digits_in_either_case(self):
+        """Issue #136: every `0x` form reads A-F as a-f (docs/09 §16), in both nibbles of a byte.
+
+        Before ledger 0040 the scan stopped at the first uppercase digit: an odd count was rejected
+        (WORKSPACE-BATCH-NODE) and an even one silently made a shorter constant or object body."""
+        constructed = construct(SKELETON)
+        f64 = float_type(FloatFormat.BINARY64)
+        root = f"R {constructed.reader.root_cid.hex()}"
+        with tempfile.TemporaryDirectory() as directory:
+            work = Path(directory)
+            store = work / "s0.xax"
+            store.write_bytes(constructed.reader.data)
+            functions = _functions(store)
+            g, _ = functions["(T0)->(T0)"]
+            (main,) = [name for signature, (name, _) in functions.items() if signature != "(T0)->(T0)"]
+            selector, view = work / "main.sel", work / "main.view"
+            selector.write_text(main)
+            subprocess.run([str(SEED), "edit", str(store), str(selector), str(view)], check=True)
+            (seven,) = [line.split()[0] for line in view.read_text().splitlines() if " constant 7 " in line]
+
+            def define(lines: list[str], supplied: str = "") -> str:
+                return "\n".join([root, g, f"define @f64\nobject 4 0x{f64.body.hex()}\nend\n{supplied}define @g", "(T0)->(T0)", "B0(P0:T0)",
+                                  *lines, "T0 bits32", f"T1 form7 {f64.cid.hex()}", "end", f"replace {g} @g", ""])
+
+            forms = {
+                "float constant": lambda v: define([f"N0 constant {v} -> T1", "N1 float.to.sint.trunc N0 -> T0", "ret N1"]),
+                "trap payload": lambda v: define([f"trap {v}"]),
+                "object body": lambda v: define(["N0 call.foreign entity=@round P0 -> T0", "ret N0"], f"define @round\nobject 6 {v}\nend\n"),
+                "integer": lambda v: f"{root}\n{main}\nconst {seven} {v}\n",
+            }
+            digits = {"float constant": ("0x0123456789abcdef", "0xfedcba9876543210"), "trap payload": ("0x0123456789abcdef", "0xfedcba9876543210"),
+                      "object body": ("0x" + ROUND.body.hex(),), "integer": ("0x1f", "0xab")}
+            for form, batch in forms.items():
+                for value in digits[form]:
+                    with self.subTest(form=form, value=value):
+                        lower, upper = work / "lower.xax", work / "upper.xax"
+                        for text, out in ((value, lower), (value.upper().replace("0X", "0x"), upper)):
+                            source = work / "case.batch"  # only the parse is compared, so no verify
+                            source.write_text(batch(text))
+                            subprocess.run([str(SEED), "edit", str(store), str(source), str(out)], check=True, capture_output=True)
+                        self.assertEqual(upper.read_bytes(), lower.read_bytes())
+                        if form == "float constant":  # eight bytes, most significant first
+                            reader = StoreReader(lower.read_bytes())
+                            bodies = {reader.get(cid).body for cid in reader.object_cids if reader.get(cid).kind == Kind.CONSTANT}
+                            self.assertIn(bytes.fromhex(value[2:])[::-1], {body[2:] for body in bodies})
 
 
 if __name__ == "__main__":
