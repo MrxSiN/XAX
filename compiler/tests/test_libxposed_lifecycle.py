@@ -34,6 +34,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 LINUX_X86_64 = sys.platform.startswith("linux") and platform.machine().lower() in ("x86_64", "amd64")
+SEED = Path(__file__).resolve().parents[1] / "bootstrap" / "seed" / "xaxc-linux-x86_64"
 API = "Lio/github/libxposed/api/"
 IFACE = "jvm:%sXposedInterface;" % API
 PARAM = {"ready": "PackageReadyParam", "module_loaded": "ModuleLoadedParam", "system_server_starting": "SystemServerStartingParam"}
@@ -237,6 +238,23 @@ class LifecycleTests(unittest.TestCase):
         self.assertEqual(outcome.rule, "LIBXPOSED-JVM-ENTRY")
         self.assertEqual(outcome.expected, "(%sXposedInterface;%sXposedModuleInterface$ModuleLoadedParam;)V" % (API, API))
         self.assertIn("SystemServerStartingParam", str(outcome.actual))
+
+    def test_two_result_function_rejects_with_its_cid(self):
+        """Issue #137: ``xaxc build`` of a module with a two-result function rejects with the reference's
+        ``JVM-SINGLE-RESULT`` record (``xax_jvm._signature``), naming the function, instead of declining with none."""
+        two = {"name": "two", "params": ["b32"], "returns": ["b32", "b32"], "blocks": [{"params": ["b32"], "nodes": [], "end": ["ret", ["p0", "p0"]]}]}
+        main = _function("main", "ready")
+        main["blocks"][0]["nodes"] = [["call.direct", [["b32", 7]], ["b32", "b32"], {"entity": {"fn": "two"}}]]
+        built = _constructed([two, main])
+        with tempfile.TemporaryDirectory() as directory:
+            work = Path(directory)
+            (work / "module.xax").write_bytes(built.reader.data)
+            status = subprocess.run([str(SEED), "build", "module.xax", "out", "provenance"], cwd=work, capture_output=True).returncode
+            self.assertEqual(status, 1)  # a rejection: the output is the record
+            subprocess.run([str(SEED), "edit", "module.xax", "out", "out.txt"], cwd=work, check=True, capture_output=True)
+            lines = dict(line.split(" ", 1) for line in (work / "out.txt").read_text().splitlines())
+        self.assertEqual((lines["code"], lines["rule"], lines["entity"]), ("XAX.JVM.ABI", "JVM-SINGLE-RESULT", built.functions["two"].cid.hex()))
+        self.assertEqual((lines["expected"], lines["actual"]), ("at most one machine result", "2"))
 
 
 if __name__ == "__main__":
