@@ -3024,6 +3024,7 @@ Supersedes step 1 of "Release 0038 on `main`" above: the Pixel 8 Pro came back o
   (28.2, `aarch64-linux-android28-clang`) from `integration/android/exec_status.c` and pushed it.
 - R2's closing evidence is complete (`XAX_OPEN_ISSUES.md`). OI-52 stays open for R3 and R4.
 - **Next:** OI-54 step 1 on `release/0039`, then OI-62 and oracle slice 4.
+- Step 1 is done: see "Release 0039 on `main`: OI-54 step 1" below.
 
 ## Release 0039 on `main`: OI-54 step 1 — 2026-11-20
 
@@ -3078,3 +3079,58 @@ The owner asked for an autonomous run, so the calls below were made without aski
 - **Calls made:** the previous session's bench pipeline woke at 18:30 and committed and pushed the V1 records itself
   (`75322ce`); nothing else ran from it, so I continued from that commit.
 - **Next:** release 0040 (consumer issues #133–#137) on `release/0040`; see the next section.
+
+## Release 0040 on `main`: consumer issues #136, #137, #133 — 2026-11-21
+
+`main` = merge of #150 (`151013c`). `rotate.sh state`: `validated 0040`, `profile released`.
+Seeds: Linux `3b84d518…` (31,819,377 bytes), Windows `c326f7c5…` (31,873,024). BBC pins it (MrxSiN/BBC10).
+Supersedes the "Next" of "Release 0039 on `main`" above. The owner asked for an autonomous overnight run, so the
+calls below were made without asking.
+
+- **What landed** (seven driver transactions, three sub-batch PRs into `release/0040`, #146–#148):
+  - #136 (#146, five transactions `0040-hex-digits-*`): every `0x` digit test in the batch parser reads `c|32`.
+    Before, an uppercase digit ended the scan: an odd prefix was rejected, an even one silently made a **shorter**
+    constant or object body (`0x401921FB54442D18` became 3 bytes). One function per transaction: two `replace`s
+    whose functions share a caller (F158 and F982 under F1005) fail `verify` with `ID-REFERENCE-RESOLVED`.
+  - #137 (#147, `0040-jvm-single-result`, ADR-414): the JVM program's signature function writes the reference's
+    `XAX.JVM.ABI` / `JVM-SINGLE-RESULT` record (function CID; actual = the count) where it declined, so `build` of a
+    JVM or libxposed module with a two-result function exits 1 with the record instead of 2 with nothing.
+  - #133 (#148, `0040-libxposed-auto-hot-reload`, ADR-415): a v3 record's `"auto_hot_reload": true` adds
+    `autoHotReload=true` to `module.prop`. The minimum API version needed no new field: it is the libxposed metadata
+    carrier's `min_api_version`, which the native program already writes (tested with 101).
+  - ADR-416 (#135, design only): `replace <CID> @name` for identity-only TARGETs.
+- **How the native edits were made** (scratch tools, never committed, in the session scratchpad and `/root/work`):
+  views patched as text and relabelled (`orpatch.py`: insert `v|32` before named consumers; `autohex.py` finds the
+  consumers), new helpers written node by node with the existing load/store pattern (`rej137.py`, `ahr133.py`),
+  callers spliced by one `call.direct` first in a block whose six view/token parameters it rebinds. Sites were
+  found with `fconst.py` (a function's constants), `callers.py`, `anc.py` and the deleted generators in
+  `git show 4a5d4b8^:compiler/src/...`.
+- **Rotation (EXECUTED, WSL 2):** `rotate.sh build 0040` 804 s; `confirm` Linux 391 s, Windows 617 s; SNAPSHOTS line
+  `cf3a6849…` → `4bd6d00f…` (reference resolver, 227 s) in its own commit; `evidence/run.sh` 6,652 s, replay 213 of
+  213; `validated 0040 evidence=f1e8dc7b…`. V1 records: python-free seed 394 s, full self-host 13,150 s, three
+  generations to the same bytes. The full self-host bench refuses an unpinned seed, so it runs only after `validate`.
+- **BBC:** `rebuild.sh` applied all seven transactions to `bbc.xax` and its request (none names the entry or a host
+  function BBC's Windows layer replaces); none of the seven replaced 0039 CIDs is left. `bbc.exe` `6737decc…`
+  (36,119,040 bytes, 253 s) by the 0040 Windows seed. `check.py`: 93 programs, 372 of 372, 488 runs, 0 mismatches,
+  5 of 5 error paths. Capacity fixtures and all six ThreadsHideAds programs: identical to 0039 (a scratch runner
+  that reproduces 0039's `pin2.json` exactly). hanoi -O1 builds (23.2 s); -O0 exits 5 in the backend.
+- **Full suite** (`-n 2`, 2 h 57 min): 1,665 passed, 9 failed: the B1 binding (baseline) and the eight
+  JVM/JDWP tests that fail only with the Windows-`java` wrapper on PATH, the same set as 0039.
+- **Issues:** #136, #137 and #133 closed with their evidence; #134 and #135 commented with the plan and left open.
+- **Calls made:**
+  1. #137 rejects (the reference's diagnostic) instead of adding a generic "decline record" to the driver: a
+     generic record could only name the entry, not the function.
+  2. #133: only JSON `true` adds the line; other values add nothing and are not rejected.
+  3. #134 and #135 were not in 0040: #134 is done for 0041 (below); #135 stays a design (ADR-416).
+  4. The V1 benches were first started before `validate`; the full one refused, so both reran afterwards.
+- **Prepared for release 0041** (branch `issue-134-version-name` in `/root/work/r41`, not pushed as a PR yet; every
+  C1 gate passed: fixed point, corpus 197 of 197, the tests fail on the 0040 seed and pass on the candidate):
+  - #134, `0041-manifest-version-name` (ADR-417): `android:versionName` on an unbranded module's manifest;
+    `aapt2 dump xmltree` shows it. Device check BLOCKED: no adb device overnight.
+  - #136 follow-up, `0041-hex-digits-type`, `-entity`, `-root`: the 64-digit CIDs of `entity=`, type and `R` lines
+    still decoded lowercase only (rejected, not silent). An uppercase CID starting with `F` after `entity=` stays
+    an `F<n>` handle; docs/09 says to write such a CID in lowercase.
+  - BBC's stores for those batches must be rebuilt at release time (`rebuild.sh` per batch; the "before" driver
+    blobs are in `/root/work/blobs/<blob>.xax`, since a chain in one commit has no git blobs).
+- **Next:** release 0041 from `main` with the r41 commits (`644f5c3`, `e186334`); close #134 after it, then #135
+  (the batch parser's `replace` lives inside `ws_translate`'s closure in the driver), OI-54 step 2, OI-62.
