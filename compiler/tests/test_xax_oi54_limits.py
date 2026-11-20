@@ -12,6 +12,10 @@ seed, or a candidate compiler under C1).  Before release 0039 the driver decline
 - the graph decoder's body view (ledger 0039-decoder-body-8m, ledger 0021 regenerated): the driver read a graph body
   into 4 MiB buffers.  They are 8 MiB; the decoder's own output (one word per body byte, 8M words less 4,096) is the
   bound after it.  20,000 blocks of 37 values make a body of about 4.2 MB.
+- the edit engine's body region (ledgers 0039-edit-body-8m-a and -b): ``edit`` re-encodes a changed graph body into
+  4M words at word 54.125M, directly below the new objects' preimages, and a larger body ran into them: the output
+  store failed verification (``XAX.STRUCT.VALUE_TAG``).  The region is 8M + 64K words, the preimages start at
+  62.1875M and keep their end (12,517,376 words, was 16M).  One constant of the 4.2 MB body is changed.
 
 Python here is test scaffolding: it builds the input graph with the reference builder and runs the native driver.
 The stores are written without the reference verifier, which is too slow on graphs of this size.
@@ -88,6 +92,20 @@ class FrontEndLimitTests(unittest.TestCase):
 
     def test_graph_body_past_the_old_view(self):
         self.assertVerifies(chain_store(20_000, 37))
+
+    def test_edit_of_a_body_past_the_old_region(self):
+        store, empty, listing, selector, view, batch, edited, output = (
+            os.path.join(self.directory, name) for name in ("big.xax", "empty", "list", "sel", "view", "batch", "edited.xax", "out"))
+        Path(store).write_bytes(chain_store(20_000, 37))
+        Path(empty).write_text("")
+        self.assertEqual(self.driver.view(store, empty, listing), 0)
+        root, function = Path(listing).read_text().splitlines()[:2]
+        Path(selector).write_text(function.split()[0] + "\n")
+        self.assertEqual(self.driver.view(store, selector, view), 0)
+        node = next(line.split()[0] for line in Path(view).read_text().splitlines() if line.split()[1:3] == ["constant", "36"])
+        Path(batch).write_text(f"{root}\n{function.split()[0]}\nconst {node} 35\n")
+        self.assertEqual(self.driver.apply(store, batch, edited), 0)
+        self.assertEqual(self.driver.verify(edited, output), 0)
 
 
 if __name__ == "__main__":
