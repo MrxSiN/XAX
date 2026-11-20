@@ -1,0 +1,9 @@
+xax-confirm-v1
+release 0039
+target x86_64-windows-pe-v1
+seed d4a433dbaf7c02743c964497d68dd86ac898f352cb0a7b1e507586daddb7728b:31865856
+request ffedc8001e268f33bc4d6e9d4c41ecd382c0b4bb437078b629ae0d62e1f8608e:63236288
+generation 1 d4a433dbaf7c02743c964497d68dd86ac898f352cb0a7b1e507586daddb7728b:31865856 d4a433dbaf7c02743c964497d68dd86ac898f352cb0a7b1e507586daddb7728b:31865856
+generation 2 d4a433dbaf7c02743c964497d68dd86ac898f352cb0a7b1e507586daddb7728b:31865856 d4a433dbaf7c02743c964497d68dd86ac898f352cb0a7b1e507586daddb7728b:31865856
+host Linux 6.18.58.1-microsoft-standard-WSL2 x86_64; the seed ran as a Windows process through WSL interop
+label EXECUTED
