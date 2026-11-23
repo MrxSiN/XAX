@@ -3134,3 +3134,43 @@ calls below were made without asking.
     blobs are in `/root/work/blobs/<blob>.xax`, since a chain in one commit has no git blobs).
 - **Next:** release 0041 from `main` with the r41 commits (`644f5c3`, `e186334`); close #134 after it, then #135
   (the batch parser's `replace` lives inside `ws_translate`'s closure in the driver), OI-54 step 2, OI-62.
+
+## Release 0041 on `main`: `versionName` and uppercase CID digits — 2026-11-23
+
+`main` = merge of #155 (`45b39fb`). `rotate.sh state`: `validated 0041`, `profile released`.
+Seeds: Linux `c5dfd5fb…` (31,822,689 bytes), Windows `ae6fe1f4…` (31,876,096). BBC pins it (MrxSiN/BBC11).
+Supersedes the "Next" of "Release 0040 on `main`" above. The owner asked for the campaign to continue, so the
+calls below were made without asking.
+
+- **What landed** (four driver transactions, two sub-batch PRs into `release/0041`, #152 and #153):
+  - #134 (#152, `0041-manifest-version-name`, ADR-417): `android:versionName` on an unbranded libxposed JVM
+    module's `<manifest>` when `version_name` is non-empty; every other APK keeps its bytes.
+  - #136 follow-up (#153, `0041-hex-digits-type`, `-entity`, `-root`): the 64-digit CIDs of `entity=`, type and
+    `R` lines read hex digits in either case.
+- **Rotation** (#154, EXECUTED, WSL 2): `rotate.sh build 0041`, `confirm` on both targets; SNAPSHOTS line
+  `87861cd0…` → `c907535a…` (reference resolver); `validated 0041 evidence=02ae4269…`. V1 records with
+  `XAX_REQUIRE_NATIVE=1`: python-free seed 412.6 s; full self-host 12,879 s, three generations to `c5dfd5fb…`,
+  no fallback.
+- **D: filled and stopped WSL.** The `Ubuntu-24.04-D` VHDX lives on D:; when D: ran out of space, WSL stopped
+  mid-campaign. Freed by deleting scratch output only (`/root/work/c1-*`, `xaxc-c1-*`, `h1*`; the other listed
+  paths were already gone). The VM also shuts down on its own when no `wsl.exe` client is attached: a bench
+  started from an agent's background shell died with the agent process. Long runs now go in a Terminal panel
+  tab (`wsl.exe ... bash /root/work/<script>.sh`), which survives it; the VM still stops once the run ends.
+- **Full suite** (`-n 2`, 2 h 46 min): 1,666 passed, 9 failed: the B1 binding (baseline) and the eight JVM/JDWP
+  tests that fail only with the Windows-`java` wrapper on PATH, the same set as 0040. Two subtest failures from
+  the host, not the tree (both test files unchanged since 0040):
+  - 336 `test_xax_x86_64_views` subtests: `os.fork()` ENOMEM while the other worker held memory; run alone the
+    file passes (339 subtests).
+  - `test_xax_selfhost_jvm.test_callback_programs`, module `test_xax_jvm_import`: `JMODS=None`, since the PATH
+    `javac` is the Windows wrapper and has no `jmods`. The test should skip there like the module's own tests.
+  - The system `python3` in WSL has no pytest: run the suite with `/root/venv/bin/python -m pytest`.
+- **BBC:** `rebuild.sh` applied the four transactions to `bbc.xax` and its request. `bbc.exe` `f18ceda9…`
+  (36,122,112 bytes) by the 0041 Windows seed. `check.py`: 93 programs, 372 of 372, 488 runs, 0 mismatches,
+  5 of 5 error paths. Capacity fixtures and the six ThreadsHideAds programs: identical to 0039 and 0040 (the
+  scratch runner's output equals `/root/work/rel0039/pin2.json`). hanoi -O1 builds (23.2 s); -O0 exits 5.
+- **#134 on a device** (EXECUTED, Pixel 8 Pro, Android 17, wireless adb): the test module built by the 0041 seed
+  reports `versionName=2.0.0-dev` in `dumpsys package`. The seed's APK is unsigned: `adb install` refused it
+  until it was zipaligned and signed with the SDK debug key. #134 closed by the merge, evidence commented.
+- **Next:** #135 (ADR-416, `replace <CID> @name`; the batch parser's `replace` lives inside `ws_translate`'s
+  closure in the driver), OI-54 step 2 (hanoi -O0), OI-62. Small: make `test_callback_programs` skip without
+  `jmods`.
