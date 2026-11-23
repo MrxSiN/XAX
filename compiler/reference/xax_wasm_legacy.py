@@ -273,6 +273,8 @@ def _compile_function(
                 if maximum < 0:
                     code.append(0x00)
                 else:
+                    if _width(resolve, node.operand_types[1]) > 32:  # OI-62: an i64 offset local compared as i32
+                        fail("XAX.WASM.CHECKED_OFFSET", graph_object.cid.hex(), "WASM-CHECKED-OFFSET-BITS", 32, _width(resolve, node.operand_types[1]))
                     get(node.operands[1])
                     const(maximum)
                     code.append(0x4B)  # i32.gt_u
@@ -295,6 +297,8 @@ def _compile_function(
                 if maximum < 0:
                     code.append(0x00)
                 else:
+                    if _width(resolve, node.operand_types[1]) > 32:  # OI-62: an i64 offset local compared as i32
+                        fail("XAX.WASM.CHECKED_OFFSET", graph_object.cid.hex(), "WASM-CHECKED-OFFSET-BITS", 32, _width(resolve, node.operand_types[1]))
                     get(node.operands[1])
                     const(maximum)
                     code.append(0x4B)  # i32.gt_u

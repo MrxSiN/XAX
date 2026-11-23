@@ -1092,6 +1092,8 @@ left for the C-cap step of release 0036.
 
 ## OI-62 — The legacy Wasm32 profile emits an invalid module for a `bits<64>` checked offset
 
+**Status: FIXED on `release/0042` (2026-11-23, ledger 0042); closes when release 0042's seed is rotated.** `0042-legacy-wasm-offset-bits` routes the legacy lowering's offset `local.get` (F786 by sorted CID in the 0041 driver) through a new `@g225`. It reads the offset's width the way the general profile does (the value's type, then the type's body) and rejects a width above 32 with `XAX.WASM.CHECKED_OFFSET` / `WASM-CHECKED-OFFSET-BITS` (expected 32, actual the width), written as F225 writes its own records. The reference (`xax_wasm_legacy.py`) rejects the same way at the same point. `test_xax_oi52_r2.WasmTests.test_legacy_profile_rejects` compares the reference's diagnostic with the production compiler's `build`: it fails with the 0041 seed (which emits the invalid module) and passes with the candidate; a `bits<32>` offset keeps its module bytes. The record of 2026-11-19 follows.
+
 **Status: OPEN (2026-11-19).** Since OI-52 R2 (ADR-412) a checked offset may be `bits<64>`. The general Wasm32 profile
 lowers it (`i64.gt_u`, then `i32.wrap_i64`), but the legacy profile that `oi06_wasm32_target` and other targets
 without the general operations select (`xax_wasm_legacy.py`; in the driver, the per-node lowering F784 as of
