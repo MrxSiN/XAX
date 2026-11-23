@@ -58,6 +58,11 @@ Only issues requiring implementation, target, ecosystem, or benchmark evidence a
 - [OI-55 — Native x86-64 signed compares below 32 bits](#oi-55--native-x86-64-signed-compares-below-32-bits)
 - [OI-56 — PE images take large frames without a stack probe](#oi-56--pe-images-take-large-frames-without-a-stack-probe)
 - [OI-57 — The reference's S12c.2 analysis audit disagrees with the native `basics` since ledger 0022](#oi-57--the-references-s12c2-analysis-audit-disagrees-with-the-native-basics-since-ledger-0022)
+- [OI-58 — Windows x86-64 code generation on the `chains` walk (R4 blocker for `windows-x86_64-pe`)](#oi-58--windows-x86-64-code-generation-on-the-chains-walk-r4-blocker-for-windows-x86_64-pe)
+- [OI-59 — Edge copies overwrite a frame word another copy of the same edge still reads](#oi-59--edge-copies-overwrite-a-frame-word-another-copy-of-the-same-edge-still-reads)
+- [OI-60 — Host-portability gaps left after the 2026-11-13 audit](#oi-60--host-portability-gaps-left-after-the-2026-11-13-audit)
+- [OI-61 — The JVM program does not check a catching call's throwable output type](#oi-61--the-jvm-program-does-not-check-a-catching-calls-throwable-output-type)
+- [OI-62 — The legacy Wasm32 profile emits an invalid module for a `bits<64>` checked offset](#oi-62--the-legacy-wasm32-profile-emits-an-invalid-module-for-a-bits64-checked-offset)
 
 ## OI-02 — Canonical object and graph-fragment granularity
 
@@ -711,6 +716,13 @@ Each closes only with the acceptance test named in the register, EXECUTED on Win
 
 ## OI-49 — Android ARM64 large composite return copy
 
+**Status: CLOSED (2026-11-24).** Ledger 0035 (`0035-aarch64-copy-data-register{,-aarch64,-android}.batch`) shipped
+in release 0033's seeds and is on `main`. Its closing run is the 2026-11-16 Pixel 8 Pro run below: leaf and non-leaf
+makers, 24-, 32- and 64-byte results, 18 of 18 right and three repeats identical (EXECUTED). Those were static
+AArch64 images on the device's kernel (ADR-254); a build of the same programs as an Android shared library stays NOT
+RUN (no harness exists for it), and the copy function it would use is the same one ledger 0035 changed in
+`xax_android.xax`. The statuses below are the historical record.
+
 **Status: FIXED IN THE STORES (2026-11-16, ledger 0035 on `release/0033`); closes when the release's seed ships it.** The
 copy function of the AArch64 frame path (`xax_aarch64_general.xax`, `xax_android.xax`, the driver) and the reference
 `_copy_memory` move the data through x17 when x16 holds the destination or source address: the return copy through
@@ -937,6 +949,13 @@ equal to the reference executor. Do not substitute a Python implementation.
 
 ## OI-56 — PE images take large frames without a stack probe
 
+**Status: CLOSED (2026-11-24).** Ledger 0026 is in both seeds since 2026-11-12 and on `main`. Every release since has
+rebuilt `bbc.exe` from the fixed driver and run BBC's `check.py` with the Windows files executed natively on
+Windows 11 (release 0041: 372 of 372, `XAX_HANDOFF.md` 2026-11-23), which is this issue's closing evidence. The
+DLL note (a DLL runs on its host's thread stack) was answered by ledger 0034's per-page PE probes (release 0033); a
+DLL frame over 4 KiB run on Windows 11 is still NOT RUN and is tracked with OI-58 and OI-60. The statuses below are
+the historical record.
+
 **Status: FIXED IN THE STORES AND IN THE WINDOWS SEED (2026-11-12, ledger 0026, ADR-396, ADR-397); the Linux seed is rotated to it (`7988e0d0…`, 2026-11-12).** The Windows seed is rebuilt from the fixed driver and builds itself on Windows 11 (`compiler/benchmarks/windows_selfhost_evidence.json`). Earlier status: PE images now
 commit their whole stack reserve, and the unpatched `bbc.exe` built from the new stores runs on Windows 11
 (`XAX_STATE.md`, 2026-11-12). Still open for closing: the Linux seed rotation (pending review together with ledgers
@@ -1030,6 +1049,11 @@ XAX arm leads every arm including `chains_soa.c`, repeated over more than one pl
 
 ## OI-59 — Edge copies overwrite a frame word another copy of the same edge still reads
 
+**Status: CLOSED (2026-11-24).** Ledger 0027 is in both seeds and BBC's driver since 2026-11-13 and on `main`; the
+native compiler returns the executor's result on the whole family (`XAX_STATE.md` 2026-11-13, ledger 0027
+correctness, EXECUTED), which completes "Evidence that closes it". OI-58 item 1 can be retried. The status below is
+the historical record.
+
 **Status: FIXED (2026-11-13): reference b137b66, native ledger 0027 (ADR-398), both seeds and BBC rebuilt.** Both x86-64 register-path emitters,
 `copy_edge` in `compiler/reference/xax_x86_64_regalloc.py` and the native general backend's (in
 `bootstrap/xax_x86_64_general.xax` and the driver), copy an edge's arguments in two phases: first every argument whose
@@ -1080,6 +1104,10 @@ tool or new test glue that the language rule does not allow in Python:
 runs a Windows-seed command against its pin.
 
 ## OI-61 — The JVM program does not check a catching call's throwable output type
+
+**Status: CLOSED (2026-11-24).** Release 0037 (ledger 0037 `jvm-throwable`, PR #104) is on `main`: the three stores
+reject such a declaration and the rejection test passes (it fails 6 of 6 on the stores before, `XAX_STATE.md`
+2026-11-18, EXECUTED). The status below is the historical record.
 
 **Status: FIXED on `release/0037` (2026-11-18, PR #104, ledger 0037 `jvm-throwable`); closes when release 0037 reaches `main`.** ADR-406 (2) makes a catching JVM declaration's last output `jvm-ref:Ljava/lang/Throwable;`.
 The XAX JVM program (`jk_member`, F38 of `xax_jvm_general.xax` and its copies in `xax_android.xax` and the driver) takes
