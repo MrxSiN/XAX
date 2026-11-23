@@ -188,6 +188,48 @@ class LifecycleTests(unittest.TestCase):
         self.assertIn(0x0101021C.to_bytes(4, "little"), named)
         self.assertNotIn(0x0101021C.to_bytes(4, "little"), empty)
 
+    def test_native_carrier_replacement(self):
+        """Issue #135 (ADR-416): ``replace <CID> @c`` swaps the module's v1 carrier for a v3 one with the native edit
+        command alone; the edited store verifies and builds. A CID that is not a TARGET the store holds rejects."""
+        from xax_android_libxposed_jvm import find_carriers
+        from xax_build import decode_package, decode_request, decode_snapshot
+        from xax_compiler import Cursor, Kind, StoreReader, target
+
+        built = _constructed([_function("main", "ready"), _function("ml", "module_loaded", "onModuleLoaded ran")])
+        reader = built.reader
+        snapshot = decode_snapshot(reader.get(reader.root_cid), reader.get)
+        package = decode_package(reader.get(decode_request(reader.get(snapshot.request_root), reader.get).package_root), reader.get)
+        old, _ = find_carriers(reader, package)
+        record = json.loads(Cursor(old.body, "carrier").byte_string()[len(PREFIX_V3):])
+        record["entries"] = {"module_loaded": built.functions["ml"].cid.hex()}
+        new = target(PREFIX_V3 + json.dumps(record, sort_keys=True, separators=(",", ":")).encode())
+
+        def edit(cid: bytes):
+            batch = f"R {reader.root_cid.hex()}\nF0\ndefine @c\nobject 6 0x{new.body.hex()}\nend\nreplace {cid.hex()} @c\n"
+            with tempfile.TemporaryDirectory(prefix="xax-carrier-") as directory:
+                work = Path(directory)
+                (work / "s.xax").write_bytes(reader.data)
+                (work / "b").write_text(batch)
+                status = subprocess.run([str(SEED), "edit", "s.xax", "b", "out"], cwd=work, capture_output=True).returncode
+                if status != 0:
+                    subprocess.run([str(SEED), "edit", "s.xax", "out", "text"], cwd=work, check=True, capture_output=True)
+                    return status, (work / "text").read_text()
+                verified = subprocess.run([str(SEED), "verify", "out", "rec"], cwd=work, capture_output=True).returncode
+                built_apk = subprocess.run([str(SEED), "build", "out", "m.apk", "m.prov"], cwd=work, capture_output=True).returncode
+                return (status, verified, built_apk), StoreReader((work / "out").read_bytes())
+
+        outcome, edited = edit(old.cid)
+        self.assertEqual(outcome, (0, 0, 0))
+        cids = {o.cid for o in edited.objects()}
+        self.assertIn(new.cid, cids)
+        self.assertNotIn(old.cid, cids)
+        module = next(o for o in edited.objects() if o.kind == Kind.MODULE)
+        self.assertIn(new.cid, module.references)
+        for cid in (built.functions["main"].cid, bytes(32)):
+            status, text = edit(cid)
+            self.assertEqual(status, 1)
+            self.assertIn("rule WORKSPACE-BATCH-REPLACE", text)
+
     def test_module_and_forwarding(self):
         apk, functions = build_v3({"module_loaded": "ml", "system_server_starting": "sss"})
         self.assertIsInstance(apk, bytes, apk)
