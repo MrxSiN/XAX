@@ -879,6 +879,8 @@ same objects, so the difference is in the tables the driver builds for them. BBC
 
 ## OI-54 — Function views past 2^18 values (BBC's hanoi -O0)
 
+**Status: OPEN; step 2 part 1 on `release/0042` (2026-11-23, ledger 0042, ADR-419).** The x86-64 container buffer is sized from the image (I_LEN + 1 MiB, at most 48 MiB + 64 KiB) and its 273 checks read the allocated size, which frees about 49M of the arena's 84M words for ordinary builds. Measured: the first value-capacity limit is the x86-64 prologue's capacity word (262,144; F355); with part 1 and a capacity of 917,504, hanoi -O0 reaches the backend and declines during the views with 6M arena words left after the tables. The rest of step 2 is a layout change: the per-value tables need a region of their own (or the workspace must grow, OI-52), and the capacity can then follow the program (a count of each function's lifted values in `views_prologue`). The record of 2026-11-20 follows.
+
 **Status: OPEN; step 1 done (2026-11-20, release 0039, ADR-413).** BBC's hanoi -O0 decision (one 7.25 MB graph
 fragment) now verifies, resolves and takes a native edit. The front end's limits were measured rather than taken from
 the list below, and four were lifted, each with a test just past its old value (`tests/test_xax_oi54_limits.py`):
