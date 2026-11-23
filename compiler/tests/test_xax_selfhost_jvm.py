@@ -234,6 +234,8 @@ class SelfhostJvmTests(unittest.TestCase):
                 return xax_jvm.compile_jvm_bound_target(reader, cid, target, process_entry=process_entry)
 
             with self.subTest(module=module_name), unittest.mock.patch.object(module, "compile_jvm_bound_target", compiled):
+                if getattr(module, "JMODS", True) is None:  # test_xax_jvm_import reads the JDK's jmods
+                    self.skipTest("requires a JDK with jmods")
                 getattr(module, builder)(**arguments)
                 self.assertEqual(seen, ["jar"])
         with self.subTest(case="JVM-ENTRY-SIGNATURE"):
