@@ -157,6 +157,37 @@ def _host_path(path: str, tool: str) -> str:
 
 @unittest.skipUnless(LINUX_X86_64, "the XAX Android program runs natively on Linux x86-64")
 class LifecycleTests(unittest.TestCase):
+    def test_unbranded_manifest_has_the_version_name(self):
+        """Issue #134: an unbranded module's generated manifest carries ``android:versionName`` when the record's
+        ``version_name`` is non-empty, and is unchanged when it is empty. ``aapt2 dump xmltree`` (``XAX_AAPT2``)
+        reads it when set; otherwise the name and value are found in the string pool."""
+        from xax_construct import construct
+
+        def manifest(version_name: str) -> bytes:
+            android = dict(MODULE, version_name=version_name)
+            built = construct({"format": "xax-construct-v1", "platform": "android-libxposed", "functions": [_function("main", "ready")],
+                               "package": {"name": "lifecycle", "entries": {"app": "main"}, "release": "app", "android": android}})
+            with tempfile.TemporaryDirectory(prefix="xax-version-", dir=os.environ.get("XAX_JAVA_TMP")) as directory:
+                work = Path(directory)
+                (work / "m.xax").write_bytes(built.reader.data)
+                subprocess.run([str(SEED), "build", "m.xax", "m.apk", "m.prov"], cwd=work, check=True, capture_output=True)
+                apk = (work / "m.apk").read_bytes()
+                aapt2 = os.environ.get("XAX_AAPT2")
+                if aapt2 and version_name:
+                    dumped = subprocess.run([aapt2, "dump", "xmltree", "--file", "AndroidManifest.xml", _host_path(str(work / "m.apk"), aapt2)],
+                                            capture_output=True, text=True, timeout=120)
+                    self.assertEqual(dumped.returncode, 0, dumped.stderr)
+                    self.assertIn(f':versionName(0x0101021c)="{version_name}"', dumped.stdout)
+            with zipfile.ZipFile(io.BytesIO(apk)) as archive:
+                return archive.read("AndroidManifest.xml")
+
+        named, empty = manifest("2.0.0-dev"), manifest("")
+        self.assertIn(b"versionName", named)
+        self.assertIn(b"2.0.0-dev", named)
+        self.assertNotIn(b"versionName", empty)
+        self.assertIn(0x0101021C.to_bytes(4, "little"), named)
+        self.assertNotIn(0x0101021C.to_bytes(4, "little"), empty)
+
     def test_module_and_forwarding(self):
         apk, functions = build_v3({"module_loaded": "ml", "system_server_starting": "sss"})
         self.assertIsInstance(apk, bytes, apk)

@@ -870,7 +870,9 @@ on the JVM.
 
 An entity is `F<n>`, a 64-digit CID, or `@<name>` defined earlier in the same batch; a constant's value is decimal for a
 `bits` type, else `0x` and all its bytes, most significant first; `trap` is followed by `0x` and the payload's bytes. Hex digits
-may be written in either case (issue #136, ledger 0040: `0x3FF0` and `0x3ff0` are the same bytes).
+may be written in either case (issue #136, ledger 0040: `0x3FF0` and `0x3ff0` are the same bytes). Since
+ledger 0041 the CIDs of `entity=`, type and `R` lines may be too, except that `entity=F…` reads as a function handle,
+so a CID that starts with `f` is written in lowercase there.
 Every constant, any `bits` type the store lacks, the graph and the function become objects the record supplies; a
 reference to another of them is its supplied index, which the engine resolves, and a graph's or function's references
 are put in canonical order by the engine. A signature change redefines the callers in the same batch. Functions inside a
