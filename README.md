@@ -21,6 +21,7 @@ exceptions, or runtime library).
 - [Repository layout](#repository-layout)
 - [Documentation](#documentation)
 - [BFX integration](#bfx-integration)
+- [Contributing](#contributing)
 
 ## Overview
 
@@ -28,6 +29,13 @@ exceptions, or runtime library).
 
 ```text
 intent -> AI -> small semantic edit -> verified XAX graph -> optimize -> target artifact
+```
+
+The same flow as a diagram:
+
+```mermaid
+flowchart LR
+  A[intent] --> B[AI] --> C[small semantic edit] --> D[verified XAX graph] --> E[optimize] --> F[target artifact]
 ```
 
 ### Design
@@ -115,11 +123,23 @@ third-party runtime dependencies.
 
 ### Install and test
 
-```bash
-cd compiler
-pip install -e '.[test]'
-python -m pytest -n 2 tests
-```
+1. Enter the compiler directory:
+
+   ```bash
+   cd compiler
+   ```
+
+2. Install the package with its test dependencies:
+
+   ```bash
+   pip install -e '.[test]'
+   ```
+
+3. Run the test suite:
+
+   ```bash
+   python -m pytest -n 2 tests
+   ```
 
 The native compiler's commands are `edit`, `verify`, `resolve` and `build`
 (`bootstrap/seed/xaxc-linux-x86_64 build <snapshot> <image> <provenance>`); the `xaxc` the install puts on `PATH`
@@ -143,30 +163,31 @@ Start at [`AGENTS.md`](AGENTS.md); it routes to [`docs/09_AI_PROTOCOL.md`](docs/
 | [`compiler/bootstrap/`](compiler/bootstrap/) | The committed XAX program stores, the seeds, the evolution ledger and the bootstrap evidence |
 | [`compiler/tests/`](compiler/tests/) | The test suite |
 | [`compiler/benchmarks/`](compiler/benchmarks/) | Benchmarks, evidence runners and their recorded results |
-| [`compiler/integration/`](compiler/integration/) | External integrations (BFX) |
+| [`compiler/integration/`](compiler/integration/) | External integrations and platform helpers: `android/`, `bfx/` (BFX), `construct/`, `mcp/`, `windows_helpers/` |
 | `XAX_*.md` | The specification, the state, the roadmap and the decision records (below) |
 
 ## Documentation
 
-### Language
+Precedence is set by [`XAX_SPEC.md`](XAX_SPEC.md) §1: the specification is normative, the stage documents are subordinate
+to it, and the state and handoff documents record evidence, never requirements. The class of every document is in the
+[documentation index](docs/README.md#repository-documents).
 
-- [Architecture](XAX_AI_Native_Programming_Language_Architecture.md) — the design rationale.
-- [Specification](XAX_SPEC.md) — the language, the replacement levels and the bootstrap levels.
-- [Normative documents](docs/README.md) — the stage documents 01-18.
-- [Prototype schema](XAX_PROTOTYPE_SCHEMA_V1.md) — the prototype's canonical encoding.
-
-### Project records
-
-- [State](XAX_STATE.md) — what holds now, with dated results.
-- [Roadmap](XAX_IMPLEMENTATION_ROADMAP.md) — the milestones and the self-hosting steps.
-- [Handoff](XAX_HANDOFF.md) — the working notes between sessions.
-- [Decisions](XAX_DECISIONS.md) — the architecture decision records (ADRs).
-- [Open issues](XAX_OPEN_ISSUES.md) — what is known to be missing or wrong.
-
-### Evidence
-
-- [Conformance](XAX_CONFORMANCE.md) — the conformance suite and its coverage.
-- [Benchmarks](XAX_BENCHMARKS.md) — the measured results and the host setup.
+| Purpose | Document | What it holds |
+|---|---|---|
+| Architecture and design | [`XAX_AI_Native_Programming_Language_Architecture.md`](XAX_AI_Native_Programming_Language_Architecture.md) | The design rationale |
+| Normative specification | [`XAX_SPEC.md`](XAX_SPEC.md) | The language, the replacement levels and the bootstrap levels |
+| Documentation index and stage documents | [`docs/README.md`](docs/README.md) | The index of document classes, the normative stage documents 01-18 and the task routes |
+| AI interaction | [`docs/09_AI_PROTOCOL.md`](docs/09_AI_PROTOCOL.md) | The workspace, queries, transactions and diagnostics |
+| Schema and serialization | [`XAX_PROTOTYPE_SCHEMA_V1.md`](XAX_PROTOTYPE_SCHEMA_V1.md) | The prototype's canonical encoding |
+| Conformance | [`XAX_CONFORMANCE.md`](XAX_CONFORMANCE.md) | The conformance suite and its coverage |
+| Benchmarks | [`XAX_BENCHMARKS.md`](XAX_BENCHMARKS.md) | The benchmark specification, the measured results and the host setup |
+| Decisions | [`XAX_DECISIONS.md`](XAX_DECISIONS.md) | The architecture decision records (ADRs) |
+| Open issues | [`XAX_OPEN_ISSUES.md`](XAX_OPEN_ISSUES.md) | What is known to be missing or wrong |
+| Current state | [`XAX_STATE.md`](XAX_STATE.md) | What holds now, with dated results |
+| Roadmap | [`XAX_IMPLEMENTATION_ROADMAP.md`](XAX_IMPLEMENTATION_ROADMAP.md) | The milestones and the self-hosting steps |
+| Development handoffs | [`XAX_HANDOFF.md`](XAX_HANDOFF.md) | The working notes between sessions |
+| Contributor and agent instructions | [`AGENTS.md`](AGENTS.md), [`compiler/AGENTS.md`](compiler/AGENTS.md) | How agents and contributors work here |
+| Documentation style | [`docs/DOCUMENTATION_STYLE.md`](docs/DOCUMENTATION_STYLE.md) | How Markdown documents are formatted |
 
 ## BFX integration
 
@@ -175,3 +196,8 @@ Windows x86-64. The [native BFX importer](compiler/integration/bfx/IMPORT.md) em
 and executes on Android and Windows. Three frontend generations on each platform produce identical artifacts. The
 [canonical Android app](compiler/integration/bfx/ANDROID.md) passes eight Activity cases. Native lowering uses the
 Windows build host.
+
+## Contributing
+
+Work on a branch from the default branch and land it by pull request. The rules for commits, pull requests, evidence and
+documentation are in [`AGENTS.md`](AGENTS.md) and, for `compiler/`, [`compiler/AGENTS.md`](compiler/AGENTS.md).

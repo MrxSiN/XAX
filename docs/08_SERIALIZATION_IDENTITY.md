@@ -6,24 +6,41 @@
 - [2. Normative definitions](#2-normative-definitions)
 - [3. Core invariants](#3-core-invariants)
 - [4. Canonical store model](#4-canonical-store-model)
+  - [4.1 Header](#41-header)
 - [5. Canonical primitive encodings](#5-canonical-primitive-encodings)
+  - [5.1 Integers](#51-integers)
+  - [5.2 Lengths, counts, and byte strings](#52-lengths-counts-and-byte-strings)
+  - [5.3 Booleans, enums, and collections](#53-booleans-enums-and-collections)
 - [6. Semantic object envelope](#6-semantic-object-envelope)
 - [7. Core object kinds](#7-core-object-kinds)
 - [8. Deterministic fields and schemas](#8-deterministic-fields-and-schemas)
 - [9. Interning and reference tables](#9-interning-and-reference-tables)
+  - [9.1 Effect-edge compression selected by OI-08](#91-effect-edge-compression-selected-by-oi-08)
 - [10. Content identity versus logical identity](#10-content-identity-versus-logical-identity)
+  - [10.1 CID](#101-cid)
+  - [10.2 LID](#102-lid)
 - [11. Merkle DAG structure](#11-merkle-dag-structure)
 - [12. Local mutation and version creation](#12-local-mutation-and-version-creation)
 - [13. Non-semantic metadata](#13-non-semantic-metadata)
 - [14. Streaming and random access](#14-streaming-and-random-access)
+  - [14.1 Record order](#141-record-order)
+  - [14.2 Index](#142-index)
 - [15. Integrity trailer](#15-integrity-trailer)
 - [16. Version evolution](#16-version-evolution)
+  - [16.1 Container version](#161-container-version)
+  - [16.2 Object schema version](#162-object-schema-version)
+  - [16.3 Hash suite](#163-hash-suite)
 - [17. Compatibility policy](#17-compatibility-policy)
+  - [17.1 Backward compatibility](#171-backward-compatibility)
+  - [17.2 Forward compatibility](#172-forward-compatibility)
+  - [17.3 Canonical migration](#173-canonical-migration)
 - [18. Corruption behavior](#18-corruption-behavior)
 - [19. Human-readable dumps](#19-human-readable-dumps)
 - [20. Interfaces with other subsystems](#20-interfaces-with-other-subsystems)
 - [21. Rejected alternatives](#21-rejected-alternatives)
 - [22. Open issues requiring implementation evidence](#22-open-issues-requiring-implementation-evidence)
+  - [22.1 Graph-fragment granularity](#221-graph-fragment-granularity)
+  - [22.2 Index acceleration](#222-index-acceleration)
 - [23. Falsification criteria](#23-falsification-criteria)
 
 ## 1. Purpose and scope
@@ -308,6 +325,20 @@ program_root CID
        -> type CID
        -> constant CID
   -> target CID
+```
+
+The same conceptual relations as a diagram:
+
+```mermaid
+flowchart TD
+  R["program_root CID"] --> M["module CID"]
+  R --> T0["target CID"]
+  M --> F["function CID"]
+  M --> T1["type CID"]
+  M --> C1["constant CID"]
+  F --> G["graph_fragment CID"]
+  F --> T2["type CID"]
+  F --> C2["constant CID"]
 ```
 
 Exact ownership edges are defined by the relevant semantic schemas.

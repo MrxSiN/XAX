@@ -4,15 +4,25 @@
 
 - [1. Purpose and scope](#1-purpose-and-scope)
 - [2. Normative language](#2-normative-language)
+  - [2.1 Bootstrap seed](#21-bootstrap-seed)
+  - [2.2 XAX-hosted compiler](#22-xax-hosted-compiler)
+  - [2.3 Self-hosting](#23-self-hosting)
+  - [2.4 Toolchain closure](#24-toolchain-closure)
+  - [2.5 Bootstrap independence](#25-bootstrap-independence)
+  - [2.6 Repository root](#26-repository-root)
+  - [2.7 Continuation state](#27-continuation-state)
 - [3. Bootstrap trust boundary](#3-bootstrap-trust-boundary)
 - [4. Minimal bootstrap artifact](#4-minimal-bootstrap-artifact)
 - [5. Seed compiler strategy](#5-seed-compiler-strategy)
 - [6. Self-hosting milestones](#6-self-hosting-milestones)
+  - [6.1 Fixed-point rule](#61-fixed-point-rule)
 - [7. Compiler and backend migration into XAX](#7-compiler-and-backend-migration-into-xax)
 - [8. Targets, assembler functionality, and linking](#8-targets-assembler-functionality-and-linking)
 - [9. Bootstrap trust verification](#9-bootstrap-trust-verification)
 - [10. Autonomous AI development workflow](#10-autonomous-ai-development-workflow)
 - [11. Multi-agent repository merge model](#11-multi-agent-repository-merge-model)
+  - [11.1 Mandatory conflict cases](#111-mandatory-conflict-cases)
+  - [11.2 Merge functions](#112-merge-functions)
 - [12. Canonical repository state](#12-canonical-repository-state)
 - [13. Concise handoff format](#13-concise-handoff-format)
 - [14. Coupled update rules](#14-coupled-update-rules)
@@ -21,6 +31,9 @@
 - [17. Rejected alternatives](#17-rejected-alternatives)
 - [18. Interfaces and dependencies](#18-interfaces-and-dependencies)
 - [19. Open issues requiring implementation evidence](#19-open-issues-requiring-implementation-evidence)
+  - [OI-15-1: Fixed-point comparison level](#oi-15-1-fixed-point-comparison-level)
+  - [OI-15-2: Minimum practical seed subset](#oi-15-2-minimum-practical-seed-subset)
+  - [OI-15-3: Diversity threshold for bootstrap trust](#oi-15-3-diversity-threshold-for-bootstrap-trust)
 - [20. Falsification criteria](#20-falsification-criteria)
 
 ## 1. Purpose and scope
@@ -178,6 +191,15 @@ C0 = approved seed executable
 C1 = build(C0, compiler_program_root)
 C2 = build(C1, compiler_program_root)
 C3 = build(C2, compiler_program_root)
+```
+
+The same generation relations as a diagram:
+
+```mermaid
+flowchart LR
+  C0["C0 = approved seed executable"] -->|"build(C0, compiler_program_root)"| C1["C1"]
+  C1 -->|"build(C1, compiler_program_root)"| C2["C2"]
+  C2 -->|"build(C2, compiler_program_root)"| C3["C3"]
 ```
 
 A bootstrap policy MAY require binary identity between selected generations when the target and build policy make that meaningful.

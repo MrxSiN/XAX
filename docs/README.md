@@ -46,10 +46,10 @@ Read a large document by section (its Contents list, or `grep -n '^## ' <file>`)
 | Conformance testing | [`XAX_CONFORMANCE.md`](../XAX_CONFORMANCE.md) Part I–II; [`16`](16_CONFORMANCE_EXAMPLES.md) | Part III (obligations) | `compiler/tests/` | the named tests, EXECUTED with `XAX_REQUIRE_NATIVE=1` where native |
 | BBC and BFX | [`18`](18_BFX_IMPORT.md); `compiler/integration/bfx/README.md` | `bfx/COMPILE.md`, `DYNAMIC_TAPE.md`, `SHARED.md` | `integration/bfx/bbc.xax` (follows the driver), BBC's repository | BBC's `check.py` with the release's `bbc.exe` |
 | XAX-MCP boundary | Ecosystem rules in `AGENTS.md`; `compiler/integration/mcp/README.md` | `compiler/integration/construct/README.md` | XAX-MCP's repository (transport, schemas, sandbox) | the pin XAX-MCP records |
-| Open issues and design questions | [`XAX_OPEN_ISSUES.md`](../XAX_OPEN_ISSUES.md) (Contents, then the one OI) | the ADRs it cites | — | the OI's "Evidence that closes it" |
+| Open issues and design questions | [`XAX_OPEN_ISSUES.md`](../XAX_OPEN_ISSUES.md) (Contents, then the one OI) | the ADRs it cites | — | the OI's "Closure Criteria" |
 | Find a decision | `grep -n '^## ADR-<n>' XAX_DECISIONS.md`, then that section | later ADRs or amendments naming it (`grep -n 'ADR-<n>'`) | — | — |
 | Continue interrupted work | the top and the last `## ` section of [`XAX_HANDOFF.md`](../XAX_HANDOFF.md) | the OIs and issues it names | — | its "Next" items, against `git log` |
-| Documentation maintenance | this index; `AGENTS.md` "Documents and status" | `compiler/bootstrap/status-tool/README.md` (generated blocks) | — | `tests/test_status_docs.py`; links resolve |
+| Documentation maintenance | this index; `AGENTS.md` "Documents and status"; [`DOCUMENTATION_STYLE.md`](DOCUMENTATION_STYLE.md) | `compiler/bootstrap/status-tool/README.md` (generated blocks) | — | `tests/test_status_docs.py`; links resolve |
 
 ## Reading order
 
@@ -103,6 +103,10 @@ matches their task:
 |---|---|
 | [`16_CONFORMANCE_EXAMPLES.md`](16_CONFORMANCE_EXAMPLES.md) | How an implementation demonstrates conformance; reference examples |
 | [`17_BENCHMARKS_ROADMAP.md`](17_BENCHMARKS_ROADMAP.md) | The benchmark specification and the staged implementation roadmap |
+
+## Documentation style
+
+[`DOCUMENTATION_STYLE.md`](DOCUMENTATION_STYLE.md) sets Markdown formatting and reusable templates; it governs form only.
 
 ## Audits
 

@@ -5,17 +5,44 @@
 - [1. Purpose and scope](#1-purpose-and-scope)
 - [2. Normative definitions](#2-normative-definitions)
 - [3. Canonical memory model](#3-canonical-memory-model)
+  - [3.1 Storage object schema](#31-storage-object-schema)
+  - [3.2 Storage classes](#32-storage-classes)
+  - [3.3 Storage creation and end-of-life](#33-storage-creation-and-end-of-life)
 - [4. Pointer semantics](#4-pointer-semantics)
+  - [4.1 Address calculation](#41-address-calculation)
+  - [4.2 Permission changes](#42-permission-changes)
 - [5. Load, store, copy, and move](#5-load-store-copy-and-move)
+  - [5.1 Ordinary load](#51-ordinary-load)
+  - [5.2 Ordinary store](#52-ordinary-store)
+  - [5.2.1 Checked scalar access and raw waiver surface](#521-checked-scalar-access-and-raw-waiver-surface)
+  - [5.3 Copy](#53-copy)
+  - [5.4 Move](#54-move)
 - [6. Lifetime and initialization](#6-lifetime-and-initialization)
 - [7. Aliasing model](#7-aliasing-model)
 - [8. Placement, volatile access, MMIO, and DMA](#8-placement-volatile-access-mmio-and-dma)
+  - [8.1 Placement](#81-placement)
+  - [8.2 Volatile](#82-volatile)
+  - [8.3 MMIO and device memory](#83-mmio-and-device-memory)
+  - [8.4 DMA](#84-dma)
 - [9. Raw and unsafe access](#9-raw-and-unsafe-access)
 - [10. Resource model](#10-resource-model)
+  - [10.1 Acquisition](#101-acquisition)
+  - [10.2 Transfer](#102-transfer)
+  - [10.3 State transitions](#103-state-transitions)
+  - [10.4 Split and join](#104-split-and-join)
+  - [10.5 Release and discard](#105-release-and-discard)
 - [11. Static proof and zero-runtime-cost rules](#11-static-proof-and-zero-runtime-cost-rules)
 - [12. Core invariants](#12-core-invariants)
 - [13. Rejected alternatives](#13-rejected-alternatives)
 - [14. Interfaces with other XAX subsystems](#14-interfaces-with-other-xax-subsystems)
+  - [Type, constant, and layout system](#type-constant-and-layout-system)
+  - [Effect and control-flow system](#effect-and-control-flow-system)
+  - [Concurrency and atomics](#concurrency-and-atomics)
+  - [Compile-time execution](#compile-time-execution)
+  - [Target packages](#target-packages)
+  - [Optimizer](#optimizer)
+  - [Serialization and AI mutation](#serialization-and-ai-mutation)
+  - [Diagnostics](#diagnostics)
 - [15. Open issues requiring implementation evidence](#15-open-issues-requiring-implementation-evidence)
 - [16. Falsification criteria](#16-falsification-criteria)
 
@@ -260,7 +287,9 @@ may-alias<class-id>
 unknown
 ```
 
-For precise object-backed storage, the compact encoding is the storage-object/provenance identity itself: the verifier derives the local alias class from that identity and does not serialize a redundant class number on each pointer view. The OI-06 two-allocation measurement found zero added graph bytes/semantic atoms for this derived form versus two bytes/two atoms for explicit local class IDs. `exclusive` proves no conflicting live view over its extent; `shared-read` permits readers but no writer; `may-alias` distinguishes conservative alias sets; `unknown` is conservative. An explicit compact class ID is reserved for raw/target mappings where exact object identity is unavailable. Creating/ending an alias restriction is semantic and may be zero-cost; no lexical borrow syntax is fundamental.
+For precise object-backed storage, the compact encoding is the storage-object/provenance identity itself: the verifier derives the local alias class from that identity and does not serialize a redundant class number on each pointer view. The OI-06 two-allocation measurement found zero added graph bytes/semantic atoms for this derived form versus two bytes/two atoms for explicit local class IDs. `exclusive` proves no conflicting live view over its extent; `shared-read` permits readers but no writer; `may-alias` distinguishes conservative alias sets; `unknown` is conservative.
+
+An explicit compact class ID is reserved for raw/target mappings where exact object identity is unavailable. Creating/ending an alias restriction is semantic and may be zero-cost; no lexical borrow syntax is fundamental.
 
 ## 8. Placement, volatile access, MMIO, and DMA
 
@@ -317,6 +346,22 @@ device-pending-> device-owned                // explicit synchronization
 device-owned  -> host-mapped                 // coherent host reacquire
 device-owned  -> host-stale                  // non-coherent host reacquire
 host-stale    -> host-mapped                 // explicit cache invalidate
+```
+
+The same transition envelope as a diagram (edge labels are the comments in the block above):
+
+```mermaid
+flowchart LR
+  hu["host-unmapped"] --> hm["host-mapped"]
+  hm --> hd["host-dirty"]
+  hm --> do["device-owned"]
+  hm --> hu
+  hd -->|"explicit cache clean"| hm
+  do -->|"device work begins"| dp["device-pending"]
+  dp -->|"explicit synchronization"| do
+  do -->|"coherent host reacquire"| hm
+  do -->|"non-coherent host reacquire"| hs["host-stale"]
+  hs -->|"explicit cache invalidate"| hm
 ```
 
 A non-coherent split-memory target uses all six states and explicit clean/invalidate operations. A coherent shared-memory target keeps host writes and host reacquire in `host-mapped` and therefore does not invent redundant cache-maintenance nodes. Both still make mapping, device ownership, device work, synchronization, host reacquire, unmapping, and release explicit. A target package may further restrict transitions; it may not silently bypass a required maintenance or synchronization state. Pinning or IOMMU-specific state remains target/platform-specific unless future cross-target evidence establishes another common semantic state. Their ordering/fence semantics belong to the concurrency stage.

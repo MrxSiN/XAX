@@ -5,9 +5,13 @@ the next step. Every earlier section is a dated historical record (AGENTS.md); a
 sections with `grep -n '^## ' XAX_HANDOFF.md` and read only the last one, plus older ones it names. Open design
 questions are in `XAX_OPEN_ISSUES.md`; current levels are the generated blocks below.
 
+A "Next", "Remaining" or "Queued" item in an earlier section records what was planned then. It is not an active task: only the
+last section's next steps apply now, and only after checking them against `git log` and the open issues.
+
 ## Contents
 
-Topic sections (to 2026-11-05) are listed here; the dated sections that follow them are not, so use the `grep` above.
+Topic sections are listed first, then every dated section in file order (oldest first). The list can lag a newly
+appended section: the last `## ` heading of the file is the current handoff, whatever this list ends with.
 
 - [Invariants that must not drift](#invariants-that-must-not-drift)
 - [Current repository state](#current-repository-state)
@@ -21,6 +25,68 @@ Topic sections (to 2026-11-05) are listed here; the dated sections that follow t
 - [Compiler engineering](#compiler-engineering) (9 entries)
 - [Open issues](#open-issues) (1 entries)
 - [Documentation and process](#documentation-and-process) (2 entries)
+
+Dated sections (historical records; a later section supersedes an earlier one):
+
+- [N0 native-evolution bootstrap — 2026-11-05 (ADR-367, ADR-368)](#n0-native-evolution-bootstrap--2026-11-05-adr-367-adr-368)
+- [N0 native-evolution bootstrap: N0.3 landed — 2026-11-05 (ADR-370, ADR-371)](#n0-native-evolution-bootstrap-n03-landed--2026-11-05-adr-370-adr-371)
+- [N0 complete: native evolution — 2026-11-05 (ADR-372)](#n0-complete-native-evolution--2026-11-05-adr-372)
+- [After N0: R1, the object form, and BBC's state — 2026-11-05 (ADR-373..375)](#after-n0-r1-the-object-form-and-bbcs-state--2026-11-05-adr-373375)
+- [BBC on the native compiler: where it stands — 2026-11-06 (ADR-376)](#bbc-on-the-native-compiler-where-it-stands--2026-11-06-adr-376)
+- [BBC's PE decline found and fixed: frame-path heap views — 2026-11-06 (ADR-377)](#bbcs-pe-decline-found-and-fixed-frame-path-heap-views--2026-11-06-adr-377)
+- [Ledger 0015 and the self-hosting record — 2026-11-06 (ADR-378)](#ledger-0015-and-the-self-hosting-record--2026-11-06-adr-378)
+- [The production driver on Windows, natively — 2026-11-06](#the-production-driver-on-windows-natively--2026-11-06)
+- [BBC's driver on the production driver: ledgers 0016, 0017 — 2026-11-06 (ADR-379, ADR-380)](#bbcs-driver-on-the-production-driver-ledgers-0016-0017--2026-11-06-adr-379-adr-380)
+- [The image buffer packed: ledger 0018 — 2026-11-07 (ADR-381)](#the-image-buffer-packed-ledger-0018--2026-11-07-adr-381)
+- [BBC's `bbc.exe` built natively; C0 is the seed: ledger 0019 — 2026-11-07 (ADR-382, ADR-383)](#bbcs-bbcexe-built-natively-c0-is-the-seed-ledger-0019--2026-11-07-adr-382-adr-383)
+- [Deep nesting on AArch64, the old-vs-new benchmark and hanoi -O0's limits: ledger 0020 — 2026-11-07 (ADR-384)](#deep-nesting-on-aarch64-the-old-vs-new-benchmark-and-hanoi--o0s-limits-ledger-0020--2026-11-07-adr-384)
+- [Ledger 0022: constant folding and hoisted registers on x86-64 (2026-11-08)](#ledger-0022-constant-folding-and-hoisted-registers-on-x86-64-2026-11-08)
+- [BBC's importer bounds branch, the capacity word (ledger 0023) and the plan completed — 2026-11-08](#bbcs-importer-bounds-branch-the-capacity-word-ledger-0023-and-the-plan-completed--2026-11-08)
+- [Independent audit: x86-64 signed compares below 32 bits (2026-11-11)](#independent-audit-x86-64-signed-compares-below-32-bits-2026-11-11)
+- [Android R4 re-measured, ledger 0025 and the Windows stack probe — 2026-11-11 (ADR-394)](#android-r4-re-measured-ledger-0025-and-the-windows-stack-probe--2026-11-11-adr-394)
+- [OI-56 fixed in the stores: PE images commit their stack reserve (ledger 0026) — 2026-11-12 (ADR-396)](#oi-56-fixed-in-the-stores-pe-images-commit-their-stack-reserve-ledger-0026--2026-11-12-adr-396)
+- [The Windows seed is the production compiler and builds itself on Windows 11 — 2026-11-12 (ADR-397)](#the-windows-seed-is-the-production-compiler-and-builds-itself-on-windows-11--2026-11-12-adr-397)
+- [Windows row at R3: the compiler is the practical application — 2026-11-12](#windows-row-at-r3-the-compiler-is-the-practical-application--2026-11-12)
+- [Seed rotated after ledgers 0024 and 0025; OI-55 closed on Linux — 2026-11-12 (ADR-393)](#seed-rotated-after-ledgers-0024-and-0025-oi-55-closed-on-linux--2026-11-12-adr-393)
+- [Windows R4 measured and withheld: chains is at parity with rustc — 2026-11-12](#windows-r4-measured-and-withheld-chains-is-at-parity-with-rustc--2026-11-12)
+- [Linux seed rotated to ledger 0026 — 2026-11-12](#linux-seed-rotated-to-ledger-0026--2026-11-12)
+- [Windows chains: improved batch, a faster C arm, R4 still withheld — 2026-11-12](#windows-chains-improved-batch-a-faster-c-arm-r4-still-withheld--2026-11-12)
+- [Windows maintenance cycle recorded on xbench (R5 evidence; R6 not yet) — 2026-11-12](#windows-maintenance-cycle-recorded-on-xbench-r5-evidence-r6-not-yet--2026-11-12)
+- [Ledger 0027 (loop-slot rule) tried and dropped; OI-59 found — 2026-11-13](#ledger-0027-loop-slot-rule-tried-and-dropped-oi-59-found--2026-11-13)
+- [OI-59 diagnosed: edge copies overwrite shared edge spill slots; reference fixed — 2026-11-13](#oi-59-diagnosed-edge-copies-overwrite-shared-edge-spill-slots-reference-fixed--2026-11-13)
+- [Windows evolution ledger paths coexist — 2026-11-13](#windows-evolution-ledger-paths-coexist--2026-11-13)
+- [Ledger 0027 (edge-copy staging), both seeds, four rows at R3 — 2026-11-13](#ledger-0027-edge-copy-staging-both-seeds-four-rows-at-r3--2026-11-13)
+- [Build/rotation campaign, steps 2–4 — 2026-11-15](#buildrotation-campaign-steps-24--2026-11-15)
+- [Build/rotation campaign: step 5 started (request tool) — 2026-11-15](#buildrotation-campaign-step-5-started-request-tool--2026-11-15)
+- [Build/rotation campaign: step 5 done (Windows generator) — 2026-11-15](#buildrotation-campaign-step-5-done-windows-generator--2026-11-15)
+- [Build/rotation campaign: step 6 done (derived request) — 2026-11-15](#buildrotation-campaign-step-6-done-derived-request--2026-11-15)
+- [Build/rotation campaign: step 7 started (C-x86) — 2026-11-16](#buildrotation-campaign-step-7-started-c-x86--2026-11-16)
+- [Build/rotation campaign: release 0033 done — 2026-11-16](#buildrotation-campaign-release-0033-done--2026-11-16)
+- [Build/rotation campaign: after release 0033 — 2026-11-16](#buildrotation-campaign-after-release-0033--2026-11-16)
+- [Build/rotation campaign: phase 3 done (evidence V2) — 2026-11-16](#buildrotation-campaign-phase-3-done-evidence-v2--2026-11-16)
+- [Build/rotation campaign: phase 6 done (RELEASES, POLICY, rotate.sh) — 2026-11-16](#buildrotation-campaign-phase-6-done-releases-policy-rotatesh--2026-11-16)
+- [Native oracle: design and slice 1 done — 2026-11-16](#native-oracle-design-and-slice-1-done--2026-11-16)
+- [Native oracle: slice 1 widened, slice 2 done — 2026-11-16](#native-oracle-slice-1-widened-slice-2-done--2026-11-16)
+- [Release 0036 started: #49 part 1, the verifier — 2026-11-16](#release-0036-started-49-part-1-the-verifier--2026-11-16)
+- [#49 part 2: anchors in the JVM program's F38 — 2026-11-16](#49-part-2-anchors-in-the-jvm-programs-f38--2026-11-16)
+- [#49 parts 2+3: the JVM program's call path mapped, the change set designed — 2026-11-16](#49-parts-23-the-jvm-programs-call-path-mapped-the-change-set-designed--2026-11-16)
+- [#49 parts 2+3 done: the JVM program lowers catching calls — 2026-11-16](#49-parts-23-done-the-jvm-program-lowers-catching-calls--2026-11-16)
+- [#49 part 6, issues #95 and #96, release 0036 done — 2026-11-18](#49-part-6-issues-95-and-96-release-0036-done--2026-11-18)
+- [ADR-410 pin retirement, OI-61 and #55 on release 0037 — 2026-11-18](#adr-410-pin-retirement-oi-61-and-55-on-release-0037--2026-11-18)
+- [#55 at 1,048,576 and the #48 design — 2026-11-18](#55-at-1048576-and-the-48-design--2026-11-18)
+- [ADR-411 (#48) mapped in the native programs — 2026-11-18](#adr-411-48-mapped-in-the-native-programs--2026-11-18)
+- [ADR-411 implementation: the entry-word question — 2026-11-18](#adr-411-implementation-the-entry-word-question--2026-11-18)
+- [#48 libxposed lifecycle entries on release 0037 — 2026-11-18](#48-libxposed-lifecycle-entries-on-release-0037--2026-11-18)
+- [Native oracle slice 3 done; C-cap moved to the next release — 2026-11-18](#native-oracle-slice-3-done-c-cap-moved-to-the-next-release--2026-11-18)
+- [Release 0037 rotated — 2026-11-19](#release-0037-rotated--2026-11-19)
+- [Release 0037 on `main`; #55 closed; C-cap designed — 2026-11-19](#release-0037-on-main-55-closed-c-cap-designed--2026-11-19)
+- [C-cap: OI-52 R2 on `release/0038`, sub-batches a–c — 2026-11-19](#c-cap-oi-52-r2-on-release0038-sub-batches-ac--2026-11-19)
+- [Release 0038 on `main`: 64-bit checked offsets — 2026-11-19](#release-0038-on-main-64-bit-checked-offsets--2026-11-19)
+- [OI-52 R2 on an Android device — 2026-11-19](#oi-52-r2-on-an-android-device--2026-11-19)
+- [Release 0039 on `main`: OI-54 step 1 — 2026-11-20](#release-0039-on-main-oi-54-step-1--2026-11-20)
+- [Release 0040 on `main`: consumer issues #136, #137, #133 — 2026-11-21](#release-0040-on-main-consumer-issues-136-137-133--2026-11-21)
+- [Release 0041 on `main`: `versionName` and uppercase CID digits — 2026-11-23](#release-0041-on-main-versionname-and-uppercase-cid-digits--2026-11-23)
+- [Release 0042 on `main`: carrier replace by CID, Wasm offset check, container sizing — 2026-11-24](#release-0042-on-main-carrier-replace-by-cid-wasm-offset-check-container-sizing--2026-11-24)
 
 ## Invariants that must not drift
 

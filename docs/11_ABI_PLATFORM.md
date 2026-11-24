@@ -5,24 +5,71 @@
 - [1. Purpose and scope](#1-purpose-and-scope)
 - [2. Normative definitions](#2-normative-definitions)
 - [3. Architectural boundary](#3-architectural-boundary)
+  - [3.1 Core XAX owns meaning, not platform convention](#31-core-xax-owns-meaning-not-platform-convention)
+  - [3.2 No second ABI or platform language](#32-no-second-abi-or-platform-language)
 - [4. First-class ABI model](#4-first-class-abi-model)
+  - [4.1 Parameter and return classification](#41-parameter-and-return-classification)
+  - [4.2 Register and stack conventions](#42-register-and-stack-conventions)
+  - [4.3 Variadic calls](#43-variadic-calls)
+  - [4.4 Unwind metadata](#44-unwind-metadata)
 - [5. Foreign import and export](#5-foreign-import-and-export)
+  - [5.1 Foreign import contract](#51-foreign-import-contract)
+  - [5.2 Foreign export contract](#52-foreign-export-contract)
+  - [5.3 Explicit loss of guarantees](#53-explicit-loss-of-guarantees)
+  - [5.4 Semantic adapters](#54-semantic-adapters)
+  - [5.5 C and other ecosystems](#55-c-and-other-ecosystems)
 - [6. Syscall, kernel, firmware, and device ABIs](#6-syscall-kernel-firmware-and-device-abis)
 - [7. Platform capability model](#7-platform-capability-model)
+  - [7.1 Capability requirements](#71-capability-requirements)
+  - [7.2 Compile-time checking](#72-compile-time-checking)
+  - [7.3 Optional and dynamic capabilities](#73-optional-and-dynamic-capabilities)
 - [8. Freestanding-first standard environment](#8-freestanding-first-standard-environment)
 - [9. Dynamic linking](#9-dynamic-linking)
 - [10. Exact unsupported-platform behavior](#10-exact-unsupported-platform-behavior)
+  - [10.1 Portable trap reason and target detail](#101-portable-trap-reason-and-target-detail)
 - [11. Invariants](#11-invariants)
 - [12. Rejected alternatives](#12-rejected-alternatives)
+  - [12.1 Make the C ABI the universal XAX ABI](#121-make-the-c-abi-the-universal-xax-abi)
+  - [12.2 Require libc as the platform abstraction](#122-require-libc-as-the-platform-abstraction)
+  - [12.4 Treat every foreign pointer as a normal proven XAX pointer](#124-treat-every-foreign-pointer-as-a-normal-proven-xax-pointer)
+  - [12.5 Give foreign calls implicit "may do anything" semantics](#125-give-foreign-calls-implicit-may-do-anything-semantics)
+  - [12.6 Require dynamic linking for foreign imports](#126-require-dynamic-linking-for-foreign-imports)
+  - [12.7 Define one mandatory standard runtime](#127-define-one-mandatory-standard-runtime)
 - [13. Interfaces with other XAX subsystems](#13-interfaces-with-other-xax-subsystems)
 - [14. Open issues](#14-open-issues)
+  - [14.1 Capability granularity](#141-capability-granularity)
+  - [14.2 Foreign contract inference](#142-foreign-contract-inference)
+  - [14.3 ABI classification representation](#143-abi-classification-representation)
 - [15. Falsification criteria](#15-falsification-criteria)
 - [16. Android arm64-v8a / modern libxposed bounded ABI slice (2026-10-01)](#16-android-arm64-v8a--modern-libxposed-bounded-abi-slice-2026-10-01)
+  - [16.1 Explicit exports and imports](#161-explicit-exports-and-imports)
+  - [16.2 libxposed native ABI](#162-libxposed-native-abi)
+  - [16.3 JNI bounded ABI slice](#163-jni-bounded-abi-slice)
+  - [16.4 Android shared-object startup surface](#164-android-shared-object-startup-surface)
+  - [16.4a C callbacks into XAX (ADR-107)](#164a-c-callbacks-into-xax-adr-107)
+  - [16.4b Stateful Activity (ADR-111)](#164b-stateful-activity-adr-111)
+  - [16.5 libxposed API-102 remote-capability ABI surface](#165-libxposed-api-102-remote-capability-abi-surface)
+  - [16.6 libxposed API-102 bounded hot-reload ABI surface](#166-libxposed-api-102-bounded-hot-reload-abi-surface)
+  - [16.7 General managed classes (`android-managed-class-v1`, ADR-199)](#167-general-managed-classes-android-managed-class-v1-adr-199)
+  - [16.8 Platform declarations and capability contracts (ADR-202 to ADR-204)](#168-platform-declarations-and-capability-contracts-adr-202-to-adr-204)
 - [17. Windows x86-64 hosted PE slice (2026-10-02)](#17-windows-x86-64-hosted-pe-slice-2026-10-02)
+  - [17.1 Imports](#171-imports)
+  - [17.2 Ownership of foreign ABIs](#172-ownership-of-foreign-abis)
+  - [17.3 Process lifecycle](#173-process-lifecycle)
+  - [17.4 Heap views](#174-heap-views)
+  - [17.5 Win64 callbacks and thread handles](#175-win64-callbacks-and-thread-handles)
 - [18. wasm32 WASI slice (2026-10-02)](#18-wasm32-wasi-slice-2026-10-02)
 - [18a. wasm32 browser slice (`wasm32-browser-v1`, ADR-103)](#18a-wasm32-browser-slice-wasm32-browser-v1-adr-103)
 - [19. Linux x86-64 hosted slice (2026-10-02)](#19-linux-x86-64-hosted-slice-2026-10-02)
+  - [19.1 `linux-x86_64-syscall-v1`](#191-linux-x86_64-syscall-v1)
+  - [19.2 `sysv-x86_64-c`](#192-sysv-x86_64-c)
+  - [19.2a `linux-x86_64-startup-v1`](#192a-linux-x86_64-startup-v1)
+  - [19.3 Process lifecycle](#193-process-lifecycle)
+  - [19.4 `linux-x86_64-process-v1` (ADR-224, 2026-10-08)](#194-linux-x86_64-process-v1-adr-224-2026-10-08)
 - [20. JVM slice (`jvm-classfile-v1`, ADR-112, 2026-10-03)](#20-jvm-slice-jvm-classfile-v1-adr-112-2026-10-03)
+  - [20.1 Member declarations](#201-member-declarations)
+  - [20.2 Values, traps, and exceptions](#202-values-traps-and-exceptions)
+  - [20.3 Process lifecycle](#203-process-lifecycle)
 - [21. RISC-V RV64 raw slice (`riscv64-baremetal-raw-v1`, ADR-113, 2026-10-03)](#21-risc-v-rv64-raw-slice-riscv64-baremetal-raw-v1-adr-113-2026-10-03)
 - [22. Linux AArch64 slice (`aarch64-linux-elf-*-v1`, ADR-123, 2026-10-03)](#22-linux-aarch64-slice-aarch64-linux-elf--v1-adr-123-2026-10-03)
 - [23. SPIR-V compute slice (`spirv-compute-v1`, ADR-124, 2026-10-03)](#23-spir-v-compute-slice-spirv-compute-v1-adr-124-2026-10-03)
@@ -680,7 +727,9 @@ One identity-only carrier declares a DEX class: descriptor, superclass, sorted i
 
 DEX forms: a void method with at most three one-register parameters keeps the original `invoke-direct` (35c) form byte for byte. Any other method uses `invoke-*/range` (3rc): `ins = this + parameters` (J/D take two registers), with one or two result registers below them, `move-result{,-wide,-object}` and the matching `return`.
 
-The export's non-proof ABI must be `(JNIEnv*, borrowed this, arguments...)` with JNI widths (`Z`/`B` 8 bits, `C`/`S` 16, `I` 32, `J` 64, `F` `f32`, `D` `f64`, references as borrowed JNI references of the exact class). Its non-proof results must be empty for `V`, the JNI width for primitives, or a local or borrowed reference of the exact class. The build checks this per method (`ANDROID-MANAGED-JNI-SIGNATURE`). `F`/`D` are exact IEEE carriers since ADR-202. A managed-class APK contains only these carriers, one manifest whose Activity is one of them, optional resources, optional platform declarations (§16.8), and exports. It accepts the v3 or the general v4 Android target and needs `minSdk >= 28` (DEX 039).
+The export's non-proof ABI must be `(JNIEnv*, borrowed this, arguments...)` with JNI widths (`Z`/`B` 8 bits, `C`/`S` 16, `I` 32, `J` 64, `F` `f32`, `D` `f64`, references as borrowed JNI references of the exact class). Its non-proof results must be empty for `V`, the JNI width for primitives, or a local or borrowed reference of the exact class. The build checks this per method (`ANDROID-MANAGED-JNI-SIGNATURE`).
+
+`F`/`D` are exact IEEE carriers since ADR-202. A managed-class APK contains only these carriers, one manifest whose Activity is one of them, optional resources, optional platform declarations (§16.8), and exports. It accepts the v3 or the general v4 Android target and needs `minSdk >= 28` (DEX 039).
 
 ### 16.8 Platform declarations and capability contracts (ADR-202 to ADR-204)
 
@@ -716,7 +765,9 @@ A `win64-c` code-entry pointer names a pure XAX function with no proof parameter
 
 ## 18. wasm32 WASI slice (2026-10-02)
 
-Target `wasm32-wasi-v1` adds `call_foreign` under the `wasm32-import` ABI: a declaration's `library` is the wasm import module and its `name` the field. Value types follow the wasm32 general profile (pointers are i32 linear-memory addresses). The module exports `_start` and `memory`; the entry takes and returns no machine values; termination is the program's explicit `proc_exit`. The WASI host is a platform-required runtime (UR-002); no JavaScript glue is generated or required. Bounded package: `xax_platform.wasi_preview1_api` (`args_sizes_get`, `fd_write`, `proc_exit`). `fd_write` iovec buffer words are exposed addresses (`pointer_address`, ADR-081); its declaration takes the buffer storage's memory effect as a second memory input/output so the buffer cannot end before the call. APIs that need provenance-carrying pointers reloaded from memory wait on OI-37.
+Target `wasm32-wasi-v1` adds `call_foreign` under the `wasm32-import` ABI: a declaration's `library` is the wasm import module and its `name` the field. Value types follow the wasm32 general profile (pointers are i32 linear-memory addresses). The module exports `_start` and `memory`; the entry takes and returns no machine values; termination is the program's explicit `proc_exit`. The WASI host is a platform-required runtime (UR-002); no JavaScript glue is generated or required.
+
+Bounded package: `xax_platform.wasi_preview1_api` (`args_sizes_get`, `fd_write`, `proc_exit`). `fd_write` iovec buffer words are exposed addresses (`pointer_address`, ADR-081); its declaration takes the buffer storage's memory effect as a second memory input/output so the buffer cannot end before the call. APIs that need provenance-carrying pointers reloaded from memory wait on OI-37.
 
 ## 18a. wasm32 browser slice (`wasm32-browser-v1`, ADR-103)
 
@@ -746,17 +797,27 @@ name = nr                      -- machine operands passed in order
 name = nr ":" arg ("," arg)*   -- arg = "$k" (k-th machine operand) | unsigned 64-bit decimal literal
 ```
 
-Each machine operand is used exactly once, with at most six arguments, placed in `rdi, rsi, rdx, r10, r8, r9`; `eax` carries the number, and the result is the exact 64-bit `rax`. Proof values erase. With an allocator contract, the kernel's error range `-4095..-1` projects to the contract's nullable (zero) pointer, and `heap_view` then traps on null. Fixed literals (`PROT_READ|PROT_WRITE`, `MAP_PRIVATE|MAP_ANONYMOUS`, `fd = -1`) live in the template, so "anonymous private mappings are zero-filled" is part of the `mmap_anonymous` declaration identity rather than an assumption about caller arguments. Syscalls that read or write program memory take the reached storage's memory effect. Bounded package: `xax_linux.linux_api()` (`read`, `write`, `openat`, `close`, `mmap_anonymous`, `munmap_view`, `exit_group`). Platform pointers are address-space-2 (heap/external) pointers.
+Each machine operand is used exactly once, with at most six arguments, placed in `rdi, rsi, rdx, r10, r8, r9`; `eax` carries the number, and the result is the exact 64-bit `rax`. Proof values erase. With an allocator contract, the kernel's error range `-4095..-1` projects to the contract's nullable (zero) pointer, and `heap_view` then traps on null. Fixed literals (`PROT_READ|PROT_WRITE`, `MAP_PRIVATE|MAP_ANONYMOUS`, `fd = -1`) live in the template, so "anonymous private mappings are zero-filled" is part of the `mmap_anonymous` declaration identity rather than an assumption about caller arguments.
+
+Syscalls that read or write program memory take the reached storage's memory effect. Bounded package: `xax_linux.linux_api()` (`read`, `write`, `openat`, `close`, `mmap_anonymous`, `munmap_view`, `exit_group`). Platform pointers are address-space-2 (heap/external) pointers.
 
 ### 19.2 `sysv-x86_64-c`
 
-A declaration imports a C symbol from the shared library named by its soname (`library`). It lowers only on the explicit-loader profile; on the static profile it rejects (`SYSV-C-REQUIRES-DYNAMIC-PROFILE`). The artifact's `PT_INTERP` is exactly `/lib64/ld-linux-x86-64.so.2`; `DT_NEEDED` lists exactly the declared sonames (no default libc); each import gets one bind-now `R_X86_64_GLOB_DAT` GOT slot and is called through the shared `call_import` path. Signatures are limited to register-passed psABI scalars: at most six integer or pointer arguments in `rdi, rsi, rdx, rcx, r8, r9`, at most eight f32/f64 arguments in `xmm0`–`xmm7` (the two sequences are independent), and at most one scalar result in `rax` or `xmm0` (`SYSV-C-SCALAR-CLASS`, ADR-102). ELF symbol lookup is global, so one symbol name cannot be imported from two libraries (`XAX.LINUX.IMPORT`); the declared library is a load dependency, not a direct binding. Aggregates, stack arguments, variadics, and symbol versioning are OI-40.
+A declaration imports a C symbol from the shared library named by its soname (`library`). It lowers only on the explicit-loader profile; on the static profile it rejects (`SYSV-C-REQUIRES-DYNAMIC-PROFILE`). The artifact's `PT_INTERP` is exactly `/lib64/ld-linux-x86-64.so.2`; `DT_NEEDED` lists exactly the declared sonames (no default libc); each import gets one bind-now `R_X86_64_GLOB_DAT` GOT slot and is called through the shared `call_import` path.
+
+Signatures are limited to register-passed psABI scalars: at most six integer or pointer arguments in `rdi, rsi, rdx, rcx, r8, r9`, at most eight f32/f64 arguments in `xmm0`–`xmm7` (the two sequences are independent), and at most one scalar result in `rax` or `xmm0` (`SYSV-C-SCALAR-CLASS`, ADR-102). ELF symbol lookup is global, so one symbol name cannot be imported from two libraries (`XAX.LINUX.IMPORT`); the declared library is a load dependency, not a direct binding.
+
+Aggregates, stack arguments, variadics, and symbol versioning are OI-40.
 
 **Callbacks (ADR-102).** A function C may call is passed as `FUNCTION_ADDRESS` with result type `xax_linux.linux_api().c_callback` (`ptr<opaque_identity<"code-entry:sysv-x86_64-c">>`), and the foreign declaration names that same type for its callback parameter. The calling convention is part of the type, so the verifier rejects an internal address passed to C and a C-entry address called with `CALL_INDIRECT`. The target must be pure (no proof parameters or results), because C cannot pass effect or resource tokens. Callbacks that read memory the C caller passes are OI-42. The backend places one adapter per such function after all functions; unused functions get none. The adapter is `sub rsp, 40`, zero-extending moves from `rdi, rsi, rdx, rcx` into the internal `rcx, rdx, r8, r9` (highest position first, so no source is overwritten before it is read), `call`, `add rsp, 40`, `ret`. Internal callees preserve `rbx, rbp, r12`–`r15`, the SysV callee-saved set, and the result is already in `rax`. Limits: at most four parameters of 8/16/32/64 bits, at most one integer or pointer result (`SYSV-ENTRY-SIGNATURE`), Linux profiles only (`SYSV-ENTRY-TARGET`).
 
 ### 19.2a `linux-x86_64-startup-v1`
 
-`linux-x86_64-startup-v1` (ADR-094) reads the initial process stack inline, with no code before the entry function. It is owned by the Linux profiles and allowed only in the process entry function (`LINUX-STARTUP-PROCESS-ENTRY`). The declarations have library `linux` and these names: `argc() -> bits<64>`, `arg_length(i)`, `arg_copy(i, ptr<bytes,rw>, memory) -> (bits<64>, memory)`, `envc`, `env_length`, `env_copy`, and `auxv_value(type) -> bits<64>`. An index at or past `argc`/`envc` traps. `*_length` excludes the terminating NUL. `*_copy` copies at most the destination view's static extent and returns the bytes copied, so a result below `*_length` reports truncation. `auxv_value` returns 0 when the type is absent. Lowering: the entry frame has no pushes, so `&argc = rsp + frame size`. Each read uses only volatile registers (`rax, rcx, rdx, rsi, rdi, r11`), with bounded scans to the `envp` NULL and `AT_NULL`, and `rep movsb` for copies. Each read is treated like a call for allocation.
+`linux-x86_64-startup-v1` (ADR-094) reads the initial process stack inline, with no code before the entry function. It is owned by the Linux profiles and allowed only in the process entry function (`LINUX-STARTUP-PROCESS-ENTRY`). The declarations have library `linux` and these names: `argc() -> bits<64>`, `arg_length(i)`, `arg_copy(i, ptr<bytes,rw>, memory) -> (bits<64>, memory)`, `envc`, `env_length`, `env_copy`, and `auxv_value(type) -> bits<64>`.
+
+An index at or past `argc`/`envc` traps. `*_length` excludes the terminating NUL. `*_copy` copies at most the destination view's static extent and returns the bytes copied, so a result below `*_length` reports truncation. `auxv_value` returns 0 when the type is absent. Lowering: the entry frame has no pushes, so `&argc = rsp + frame size`. Each read uses only volatile registers (`rax, rcx, rdx, rsi, rdi, r11`), with bounded scans to the `envp` NULL and `AT_NULL`, and `rep movsb` for copies.
+
+Each read is treated like a call for allocation.
 
 ### 19.3 Process lifecycle
 
@@ -764,7 +825,9 @@ As on Windows (§17.3), the container emits no code: `e_entry` is the XAX entry 
 
 ### 19.4 `linux-x86_64-process-v1` (ADR-224, 2026-10-08)
 
-`xax_linux.process_contract()` states, as versioned data, what a host may rely on when it runs a Linux x86-64 XAX executable. It describes behaviour §19.1–§19.3 already define and adds no runner or runtime. Container: ELF64 `ET_EXEC` whose `e_entry` is the XAX entry function. Runtime: none. Entry: §19.3. Inputs: fd 0 through `linux.read`, and argc/argv/envp/auxv only through §19.2a reads in the entry function (this supersedes the last sentence of §19.3 for argv/env/auxv). Outputs: fds 1 and 2 through `linux.write`. Termination: only an explicit `exit_group`, whose `b32` argument modulo 256 is the exit status; a failed check or a return from the entry executes `ud2`, so the process receives `SIGILL`. System calls: exactly the declared syscall imports the program reaches. Confinement is the host's concern. `tests/test_xax_linux_process_contract.py` exercises every clause; changing a clause requires a new identity.
+`xax_linux.process_contract()` states, as versioned data, what a host may rely on when it runs a Linux x86-64 XAX executable. It describes behaviour §19.1–§19.3 already define and adds no runner or runtime. Container: ELF64 `ET_EXEC` whose `e_entry` is the XAX entry function. Runtime: none. Entry: §19.3. Inputs: fd 0 through `linux.read`, and argc/argv/envp/auxv only through §19.2a reads in the entry function (this supersedes the last sentence of §19.3 for argv/env/auxv).
+
+Outputs: fds 1 and 2 through `linux.write`. Termination: only an explicit `exit_group`, whose `b32` argument modulo 256 is the exit status; a failed check or a return from the entry executes `ud2`, so the process receives `SIGILL`. System calls: exactly the declared syscall imports the program reaches. Confinement is the host's concern. `tests/test_xax_linux_process_contract.py` exercises every clause; changing a clause requires a new identity.
 
 ## 20. JVM slice (`jvm-classfile-v1`, ADR-112, 2026-10-03)
 

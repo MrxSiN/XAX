@@ -9,26 +9,130 @@
 - [1. Normative language and precedence](#1-normative-language-and-precedence)
 - [2. Foundational invariants](#2-foundational-invariants)
 - [3. Canonical semantic program model](#3-canonical-semantic-program-model)
+  - [3.1 Entities and containment](#31-entities-and-containment)
+  - [3.2 Identity classes](#32-identity-classes)
+  - [3.3 Recursive functions](#33-recursive-functions)
+  - [3.4 Block-parameter SSA](#34-block-parameter-ssa)
+  - [3.5 Edge classes](#35-edge-classes)
+  - [3.6 Operations and nodes](#36-operations-and-nodes)
+  - [3.7 Control](#37-control)
 - [4. Types, values, constants, and layout](#4-types-values-constants-and-layout)
+  - [4.1 Core type families](#41-core-type-families)
+  - [4.2 Exact scalar semantics](#42-exact-scalar-semantics)
+  - [4.3 Aggregates and sums](#43-aggregates-and-sums)
+  - [4.4 Pointer and function types](#44-pointer-and-function-types)
+  - [4.5 Effect and capability separation](#45-effect-and-capability-separation)
+  - [4.6 Constants, zero, poison, and undefined values](#46-constants-zero-poison-and-undefined-values)
+  - [4.7 Semantic type versus physical layout](#47-semantic-type-versus-physical-layout)
+  - [4.8 Reinterpretation and proof facts](#48-reinterpretation-and-proof-facts)
 - [5. Memory, pointers, ownership, and resources](#5-memory-pointers-ownership-and-resources)
+  - [5.1 Storage objects](#51-storage-objects)
+  - [5.2 Pointer facts and addressing](#52-pointer-facts-and-addressing)
+  - [5.3 Load, store, copy, and move](#53-load-store-copy-and-move)
+  - [5.4 Aliasing](#54-aliasing)
+  - [5.5 Volatile, MMIO, and DMA](#55-volatile-mmio-and-dma)
+  - [5.6 Raw operations](#56-raw-operations)
+  - [5.7 Resources](#57-resources)
 - [6. Effects, calls, and errors](#6-effects-calls-and-errors)
+  - [6.1 Effect partial order](#61-effect-partial-order)
+  - [6.2 Effect summaries](#62-effect-summaries)
+  - [6.3 Recoverable errors and foreign exceptions](#63-recoverable-errors-and-foreign-exceptions)
 - [7. Concurrency, atomics, interrupts, and real-time profiles](#7-concurrency-atomics-interrupts-and-real-time-profiles)
+  - [7.1 Atomic operations and orders](#71-atomic-operations-and-orders)
+  - [7.2 Target atomic capability](#72-target-atomic-capability)
+  - [7.3 Data races and synchronization libraries](#73-data-races-and-synchronization-libraries)
+  - [7.4 Interrupts and target traps](#74-interrupts-and-target-traps)
+  - [7.5 SIMD/GPU boundary](#75-simdgpu-boundary)
+  - [7.6 Real-time profiles](#76-real-time-profiles)
 - [8. Compile-time execution, specialization, and metaprogramming](#8-compile-time-execution-specialization-and-metaprogramming)
+  - [8.1 One semantic language](#81-one-semantic-language)
+  - [8.2 Isolation and authority](#82-isolation-and-authority)
+  - [8.3 Generic programming](#83-generic-programming)
+  - [8.4 Semantic introspection and construction](#84-semantic-introspection-and-construction)
+  - [8.5 Determinism, boundedness, caching](#85-determinism-boundedness-caching)
 - [9. Canonical serialization, identity, and versioning](#9-canonical-serialization-identity-and-versioning)
+  - [9.1 Store invariants](#91-store-invariants)
+  - [9.2 Container v1](#92-container-v1)
+  - [9.3 Primitive encoding](#93-primitive-encoding)
+  - [9.4 Semantic object envelope and CID](#94-semantic-object-envelope-and-cid)
+  - [9.5 Core object kinds](#95-core-object-kinds)
+  - [9.6 References and interning](#96-references-and-interning)
+  - [9.7 CID, lineage, Merkle DAG, and mutation](#97-cid-lineage-merkle-dag-and-mutation)
+  - [9.8 Non-semantic metadata, record order, index, and integrity](#98-non-semantic-metadata-record-order-index-and-integrity)
+  - [9.9 Version evolution, compatibility, and corruption](#99-version-evolution-compatibility-and-corruption)
 - [10. AI workspace, queries, transactions, and diagnostics](#10-ai-workspace-queries-transactions-and-diagnostics)
+  - [10.1 Workspace model](#101-workspace-model)
+  - [10.2 Core query families](#102-core-query-families)
+  - [10.3 Transactions](#103-transactions)
+  - [10.4 Conflict classes](#104-conflict-classes)
+  - [10.5 Machine-first diagnostics](#105-machine-first-diagnostics)
+  - [10.6 Compact transport](#106-compact-transport)
 - [11. Universal target model](#11-universal-target-model)
+  - [11.1 Target package](#111-target-package)
+  - [11.2 Capabilities and memory spaces](#112-capabilities-and-memory-spaces)
+  - [11.3 Registers and instructions](#113-registers-and-instructions)
+  - [11.4 Opaque operations](#114-opaque-operations)
+  - [11.5 Legalization, selection, scheduling, formats](#115-legalization-selection-scheduling-formats)
 - [12. ABI, foreign interoperability, platform capabilities, and standard environment](#12-abi-foreign-interoperability-platform-capabilities-and-standard-environment)
+  - [12.1 ABI boundary](#121-abi-boundary)
+  - [12.2 ABI model](#122-abi-model)
+  - [12.3 Foreign import/export contracts](#123-foreign-importexport-contracts)
+  - [12.4 Platform capabilities](#124-platform-capabilities)
+  - [12.5 Freestanding-first environment and dynamic linking](#125-freestanding-first-environment-and-dynamic-linking)
 - [13. Compiler core, verifier, incrementality, and semantic database](#13-compiler-core-verifier-incrementality-and-semantic-database)
+  - [13.1 Services](#131-services)
+  - [13.2 Verification layers](#132-verification-layers)
+  - [13.3 Dependencies and invalidation](#133-dependencies-and-invalidation)
+  - [13.4 Determinism and parallelism](#134-determinism-and-parallelism)
+  - [13.5 Trusted core](#135-trusted-core)
 - [14. Optimization, lowering, code generation, and cost model](#14-optimization-lowering-code-generation-and-cost-model)
+  - [14.1 Pipeline](#141-pipeline)
+  - [14.2 Optimization legality](#142-optimization-legality)
+  - [14.3 Correctness mechanisms](#143-correctness-mechanisms)
+  - [14.4 Lowering and machine code](#144-lowering-and-machine-code)
+  - [14.5 Cost model](#145-cost-model)
 - [15. Packages, builds, security, reproducibility, and supply chain](#15-packages-builds-security-reproducibility-and-supply-chain)
+  - [15.1 Package identity and resolution](#151-package-identity-and-resolution)
+  - [15.2 Snapshots](#152-snapshots)
+  - [15.3 Builds](#153-builds)
+  - [15.4 Reproducible input closure and modes](#154-reproducible-input-closure-and-modes)
+  - [15.5 Capability security](#155-capability-security)
+  - [15.6 Integrity, signatures, provenance, trust](#156-integrity-signatures-provenance-trust)
 - [16. Bootstrapping, self-hosting, and repository continuity](#16-bootstrapping-self-hosting-and-repository-continuity)
+  - [16.1 Bootstrap roles](#161-bootstrap-roles)
+  - [16.2 Bootstrap milestones](#162-bootstrap-milestones)
+  - [16.3 Trust](#163-trust)
+  - [16.4 Repository continuity](#164-repository-continuity)
+  - [16.5 Compiler migration steps](#165-compiler-migration-steps)
 - [17. Conformance model reference](#17-conformance-model-reference)
 - [18. Benchmark and evidence reference](#18-benchmark-and-evidence-reference)
 - [19. Open implementation choices](#19-open-implementation-choices)
 - [20. Versioning and change rule](#20-versioning-and-change-rule)
 - [21. Universal replacement](#21-universal-replacement)
+  - [21.1 Definition](#211-definition)
+  - [21.2 Replacement conformance levels](#212-replacement-conformance-levels)
+  - [21.3 Evidence labels](#213-evidence-labels)
+  - [21.4 Universal Replacement Matrix](#214-universal-replacement-matrix)
+  - [21.5 Kernel admission rule](#215-kernel-admission-rule)
+  - [21.6 Lowering of conventional programming models](#216-lowering-of-conventional-programming-models)
+  - [21.7 Platform classes](#217-platform-classes)
+  - [21.8 Executable and object formats](#218-executable-and-object-formats)
+  - [21.9 Foreign ecosystem import](#219-foreign-ecosystem-import)
+  - [21.9a Linux x86-64 hosted profiles](#219a-linux-x86-64-hosted-profiles)
+  - [21.9b Browser pages](#219b-browser-pages)
+  - [21.9c JVM class files](#219c-jvm-class-files)
+  - [21.9d RISC-V RV64 raw images](#219d-risc-v-rv64-raw-images)
+  - [21.9d.1 x86-64 views profile](#219d1-x86-64-views-profile)
+  - [21.9e Linux AArch64 hosted profiles](#219e-linux-aarch64-hosted-profiles)
+  - [21.9f SPIR-V compute for Vulkan](#219f-spir-v-compute-for-vulkan)
+  - [21.9g Board packages](#219g-board-packages)
+  - [21.9h Windows x86-64 hosted profile: DLLs, imports, COM](#219h-windows-x86-64-hosted-profile-dlls-imports-com)
+  - [21.10 Standard semantic libraries](#2110-standard-semantic-libraries)
+  - [21.11 Observability](#2111-observability)
 - [Appendix A. Android arm64-v8a hosted target note (2026-10-01)](#appendix-a-android-arm64-v8a-hosted-target-note-2026-10-01)
 - [Appendix B. Android direct artifact and SDK-package note (2026-10-01)](#appendix-b-android-direct-artifact-and-sdk-package-note-2026-10-01)
+  - [Declarative Surface Activity profile (2026-10-07)](#declarative-surface-activity-profile-2026-10-07)
+  - [Platform declarations and capability contracts (2026-10-08, ADR-203/204)](#platform-declarations-and-capability-contracts-2026-10-08-adr-203204)
 - [Platform carrier replacement v1 (2026-10-07)](#platform-carrier-replacement-v1-2026-10-07)
 
 ## 1. Normative language and precedence
@@ -229,7 +333,9 @@ unreachable
 
 There is no fallthrough and no truthiness coercion. `switch` has no fallthrough and requires unique cases plus either a default or proof of exhaustiveness.
 
-`trap` is explicit fatal control. It performs no implicit unwinding or cleanup. Its portable payload core is a 16-bit unsigned reason: the empty payload is reason 0 (`unspecified`) with no target detail; a non-empty payload begins with the canonical ULEB encoding of a reason in `0..65535`, followed by target/platform-specific bytes, with the zero encoding permitted only when such suffix bytes are present. Prototype portable reason 1 denotes `explicit`; reason 2 denotes `integer-divide-by-zero` (ADR-084); additional portable meanings require an explicit specification decision. Target-specific suffix bytes are semantic data but do not acquire portable meaning or implicit cleanup/unwind behavior. `unreachable` is a verifier assertion and MUST be proven unreachable unless a separately defined raw/target construct supplies different semantics.
+`trap` is explicit fatal control. It performs no implicit unwinding or cleanup. Its portable payload core is a 16-bit unsigned reason: the empty payload is reason 0 (`unspecified`) with no target detail; a non-empty payload begins with the canonical ULEB encoding of a reason in `0..65535`, followed by target/platform-specific bytes, with the zero encoding permitted only when such suffix bytes are present.
+
+Prototype portable reason 1 denotes `explicit`; reason 2 denotes `integer-divide-by-zero` (ADR-084); additional portable meanings require an explicit specification decision. Target-specific suffix bytes are semantic data but do not acquire portable meaning or implicit cleanup/unwind behavior. `unreachable` is a verifier assertion and MUST be proven unreachable unless a separately defined raw/target construct supplies different semantics.
 
 Core `call` has no hidden exceptional successor.
 
@@ -262,7 +368,9 @@ ABI/platform contracts that define its representation and lifetime.
 
 `bits<N>` is an exact N-bit value domain for arbitrary positive `N`. Stored bits have no global signedness. Signedness is an operation property where required.
 
-Integer arithmetic MUST identify exact behavior, including overflow semantics. Representative families include wrapping, checked, saturating, signed, and unsigned interpretations where applicable. Pure bit operations likewise have width-exact semantics. `bit.xor`, `bit.and`, and `bit.or` return the N-bit exclusive-or, conjunction, and disjunction of two `bits<N>` values; `rotate.right k` rotates one `bits<N>` value right by the explicit amount `0 <= k < N` without changing width. `udiv` and `urem` return the unsigned quotient and remainder of two `bits<N>` values; a zero divisor executes an explicit trap with portable reason 2 and never yields a value. `int.truncate` maps `bits<M>` to `bits<N>` for `N < M` by keeping the low N bits; `int.zero_extend` maps `bits<M>` to `bits<N>` for `N > M`; identity width changes are invalid nodes. Constant shifts and sign extension are not kernel operations: they are the exact compositions `mul.wrap 2^k`, `udiv 2^k`, and `(zext(x) xor 2^(M-1)) - 2^(M-1)`, which lowering MAY select as single instructions (ADR-084, OI-39).
+Integer arithmetic MUST identify exact behavior, including overflow semantics. Representative families include wrapping, checked, saturating, signed, and unsigned interpretations where applicable. Pure bit operations likewise have width-exact semantics. `bit.xor`, `bit.and`, and `bit.or` return the N-bit exclusive-or, conjunction, and disjunction of two `bits<N>` values; `rotate.right k` rotates one `bits<N>` value right by the explicit amount `0 <= k < N` without changing width.
+
+`udiv` and `urem` return the unsigned quotient and remainder of two `bits<N>` values; a zero divisor executes an explicit trap with portable reason 2 and never yields a value. `int.truncate` maps `bits<M>` to `bits<N>` for `N < M` by keeping the low N bits; `int.zero_extend` maps `bits<M>` to `bits<N>` for `N > M`; identity width changes are invalid nodes. Constant shifts and sign extension are not kernel operations: they are the exact compositions `mul.wrap 2^k`, `udiv 2^k`, and `(zext(x) xor 2^(M-1)) - 2^(M-1)`, which lowering MAY select as single instructions (ADR-084, OI-39).
 
 There are no implicit integer promotions or implicit value conversions.
 
@@ -388,7 +496,9 @@ Volatile access is observable but is not atomic and does not create synchronizat
 
 MMIO/device memory is governed by target-defined address-space/device contracts describing legal access widths, alignment, side effects, speculation restrictions, ordering hooks, and other relevant behavior.
 
-DMA buffers, mappings, ownership transitions, cache maintenance, and synchronization are explicit resources/operations when required by the target/platform contract. DMA buffer resource kinds that use the shared cross-target vocabulary distinguish `host-unmapped`, `host-mapped`, `host-dirty`, `device-owned`, `device-pending`, and `host-stale`. `device-pending` means device work has not yet passed the required explicit synchronization point; `host-dirty` and `host-stale` mean required non-coherent cache maintenance has not yet occurred. A coherent package may omit the dirty/stale states and maintenance operations when its target contract proves they are unnecessary, but it may not silently omit ownership, mapping, or synchronization transitions that remain semantically required. These states use the existing compact `resource<K,state>` encoding; no DMA-specific core object kind is required.
+DMA buffers, mappings, ownership transitions, cache maintenance, and synchronization are explicit resources/operations when required by the target/platform contract. DMA buffer resource kinds that use the shared cross-target vocabulary distinguish `host-unmapped`, `host-mapped`, `host-dirty`, `device-owned`, `device-pending`, and `host-stale`. `device-pending` means device work has not yet passed the required explicit synchronization point; `host-dirty` and `host-stale` mean required non-coherent cache maintenance has not yet occurred.
+
+A coherent package may omit the dirty/stale states and maintenance operations when its target contract proves they are unnecessary, but it may not silently omit ownership, mapping, or synchronization transitions that remain semantically required. These states use the existing compact `resource<K,state>` encoding; no DMA-specific core object kind is required.
 
 ### 5.6 Raw operations
 
@@ -398,13 +508,23 @@ A waiver never removes unrelated typing, SSA, effect, resource, capability, or c
 
 `pointer_address` (ADR-081) converts a pointer to `bits<N>`, N equal to the selected target's pointer width. It carries a mandatory provenance-exposure waiver attribute, requires live storage when the pointer has a local fact, and produces an integer with no provenance. Only `pointer_rebase` converts such an integer back into a dereferenceable pointer, and only inside a live view that already carries the provenance.
 
-`pointer_rebase` (operation 73, ADR-092) takes a view pointer with a local storage fact, a `bits<32|64>` address (the backend requires the target pointer width), and an extent attribute E. The result type MUST be in the view's address space, with the same element, no added permission, and alignment A no greater than the view's. The result carries the view's storage, lifetime, and alias class, and extent E (1 <= E <= view extent). At run time, let d be the address minus the view address, modulo 2^N. If d > view extent - E or d is not a multiple of A, the program traps; no value is produced. The verifier models the unknown position as a *window* (view extent - E, accumulated across nested rebases). A load through a windowed pointer proves initialization only when the whole window plus the access is initialized. A store through it records no new initialized interval. Atomics, heap-call contracts, and view-base requirements reject windowed pointers. The reference executor rejects the operation, because addresses are target facts. Lowering on x86-64 Linux is `sub`, `ror log2(A)`, `cmp`, then a cold trap branch; on wasm32 it is `i32.sub`, `i32.rotr`, `i32.gt_u`, then `unreachable`. A target whose storage could start at address 0 MUST reserve it, because programs may use 0 as a null link (wasm32 reserves bytes 0–15; ADR-093). Foreign code that dereferences an exposed address MUST receive that storage's memory effect so lifetime ordering stays explicit.
+`pointer_rebase` (operation 73, ADR-092) takes a view pointer with a local storage fact, a `bits<32|64>` address (the backend requires the target pointer width), and an extent attribute E. The result type MUST be in the view's address space, with the same element, no added permission, and alignment A no greater than the view's. The result carries the view's storage, lifetime, and alias class, and extent E (1 <= E <= view extent).
+
+At run time, let d be the address minus the view address, modulo 2^N. If d > view extent - E or d is not a multiple of A, the program traps; no value is produced. The verifier models the unknown position as a *window* (view extent - E, accumulated across nested rebases). A load through a windowed pointer proves initialization only when the whole window plus the access is initialized. A store through it records no new initialized interval.
+
+Atomics, heap-call contracts, and view-base requirements reject windowed pointers. The reference executor rejects the operation, because addresses are target facts. Lowering on x86-64 Linux is `sub`, `ror log2(A)`, `cmp`, then a cold trap branch; on wasm32 it is `i32.sub`, `i32.rotr`, `i32.gt_u`, then `unreachable`. A target whose storage could start at address 0 MUST reserve it, because programs may use 0 as a null link (wasm32 reserves bytes 0–15; ADR-093).
+
+Foreign code that dereferences an exposed address MUST receive that storage's memory effect so lifetime ordering stays explicit.
 
 Pointer-typed memory elements (ADR-082) hold one target pointer word (access size 4 or 8; the backend requires its pointer width). Only provenance-free pointers — function addresses and foreign/external pointers without a local storage fact — may be stored; a reloaded pointer carries no facts. Storing a pointer with local storage provenance is rejected (`MEMORY-POINTER-STORE-LOCAL-PROVENANCE`) until container/referent lifetime coupling exists (OI-37). Pointer-linked data over XAX-owned storage uses arena + index representations.
 
 `growable.load.bits.le` (operation 77) and `growable.store.bits.le` (78) (ADR-369) are the checked forms with a `bits<64>` limit operand after the offset (`(pointer, offset, limit, memory)` and `(pointer, offset, limit, value, memory)`): the runtime condition is `offset + size <= limit` and `offset + size <=` the pointer's extent, else trap; every other checked-access rule holds unchanged. A growable view is an ordinary heap view reserved at its largest extent and used through a limit the program grows with ordinary arithmetic and capacity checks, committing the memory it grows into (lazily committing hosts need nothing), so no host needs a fault handler. Targets without support reject the operations.
 
-`link` (type form 11, ADR-097) is an 8-byte scalar whose only constant is null. A view whose element is a tuple of whole-byte bits, float, or link fields is a record array: its extent is a whole number of records, `address_offset` moves by whole records or lands exactly on a field (and then has the field's extent), and checked dynamic-offset accesses cannot reach it. `link_make` (operation 74) turns a record-start pointer into a link. `link_follow` (75) takes the storage's whole record view and a link, and yields a one-record pointer after a null test. Each storage's link fields point into one fixed target: itself, or the record view named by an optional fourth `heap_view` operand. A store into a link field accepts only null or a link into that target. Foreign calls may not receive a link-bearing storage's memory effect except to deallocate it. Atomics may not write link fields. A target must outlive the storages that target it. Links compare only with `eq`/`ne`. `link_target` (76, ADR-101) in an entry block declares that one borrowed view parameter's links point into another borrowed view parameter. Each direct call site must pass a matching pair. Without it, borrowed views link into themselves. Under these rules every loaded link is null or a record start of a known live storage, so following it needs no range check.
+`link` (type form 11, ADR-097) is an 8-byte scalar whose only constant is null. A view whose element is a tuple of whole-byte bits, float, or link fields is a record array: its extent is a whole number of records, `address_offset` moves by whole records or lands exactly on a field (and then has the field's extent), and checked dynamic-offset accesses cannot reach it. `link_make` (operation 74) turns a record-start pointer into a link.
+
+`link_follow` (75) takes the storage's whole record view and a link, and yields a one-record pointer after a null test. Each storage's link fields point into one fixed target: itself, or the record view named by an optional fourth `heap_view` operand. A store into a link field accepts only null or a link into that target. Foreign calls may not receive a link-bearing storage's memory effect except to deallocate it.
+
+Atomics may not write link fields. A target must outlive the storages that target it. Links compare only with `eq`/`ne`. `link_target` (76, ADR-101) in an entry block declares that one borrowed view parameter's links point into another borrowed view parameter. Each direct call site must pass a matching pair. Without it, borrowed views link into themselves. Under these rules every loaded link is null or a record start of a known live storage, so following it needs no range check.
 
 ### 5.7 Resources
 
@@ -701,9 +821,15 @@ Required families include `entity`, `expand`, `users`, `operands`, `callers`, `c
 
 Query results MUST distinguish authoritative facts, derived facts, estimates, unknown/unavailable facts, and stale facts. Target-dependent results MUST identify the target package/configuration.
 
-Artifact mappings are derived compiler facts, never canonical program semantics. Exact byte mappings MUST be attributable to the exact semantic root, target/configuration, compiler/lowering identity, and emitted artifact. Output-affecting compiler and lowering implementations MUST have explicit versioned identities; those identities MUST NOT be reverse-derived from diagnostic text or disassembly. A reusable mapping binding records the semantic root, target/configuration identity, compiler identity, lowering identity, emitted-artifact identity/digest, and retained exact ranges. If any recorded dependency changes, the binding is stale and mapping queries MUST reject or return stale rather than reuse it. Byte ranges use half-open intervals `[start,end)`. An implementation MUST NOT infer an exact semantic range merely from instruction adjacency or disassembly when emission provenance is unavailable. A semantic entity that emits no independently attributable byte range, or an artifact range whose contributors cannot be established exactly, MUST be reported as unavailable/unknown rather than assigned a guessed mapping. Workspace-local artifact/mapping handles are generation-scoped and become stale when their dependency scope changes. The `map_semantic` / `map_artifact` query contract is target-independent: backend-specific provenance carriers and artifact container layouts are tooling details, not alternate semantic interfaces or source forms.
+Artifact mappings are derived compiler facts, never canonical program semantics. Exact byte mappings MUST be attributable to the exact semantic root, target/configuration, compiler/lowering identity, and emitted artifact. Output-affecting compiler and lowering implementations MUST have explicit versioned identities; those identities MUST NOT be reverse-derived from diagnostic text or disassembly. A reusable mapping binding records the semantic root, target/configuration identity, compiler identity, lowering identity, emitted-artifact identity/digest, and retained exact ranges.
 
-A `proof` query reports verifier-status evidence, not a canonical proof certificate. When a proof result is exposed as a transaction read dependency, the workspace MUST bind a local proof-dependency identity to the exact semantic subject observed, the root at which it was observed, the verifier identity/version, and the freshness rule required by that result. The binding MUST NOT become semantic source or require persistent CIDs in ordinary AI context. A proof dependency MAY remain reusable across an unrelated commit only when the implementation can establish that the exact semantic subject and verifier identity required by the reported fact are unchanged. Root-scoped proof dependencies become stale on any root change. Once a proof dependency is invalidated by a dependency-changing commit, later restoration of equal-looking state MUST NOT silently revive that old local dependency handle.
+If any recorded dependency changes, the binding is stale and mapping queries MUST reject or return stale rather than reuse it. Byte ranges use half-open intervals `[start,end)`. An implementation MUST NOT infer an exact semantic range merely from instruction adjacency or disassembly when emission provenance is unavailable. A semantic entity that emits no independently attributable byte range, or an artifact range whose contributors cannot be established exactly, MUST be reported as unavailable/unknown rather than assigned a guessed mapping.
+
+Workspace-local artifact/mapping handles are generation-scoped and become stale when their dependency scope changes. The `map_semantic` / `map_artifact` query contract is target-independent: backend-specific provenance carriers and artifact container layouts are tooling details, not alternate semantic interfaces or source forms.
+
+A `proof` query reports verifier-status evidence, not a canonical proof certificate. When a proof result is exposed as a transaction read dependency, the workspace MUST bind a local proof-dependency identity to the exact semantic subject observed, the root at which it was observed, the verifier identity/version, and the freshness rule required by that result. The binding MUST NOT become semantic source or require persistent CIDs in ordinary AI context.
+
+A proof dependency MAY remain reusable across an unrelated commit only when the implementation can establish that the exact semantic subject and verifier identity required by the reported fact are unchanged. Root-scoped proof dependencies become stale on any root change. Once a proof dependency is invalidated by a dependency-changing commit, later restoration of equal-looking state MUST NOT silently revive that old local dependency handle.
 
 ### 10.3 Transactions
 
@@ -738,19 +864,35 @@ A workspace-local handle MAY abbreviate `expected_root` in a transaction only wh
 
 Mutation vocabulary includes `insert`, `delete`, `replace`, `connect`, `disconnect`, `set`, `move`, `specialize`, `verify`, `commit`, and `rollback`.
 
-A relation replacement MUST identify the exact relation being changed and carry a local precondition for the old relation. For an operand/use replacement, the mutation identifies the containing operation and operand position plus the expected old value reference and replacement value reference. If the old relation does not match, commit MUST reject with a relation conflict before publication. The candidate graph MUST then pass the ordinary type, dominance, control, effect/resource, and structural verifier obligations before publication. A bootstrap API MAY represent this as a typed host-language structure such as `ReplaceUse`; that structure is tooling only and is not XAX source or a permanent mutation DSL.
+A relation replacement MUST identify the exact relation being changed and carry a local precondition for the old relation. For an operand/use replacement, the mutation identifies the containing operation and operand position plus the expected old value reference and replacement value reference. If the old relation does not match, commit MUST reject with a relation conflict before publication. The candidate graph MUST then pass the ordinary type, dominance, control, effect/resource, and structural verifier obligations before publication.
 
-A node deletion MUST carry an exact local containment precondition for the entity being removed. For graph nodes this includes the expected containing block and node position or an equivalent exact containment identity. A deletion MUST reject before publication if the target is no longer at that containment relation. It MUST also reject if any semantic use that survives the transaction still refers to a produced value of the deleted node. After deletion, any deterministic local-position renumbering required by the graph representation is tooling/canonicalization work and MUST preserve all surviving value relations. The resulting candidate graph MUST pass the ordinary verifier before publication. A bootstrap implementation MAY initially restrict deletion to a verifier-safe pure-node subset; such a typed host-language carrier (for example `DeleteNode`) is tooling only and is not XAX source or a permanent mutation DSL.
+A bootstrap API MAY represent this as a typed host-language structure such as `ReplaceUse`; that structure is tooling only and is not XAX source or a permanent mutation DSL.
 
-A graph-node insertion MUST carry an exact semantic container/position precondition. If a bootstrap implementation uses an existing node as an insert-before anchor, the request MUST also state the expected containing block and anchor position; drift rejects atomically as a containment/position conflict. Surviving references to pre-existing nodes MUST be deterministically remapped when local node numbering shifts. An inserted result needed by another mutation in the same transaction MAY be named only by a transaction-local temporary identity until commit; that temporary identity MUST NOT become a persistent semantic identity or workspace-global source notation. The candidate graph MUST pass the ordinary verifier before publication. A bootstrap implementation MAY initially restrict insertion to verifier-safe pure constants and wrapping arithmetic and MAY require an existing anchor; typed host-language carriers used for that bootstrap are tooling only.
+A node deletion MUST carry an exact local containment precondition for the entity being removed. For graph nodes this includes the expected containing block and node position or an equivalent exact containment identity. A deletion MUST reject before publication if the target is no longer at that containment relation. It MUST also reject if any semantic use that survives the transaction still refers to a produced value of the deleted node.
 
-A graph-node `move` MUST carry exact old containment and exact destination-anchor preconditions. A same-block move changes only containment/order: semantic uses continue to refer to the same producer identities and any local node-position representation MUST be deterministically remapped. Source or destination drift rejects before publication. A move MUST NOT silently rewire data flow, control flow, effects, ownership, or resources. The completed candidate MUST pass the ordinary type, SSA-dominance, control, effect/resource, and structural verifier obligations before publication. A bootstrap implementation MAY initially restrict move to one verifier-safe pure constant/wrapping-arithmetic node moved immediately before an existing anchor in the same block; a typed host-language carrier such as `MovePureNode` is tooling only and is not XAX source or a permanent mutation DSL.
+After deletion, any deterministic local-position renumbering required by the graph representation is tooling/canonicalization work and MUST preserve all surviving value relations. The resulting candidate graph MUST pass the ordinary verifier before publication. A bootstrap implementation MAY initially restrict deletion to a verifier-safe pure-node subset; such a typed host-language carrier (for example `DeleteNode`) is tooling only and is not XAX source or a permanent mutation DSL.
 
-A workspace `specialize` request MUST identify an exact source function and explicit compile-time arguments, including exact parameter positions and types. Construction remains private candidate state until commit and MUST pass the ordinary semantic verifier before publication. Existing source functions and callers remain unchanged unless separate explicit mutations rewire them. A bootstrap implementation MAY initially clone only a verified standalone, straight-line, single-block function containing constants and pure wrapping arithmetic by materializing exact constant arguments and removing those parameters from the clone interface. A typed host-language carrier such as `SpecializeFunction` is tooling only; this restricted semantic clone is not textual substitution, a macro/template language, a general compile-time evaluator, or a META conformance claim.
+A graph-node insertion MUST carry an exact semantic container/position precondition. If a bootstrap implementation uses an existing node as an insert-before anchor, the request MUST also state the expected containing block and anchor position; drift rejects atomically as a containment/position conflict. Surviving references to pre-existing nodes MUST be deterministically remapped when local node numbering shifts.
 
-A control-edge argument `disconnect` MUST identify the exact containing block, terminator edge position, argument position, and expected old value relation. Containment/edge drift and old-relation drift MUST reject before publication. A corresponding `connect` identifies the same exact relation position and a graph-local or transaction-local replacement value. A transaction MAY carry disconnect+connect together so no verifier-invalid intermediate graph is ever published. The completed private candidate MUST pass the ordinary branch-arity/type, SSA-dominance, control-flow, and structural verifier obligations before publication. Bootstrap host-language carriers used to represent this operation are tooling only and MUST NOT become a textual graph-edit language or authoritative source form.
+An inserted result needed by another mutation in the same transaction MAY be named only by a transaction-local temporary identity until commit; that temporary identity MUST NOT become a persistent semantic identity or workspace-global source notation. The candidate graph MUST pass the ordinary verifier before publication. A bootstrap implementation MAY initially restrict insertion to verifier-safe pure constants and wrapping arithmetic and MAY require an existing anchor; typed host-language carriers used for that bootstrap are tooling only.
 
-A candidate-only `verify` service MAY construct and retain private candidate state without publishing it. Verification MUST apply the same transaction root/read/local-precondition checks, mutation construction path, and ordinary semantic verifier obligations required before commit. A successful candidate-only verification MAY return a short workspace-local candidate handle, but MUST NOT expose candidate semantic CIDs, transaction-local inserted-result identities, or otherwise make the private candidate authoritative source. The canonical root and workspace generation MUST remain unchanged. Candidate handles are tooling-only and scoped to the verified base generation/verifier context; a successful canonical commit invalidates outstanding private candidates rather than silently rebasing them. `rollback`/discard removes the named private candidate and its transaction-local state without changing the canonical root or generation. Failed verification and failed/repeated rollback MUST likewise leave canonical state unchanged. Stale root, ordinary read, proof-dependency, and artifact-dependency assumptions MUST reject candidate verification rather than being refreshed merely because a private candidate was requested. Candidate verification MUST revalidate dependencies before returning a reusable candidate handle so raw-root ABA cannot revive an invalidated local dependency.
+A graph-node `move` MUST carry exact old containment and exact destination-anchor preconditions. A same-block move changes only containment/order: semantic uses continue to refer to the same producer identities and any local node-position representation MUST be deterministically remapped. Source or destination drift rejects before publication. A move MUST NOT silently rewire data flow, control flow, effects, ownership, or resources.
+
+The completed candidate MUST pass the ordinary type, SSA-dominance, control, effect/resource, and structural verifier obligations before publication. A bootstrap implementation MAY initially restrict move to one verifier-safe pure constant/wrapping-arithmetic node moved immediately before an existing anchor in the same block; a typed host-language carrier such as `MovePureNode` is tooling only and is not XAX source or a permanent mutation DSL.
+
+A workspace `specialize` request MUST identify an exact source function and explicit compile-time arguments, including exact parameter positions and types. Construction remains private candidate state until commit and MUST pass the ordinary semantic verifier before publication. Existing source functions and callers remain unchanged unless separate explicit mutations rewire them. A bootstrap implementation MAY initially clone only a verified standalone, straight-line, single-block function containing constants and pure wrapping arithmetic by materializing exact constant arguments and removing those parameters from the clone interface.
+
+A typed host-language carrier such as `SpecializeFunction` is tooling only; this restricted semantic clone is not textual substitution, a macro/template language, a general compile-time evaluator, or a META conformance claim.
+
+A control-edge argument `disconnect` MUST identify the exact containing block, terminator edge position, argument position, and expected old value relation. Containment/edge drift and old-relation drift MUST reject before publication. A corresponding `connect` identifies the same exact relation position and a graph-local or transaction-local replacement value. A transaction MAY carry disconnect+connect together so no verifier-invalid intermediate graph is ever published.
+
+The completed private candidate MUST pass the ordinary branch-arity/type, SSA-dominance, control-flow, and structural verifier obligations before publication. Bootstrap host-language carriers used to represent this operation are tooling only and MUST NOT become a textual graph-edit language or authoritative source form.
+
+A candidate-only `verify` service MAY construct and retain private candidate state without publishing it. Verification MUST apply the same transaction root/read/local-precondition checks, mutation construction path, and ordinary semantic verifier obligations required before commit. A successful candidate-only verification MAY return a short workspace-local candidate handle, but MUST NOT expose candidate semantic CIDs, transaction-local inserted-result identities, or otherwise make the private candidate authoritative source.
+
+The canonical root and workspace generation MUST remain unchanged. Candidate handles are tooling-only and scoped to the verified base generation/verifier context; a successful canonical commit invalidates outstanding private candidates rather than silently rebasing them. `rollback`/discard removes the named private candidate and its transaction-local state without changing the canonical root or generation.
+
+Failed verification and failed/repeated rollback MUST likewise leave canonical state unchanged. Stale root, ordinary read, proof-dependency, and artifact-dependency assumptions MUST reject candidate verification rather than being refreshed merely because a private candidate was requested. Candidate verification MUST revalidate dependencies before returning a reusable candidate handle so raw-root ABA cannot revive an invalidated local dependency.
 
 
 
@@ -1139,7 +1281,9 @@ Levels are cumulative; a level is held only when every lower level is held.
 | R5 | Autonomous maintenance | Query, modify, verify, benchmark, rebuild, and commit of the application EXECUTED through semantic transactions without whole-source regeneration. (Formerly R6.) |
 | R6 | Proven 100% XAX-developed application | A complete, nontrivial, deployable application was designed, implemented, tested, built, deployed, and then maintained with XAX as the sole authoritative language for all application-owned logic, tests, and build definitions, with reproducible build provenance, an auditable semantic graph and change history, executed functional tests, and at least one verified XAX-only maintenance/release cycle. Compiler-generated adapters, external system libraries, platform-required runtimes, and existing non-XAX compiler/bootstrap tools are permitted only when disclosed and free of hand-authored application logic. R6 does not claim the compiler is self-hosted. |
 
-A negative R4 measurement is valid evidence and MUST be reported; the level is held only when the measured result leads (ADR-207). The ratio is XAX's median divided by the median of the fastest valid **non-XAX** arm — XAX is never in the denominator — compared unrounded against 0.9999, and a one-sided Mann–Whitney test on the raw `wall_seconds_samples` of XAX and that arm must give p < 0.05. For CPU/native runtime the arms are an optimized C/C++ baseline and at least one implementation outside C/C++ (`XAX_BENCHMARKS.md` §15.0); on the JVM they are `javac` and `kotlinc` builds (§15.0a). The former 1.05×/1.10× competitiveness bands (ADR-147, ADR-157) confer no level. One workload never establishes universal leadership: a row's R4 is scoped to the workloads its evidence names.
+A negative R4 measurement is valid evidence and MUST be reported; the level is held only when the measured result leads (ADR-207). The ratio is XAX's median divided by the median of the fastest valid **non-XAX** arm — XAX is never in the denominator — compared unrounded against 0.9999, and a one-sided Mann–Whitney test on the raw `wall_seconds_samples` of XAX and that arm must give p < 0.05. For CPU/native runtime the arms are an optimized C/C++ baseline and at least one implementation outside C/C++ (`XAX_BENCHMARKS.md` §15.0); on the JVM they are `javac` and `kotlinc` builds (§15.0a).
+
+The former 1.05×/1.10× competitiveness bands (ADR-147, ADR-157) confer no level. One workload never establishes universal leadership: a row's R4 is scoped to the workloads its evidence names.
 
 ### 21.3 Evidence labels
 
@@ -1158,7 +1302,11 @@ A stronger label requires stronger evidence. Host-unavailable executions remain 
 
 ### 21.4 Universal Replacement Matrix
 
-`XAX_REPLACEMENT_MATRIX.json` is the machine-maintained per-platform evidence record. Its levels are derived from cited evidence by `compiler/src/xax_replacement.py` and checked by `compiler/tests/test_replacement_matrix.py`; a claimed level above the derived level, an uncited label, or a missing evidence path is rejected. A field may be `NOT_APPLICABLE` only with a written justification in the row's `not_applicable` map, and only `dynamic_linking` is satisfied that way (a platform with no loader, ADR-129). Because a MEASURED label only says that a comparison exists, R4 additionally requires the row's `competitive` verdict `[true, evidence...]` (the recomputed R4 leadership verdict, §21.2); a row with `[false, ...]` or no verdict derives at most R3 (ADR-126). An emulator-only row cannot cite performance evidence (§21.2). Every row also carries a `name` and a one-sentence `summary`, from which `compiler/bootstrap/status-tool/xax_status.xax` generates the README Targets table and every other current-level summary; a platform with no evidence yet keeps a row at level `NONE` so that unstarted platforms stay visible. The matrix records evidence; it never defines requirements.
+`XAX_REPLACEMENT_MATRIX.json` is the machine-maintained per-platform evidence record. Its levels are derived from cited evidence by `compiler/src/xax_replacement.py` and checked by `compiler/tests/test_replacement_matrix.py`; a claimed level above the derived level, an uncited label, or a missing evidence path is rejected. A field may be `NOT_APPLICABLE` only with a written justification in the row's `not_applicable` map, and only `dynamic_linking` is satisfied that way (a platform with no loader, ADR-129).
+
+Because a MEASURED label only says that a comparison exists, R4 additionally requires the row's `competitive` verdict `[true, evidence...]` (the recomputed R4 leadership verdict, §21.2); a row with `[false, ...]` or no verdict derives at most R3 (ADR-126). An emulator-only row cannot cite performance evidence (§21.2). Every row also carries a `name` and a one-sentence `summary`, from which `compiler/bootstrap/status-tool/xax_status.xax` generates the README Targets table and every other current-level summary; a platform with no evidence yet keeps a row at level `NONE` so that unstarted platforms stay visible.
+
+The matrix records evidence; it never defines requirements.
 
 ### 21.5 Kernel admission rule
 
@@ -1193,7 +1341,9 @@ These are library or compile-time patterns over existing semantics. None is mand
 
 ### 21.7 Platform classes
 
-Without changing kernel semantics, the target/platform/ABI package architecture MUST be able to describe: CPU ISAs (x86-64, AArch64, RISC-V, future ISAs) including registers, calling conventions, relocations, object/executable formats, TLS, atomics, vectors, unwind data, and static/dynamic linking; operating systems (Linux, Windows, macOS, BSD/Unix, Android, Apple mobile OSes, RTOS, bare metal); the web (WebAssembly, WASI, browser host APIs/DOM/WebGPU through compiler-generated bindings, never handwritten JavaScript); managed runtimes (JVM, DEX/ART, CLI/CLR) as targets, never as kernel semantics; accelerators (SIMT/SIMD, memory spaces, synchronization scopes, barriers, launches, host/device ownership); embedded systems (no runtime, deterministic startup, exact sections, interrupts, MMIO, DMA, volatile access, fixed budgets, optional bounded-stack analysis); and legacy/specialized targets (mainframes, DSPs, consoles, custom accelerators) whenever target/ABI information is available. Target packages MUST be able to express irregular registers, predication, vector-length-dependent execution, SIMT, capabilities, tagged memory, multiple memory spaces, non-coherent memory, asynchronous devices, special calling conventions, target atomics, unusual traps, and security features without an imaginary universal CPU.
+Without changing kernel semantics, the target/platform/ABI package architecture MUST be able to describe: CPU ISAs (x86-64, AArch64, RISC-V, future ISAs) including registers, calling conventions, relocations, object/executable formats, TLS, atomics, vectors, unwind data, and static/dynamic linking; operating systems (Linux, Windows, macOS, BSD/Unix, Android, Apple mobile OSes, RTOS, bare metal); the web (WebAssembly, WASI, browser host APIs/DOM/WebGPU through compiler-generated bindings, never handwritten JavaScript); managed runtimes (JVM, DEX/ART, CLI/CLR) as targets, never as kernel semantics; accelerators (SIMT/SIMD, memory spaces, synchronization scopes, barriers, launches, host/device ownership); embedded systems (no runtime, deterministic startup, exact sections, interrupts, MMIO, DMA, volatile access, fixed budgets, optional bounded-stack analysis); and legacy/specialized targets (mainframes, DSPs, consoles, custom accelerators) whenever target/ABI information is available.
+
+Target packages MUST be able to express irregular registers, predication, vector-length-dependent execution, SIMT, capabilities, tagged memory, multiple memory spaces, non-coherent memory, asynchronous devices, special calling conventions, target atomics, unusual traps, and security features without an imaginary universal CPU.
 
 ### 21.8 Executable and object formats
 
@@ -1201,17 +1351,27 @@ Executable/object containers (raw images, ELF, PE/COFF, Mach-O, WebAssembly, DEX
 
 ### 21.9 Foreign ecosystem import
 
-Interoperability is mandatory. Deterministic importers SHOULD convert external metadata (C headers/API descriptions, POSIX, Win32, Objective-C runtime metadata, JVM/DEX metadata, .NET metadata, Web IDL, syscall tables, GPU API descriptions, shared/static library symbol tables) into XAX platform/ABI packages of typed foreign declarations. Importers are build-time XAX or bootstrap tooling; their output is canonical semantic state, never wrapper source. No universal ABI is assumed; C++ and similar ABIs require explicit ABI packages. Foreign exceptions, ownership, aliasing, lifetime, callbacks, thread requirements, dynamic loading, and calling conventions remain verifier-visible (§12). Each foreign ABI is owned by exactly one backend, which rejects declarations of any other ABI. The C header importer (ADR-127) MUST be deterministic over its declared inputs (header digests, clang version, names, soname, ABI, overrides), MUST refuse rather than approximate any type outside its LP64 subset (by-value aggregates, arrays, `long double`, variadics), MUST give every import a memory frontier unless an explicit override states `pure`, and MUST map pointers to non-scalar C types to opaque identity handles.
+Interoperability is mandatory. Deterministic importers SHOULD convert external metadata (C headers/API descriptions, POSIX, Win32, Objective-C runtime metadata, JVM/DEX metadata, .NET metadata, Web IDL, syscall tables, GPU API descriptions, shared/static library symbol tables) into XAX platform/ABI packages of typed foreign declarations. Importers are build-time XAX or bootstrap tooling; their output is canonical semantic state, never wrapper source.
+
+No universal ABI is assumed; C++ and similar ABIs require explicit ABI packages. Foreign exceptions, ownership, aliasing, lifetime, callbacks, thread requirements, dynamic loading, and calling conventions remain verifier-visible (§12). Each foreign ABI is owned by exactly one backend, which rejects declarations of any other ABI. The C header importer (ADR-127) MUST be deterministic over its declared inputs (header digests, clang version, names, soname, ABI, overrides), MUST refuse rather than approximate any type outside its LP64 subset (by-value aggregates, arrays, `long double`, variadics), MUST give every import a memory frontier unless an explicit override states `pure`, and MUST map pointers to non-scalar C types to opaque identity handles.
 
 ### 21.9a Linux x86-64 hosted profiles
 
-`linux-x86_64-syscall-v1` declarations encode the syscall number and an explicit register template (`nr` or `nr:arg,...`, with `$k` machine-operand references each used exactly once and unsigned 64-bit literals). Arguments use `rdi, rsi, rdx, r10, r8, r9`, the result is the exact 64-bit `rax`, and allocator-contract failures `-4095..-1` project to null (ADR-085). `sysv-x86_64-c` declarations import a C symbol from a shared library named by soname. They lower only on `x86_64-linux-elf-dynexec-v1`, which explicitly requests `/lib64/ld-linux-x86-64.so.2`, derives `DT_NEEDED` only from declared sonames, and is bounded to register-passed psABI scalars: at most six INTEGER-class and eight SSE-class (f32/f64) arguments and one scalar result (ADR-087, ADR-102). A code address that foreign code may call has type `ptr<opaque_identity<"code-entry:" + abi>>` for an `abi` in `FOREIGN_ENTRY_ABIS` (currently `sysv-x86_64-c`, `win64-c`, `android-aapcs64-c`, `wasm32-browser-event`, and the bounded SysV lend entry). Except for the separately constrained browser and lend entries, `FUNCTION_ADDRESS` with that result type MUST name a function with no proof parameters or results. The backend MUST lower the address to the exact target-ABI entry, either the function itself when conventions already match or a compiler-generated adapter (ADR-102, ADR-107, ADR-170). Such an address is not a `ptr<opaque<function>>`, so it cannot be called with `CALL_INDIRECT`. A lend entry (`sysv-x86_64-c-lend`, ADR-115) is the one exception to purity. Its type names one view's pointer and token types. The callee MUST take scalars followed by exactly that read-only, initialized view triple, and MUST return one integer followed by the same triple. An operand of that type MUST only be passed to a `sysv-x86_64-c` call that lends a whole, live, initialized view of that extent, passes its memory effect, and returns a memory effect (`LEND-ENTRY-VIEW-LENT`). `android-aapcs64-c` entries follow the same purity rule. On AArch64 they are the function's own address, and their parameters MUST be 64-bit integers or pointers (ADR-107). `win64-c` entries also follow the purity rule and are the function's own address on x86-64 Windows; another x86-64 ABI profile MUST reject them (`WIN64-ENTRY-TARGET`, ADR-170). On both Linux profiles `e_entry` is the XAX entry function; the program exits explicitly with `exit_group`, the entry is lowered for Linux's aligned no-return-address entry, and returning traps (ADR-086, §21.8).
+`linux-x86_64-syscall-v1` declarations encode the syscall number and an explicit register template (`nr` or `nr:arg,...`, with `$k` machine-operand references each used exactly once and unsigned 64-bit literals). Arguments use `rdi, rsi, rdx, r10, r8, r9`, the result is the exact 64-bit `rax`, and allocator-contract failures `-4095..-1` project to null (ADR-085). `sysv-x86_64-c` declarations import a C symbol from a shared library named by soname. They lower only on `x86_64-linux-elf-dynexec-v1`, which explicitly requests `/lib64/ld-linux-x86-64.so.2`, derives `DT_NEEDED` only from declared sonames, and is bounded to register-passed psABI scalars: at most six INTEGER-class and eight SSE-class (f32/f64) arguments and one scalar result (ADR-087, ADR-102). A code address that foreign code may call has type `ptr<opaque_identity<"code-entry:" + abi>>` for an `abi` in `FOREIGN_ENTRY_ABIS` (currently `sysv-x86_64-c`, `win64-c`, `android-aapcs64-c`, `wasm32-browser-event`, and the bounded SysV lend entry). Except for the separately constrained browser and lend entries, `FUNCTION_ADDRESS` with that result type MUST name a function with no proof parameters or results. The backend MUST lower the address to the exact target-ABI entry, either the function itself when conventions already match or a compiler-generated adapter (ADR-102, ADR-107, ADR-170). Such an address is not a `ptr<opaque<function>>`, so it cannot be called with `CALL_INDIRECT`.
 
-`linux-x86_64-startup-v1` (ADR-094) reads the initial process stack inline, with no code before the entry function. It is owned by the Linux profiles and allowed only in the process entry function (`LINUX-STARTUP-PROCESS-ENTRY`). The declarations have library `linux` and these names: `argc() -> bits<64>`, `arg_length(i)`, `arg_copy(i, ptr<bytes,rw>, memory) -> (bits<64>, memory)`, `envc`, `env_length`, `env_copy`, and `auxv_value(type) -> bits<64>`. An index at or past `argc`/`envc` traps. `*_length` excludes the terminating NUL. `*_copy` copies at most the destination view's static extent and returns the bytes copied, so a result below `*_length` reports truncation. `auxv_value` returns 0 when the type is absent.
+A lend entry (`sysv-x86_64-c-lend`, ADR-115) is the one exception to purity. Its type names one view's pointer and token types. The callee MUST take scalars followed by exactly that read-only, initialized view triple, and MUST return one integer followed by the same triple. An operand of that type MUST only be passed to a `sysv-x86_64-c` call that lends a whole, live, initialized view of that extent, passes its memory effect, and returns a memory effect (`LEND-ENTRY-VIEW-LENT`).
+
+`android-aapcs64-c` entries follow the same purity rule. On AArch64 they are the function's own address, and their parameters MUST be 64-bit integers or pointers (ADR-107). `win64-c` entries also follow the purity rule and are the function's own address on x86-64 Windows; another x86-64 ABI profile MUST reject them (`WIN64-ENTRY-TARGET`, ADR-170). On both Linux profiles `e_entry` is the XAX entry function; the program exits explicitly with `exit_group`, the entry is lowered for Linux's aligned no-return-address entry, and returning traps (ADR-086, §21.8).
+
+`linux-x86_64-startup-v1` (ADR-094) reads the initial process stack inline, with no code before the entry function. It is owned by the Linux profiles and allowed only in the process entry function (`LINUX-STARTUP-PROCESS-ENTRY`). The declarations have library `linux` and these names: `argc() -> bits<64>`, `arg_length(i)`, `arg_copy(i, ptr<bytes,rw>, memory) -> (bits<64>, memory)`, `envc`, `env_length`, `env_copy`, and `auxv_value(type) -> bits<64>`.
+
+An index at or past `argc`/`envc` traps. `*_length` excludes the terminating NUL. `*_copy` copies at most the destination view's static extent and returns the bytes copied, so a result below `*_length` reports truncation. `auxv_value` returns 0 when the type is absent.
 
 ### 21.9b Browser pages
 
-`wasm32-browser-v1` (ADR-103) uses the WASI command container (`_start` and `memory` exports; proof-only entry). Browser APIs are `wasm32-import` declarations of a platform package. Each has exactly one fixed host meaning, and host state is ordered by an `effect<io>` token supplied to `_start`. The host page MUST be generated from the imported declarations alone: an import outside the package rejects, and unused bindings emit nothing. Event handlers are foreign entries of ABI `wasm32-browser-event` (ADR-104): their parameters MUST be non-memory effects returned unchanged, with no machine values, and the host supplies that authority on each call. On wasm32 the address is the export number of `entry_<k>`.
+`wasm32-browser-v1` (ADR-103) uses the WASI command container (`_start` and `memory` exports; proof-only entry). Browser APIs are `wasm32-import` declarations of a platform package. Each has exactly one fixed host meaning, and host state is ordered by an `effect<io>` token supplied to `_start`. The host page MUST be generated from the imported declarations alone: an import outside the package rejects, and unused bindings emit nothing.
+
+Event handlers are foreign entries of ABI `wasm32-browser-event` (ADR-104): their parameters MUST be non-memory effects returned unchanged, with no machine values, and the host supplies that authority on each call. On wasm32 the address is the export number of `entry_<k>`.
 
 ### 21.9c JVM class files
 
@@ -1236,7 +1396,11 @@ Narrow array elements load zero-extended to their XAX width. A Java exception th
 
 `JVM_EXECUTABLE_JAR` requires a proof-only entry. Its `Main-Class` is the generated `main(String[])` that calls the entry and returns (JVM exit status 0); any other status MUST be an explicit `java/lang/System.exit` call.
 
-`jvm-classfile-memory-v1` (ADR-156) is the same machine tuple with linear memory: it adds `heap.view`, plain and checked `load/store.bits.le`, `address.offset`, `pointer.cast`, `pointer.address`, and `pointer.rebase`. Memory is one `byte[]` field of the generated class; a memory pointer (`ptr` to anything but a `jvm-ref` identity) lowers to an `int` offset into it, and offset 0 is never storage. Accesses are little-endian and exact-width; checked accesses and rebases trap exactly as on native targets. Heap blocks come only from the reserved package `xax/jvm/Memory`, declared with `jvm-invokestatic`, whose members the backend MUST generate into the program's own class rather than load from the class path: `alloc(J)I` (allocator contract: a fresh zero-filled block aligned to 16, or 0 when the request exceeds 2^31 − 1 bytes), `free(I)J` (deallocator; the block is not reused), `read(IIJ)J` (descriptor 0 is `System.in`; returns the byte count, 0 at end of input), and `write(IIJ)J` (descriptors 1 and 2 are `System.out` and `System.err`, flushed); another descriptor returns −9 (`EBADF`). Any other member MUST reject (`JVM-MEMORY-MEMBER`), as MUST memory on the v1 profile (`JVM-OP-TARGET-SUPPORTED`). On this profile the generated `main` runs the entry on a thread with a 256 MiB stack and joins it; an entry that ends by a trap leaves exit status 1.
+`jvm-classfile-memory-v1` (ADR-156) is the same machine tuple with linear memory: it adds `heap.view`, plain and checked `load/store.bits.le`, `address.offset`, `pointer.cast`, `pointer.address`, and `pointer.rebase`. Memory is one `byte[]` field of the generated class; a memory pointer (`ptr` to anything but a `jvm-ref` identity) lowers to an `int` offset into it, and offset 0 is never storage. Accesses are little-endian and exact-width; checked accesses and rebases trap exactly as on native targets.
+
+Heap blocks come only from the reserved package `xax/jvm/Memory`, declared with `jvm-invokestatic`, whose members the backend MUST generate into the program's own class rather than load from the class path: `alloc(J)I` (allocator contract: a fresh zero-filled block aligned to 16, or 0 when the request exceeds 2^31 − 1 bytes), `free(I)J` (deallocator; the block is not reused), `read(IIJ)J` (descriptor 0 is `System.in`; returns the byte count, 0 at end of input), and `write(IIJ)J` (descriptors 1 and 2 are `System.out` and `System.err`, flushed); another descriptor returns −9 (`EBADF`).
+
+Any other member MUST reject (`JVM-MEMORY-MEMBER`), as MUST memory on the v1 profile (`JVM-OP-TARGET-SUPPORTED`). On this profile the generated `main` runs the entry on a thread with a 256 MiB stack and joins it; an entry that ends by a trap leaves exit status 1.
 
 `jvm-classfile-general-v1` (ADR-159) is the memory profile plus `aggregate.make/get`, `sum.make/tag/get`, `stack.alloc/end`, `function.address`, and `call.indirect`.
 - **Aggregates and sums.** An aggregate or sum value lowers to an immutable `long[]` holding its flattened contents. Each scalar takes one element holding its raw bits (`int` values sign-extended, floats as raw bits). Nested aggregates are copied into place. A sum is its tag followed by the largest variant's slots. A `jvm-ref` value MUST NOT appear inside one (`JVM-AGGREGATE-SCALAR`). `sum.get` of another variant traps.
@@ -1272,31 +1436,47 @@ Narrow array elements load zero-extended to their XAX width. A Java exception th
 
 ### 21.9e Linux AArch64 hosted profiles
 
-`aarch64-linux-elf-exec-v1` and `aarch64-linux-elf-dynexec-v1` (ADR-123) are architecture 3 with ABI 5 and formats 6 (static) and 7 (explicit loader), profile 1. `linux-aarch64-syscall-v1` declarations use the §21.9a template identity with asm-generic syscall numbers; arguments go in `x0..x5` and the number in `x8`, and allocator-contract failures project to null. `aapcs64-linux-c` declarations import a C symbol by soname and MUST reject on format 6. Format 7 MUST request exactly `/lib/ld-linux-aarch64.so.1` with `DT_NEEDED` derived only from declared sonames and bind-now `R_AARCH64_GLOB_DAT` slots. The only container code is the compiler-generated `e_entry` stub (`bl entry; brk`, so returning traps), one thunk per referenced syscall declaration, and one `adrp`/`ldr`/`br` thunk per C import. The AArch64 backend MUST reject a foreign ABI owned by another AArch64 platform (`AARCH64-FOREIGN-ABI`).
+`aarch64-linux-elf-exec-v1` and `aarch64-linux-elf-dynexec-v1` (ADR-123) are architecture 3 with ABI 5 and formats 6 (static) and 7 (explicit loader), profile 1. `linux-aarch64-syscall-v1` declarations use the §21.9a template identity with asm-generic syscall numbers; arguments go in `x0..x5` and the number in `x8`, and allocator-contract failures project to null. `aapcs64-linux-c` declarations import a C symbol by soname and MUST reject on format 6. Format 7 MUST request exactly `/lib/ld-linux-aarch64.so.1` with `DT_NEEDED` derived only from declared sonames and bind-now `R_AARCH64_GLOB_DAT` slots.
+
+The only container code is the compiler-generated `e_entry` stub (`bl entry; brk`, so returning traps), one thunk per referenced syscall declaration, and one `adrp`/`ldr`/`br` thunk per C import. The AArch64 backend MUST reject a foreign ABI owned by another AArch64 platform (`AARCH64-FOREIGN-ABI`).
 
 On these Linux profiles a function is first lowered by the function-wide register allocator (ADR-168). Its observable behavior, including every trap code, MUST equal the frame path's. Functions it does not cover fall back.
 
 ### 21.9f SPIR-V compute for Vulkan
 
-`spirv-vulkan-compute-v1` (ADR-124) is target architecture 7 with the exact machine tuple (profile 1, ABI 8, format 1, 32, 32); the artifact is a SPIR-V 1.3 module with one `GLCompute` entry `main` and a fixed workgroup of 64. A kernel is an ordinary function under the `spirv-compute-v1` entry contract: parameters `(bits<32> invocation, (ptr<bits<32>>, heap_view<E>, memory)...)` and results equal to the view triples, in order. Triple *i* is storage-buffer binding *i* of descriptor set 0 (read-only pointers are `NonWritable`); binding *k* (one past the last triple) is the status word; push constant 0 is the launch count. Invocations whose `GlobalInvocationId.x` is at or past the launch count MUST have no effect. A trap MUST end its invocation before the trapping access and raise the status word with `atomicMax` to `0x10000 | portable reason` (explicit traps and zero divisors) or `0x20000` (a failed checked access). Pointers MUST resolve to one static binding and 4-aligned byte offset. Every store, and every load from a binding the kernel stores to, MUST address exactly `invocation * 4` (`SPIRV-KERNEL-OWN-ELEMENT`); this is the profile's data-race rule, so no unchecked concurrency assumption exists. A launch MUST supply buffers of exactly each view's extent and a count below 2^30.
+`spirv-vulkan-compute-v1` (ADR-124) is target architecture 7 with the exact machine tuple (profile 1, ABI 8, format 1, 32, 32); the artifact is a SPIR-V 1.3 module with one `GLCompute` entry `main` and a fixed workgroup of 64. A kernel is an ordinary function under the `spirv-compute-v1` entry contract: parameters `(bits<32> invocation, (ptr<bits<32>>, heap_view<E>, memory)...)` and results equal to the view triples, in order.
+
+Triple *i* is storage-buffer binding *i* of descriptor set 0 (read-only pointers are `NonWritable`); binding *k* (one past the last triple) is the status word; push constant 0 is the launch count. Invocations whose `GlobalInvocationId.x` is at or past the launch count MUST have no effect. A trap MUST end its invocation before the trapping access and raise the status word with `atomicMax` to `0x10000 | portable reason` (explicit traps and zero divisors) or `0x20000` (a failed checked access).
+
+Pointers MUST resolve to one static binding and 4-aligned byte offset. Every store, and every load from a binding the kernel stores to, MUST address exactly `invocation * 4` (`SPIRV-KERNEL-OWN-ELEMENT`); this is the profile's data-race rule, so no unchecked concurrency assumption exists. A launch MUST supply buffers of exactly each view's extent and a count below 2^30.
 
 ### 21.9g Board packages
 
-A board package (ADR-128) is target profile 5: the profile-2 concurrency section followed by profile-4 target-operation contracts. Device registers, system registers, and board instructions are `target` operations of the package, each consuming and returning the board's device effect; a backend MUST reject a board operation when compiling for any other target. An image names a reset entry and one handler per declared event. Both MUST have proof-only interfaces, and each handler MUST satisfy its event's contract (effect domains, stack bound). The generated startup MUST only set the declared stack, install the vector table, and call the reset entry. Every exception without a handler, every trap, and a returning reset entry MUST end in the board's declared fault path (for `aarch64-qemu-virt-v1`: `!` on the UART, then PSCI `SYSTEM_OFF`). A board image MAY statically link ELF relocatable objects (ADR-129). Each `aapcs64-c` declaration's library MUST name the object defining its symbol, the linker MUST refuse relocation types outside its declared subset before resolving symbols, and undefined, duplicate, or common symbols MUST reject.
+A board package (ADR-128) is target profile 5: the profile-2 concurrency section followed by profile-4 target-operation contracts. Device registers, system registers, and board instructions are `target` operations of the package, each consuming and returning the board's device effect; a backend MUST reject a board operation when compiling for any other target. An image names a reset entry and one handler per declared event.
+
+Both MUST have proof-only interfaces, and each handler MUST satisfy its event's contract (effect domains, stack bound). The generated startup MUST only set the declared stack, install the vector table, and call the reset entry. Every exception without a handler, every trap, and a returning reset entry MUST end in the board's declared fault path (for `aarch64-qemu-virt-v1`: `!` on the UART, then PSCI `SYSTEM_OFF`).
+
+A board image MAY statically link ELF relocatable objects (ADR-129). Each `aapcs64-c` declaration's library MUST name the object defining its symbol, the linker MUST refuse relocation types outside its declared subset before resolving symbols, and undefined, duplicate, or common symbols MUST reject.
 
 ### 21.9h Windows x86-64 hosted profile: DLLs, imports, COM
 
 `x86_64-windows-pe-v1` imports `win64-c` declarations through a loader-filled import table. The declared library is a bare file name that the Windows loader resolves. A build request for `WINDOWS_DLL` (ADR-259) emits a PE32+ DLL. Its export directory names the functions of the package's `windows-pe-export-v1` members. Its entry point is 0, so the image has no DllMain and no XAX code runs under the loader lock. Proof parameters and results of an exported function are erased: the host that calls the export supplies that authority.
 
-A DLL may also carry loader forwards (`windows-pe-forward-v1`: an export whose address entry is the string `module.Symbol`, with a bare module name and no path) and at most one entry point (`windows-pe-dllmain-v1`, ADR-261). The entry point is `fn(b64 hinst, b32 reason, b64 reserved, proof...) -> (b32, proof...)`, and its proofs are erased like an export's. It runs under the loader lock, so the build rejects it unless every function it can reach calls only `kernel32.dll` `VirtualAlloc`, `VirtualFree`, `GetProcAddress`, `CreateThread`, `CloseHandle` or `DisableThreadLibraryCalls` and makes no indirect calls (`WINDOWS-DLLMAIN-LOADER-LOCK`). Longer work goes to a thread that starts after the lock is released.
+A DLL may also carry loader forwards (`windows-pe-forward-v1`: an export whose address entry is the string `module.Symbol`, with a bare module name and no path) and at most one entry point (`windows-pe-dllmain-v1`, ADR-261). The entry point is `fn(b64 hinst, b32 reason, b64 reserved, proof...) -> (b32, proof...)`, and its proofs are erased like an export's. It runs under the loader lock, so the build rejects it unless every function it can reach calls only `kernel32.dll` `VirtualAlloc`, `VirtualFree`, `GetProcAddress`, `CreateThread`, `CloseHandle` or `DisableThreadLibraryCalls` and makes no indirect calls (`WINDOWS-DLLMAIN-LOADER-LOCK`).
 
-COM interface methods (ADR-260) are `win64-c` declarations whose library is `com:<Interface>` and whose name is `vtable:<k>` (canonical decimal, `k < 2^24`). A colon cannot occur in a Windows file name, so such a library never names a DLL. Input 0 MUST be the `bits<64>` interface pointer. The call passes it as `this` and calls `(*(void***)this)[k]` under `win64-c`, lowered on x86-64 as `mov rax, [rcx]; call [rax + 8k]`. No import slot is created, and no code address becomes an XAX value. A malformed method rejects at lowering (`WIN64-COM-METHOD`). The interface pointer is a foreign handle, like a `HANDLE` passed to kernel32: XAX never dereferences it, and its validity is part of the declared foreign contract.
+Longer work goes to a thread that starts after the lock is released.
+
+COM interface methods (ADR-260) are `win64-c` declarations whose library is `com:<Interface>` and whose name is `vtable:<k>` (canonical decimal, `k < 2^24`). A colon cannot occur in a Windows file name, so such a library never names a DLL. Input 0 MUST be the `bits<64>` interface pointer. The call passes it as `this` and calls `(*(void***)this)[k]` under `win64-c`, lowered on x86-64 as `mov rax, [rcx]; call [rax + 8k]`.
+
+No import slot is created, and no code address becomes an XAX value. A malformed method rejects at lowering (`WIN64-COM-METHOD`). The interface pointer is a foreign handle, like a `HANDLE` passed to kernel32: XAX never dereferences it, and its validity is part of the declared foreign contract.
 
 ### 21.10 Standard semantic libraries
 
 The standard ecosystem is a set of independently linked semantic packages (allocators, arenas, text, slices, arrays, maps, sets, numerics, big integers, filesystem, sockets, HTTP, TLS integration, threads, synchronization, event loops, serialization, compression, cryptography interfaces, graphics, audio, database interfaces, SIMD, tensors, GPU compute). There is no mandatory runtime: unused packages contribute zero code and data, and every package's runtime semantics are explicit effects, resources, and capabilities.
 
-Package form (ADR-130). A library is a `PACKAGE` object whose logical identity is `name/version/parameters`, with one `MODULE` of functions and one named build entry per export. Applications call exports by CID, so a program store contains exactly the exports it reaches (unreachable objects are rejected, §3). Families are instantiated per static parameter (view extent, capacity); an instance's view types are part of each export's interface, and a call with another instance's view is rejected (`GRAPH-CALL-CONTRACT`). Library functions take memory only as borrowed heap-view triples and never allocate. Implemented families: `xax.text` and `xax.collections.hashset_u64` (`compiler/src/xax_stdlib.py`).
+Package form (ADR-130). A library is a `PACKAGE` object whose logical identity is `name/version/parameters`, with one `MODULE` of functions and one named build entry per export. Applications call exports by CID, so a program store contains exactly the exports it reaches (unreachable objects are rejected, §3). Families are instantiated per static parameter (view extent, capacity); an instance's view types are part of each export's interface, and a call with another instance's view is rejected (`GRAPH-CALL-CONTRACT`).
+
+Library functions take memory only as borrowed heap-view triples and never allocate. Implemented families: `xax.text` and `xax.collections.hashset_u64` (`compiler/src/xax_stdlib.py`).
 
 ### 21.11 Observability
 
