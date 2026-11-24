@@ -184,10 +184,11 @@ def tests() -> dict:
 
 
 def documentation() -> dict:
-    from xax_status_docs import sync
-
-    stale = sync(write=False)
-    return {"synchronized": not stale, "stale_documents": [str(path.relative_to(REPO)) for path in stale]}
+    run = subprocess.run(["sh", str(REPO / "compiler/bootstrap/status-tool/status.sh"), "check"], capture_output=True, text=True)
+    if run.returncode not in (0, 1):
+        raise RuntimeError(run.stderr)
+    stale = [line.removeprefix("stale: ") for line in run.stdout.splitlines()]
+    return {"synchronized": not stale, "stale_documents": stale}
 
 
 def measure(run_tests: bool = True) -> dict:

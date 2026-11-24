@@ -48,7 +48,7 @@ If the XAX workspace/compiler interface is available, use it instead of producin
 
 ## Documents and status
 
-- `XAX_REPLACEMENT_MATRIX.json` is the source of current replacement levels and of the README Targets table (each row's `name` and `summary`). After changing it, run `python -m xax_status_docs --write` from `compiler/src` to regenerate every `<!-- xax-status:levels -->` and `<!-- xax-status:targets -->` block; `tests/test_status_docs.py` fails while a block is stale.
+- `XAX_REPLACEMENT_MATRIX.json` is the source of current replacement levels and of the README Targets table (each row's `name` and `summary`). After changing it, run `sh compiler/bootstrap/status-tool/status.sh write` (Linux x86-64) to regenerate every `<!-- xax-status:levels -->` and `<!-- xax-status:targets -->` block; `tests/test_status_docs.py` fails while a block is stale.
 - Never write a `<!-- xax-status:... -->` block by hand. B levels are derived from the latest validated release record (`compiler/AGENTS.md`, "Seeds, releases and bootstrap levels").
 - Dated sections in `XAX_STATE.md`, `XAX_HANDOFF.md`, `XAX_BENCHMARKS.md`, and `XAX_DECISIONS.md` are historical records; record a new result in a new section and point the superseded one at it instead of rewriting it.
 - Keep one authoritative owner per fact: link to it instead of restating it. When a change affects a rule, capability, interface, level or decision, update its owner (route "Documentation maintenance" in `docs/README.md`), regenerate generated blocks, and leave unrelated documents alone. Add no session summaries or audit reports beyond the dated sections above.
