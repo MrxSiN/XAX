@@ -11,7 +11,7 @@ historical, and their links to it name the file as it was in git history.
 It is built from `generator/generate.sh`'s request (`67f7cfa4…`) for the ledger 0035 shared request. The new Linux
 fixed point (`36e2b756…`) cross-built it in WSL 2 (210 s). On Windows 11 it rebuilt itself byte for byte (197 s), and
 that generation rebuilt the next one identically (195 s); no Python, WSL or Wine took part. Identities are in
-[seed.json](seed.json). The sections below are historical.
+`seed.json` (retired by ADR-410; see git before `01276a8`). The sections below are historical.
 
 # The Windows request is generated — 2026-11-15
 
@@ -32,7 +32,7 @@ At ledger 0032 it reproduces the deleted files' results, EXECUTED in WSL 2 with 
 - the request (`5bf65de6…`);
 - its build, which is the pinned seed `e88877d1…`.
 
-[seed.json](seed.json) keeps the deleted files' names and hashes as the record of how the pinned seed was built. The
+`seed.json` (retired by ADR-410; see git before `01276a8`) keeps the deleted files' names and hashes as the record of how the pinned seed was built. The
 generator needs Linux x86-64, as the ledger and request tools do. The sections below are historical; where they say
 to rewrite the hosting files, run the generator instead.
 
@@ -46,14 +46,14 @@ hosted root `7262bc4f…` and the new module object `14fbaca8…`; its supplied 
 On Windows 11, the ledger 0031 seed built generation 1 in 7 minutes, and generation 1 built generation 2. Both are
 byte-identical: 31,993,856 bytes, SHA-256 `e88877d10690e171b73d9de8b94cb579820672e980b97f0bb11a88e460a7a77f`. The
 Linux ledger 0032 seed cross-builds the same bytes from the same `request.xax` (WSL 2). Identities are in
-[seed.json](seed.json). The section below describes the ledger 0031 seed and how to build it; its seed identity is
+`seed.json` (retired by ADR-410; see git before `01276a8`). The section below describes the ledger 0031 seed and how to build it; its seed identity is
 historical.
 
 # Current Windows seed — one request for both hosts, ledger 0031, 2026-11-14
 
 The Windows seed is now built from the **same request store as the Linux seed** (`../seed/xax_compiler_request.xax`)
 and a small Windows hosting step. BBC's store is no longer part of it (ADR-402). `xaxc-windows-x86_64.exe`: 31,993,856
-bytes, SHA-256 `b9a1ba463001559caa26efc68a275cf8694be7cecb419a29dd361b40735225eb`; identities in [seed.json](seed.json),
+bytes, SHA-256 `b9a1ba463001559caa26efc68a275cf8694be7cecb419a29dd361b40735225eb`; identities in `seed.json` (retired by ADR-410; see git before `01276a8`),
 the runs in [windows_selfhost_20261114_evidence.json](../../benchmarks/windows_selfhost_20261114_evidence.json).
 
 ## Building it on Windows
@@ -104,12 +104,12 @@ rebuilt with `rebuild.sh` from the 0029 driver batch, with `xaxc_entry_request.b
 the same handles). On Windows 11 the ledger 0028 seed built generation 1, which built generation 2, which built
 generation 3: all three are byte-identical, 31,993,856 bytes, SHA-256
 `4308ea905aad7f8c8e42299953a2e7e1480eb75e4b0949f44cf1878378bd7c72` (the driver does not call the new ABI yet, so
-its code is unchanged and generation 1 is already the fixed point). Identities are in [seed.json](seed.json). The
+its code is unchanged and generation 1 is already the fixed point). Identities are in `seed.json` (retired by ADR-410; see git before `01276a8`). The
 section below describes the ledger 0028 seed and is historical.
 
 # Current Windows seed — 2026-11-13
 
-Ledger 0028 adds native rebuilding of unsigned resolved snapshots after edits. The current seed is 31973888 bytes, SHA-256 `9779c7938b092b6a1b64bd97ff4950a0e5858f43e0f95040e5ea0d33c2319cd0`. Its exact source and build identities are in [seed.json](seed.json). Native Windows generation 1 equals generation 2; see [the new fixed-point record](../../benchmarks/windows_selfhost_20261113_evidence.json) and [mutation acceptance](../../benchmarks/snapshot_mutation_20261113_evidence.json). The Linux seed is also rotated to ledger 0028 and has two identical native generations.
+Ledger 0028 adds native rebuilding of unsigned resolved snapshots after edits. The current seed is 31973888 bytes, SHA-256 `9779c7938b092b6a1b64bd97ff4950a0e5858f43e0f95040e5ea0d33c2319cd0`. Its exact source and build identities are in `seed.json` (retired by ADR-410; see git before `01276a8`). Native Windows generation 1 equals generation 2; see [the new fixed-point record](../../benchmarks/windows_selfhost_20261113_evidence.json) and [mutation acceptance](../../benchmarks/snapshot_mutation_20261113_evidence.json). The Linux seed is also rotated to ledger 0028 and has two identical native generations.
 
 The entry batches now bind BBC roots `c5814b38579d1f78b3ab23f6c10e2df6942e9ecc3a306e767aa911304909a154` and `4104d62baccfb59cb42d2035c354ae923847017422db7c90eaa7aff4c3d37217`; current handles are recorded in the checked native entry batches. Apply the same rebuilding commands below using the current seed. Run native verification on every edited candidate before accepting it. Signed-package changes, recursion-group users, signature/provenance rewriting and broader backend/security readiness are outside this increment.
 

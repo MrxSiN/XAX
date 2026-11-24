@@ -1,8 +1,12 @@
 # XAX Architectural Decisions
 
-This file records merged v0.1 decisions. Each decision is normative unless superseded by a versioned architectural revision. Evidence-dependent choices remain in `XAX_OPEN_ISSUES.md`.
+This file records adopted decisions and their rationale. It is not normative: requirements live in `XAX_SPEC.md` and `docs/NN_*.md`, which win on conflict (`XAX_SPEC.md` §1). A decision stands until a later ADR supersedes it. Evidence-dependent choices remain in `XAX_OPEN_ISSUES.md`.
 
 ## Contents
+
+Find a decision without reading this file: `grep -n '^## ADR-<n>' XAX_DECISIONS.md` gives its section;
+`grep -n 'ADR-<n>' XAX_DECISIONS.md` also finds later amendments and decisions that cite or supersede it; each ADR's
+`| Status |` row, where present, gives its state. The list below stops at ADR-363; the headings are complete.
 
 - [2026-10-07: platform-carrier-replacement-v1](#2026-10-07-platform-carrier-replacement-v1)
 - ADR-001 to ADR-099

@@ -6,6 +6,8 @@ supersedes an earlier figure, and a superseded entry is kept rather than rewritt
 
 ## Contents
 
+Topic sections are listed here; the dated sections appended after them (from 2026-11-08) are not: `grep -n '^## ' XAX_STATE.md`.
+
 - [Current status](#current-status)
 - [Prototype milestones (M1-M14)](#prototype-milestones-m1-m14)
 - [Milestones M0-M14 (historical status)](#milestones-m0-m14-historical-status) (9 entries)
@@ -21,6 +23,16 @@ supersedes an earlier figure, and a superseded entry is kept rather than rewritt
 - [Documentation and process](#documentation-and-process) (5 entries)
 
 ## Current status
+
+Where each kind of status lives (one owner each):
+
+| Question | Owner |
+|---|---|
+| Per-target level, what runs and what blocks it | `XAX_REPLACEMENT_MATRIX.json` (rendered as the generated Targets table in `README.md`) |
+| Bootstrap levels B0–B6 | the latest validated release record (generated block below) |
+| Open, partial or blocked work | `XAX_OPEN_ISSUES.md` (each OI's newest status line) and GitHub issues |
+| Planned work | `XAX_IMPLEMENTATION_ROADMAP.md` |
+| Latest results and the next step | the last section of `XAX_HANDOFF.md`; releases 0038 onward are recorded there only |
 
 ### Replacement levels
 

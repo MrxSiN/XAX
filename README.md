@@ -108,23 +108,30 @@ Details in [`XAX_BENCHMARKS.md`](XAX_BENCHMARKS.md).
 
 ### Requirements
 
-Python 3.11+. No third-party runtime dependencies.
+The production compiler is the native seed: `compiler/bootstrap/seed/xaxc-linux-x86_64` (Linux x86-64) and
+`compiler/bootstrap/windows/xaxc-windows-x86_64.exe`, pinned by `compiler/bootstrap/RELEASES`; it needs no Python.
+The test suite and the Python reference compiler (the oracle the tests compare against) need Python 3.11+, with no
+third-party runtime dependencies.
 
 ### Install and test
 
 ```bash
 cd compiler
 pip install -e '.[test]'
-xaxc --help
-PYTHONPATH=src:reference:.:.. python -m pytest -n auto tests
+python -m pytest -n 2 tests
 ```
 
-Tests that need a missing host tool (QEMU, Wine, JDK, Android tools, …) are skipped; skipped is not passed. Full host
-setup: [`XAX_BENCHMARKS.md`](XAX_BENCHMARKS.md#host-setup-for-the-full-test-and-benchmark-suite).
+The native compiler's commands are `edit`, `verify`, `resolve` and `build`
+(`bootstrap/seed/xaxc-linux-x86_64 build <snapshot> <image> <provenance>`); the `xaxc` the install puts on `PATH`
+is the Python reference.
+
+Size `-n` from memory, not CPU count: one worker has peaked at 9.5 GB. Tests that need a missing host tool (QEMU,
+Wine, JDK, Android tools, …) are skipped; skipped is not passed. Full host setup:
+[`XAX_BENCHMARKS.md`](XAX_BENCHMARKS.md#host-setup-for-the-full-test-and-benchmark-suite).
 
 ### For AI agents
 
-Read [`docs/09_AI_PROTOCOL.md`](docs/09_AI_PROTOCOL.md) and [`AGENTS.md`](AGENTS.md) first.
+Start at [`AGENTS.md`](AGENTS.md); it routes to [`docs/09_AI_PROTOCOL.md`](docs/09_AI_PROTOCOL.md) and the rest.
 
 ## Repository layout
 

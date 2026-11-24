@@ -28,10 +28,9 @@ This document consolidates conformance requirements and test categories. It cont
 - [Part III — Obligations](#part-iii--obligations)
   - [20. No-results rule](#20-no-results-rule)
   - [20. M13 accelerator target/deployment obligations](#20-m13-accelerator-targetdeployment-obligations)
-  - [21. AI-native C-vs-XAX experiment obligations](#21-ai-native-c-vs-xax-experiment-obligations)
-  - [22. Android direct-artifact/platform-package obligations](#22-android-direct-artifactplatform-package-obligations)
-  - [23. Universal-replacement obligations](#23-universal-replacement-obligations)
-  - [24. Snapshot-bound mutation and JVM token evidence (ADR-186)](#24-snapshot-bound-mutation-and-jvm-token-evidence-adr-186)
+  - [21. Android direct-artifact/platform-package obligations](#21-android-direct-artifactplatform-package-obligations)
+  - [22. Universal-replacement obligations](#22-universal-replacement-obligations)
+  - [23. Snapshot-bound mutation (ADR-186)](#23-snapshot-bound-mutation-adr-186)
 - [Part IV — Records](#part-iv--records)
   - [Platform carrier replacement v1 (2026-10-07)](#platform-carrier-replacement-v1-2026-10-07)
 
