@@ -31,9 +31,9 @@
 - [17. Rejected alternatives](#17-rejected-alternatives)
 - [18. Interfaces and dependencies](#18-interfaces-and-dependencies)
 - [19. Open issues requiring implementation evidence](#19-open-issues-requiring-implementation-evidence)
-  - [OI-15-1: Fixed-point comparison level](#oi-15-1-fixed-point-comparison-level)
-  - [OI-15-2: Minimum practical seed subset](#oi-15-2-minimum-practical-seed-subset)
-  - [OI-15-3: Diversity threshold for bootstrap trust](#oi-15-3-diversity-threshold-for-bootstrap-trust)
+  - [19.1 Fixed-point comparison level](#191-fixed-point-comparison-level)
+  - [19.2 Minimum practical seed subset](#192-minimum-practical-seed-subset)
+  - [19.3 Diversity threshold for bootstrap trust](#193-diversity-threshold-for-bootstrap-trust)
 - [20. Falsification criteria](#20-falsification-criteria)
 
 ## 1. Purpose and scope
@@ -467,19 +467,21 @@ Stage 15 does not replace those subsystem specifications. It defines the closure
 
 Only the following issues remain intentionally unfixed.
 
-### OI-15-1: Fixed-point comparison level
+The register tracks them as OI-25, OI-26 and OI-27 in [`XAX_OPEN_ISSUES.md`](../XAX_OPEN_ISSUES.md), which records their current status. Until 2026-11-24 this section labelled them OI-15-1 to OI-15-3.
+
+### 19.1 Fixed-point comparison level
 
 It remains to be measured whether reproducible self-builds can require full binary identity on initial targets or whether a canonical projection is necessary for unavoidable non-semantic output variation.
 
 The default preference is full identity.
 
-### OI-15-2: Minimum practical seed subset
+### 19.2 Minimum practical seed subset
 
 The exact smallest semantic subset that can compile the first useful XAX-hosted compiler cannot be fixed without implementing the initial compiler architecture.
 
 The seed subset MUST remain smaller than the permanent language surface it bootstraps where practical.
 
-### OI-15-3: Diversity threshold for bootstrap trust
+### 19.3 Diversity threshold for bootstrap trust
 
 The minimum acceptable independence between two bootstrap seeds is a policy and evidence question. Implementation experience must determine which combinations of architecture, provenance, historical compiler, and environment give useful diversity without creating an ongoing second implementation obligation.
 

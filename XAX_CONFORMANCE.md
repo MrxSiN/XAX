@@ -37,9 +37,9 @@ This document consolidates conformance requirements and test categories. It cont
     - [19.1 Current M12 implementation-local evidence](#191-current-m12-implementation-local-evidence)
 - [Part III — Obligations](#part-iii--obligations)
   - [20. No-results rule](#20-no-results-rule)
-  - [20. M13 accelerator target/deployment obligations](#20-m13-accelerator-targetdeployment-obligations)
-    - [20.1 Current M13 implementation-local evidence](#201-current-m13-implementation-local-evidence)
-    - [20.2 OI-13 synchronization-scope normalization evidence](#202-oi-13-synchronization-scope-normalization-evidence)
+  - [20a. M13 accelerator target/deployment obligations](#20a-m13-accelerator-targetdeployment-obligations)
+    - [20a.1 Current M13 implementation-local evidence](#20a1-current-m13-implementation-local-evidence)
+    - [20a.2 OI-13 synchronization-scope normalization evidence](#20a2-oi-13-synchronization-scope-normalization-evidence)
   - [21. Android direct-artifact/platform-package obligations](#21-android-direct-artifactplatform-package-obligations)
   - [22. Universal-replacement obligations](#22-universal-replacement-obligations)
   - [23. Snapshot-bound mutation (ADR-186)](#23-snapshot-bound-mutation-adr-186)
@@ -509,7 +509,7 @@ This evidence is implementation-local and code-size-specific. It does not establ
 
 This file defines obligations and test categories only. Conformance status, pass rates, benchmark measurements, and performance claims MUST be recorded in separate evidence artifacts tied to exact revisions.
 
-### 20. M13 accelerator target/deployment obligations
+### 20a. M13 accelerator target/deployment obligations
 
 An implementation claiming the M13 accelerator slice MUST demonstrate:
 
@@ -522,7 +522,7 @@ An implementation claiming the M13 accelerator slice MUST demonstrate:
 7. package/build provenance and semantic-to-artifact mapping remain target-neutral interfaces rather than target-specific side channels;
 8. hardware/runtime performance is claimed only from actual physical execution measurements, not packet size or a host conformance harness.
 
-#### 20.1 Current M13 implementation-local evidence
+#### 20a.1 Current M13 implementation-local evidence
 
 The 2026-09-30 prototype target root is `202e9d0db81107e8380f27ef1f233327c34fe8a1f56431d38814ec4ee6feee04`. It declares 32-lane execution, device/workgroup execution scopes, explicit host/global/workgroup memory spaces, and six target-operation contracts. The tested graph threads one device effect and one linear buffer resource through explicit allocate → H→D → launch → synchronize → D→H → free operations. The target declares no runtime dependency.
 
@@ -530,7 +530,7 @@ The fixed program root is `6e088c0ff84c0723a9c3b7f527bf2bd98b886f8e5846f0200f5b1
 
 This evidence establishes the declared prototype path only. No physical GPU was executed, so no accelerator latency/throughput/energy or vendor-portability claim is made. OI-16 remains open; OI-13 scope-normalization closure evidence is recorded below.
 
-#### 20.2 OI-13 synchronization-scope normalization evidence
+#### 20a.2 OI-13 synchronization-scope normalization evidence
 
 The 2026-10-02 OI-13 experiment preserves the original M13 target root and deployment evidence byte-for-byte and adds a second package-driven accelerator model, `coherent-grid-accelerator-v1`, target root `0ffdb5e9fece2ccf25d51b7b48246ae8deb04cc9652471f786aa9f6eb91db7bf`. The second package has coherent host+device-visible unified memory plus workgroup-local memory and supports system/device/workgroup scopes. Its existing six-operation deployment contract verifies and lowers through the ordinary accelerator path without runtime dependencies.
 
