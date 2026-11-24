@@ -473,11 +473,13 @@ No downstream subsystem may bypass the core verifier when publishing a new autho
 
 Only the following remain intentionally open:
 
-1. **Object granularity.** Function/block/fragment/fact boundaries require measurement of lookup cost, hash churn, storage, and edit locality.
-2. **Dependency representation.** Exact reverse edges, compressed sets, fingerprints, and recomputation strategies require benchmarking.
-3. **Proof persistence.** Persist-versus-recompute thresholds require implementation data.
-4. **Cross-process parallelism.** Distribution thresholds require workload measurements.
-5. **Hash selection and migration.** Security, speed, hardware support, and migration policy require implementation evidence.
+Each item names the register record that tracks it, with that record's status on 2026-11-24; [`XAX_OPEN_ISSUES.md`](../XAX_OPEN_ISSUES.md) is authoritative, and a `CLOSED` record supersedes the word "open" here.
+
+1. **Object granularity.** Function/block/fragment/fact boundaries require measurement of lookup cost, hash churn, storage, and edit locality. Register: [OI-02](../XAX_OPEN_ISSUES.md#oi-02--canonical-object-and-graph-fragment-granularity), `CLOSED` (2026-10-02).
+2. **Dependency representation.** Exact reverse edges, compressed sets, fingerprints, and recomputation strategies require benchmarking. Register: [OI-21](../XAX_OPEN_ISSUES.md#oi-21--semantic-database-dependency-representation-and-cross-process-parallelism), `CLOSED` (2026-10-02).
+3. **Proof persistence.** Persist-versus-recompute thresholds require implementation data. Register: [OI-05](../XAX_OPEN_ISSUES.md#oi-05--proof-fact-persistence), `CLOSED` (2026-10-01).
+4. **Cross-process parallelism.** Distribution thresholds require workload measurements. Register: [OI-21](../XAX_OPEN_ISSUES.md#oi-21--semantic-database-dependency-representation-and-cross-process-parallelism), `CLOSED` (2026-10-02).
+5. **Hash selection and migration.** Security, speed, hardware support, and migration policy require implementation evidence. Register: [OI-22](../XAX_OPEN_ISSUES.md#oi-22--hash-agility-and-migration), `CLOSED` (2026-10-02).
 
 These issues MAY change representation or performance strategy but MUST NOT weaken these invariants.
 

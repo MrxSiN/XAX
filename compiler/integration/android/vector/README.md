@@ -2,7 +2,7 @@
 
 XAX's Android hook target has one runtime contract:
 
-```
+```text
 XAX -> generated libxposed API-102 module -> Vector -> ART
 ```
 

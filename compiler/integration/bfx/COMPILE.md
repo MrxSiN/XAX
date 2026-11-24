@@ -39,7 +39,7 @@ importer use the same strict decoder before publication/import.
 
 `compile_windows.xax` contains one native Windows process host. Commands:
 
-```
+```text
 bbc emit-bfx [-O0|-O1]     raw binary source stdin, BFX stdout; default O1
 bbc check                 raw binary source stdin, no success output
 bbc info                  BFX stdin, instruction count stdout
@@ -138,7 +138,7 @@ commands and calls the unchanged previous entry for `emit-bfx`, `check` and
 Full canonical verification and `Workspace.save` produced the store; replaying
 the record against the result rejects its stale root.
 
-```
+```text
 bbc compile <android-arm64|windows-x86_64> [-O0|-O1] <output> < program.bf
 bbc bind    <android-arm64|windows-x86_64> [-O0|-O1] < program.bf > program.edit
 ```

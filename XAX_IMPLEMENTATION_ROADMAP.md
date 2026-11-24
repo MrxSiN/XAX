@@ -13,6 +13,7 @@ No milestone or B/R level is changed by this distribution update.
   - [2. Bootstrap mapping](#2-bootstrap-mapping)
   - [3. Milestone evidence rule](#3-milestone-evidence-rule)
 - [Part II — Prototype milestones (M1-M14)](#part-ii--prototype-milestones-m1-m14)
+  - [Milestone dependencies](#milestone-dependencies)
   - [M1 — Minimal canonical semantic store and verifier](#m1--minimal-canonical-semantic-store-and-verifier)
   - [M2 — Arithmetic, functions, calls, branches](#m2--arithmetic-functions-calls-branches)
   - [M3 — Stack memory and proof obligations](#m3--stack-memory-and-proof-obligations)
@@ -87,15 +88,38 @@ Milestone status cannot advance when required evidence is absent or invalidated 
 
 ## Part II — Prototype milestones (M1-M14)
 
+### Milestone dependencies
+
+The milestone-to-milestone relations in each milestone's Dependencies list, as drawn from those lists (a range such as M1–M5 is
+expanded). Other dependencies named there, such as target packages, appear only in the milestone's own section; M1 depends
+on none of these milestones.
+
+```mermaid
+flowchart LR
+  M1 & M2 & M3 & M4 & M5 --> M6
+  M1 --> M2
+  M1 & M2 --> M3
+  M1 & M2 & M3 --> M4
+  M4 --> M5
+  M3 & M6 --> M7
+  M5 & M7 --> M8
+  M6 & M7 --> M9
+  M1 & M6 & M9 --> M10
+  M4 & M9 & M10 --> M11
+  M5 & M7 & M8 & M9 & M10 & M11 --> M12
+  M5 & M8 & M12 --> M13
+  ALL["all prior milestones"] --> M14
+```
+
 ### M1 — Minimal canonical semantic store and verifier
 
-**Entry criteria**
+#### Entry criteria
 
 - merged v0.1 specification and canonical serialization rules accepted;
 - v0.1 hash suite fixed to BLAKE3-256 suite 1;
 - minimal object schemas selected for the prototype.
 
-**Required capability**
+#### Required capability
 
 - canonical container v1 reader/writer;
 - CIDs and direct-reference tables;
@@ -104,22 +128,28 @@ Milestone status cannot advance when required evidence is absent or invalidated 
 - structural verifier and deterministic machine diagnostics;
 - deterministic rejection of malformed/noncanonical inputs.
 
-**Exit criteria**
+#### Exit criteria
 
 - canonical objects can be created, identified, loaded, verified/rejected deterministically, and round-tripped without byte/identity change;
 - malformed encoding and CID mismatch fixtures are rejected;
 - local lookup does not require full-store deserialization;
 - no text form is used as authoritative program state.
 
-**Dependencies**: none beyond merged specification and cryptographic/hash implementation.
+#### Dependencies
 
-**Benchmarks now valid**: store size, encode/decode/hash throughput, lookup, malformed-object rejection, verifier throughput. No native runtime claims.
+none beyond merged specification and cryptographic/hash implementation.
+
+#### Benchmarks now valid
+
+store size, encode/decode/hash throughput, lookup, malformed-object rejection, verifier throughput. No native runtime claims.
 
 ### M2 — Arithmetic, functions, calls, branches
 
-**Entry criteria**: M1 complete.
+#### Entry criteria
 
-**Required capability**
+M1 complete.
+
+#### Required capability
 
 - `bits<N>` common prototype widths plus arbitrary-width semantic path;
 - canonical constants;
@@ -128,21 +158,27 @@ Milestone status cannot advance when required evidence is absent or invalidated 
 - data/effect edges sufficient for the subset;
 - simple executor or equivalent reference path for semantic oracles.
 
-**Exit criteria**
+#### Exit criteria
 
 - valid arithmetic/control fixtures execute with required results;
 - invalid types, arities, SSA uses, branch arguments, and call contracts reject deterministically;
 - no implicit promotions, fallthrough, exceptional call edge, or serialization-order semantics.
 
-**Dependencies**: M1; initial CORE operation definitions.
+#### Dependencies
 
-**Benchmarks now valid**: small-program correctness, representation creation/edit tasks, basic compile-time/verifier accounting.
+M1; initial CORE operation definitions.
+
+#### Benchmarks now valid
+
+small-program correctness, representation creation/edit tasks, basic compile-time/verifier accounting.
 
 ### M3 — Stack memory and proof obligations
 
-**Entry criteria**: M2 complete.
+#### Entry criteria
 
-**Required capability**
+M2 complete.
+
+#### Required capability
 
 - explicit stack storage creation/lifetime;
 - pointer/address derivation;
@@ -151,21 +187,27 @@ Milestone status cannot advance when required evidence is absent or invalidated 
 - memory effects;
 - explicit checked/raw path for unproved access where included in prototype.
 
-**Exit criteria**
+#### Exit criteria
 
 - stack/address/load/store vectors pass;
 - use-after-lifetime, out-of-bounds, misalignment, permission, initialization, and invalid raw-waiver cases reject;
 - statically proven obligations add no mandatory runtime metadata/check.
 
-**Dependencies**: M1–M2; pointer/layout subset.
+#### Dependencies
 
-**Benchmarks now valid**: stack footprint, memory kernels through reference path, no-allocation cases, memory-safety diagnostic tasks.
+M1–M2; pointer/layout subset.
+
+#### Benchmarks now valid
+
+stack footprint, memory kernels through reference path, no-allocation cases, memory-safety diagnostic tasks.
 
 ### M4 — First direct native backend
 
-**Entry criteria**: M3 complete and one target package sufficient for the subset exists.
+#### Entry criteria
 
-**Required capability**
+M3 complete and one target package sufficient for the subset exists.
+
+#### Required capability
 
 - machine value/address mapping;
 - target lowering/legalization for M3 subset;
@@ -174,39 +216,53 @@ Milestone status cannot advance when required evidence is absent or invalidated 
 - direct deterministic encoding, relocation/layout, and object/executable or load-image emission;
 - minimal ABI/entry support required by test programs.
 
-**Exit criteria**
+#### Exit criteria
 
 - milestone-3 programs execute as native code on the first target;
 - output bytes are produced without a required permanent external backend/assembler/linker path;
 - target assumptions originate from the exact target package;
 - unsupported operations fail explicitly.
 
-**Dependencies**: M1–M3; target-model/ABI subset.
+#### Dependencies
 
-**Benchmarks now valid**: native execution time, code size, startup, compile time/memory, first fair C/Rust comparisons for supported cases.
+M1–M3; target-model/ABI subset.
+
+#### Benchmarks now valid
+
+native execution time, code size, startup, compile time/memory, first fair C/Rust comparisons for supported cases.
 
 ### M5 — Second architecturally different native backend
 
-**Entry criteria**: M4 complete.
+#### Entry criteria
 
-**Required capability**: implement the same semantic subset using a second materially different target package without modifying fundamental XAX semantics.
+M4 complete.
 
-**Exit criteria**
+#### Required capability
+
+implement the same semantic subset using a second materially different target package without modifying fundamental XAX semantics.
+
+#### Exit criteria
 
 - same canonical program subset lowers and executes on both targets;
 - target-specific differences reside in target/platform/ABI packages;
 - memory/register/encoding/legalization differences do not force core semantic changes;
 - cross-target conformance vectors pass.
 
-**Dependencies**: M4; second target package.
+#### Dependencies
 
-**Benchmarks now valid**: cross-target portability, target-package adequacy, target-cost ranking comparisons on both targets.
+M4; second target package.
+
+#### Benchmarks now valid
+
+cross-target portability, target-package adequacy, target-cost ranking comparisons on both targets.
 
 ### M6 — Transactional AI workspace
 
-**Entry criteria**: M1–M5 provide stable semantic/query identities and verifier services.
+#### Entry criteria
 
-**Required capability**
+M1–M5 provide stable semantic/query identities and verifier services.
+
+#### Required capability
 
 - bounded semantic queries and local handles;
 - transactions with expected root/read sets/local preconditions;
@@ -217,22 +273,28 @@ Milestone status cannot advance when required evidence is absent or invalidated 
 - structured deterministic diagnostics/repair neighborhoods;
 - token/context accounting.
 
-**Exit criteria**
+#### Exit criteria
 
 - local edits commit without retransmitting/rebuilding unrelated objects;
 - failed/stale transactions leave root unchanged;
 - deterministic queries/diagnostics pass C4 vectors;
 - independent semantic edits can be detected as nonconflicting where dependencies permit.
 
-**Dependencies**: M1–M5; semantic database dependency tracking.
+#### Dependencies
 
-**Benchmarks now valid**: local-edit size, repair turns, context-scaling, conflict/rebase workloads.
+M1–M5; semantic database dependency tracking.
+
+#### Benchmarks now valid
+
+local-edit size, repair turns, context-scaling, conflict/rebase workloads.
 
 ### M7 — Resources and richer effects
 
-**Entry criteria**: M6 complete; memory/control verifier stable.
+#### Entry criteria
 
-**Required capability**
+M6 complete; memory/control verifier stable.
+
+#### Required capability
 
 - `resource<K,state>` linear/affine rules;
 - explicit acquire/transfer/transition/release/discard;
@@ -240,22 +302,28 @@ Milestone status cannot advance when required evidence is absent or invalidated 
 - effect domains/instances, summaries, calls, partitioning;
 - resource/effect diagnostics and incremental invalidation.
 
-**Exit criteria**
+#### Exit criteria
 
 - lifecycle/effect vectors pass;
 - duplication/disappearance/invalid state transitions reject;
 - calls cannot exceed effect/resource/capability contract;
 - independent proven effect domains may reorder; unproven independence remains conservative.
 
-**Dependencies**: M3, M6.
+#### Dependencies
 
-**Benchmarks now valid**: resource-lifetime tasks, effect-reordering tests, hidden-operation checks, AI repair of resource/effect violations.
+M3, M6.
+
+#### Benchmarks now valid
+
+resource-lifetime tasks, effect-reordering tests, hidden-operation checks, AI repair of resource/effect violations.
 
 ### M8 — Atomics, interrupts, and real-time profiles
 
-**Entry criteria**: M7 complete; target atomic capability interface implemented on at least one capable target.
+#### Entry criteria
 
-**Required capability**
+M7 complete; target atomic capability interface implemented on at least one capable target.
+
+#### Required capability
 
 - portable atomic families/orders/scopes;
 - target atomic capability/legalization interface;
@@ -264,7 +332,7 @@ Milestone status cannot advance when required evidence is absent or invalidated 
 - interrupt/target-handler entry contracts;
 - real-time rejection profiles and latency-relevant queries.
 
-**Exit criteria**
+#### Exit criteria
 
 - atomic order legality and litmus subset pass;
 - unsupported atomics reject or expose explicitly permitted assistance;
@@ -272,15 +340,21 @@ Milestone status cannot advance when required evidence is absent or invalidated 
 - strict profiles reject forbidden/unknown properties after lowering;
 - interrupt constraints are target-driven and explicit.
 
-**Dependencies**: M5, M7.
+#### Dependencies
 
-**Benchmarks now valid**: atomic kernels, synchronization cost, interrupt latency, deterministic-latency cases on capable targets.
+M5, M7.
+
+#### Benchmarks now valid
+
+atomic kernels, synchronization cost, interrupt latency, deterministic-latency cases on capable targets.
 
 ### M9 — Compile-time XAX specialization/metaprogramming
 
-**Entry criteria**: M7 verifier and transaction model stable; target query interface available.
+#### Entry criteria
 
-**Required capability**
+M7 verifier and transaction model stable; target query interface available.
+
+#### Required capability
 
 - deterministic bounded compile-time evaluator;
 - explicit capability/environment isolation;
@@ -289,7 +363,7 @@ Milestone status cannot advance when required evidence is absent or invalidated 
 - specialization, memoization, verifier barrier;
 - target-package compile-time computation.
 
-**Exit criteria**
+#### Exit criteria
 
 - same inputs/policy produce same semantic result;
 - budget exhaustion is deterministic and non-committing;
@@ -297,15 +371,21 @@ Milestone status cannot advance when required evidence is absent or invalidated 
 - generated invalid graphs cannot commit;
 - compile-time-only abstractions erase when no runtime representation is requested.
 
-**Dependencies**: M6–M7; target query services.
+#### Dependencies
 
-**Benchmarks now valid**: specialization compile cost, generated-code impact, generic/specialization AI tasks, compile-time cache behavior.
+M6–M7; target query services.
+
+#### Benchmarks now valid
+
+specialization compile cost, generated-code impact, generic/specialization AI tasks, compile-time cache behavior.
 
 ### M10 — Package, build, security, and reproducibility semantics
 
-**Entry criteria**: M9 provides build-time XAX execution; semantic database/snapshots stable.
+#### Entry criteria
 
-**Required capability**
+M9 provides build-time XAX execution; semantic database/snapshots stable.
+
+#### Required capability
 
 - package roots/logical identities;
 - deterministic resolver;
@@ -316,7 +396,7 @@ Milestone status cannot advance when required evidence is absent or invalidated 
 - build capabilities/sandbox boundary;
 - cache integrity, provenance/signature/trust hooks.
 
-**Exit criteria**
+#### Exit criteria
 
 - identical declared resolver inputs produce identical roots/failure;
 - clean offline build succeeds from complete local snapshot closure;
@@ -324,37 +404,49 @@ Milestone status cannot advance when required evidence is absent or invalidated 
 - fetched/cached objects verify against identities;
 - package/build semantics require no external manifest/build DSL.
 
-**Dependencies**: M1, M6, M9.
+#### Dependencies
 
-**Benchmarks now valid**: reproducible build tests, resolver/build incrementality, package-context AI tasks, cache/provenance overhead.
+M1, M6, M9.
+
+#### Benchmarks now valid
+
+reproducible build tests, resolver/build incrementality, package-context AI tasks, cache/provenance overhead.
 
 ### M11 — XAX self-hosting subset
 
-**Entry criteria**: M10 complete; seed strategy and bootstrap target fixed.
+#### Entry criteria
 
-**Required capability**
+M10 complete; seed strategy and bootstrap target fixed.
+
+#### Required capability
 
 - canonical XAX implementation of a declared compiler/tooling subset;
 - seed capable of building it;
 - provenance/build policy roots;
 - self-build comparison/evidence infrastructure.
 
-**Exit criteria**
+#### Exit criteria
 
 - B0 and B1 achieved for declared subset;
 - subset can be rebuilt through approved bootstrap path;
 - behavior is compared against seed path using conformance vectors;
 - seed limitations/dependencies are explicit.
 
-**Dependencies**: M4, M9, M10.
+#### Dependencies
 
-**Benchmarks now valid**: bootstrap size/time, subset self-build reproducibility, hosted versus seed behavior.
+M4, M9, M10.
+
+#### Benchmarks now valid
+
+bootstrap size/time, subset self-build reproducibility, hosted versus seed behavior.
 
 ### M12 — Optimizer expansion and validated search
 
-**Entry criteria**: M11 plus stable target/compiler services.
+#### Entry criteria
 
-**Required capability**
+M11 plus stable target/compiler services.
+
+#### Required capability
 
 - interprocedural optimization;
 - target-aware cost-directed optimization;
@@ -362,22 +454,28 @@ Milestone status cannot advance when required evidence is absent or invalidated 
 - translation/equivalence validation for selected high-risk/search transformations;
 - profile-guided profitability path with non-semantic profile separation.
 
-**Exit criteria**
+#### Exit criteria
 
 - optimizer suite demonstrates semantic preservation under verifier/oracles;
 - failed candidate validation cannot alter accepted output;
 - compile-time/memory budgets are explicit;
 - target cost predictions and candidate selection are recorded for calibration.
 
-**Dependencies**: M5, M7–M11.
+#### Dependencies
 
-**Benchmarks now valid**: optimization-quality corpus, compile-time/performance tradeoffs, target-cost ranking/magnitude validation, credible assembly kernel comparisons.
+M5, M7–M11.
+
+#### Benchmarks now valid
+
+optimization-quality corpus, compile-time/performance tradeoffs, target-cost ranking/magnitude validation, credible assembly kernel comparisons.
 
 ### M13 — GPU/accelerator path
 
-**Entry criteria**: M8/M12 infrastructure can express target scopes, memory spaces, effects, and target operations.
+#### Entry criteria
 
-**Required capability**
+M8/M12 infrastructure can express target scopes, memory spaces, effects, and target operations.
+
+#### Required capability
 
 - non-CPU accelerator target package;
 - execution topology/scopes;
@@ -385,22 +483,28 @@ Milestone status cannot advance when required evidence is absent or invalidated 
 - target operations/legalizations/encodings or deployment artifact path;
 - explicit host-device launch/transfer/synchronization semantics.
 
-**Exit criteria**
+#### Exit criteria
 
 - accelerator programs compile/deploy without changing fundamental XAX semantics;
 - unsupported scope/memory behavior rejects deterministically;
 - host/device effects/resources are explicit;
 - target-specific runtime dependencies, if any, are selected explicitly.
 
-**Dependencies**: M5, M8, M12.
+#### Dependencies
 
-**Benchmarks now valid**: accelerator throughput/latency, host-device effects, target-model portability, GPU/accelerator code quality.
+M5, M8, M12.
+
+#### Benchmarks now valid
+
+accelerator throughput/latency, host-device effects, target-model portability, GPU/accelerator code quality.
 
 ### M14 — Self-hosting completion and toolchain closure
 
-**Entry criteria**: M11–M13 mature enough to migrate the remaining live toolchain.
+#### Entry criteria
 
-**Required capability**
+M11–M13 mature enough to migrate the remaining live toolchain.
+
+#### Required capability
 
 - authoritative compiler services in XAX;
 - serializer/semantic database/verifier-facing services XAX-hosted except deliberate minimal trusted substrate;
@@ -408,7 +512,7 @@ Milestone status cannot advance when required evidence is absent or invalidated 
 - normal target maintenance does not require a second backend language;
 - release build can start from approved immutable seed artifact without maintaining seed-source language.
 
-**Exit criteria**
+#### Exit criteria
 
 - B2–B6 evidence satisfied for claimed closure target(s);
 - compiler recursively compiles its authoritative graph;
@@ -417,11 +521,17 @@ Milestone status cannot advance when required evidence is absent or invalidated 
 - full self-build and release reconstruction are reproducible under declared policy;
 - canonical continuation state permits a new AI session to resume without conversation history.
 
-**Dependencies**: all prior milestones.
+#### Dependencies
 
-**Benchmarks now valid**: full self-build, whole-toolchain reproducibility, end-to-end compiler resource accounting, AI-native maintenance/context scaling.
+all prior milestones.
 
-**Status (ADR-177)**: complete only for the `xax-semantic-image-v1` META wrapper at B2–B4. These exit criteria are not met for the compiler as a whole: the verifier, lowering, object writing, linking, and package/build services are live Python, so B5/B6 are not held.
+#### Benchmarks now valid
+
+full self-build, whole-toolchain reproducibility, end-to-end compiler resource accounting, AI-native maintenance/context scaling.
+
+#### Status (ADR-177)
+
+complete only for the `xax-semantic-image-v1` META wrapper at B2–B4. These exit criteria are not met for the compiler as a whole: the verifier, lowering, object writing, linking, and package/build services are live Python, so B5/B6 are not held.
 
 ## Part III — After M14: replacement and self-hosting
 
@@ -429,21 +539,35 @@ Milestone status cannot advance when required evidence is absent or invalidated 
 
 M1–M14 establish a compiler-architecture prototype. U1 is the first milestone measured in replacement terms (`XAX_SPEC.md` §21): every result is a row update in `XAX_REPLACEMENT_MATRIX.json`, and levels are derived, never asserted.
 
-**Entry criteria**: M14 complete; replacement matrix and validator present.
+#### Entry criteria
+
+M14 complete; replacement matrix and validator present.
 
 <!-- xax-status:levels -->Replacement levels (generated from `XAX_REPLACEMENT_MATRIX.json`): R6: jvm, linux-aarch64, linux-x86_64; R3: aarch64-baremetal, android-arm64, browser-web, gpu-spirv-cuda-metal-dxil, wasm32-wasi, windows-x86_64-pe; R1: riscv64; no level yet: bsd-unix, dotnet-clr, macos-ios-apple, rtos-embedded-mcu.<!-- /xax-status:levels -->
 
-**Progress (2026-10-03)**: workload 1 holds R4 on Linux x86-64 (ADR-147/148: `filestat`, `chains`, and `jsonmin` within 1.05× of the fastest of gcc, clang, and rustc, `XAX_BENCHMARKS.md` §15.14) and its R3 application is `jsonmin` (ADR-126; allocation, stdin/stdout I/O, recursion over borrowed memory, nontrivial control flow; the dynamic library call is `filestat`'s `libz` `crc32` on the same row), and Linux AArch64 runs the same graph (emulated). Workload 3 is at R2 (browser) and workload 5 at R1 (SPIR-V on llvmpipe, ADR-124). Workload 2 holds R2 on QEMU `virt` (ADR-128/129: MMIO, GIC timer interrupt, statically linked C). Workload 4 is unchanged (R2; the device run is queued).
+#### Progress (2026-10-03)
 
-**Progress (2026-10-04; historical — current status is U1.4b below)**: workload 4 held R3 then: the stateful counter app passed its UI oracle (restore, increments, persistence across process death, file contents) on an Android 12L x86_64 emulator, with the arm64 library run through ARM translation (ADR-155). Its sizes are measured against a Java + NDK twin (ADR-153/154); start-up and memory still need arm64 hardware.
+workload 1 holds R4 on Linux x86-64 (ADR-147/148: `filestat`, `chains`, and `jsonmin` within 1.05× of the fastest of gcc, clang, and rustc, `XAX_BENCHMARKS.md` §15.14) and its R3 application is `jsonmin` (ADR-126; allocation, stdin/stdout I/O, recursion over borrowed memory, nontrivial control flow; the dynamic library call is `filestat`'s `libz` `crc32` on the same row), and Linux AArch64 runs the same graph (emulated). Workload 3 is at R2 (browser) and workload 5 at R1 (SPIR-V on llvmpipe, ADR-124). Workload 2 holds R2 on QEMU `virt` (ADR-128/129: MMIO, GIC timer interrupt, statically linked C). Workload 4 is unchanged (R2; the device run is queued).
 
-**Progress (2026-10-05)**: workload 4 now holds R4 on physical arm64 hardware (ADR-172). The committed counter app passed its persistence oracle on Pixel 8 Pro; against its Java + NDK twin, XAX cold start is 1.016× the fastest arm, with lower median PSS and smaller APK/native-library size.
+#### Progress (2026-10-04; historical — current status is U1.4b below)
 
-**Progress (2026-10-05)**: the Windows x86-64 row holds R2. Current PE bytes execute on Windows 11, and a second artifact exercises a loader-bound `CreateThread` call into a pure XAX `win64-c` entry, then waits, reads the callback result, and closes its linearly tracked handle (ADR-170).
+workload 4 held R3 then: the stateful counter app passed its UI oracle (restore, increments, persistence across process death, file contents) on an Android 12L x86_64 emulator, with the arm64 library run through ARM translation (ADR-155). Its sizes are measured against a Java + NDK twin (ADR-153/154); start-up and memory still need arm64 hardware.
 
-**Progress (2026-10-08)**: ADR-207 redefines R4 as leadership (≤ 0.9999× the fastest non-XAX median, significant), R5 as autonomous maintenance, and R6 as a proven XAX-only application. The JVM keeps R4 (`jsonmin` 0.835× `javac`); Android drops to R3 (1.007×). The next milestone is U2 below.
+#### Progress (2026-10-05)
 
-**Required workloads** (all originate from verified XAX semantics; no human-authored program in another language):
+workload 4 now holds R4 on physical arm64 hardware (ADR-172). The committed counter app passed its persistence oracle on Pixel 8 Pro; against its Java + NDK twin, XAX cold start is 1.016× the fastest arm, with lower median PSS and smaller APK/native-library size.
+
+#### Progress (2026-10-05)
+
+the Windows x86-64 row holds R2. Current PE bytes execute on Windows 11, and a second artifact exercises a loader-bound `CreateThread` call into a pure XAX `win64-c` entry, then waits, reads the callback result, and closes its linearly tracked handle (ADR-170).
+
+#### Progress (2026-10-08)
+
+ADR-207 redefines R4 as leadership (≤ 0.9999× the fastest non-XAX median, significant), R5 as autonomous maintenance, and R6 as a proven XAX-only application. The JVM keeps R4 (`jsonmin` 0.835× `javac`); Android drops to R3 (1.007×). The next milestone is U2 below.
+
+#### Required workloads
+
+(all originate from verified XAX semantics; no human-authored program in another language):
 
 1. **Hosted native application** on a mainstream OS performing real allocation, filesystem or network I/O, at least one dynamic/external library call, nontrivial control flow, and a data structure, with no hidden language runtime.
 2. **Bare-metal program** on a named board or emulator with deterministic startup, explicit sections/layout, MMIO, and an interrupt handler.
@@ -451,14 +575,16 @@ M1–M14 establish a compiler-architecture prototype. U1 is the first milestone 
 4. **Android application** beyond the minimal Activity (state, I/O, lifecycle).
 5. **Accelerator workload** executed on physical GPU/accelerator hardware.
 
-**Exit criteria**
+#### Exit criteria
 
 - each workload holds at least R2 in the matrix for its platform row; at least two hold R3;
 - each workload has a measured comparison (time, peak memory, binary size) against an established toolchain baseline under `XAX_BENCHMARKS.md` §15, reported whether favorable or not;
 - every platform-required runtime and generated adapter is listed in the row's `runtime_requirement` and build provenance;
 - negative tests reject the corresponding verifier/ABI misuse (wrong foreign ABI, missing exit/lifecycle contract, undeclared imports).
 
-**Ordered implementation sequence** (ADR-077; reorder only on matrix evidence):
+#### Ordered implementation sequence
+
+(ADR-077; reorder only on matrix evidence):
 
 | Step | Work | Unblocks | Status |
 |---|---|---|---|
@@ -478,21 +604,25 @@ M1–M14 establish a compiler-architecture prototype. U1 is the first milestone 
 | U1.10 | Third ISA through a target package only: RISC-V RV64 | riscv64 row; U1.6 on RISC-V boards | EXECUTED under Unicorn (ADR-113): raw RV64IM image with LP64 calls and a liveness-hull register allocator; riscv64 row R1. Next: compare/branch fusion, F/D floats and memory, a Linux `ET_EXEC` profile (reusing `xax_elf`), and a hardware or QEMU-system run (OI-44). |
 | U1.11 | Standard semantic libraries, first families (OI-36) | every workload | EXECUTED (ADR-130): `xax.text` and `xax.collections.hashset_u64` as canonical packages; the `uniqcount` application runs on Linux x86-64 and AArch64; per-export bytes and compile cost MEASURED. OI-36 CLOSED. |
 
-**Dependencies**: M4/M5 backends, M7 resources/effects, M10 build/provenance, M13 accelerator scopes.
+#### Dependencies
 
-**Benchmarks now valid**: replacement-workload runtime/memory/size comparisons (§15 of `XAX_BENCHMARKS.md`).
+M4/M5 backends, M7 resources/effects, M10 build/provenance, M13 accelerator scopes.
+
+#### Benchmarks now valid
+
+replacement-workload runtime/memory/size comparisons (§15 of `XAX_BENCHMARKS.md`).
 
 ### U2 — Performance leadership, autonomous maintenance, XAX-only application (after U1)
 
 Priority order (ADR-207): R4, then R5, then R6.
 
-**Exit criteria**
+#### Exit criteria
 
 1. **R4 on hardware rows.** Linux x86-64 and Android arm64 each hold R4: XAX median ≤ 0.9999× the fastest non-XAX arm (C/C++ plus Rust or another non-C language; Java + NDK and Kotlin on Android), significant over interleaved raw samples, rerun after every performance-relevant backend change. Memory and binary size are reported for every arm.
 2. **R5 on one row.** An agent queries, modifies, verifies, benchmarks, rebuilds, and commits an R4 application through `LocalMutationSession` transactions with no whole-source regeneration; the run is recorded as EXECUTED `autonomous_maintenance` evidence.
 3. **R6 on one row.** One complete deployable application (logic, tests, build definitions all XAX) is built reproducibly, deployed, functionally tested on its target, and taken through one XAX-only maintenance/release cycle; the record cites provenance, graph history, and test results as EXECUTED `xax_only_application`.
 
-**Ordered sequence**
+#### Ordered sequence
 
 | Step | Work | Unblocks | Status |
 |---|---|---|---|
@@ -682,11 +812,11 @@ Not an R level and not a B milestone: a gate that restores a reproducible, deriv
 
 ### Snapshot-bound local mutation (2026-10-07, ADR-186 to ADR-188)
 
-The normal snapshot-bound local mutation interface is implemented in `compiler/src/xax_local_protocol.py`. Host-applied responses use it; normal setters reconstruct exact old edge, type and signature fields, and dead-chain pruning preserves surviving users. No backend runtime-speed improvement is claimed by this change.
+The normal snapshot-bound local mutation interface is implemented in `compiler/reference/xax_local_protocol.py`. Host-applied responses use it; normal setters reconstruct exact old edge, type and signature fields, and dead-chain pruning preserves surviving users. No backend runtime-speed improvement is claimed by this change.
 
 ### Android platform capability contracts (2026-10-08, ADR-202 to ADR-204)
 
-Done (STRUCTURAL): exact JNI floats and typed-record argument packs, platform declarations for the managed-class APK, POSIX async/ownership contracts, NDK window/codec/AAudio contracts, and the SDK capability table enforced at build time (`docs/ANDROID_PLATFORM_CAPABILITIES.md`). Next: device execution of each new contract on the authorized device, then OI-47 (path-exact ownership for media buffers, NULL windows and JNI-held SDK objects).
+Done (STRUCTURAL): exact JNI floats and typed-record argument packs, platform declarations for the managed-class APK, POSIX async/ownership contracts, NDK window/codec/AAudio contracts, and the SDK capability table enforced at build time (`docs/ANDROID_PLATFORM_CAPABILITIES.md`, deleted 2026-10-19; the table is in `compiler/reference/xax_android_platform.py`). Next: device execution of each new contract on the authorized device, then OI-47 (path-exact ownership for media buffers, NULL windows and JNI-held SDK objects).
 
 ### Native correctness oracle (2026-11-16, ADR-405)
 

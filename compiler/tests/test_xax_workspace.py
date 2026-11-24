@@ -2800,7 +2800,7 @@ class WorkspaceTests(unittest.TestCase):
         self.assertEqual(workspace.root, reader.root_cid)
 
     def test_edited_transitive_caller_calls_the_rebuilt_middle_function(self):
-        # ADR-197: editing rate and c1 (c1 -> fee -> rate) in one batch left c1
+        # ADR-420: editing rate and c1 (c1 -> fee -> rate) in one batch left c1
         # calling the stale fee. The result must equal building the edit directly.
         from xax_compiler import IntCompare
         from xax_graph_builder import GraphBuilder

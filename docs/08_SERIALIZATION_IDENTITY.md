@@ -6,24 +6,41 @@
 - [2. Normative definitions](#2-normative-definitions)
 - [3. Core invariants](#3-core-invariants)
 - [4. Canonical store model](#4-canonical-store-model)
+  - [4.1 Header](#41-header)
 - [5. Canonical primitive encodings](#5-canonical-primitive-encodings)
+  - [5.1 Integers](#51-integers)
+  - [5.2 Lengths, counts, and byte strings](#52-lengths-counts-and-byte-strings)
+  - [5.3 Booleans, enums, and collections](#53-booleans-enums-and-collections)
 - [6. Semantic object envelope](#6-semantic-object-envelope)
 - [7. Core object kinds](#7-core-object-kinds)
 - [8. Deterministic fields and schemas](#8-deterministic-fields-and-schemas)
 - [9. Interning and reference tables](#9-interning-and-reference-tables)
+  - [9.1 Effect-edge compression selected by OI-08](#91-effect-edge-compression-selected-by-oi-08)
 - [10. Content identity versus logical identity](#10-content-identity-versus-logical-identity)
+  - [10.1 CID](#101-cid)
+  - [10.2 LID](#102-lid)
 - [11. Merkle DAG structure](#11-merkle-dag-structure)
 - [12. Local mutation and version creation](#12-local-mutation-and-version-creation)
 - [13. Non-semantic metadata](#13-non-semantic-metadata)
 - [14. Streaming and random access](#14-streaming-and-random-access)
+  - [14.1 Record order](#141-record-order)
+  - [14.2 Index](#142-index)
 - [15. Integrity trailer](#15-integrity-trailer)
 - [16. Version evolution](#16-version-evolution)
+  - [16.1 Container version](#161-container-version)
+  - [16.2 Object schema version](#162-object-schema-version)
+  - [16.3 Hash suite](#163-hash-suite)
 - [17. Compatibility policy](#17-compatibility-policy)
+  - [17.1 Backward compatibility](#171-backward-compatibility)
+  - [17.2 Forward compatibility](#172-forward-compatibility)
+  - [17.3 Canonical migration](#173-canonical-migration)
 - [18. Corruption behavior](#18-corruption-behavior)
 - [19. Human-readable dumps](#19-human-readable-dumps)
 - [20. Interfaces with other subsystems](#20-interfaces-with-other-subsystems)
 - [21. Rejected alternatives](#21-rejected-alternatives)
 - [22. Open issues requiring implementation evidence](#22-open-issues-requiring-implementation-evidence)
+  - [22.1 Graph-fragment granularity](#221-graph-fragment-granularity)
+  - [22.2 Index acceleration](#222-index-acceleration)
 - [23. Falsification criteria](#23-falsification-criteria)
 
 ## 1. Purpose and scope
@@ -50,8 +67,6 @@ This stage specifies:
 
 It does not define human programming syntax, optimizer behavior, target semantics, or semantic fields owned by other XAX stages.
 
----
-
 ## 2. Normative definitions
 
 The terms **MUST**, **MUST NOT**, **REQUIRED**, **SHOULD**, **SHOULD NOT**, and **MAY** are normative.
@@ -72,8 +87,6 @@ The terms **MUST**, **MUST NOT**, **REQUIRED**, **SHOULD**, **SHOULD NOT**, and 
 
 **Schema version** — the exact interpretation and canonical encoding for one semantic object kind.
 
----
-
 ## 3. Core invariants
 
 | Invariant | Requirement |
@@ -88,8 +101,6 @@ The terms **MUST**, **MUST NOT**, **REQUIRED**, **SHOULD**, **SHOULD NOT**, and 
 | Deterministic failure | Invalid, corrupt, ambiguous, or unsupported semantic data is rejected. |
 | No heuristic repair | Readers never guess missing or damaged semantics. |
 | Machine locality | A known object can be read without deserializing the whole program. |
-
----
 
 ## 4. Canonical store model
 
@@ -126,8 +137,6 @@ Initial canonical values are:
 
 Unsupported major versions, required feature bits, or hash suites MUST be rejected. Hash substitution is forbidden.
 
----
-
 ## 5. Canonical primitive encodings
 
 ### 5.1 Integers
@@ -158,8 +167,6 @@ Ordered lists encode `count` followed by canonical elements.
 
 Unordered semantic sets MUST use the exact canonical order specified by the owning schema. Canonical ordering MUST NOT depend on insertion history, host pointer values, locale, map iteration, or platform behavior.
 
----
-
 ## 6. Semantic object envelope
 
 Each semantic record contains:
@@ -186,8 +193,6 @@ Excluded from CID computation are the stored CID itself, outer record length, fi
 
 A decoder MUST recompute each CID and reject a mismatch.
 
----
-
 ## 7. Core object kinds
 
 Initial core kind IDs are:
@@ -210,8 +215,6 @@ The serialization layer assigns IDs but does not redefine semantic fields owned 
 
 Unassigned kind IDs are invalid unless a later registry defines them. A reader encountering an unknown reachable kind MAY preserve its bytes if framing is understood, but MUST NOT claim it can verify, compile, optimize, or mutate that artifact.
 
----
-
 ## 8. Deterministic fields and schemas
 
 Fields are encoded in schema order. Ordinary fixed-schema fields do not carry field tags.
@@ -228,8 +231,6 @@ For every `(kind_id, schema_version)`, the schema MUST define:
 Inserting, deleting, reordering, reinterpreting, or changing the encoding of a semantic field requires a new `schema_version`.
 
 A semantic body MUST be consumed exactly. Unknown trailing bytes are invalid.
-
----
 
 ## 9. Interning and reference tables
 
@@ -251,15 +252,11 @@ References to entities defined inside the same semantic body use schema-defined 
 
 Identical immutable semantic objects necessarily share one CID. A canonical store MUST NOT contain duplicate semantic records for the same CID, whether identical or conflicting.
 
----
-
 ### 9.1 Effect-edge compression selected by OI-08
 
 Effect ordering is semantic, but canonical store v1 does not introduce a second effect-edge object or derive dependencies from record order. OI-08 benchmark evidence selects a future-schema compression policy if effect frontiers are persisted separately from ordinary graph references: group explicit operation handles by exact effect domain instance, encode a semantic topological run for that instance, use a compact previous-member form on ordinary linear runs, and encode explicit predecessor deltas at roots, forks, joins, or other non-run frontiers.
 
 The semantic run order in such a section is part of the effect representation. It is not the order of graph nodes, semantic records, CIDs, file offsets, traversal, or construction. A decoder MUST reconstruct the exact predecessor frontier and partial order and reject any mismatch. A conservative unpartitioned instance remains required when independence is not proven. The OI-08 comparator is measurement tooling only; adopting this form requires a future schema version and does not alter current CIDs or store bytes.
-
----
 
 ## 10. Content identity versus logical identity
 
@@ -292,8 +289,6 @@ Removing or changing this table MUST NOT change the semantic root.
 
 Package logical identity used for dependency upgrade continuity is a separate package-system concept and MUST NOT be conflated with workspace LIDs.
 
----
-
 ## 11. Merkle DAG structure
 
 The semantic root heads a Merkle DAG. Conceptually:
@@ -310,13 +305,25 @@ program_root CID
   -> target CID
 ```
 
+The same conceptual relations as a diagram:
+
+```mermaid
+flowchart TD
+  R["program_root CID"] --> M["module CID"]
+  R --> T0["target CID"]
+  M --> F["function CID"]
+  M --> T1["type CID"]
+  M --> C1["constant CID"]
+  F --> G["graph_fragment CID"]
+  F --> T2["type CID"]
+  F --> C2["constant CID"]
+```
+
 Exact ownership edges are defined by the relevant semantic schemas.
 
 Shared immutable objects are stored once and referenced many times.
 
 Direct cycles between independently content-addressed objects are prohibited because each CID depends on referenced CIDs. Recursive language semantics MUST use a schema-defined indirection that avoids cyclic CID computation, such as local references inside one enclosing object or an acyclic declaration/definition partition.
-
----
 
 ## 12. Local mutation and version creation
 
@@ -336,8 +343,6 @@ A graph-fragment-local change SHOULD leave unrelated functions, modules, types, 
 
 Fragment granularity is permitted to vary by implementation policy, but the resulting semantic object must still have one canonical encoding once boundaries are chosen by its governing semantic schema.
 
----
-
 ## 13. Non-semantic metadata
 
 Debug names, display labels, source-origin descriptions, visualization hints, profiling observations, timestamps, comments, UI layout, temporary local handles, and diagnostic caches are non-semantic unless another XAX stage explicitly defines them as semantic.
@@ -353,8 +358,6 @@ Such a record MAY refer to a CID or LID. Deleting or changing it MUST NOT alter 
 Measured profile data therefore remains separate from program semantics even when compilation policy uses it.
 
 Verifier proof caches MAY also be persisted beside a canonical store as implementation-owned non-semantic sidecars. Such sidecars are not semantic records, do not participate in the semantic root or canonical `.xax` bytes, and MUST key every reusable fact by its complete meaning-affecting dependency closure plus verifier identity. Missing/stale entries cause recomputation; corrupt sidecars MUST cause recomputation or explicit failure, never semantic acceptance. The current OI-05 prototype uses exact subject/direct-reference CIDs and verifier identity for object-verification facts; broader proof facts require broader keys.
-
----
 
 ## 14. Streaming and random access
 
@@ -384,8 +387,6 @@ A streaming reader MAY process records sequentially and consume the index last.
 
 Reading one known function or graph fragment MUST NOT require deserializing all other functions.
 
----
-
 ## 15. Integrity trailer
 
 The store ends with:
@@ -404,8 +405,6 @@ The store ends with:
 The store digest detects truncation, reordering, index corruption, and damage to non-semantic records. Object CIDs remain the authoritative integrity mechanism for semantic records.
 
 A bounded reader MAY validate one object without validating the complete store digest. It MUST validate the store digest before claiming whole-store integrity.
-
----
 
 ## 16. Version evolution
 
@@ -430,8 +429,6 @@ Semantic reinterpretation or canonical encoding changes require a new schema ver
 The hash suite is explicit in the header.
 
 Changing suites changes CIDs even when semantic bodies are unchanged. Hash-suite migration is therefore an explicit store-wide identity migration. CIDs from different suites MUST NOT be silently treated as interchangeable.
-
----
 
 ## 17. Compatibility policy
 
@@ -462,8 +459,6 @@ Schema migration:
 
 Migration is an explicit transformation, not in-place reinterpretation.
 
----
-
 ## 18. Corruption behavior
 
 A reader MUST fail deterministically on:
@@ -489,8 +484,6 @@ Canonical readers MUST NOT repair corrupted semantics heuristically.
 
 A separate recovery tool MAY copy intact objects into a new store, but guessed bytes or reconstructed meaning MUST NOT be represented as the original artifact.
 
----
-
 ## 19. Human-readable dumps
 
 A tool MAY render XAX objects or neighborhoods as text.
@@ -506,8 +499,6 @@ Such a dump:
 - MUST be identified as non-authoritative diagnostic output.
 
 Importing an edited dump as authoritative program state is not part of XAX. Program changes occur through structured semantic construction or transactional mutation.
-
----
 
 ## 20. Interfaces with other subsystems
 
@@ -525,8 +516,6 @@ Importing an edited dump as authoritative program state is not part of XAX. Prog
 | AI workspace protocol | May expose short temporary handles mapped to CIDs/LIDs; handles are never persistent semantic identities. |
 
 No subsystem may derive semantic meaning from file offsets, insertion history, timestamps, UI metadata, or host-specific ordering.
-
----
 
 ## 21. Rejected alternatives
 
@@ -547,11 +536,13 @@ No subsystem may derive semantic meaning from file offsets, insertion history, t
 | Canonical per-record compression in v1 | Adds compressor determinism and complexity without semantic benefit; transport compression can remain external. |
 | Required dump round-trip | Risks creating a second human programming language. |
 
----
-
 ## 22. Open issues requiring implementation evidence
 
+Each item names the register record that tracks it, with that record's status on 2026-11-24; [`XAX_OPEN_ISSUES.md`](../XAX_OPEN_ISSUES.md) is authoritative, and a `CLOSED` record supersedes the word "open" here.
+
 ### 22.1 Graph-fragment granularity
+
+Register: [OI-02](../XAX_OPEN_ISSUES.md#oi-02--canonical-object-and-graph-fragment-granularity), `CLOSED` (2026-10-02).
 
 Small fragments improve edit locality and reuse but increase hash, object, index, and traversal overhead. Large fragments reduce overhead but amplify invalidation.
 
@@ -559,9 +550,9 @@ The semantic model does not depend on one fixed default. Prototype measurements 
 
 ### 22.2 Index acceleration
 
-The mandatory sorted CID index is sufficient for deterministic lookup. An additional canonical acceleration structure should be added only if large-store measurements show a material benefit greater than its byte and implementation cost. Any such structure remains non-semantic.
+Register: [OI-63](../XAX_OPEN_ISSUES.md#oi-63--canonical-index-acceleration-for-large-stores), `OPEN`.
 
----
+The mandatory sorted CID index is sufficient for deterministic lookup. An additional canonical acceleration structure should be added only if large-store measurements show a material benefit greater than its byte and implementation cost. Any such structure remains non-semantic.
 
 ## 23. Falsification criteria
 

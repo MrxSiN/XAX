@@ -30,50 +30,33 @@ This stage defines measurement contracts, benchmark case schemas, anti-cherry-pi
 
 The benchmark suite MUST evolve only by versioned additions or corrections. Historical results MUST remain attributable to the exact benchmark-suite version, compiler revision, target package, build policy, model, and measurement environment that produced them.
 
----
-
 ## 2. Normative definitions
 
-**Benchmark case**  
-A versioned workload with fixed observable semantics, inputs, measurement procedure, permitted transformations, target set, and comparison baselines.
+**Benchmark case:** A versioned workload with fixed observable semantics, inputs, measurement procedure, permitted transformations, target set, and comparison baselines.
 
-**Benchmark corpus**  
-A versioned collection of benchmark cases selected before comparative execution.
+**Benchmark corpus:** A versioned collection of benchmark cases selected before comparative execution.
 
-**Runtime benchmark**  
-A benchmark whose primary outputs concern generated code, execution behavior, executable properties, or compiler resource cost.
+**Runtime benchmark:** A benchmark whose primary outputs concern generated code, execution behavior, executable properties, or compiler resource cost.
 
-**Semantic-edit benchmark**  
-A benchmark whose primary outputs concern semantic context, transaction size, generation validity, repair effort, or project-size scaling.
+**Semantic-edit benchmark:** A benchmark whose primary outputs concern semantic context, transaction size, generation validity, repair effort, or project-size scaling.
 
-**Baseline**  
-An independently specified comparison implementation or representation. Baselines MAY include optimized C, optimized Rust, conventional SSA text, hand-written assembly, or another declared representation.
+**Baseline:** An independently specified comparison implementation or representation. Baselines MAY include optimized C, optimized Rust, conventional SSA text, hand-written assembly, or another declared representation.
 
-**Build policy**  
-A canonical set of compiler objectives and allowed compilation effort. Results produced under different build policies MUST NOT be merged as if equivalent.
+**Build policy:** A canonical set of compiler objectives and allowed compilation effort. Results produced under different build policies MUST NOT be merged as if equivalent.
 
-**Successful semantic change**  
-A requested program mutation that commits transactionally, passes the required verifier obligations, and satisfies the benchmark case's behavioral oracle.
+**Successful semantic change:** A requested program mutation that commits transactionally, passes the required verifier obligations, and satisfies the benchmark case's behavioral oracle.
 
-**Repair iteration**  
-A generation attempt after the initial mutation attempt that exists because the prior attempt failed verification, failed the behavioral oracle, or could not commit.
+**Repair iteration:** A generation attempt after the initial mutation attempt that exists because the prior attempt failed verification, failed the behavioral oracle, or could not commit.
 
-**Local context**  
-All semantic entities, diagnostics, protocol material, and other benchmark-accounted information supplied to the model for a task, excluding fixed system infrastructure explicitly declared outside the experiment.
+**Local context:** All semantic entities, diagnostics, protocol material, and other benchmark-accounted information supplied to the model for a task, excluding fixed system infrastructure explicitly declared outside the experiment.
 
-**Semantic entities transmitted**  
-The count of distinct program-semantic objects exposed to or emitted by the AI interaction, counted according to the benchmark protocol rather than byte encoding.
+**Semantic entities transmitted:** The count of distinct program-semantic objects exposed to or emitted by the AI interaction, counted according to the benchmark protocol rather than byte encoding.
 
-**Transaction size**  
-The encoded size of the mutation request submitted to the XAX workspace, reported in bytes.
+**Transaction size:** The encoded size of the mutation request submitted to the XAX workspace, reported in bytes.
 
-**Target-cost estimate**  
-A cost predicted from target-package cost data for a candidate or generated program before empirical runtime measurement.
+**Target-cost estimate:** A cost predicted from target-package cost data for a candidate or generated program before empirical runtime measurement.
 
-**Valid result**  
-A measurement produced under the case's declared procedure with all required metadata and without violating exclusion, baseline, warm-up, instrumentation, or fairness rules.
-
----
+**Valid result:** A measurement produced under the case's declared procedure with all required metadata and without violating exclusion, baseline, warm-up, instrumentation, or fairness rules.
 
 ## 3. Canonical benchmark case model
 
@@ -100,8 +83,6 @@ Every benchmark case MUST have a machine-readable logical record equivalent to t
 A result MUST identify the exact case version. Changing inputs, semantic requirements, baseline flags, target configuration, or metric procedure creates a new case version.
 
 Benchmark records MUST separate measured data from program semantics. Profile information MUST NOT silently mutate the semantic identity of the workload.
-
----
 
 ## 4. Runtime and compiler benchmark family
 
@@ -189,8 +170,6 @@ A result summary MUST NOT:
 
 Exploratory experiments MAY be reported, but MUST be labeled exploratory and kept separate from preregistered suite results.
 
----
-
 ## 5. Semantic-edit benchmark family
 
 ### 5.1 Required representations
@@ -249,8 +228,6 @@ If one representation requires regeneration of a larger unit because it lacks lo
 
 Model, sampling policy, context limit, and tool-access policy MUST be identical across arms unless the experiment explicitly studies one of those variables.
 
----
-
 ## 6. Global benchmark invariants
 
 The following are normative:
@@ -267,8 +244,6 @@ The following are normative:
 10. No benchmark result may be generalized beyond its measured targets, workloads, objectives, or models.
 11. A representation that emits fewer bytes but causes more repair attempts is not presumed superior.
 12. A compiler transformation is credited only when the resulting program passes the case oracle and verifier requirements.
-
----
 
 ## 7. Invalid or rejected alternatives
 
@@ -288,8 +263,6 @@ The following are normative:
 
 **Simulated benchmark outcomes** are forbidden. Missing implementation capability produces an unavailable benchmark, not an estimated result.
 
----
-
 ## 8. Interfaces and subsystem dependencies
 
 Stage 17 depends on stable contracts from the surrounding XAX architecture:
@@ -304,8 +277,6 @@ Stage 17 depends on stable contracts from the surrounding XAX architecture:
 - self-hosting milestones determine when XAX can measure its own toolchain without an external permanent language layer.
 
 A benchmark harness MAY exist outside the trusted core, but benchmark inputs, policies, results, and artifact identities SHOULD be representable as XAX semantic data once the required facilities exist.
-
----
 
 ## 9. Staged implementation roadmap
 
@@ -330,17 +301,17 @@ A milestone is complete only when all exit criteria are met. “Benchmark become
 
 Progression is monotonic in semantic obligation, not necessarily in implementation code size. A later milestone MUST NOT invalidate the semantics or benchmark identities of earlier valid cases without a versioned architectural change.
 
----
-
 ## 10. Open issues requiring implementation evidence
 
+Each item names the register record that tracks it, with that record's status on 2026-11-24; [`XAX_OPEN_ISSUES.md`](../XAX_OPEN_ISSUES.md) is authoritative, and a `CLOSED` record supersedes the word "open" here.
+
 ### 10.1 Target-cost magnitude calibration
+
+Register: [OI-17](../XAX_OPEN_ISSUES.md#oi-17--target-cost-model-representation-and-calibration), `OPEN`.
 
 Target packages can define structural cost models before hardware measurement, but the stable mapping from predicted cost units to measured cycles, latency, energy, or other physical units requires empirical calibration per target and environment. Ordering accuracy can still be tested before absolute calibration is trusted.
 
 No other benchmark rule in this stage is intentionally left open.
-
----
 
 ## 11. Falsification criteria
 

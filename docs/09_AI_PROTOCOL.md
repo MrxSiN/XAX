@@ -4,17 +4,50 @@
 
 - [1. Purpose and scope](#1-purpose-and-scope)
 - [2. Normative language](#2-normative-language)
+  - [2.1 Core definitions](#21-core-definitions)
+  - [2.2 Separation of identities](#22-separation-of-identities)
 - [3. Semantic workspace model](#3-semantic-workspace-model)
+  - [3.1 Workspace state](#31-workspace-state)
+  - [3.2 Minimal-context principle](#32-minimal-context-principle)
+  - [3.3 Deterministic views](#33-deterministic-views)
 - [4. Query interface](#4-query-interface)
+  - [4.1 Core query families](#41-core-query-families)
+  - [4.2 Query result requirements](#42-query-result-requirements)
+  - [4.3 Invalidation queries](#43-invalidation-queries)
 - [5. Transaction model](#5-transaction-model)
+  - [5.1 Atomic structure](#51-atomic-structure)
+  - [5.2 Mutation operations](#52-mutation-operations)
+  - [5.3 Mutation preconditions](#53-mutation-preconditions)
+  - [5.4 Verification policy](#54-verification-policy)
 - [6. Concurrent AI agents and conflict detection](#6-concurrent-ai-agents-and-conflict-detection)
+  - [6.1 Conflict classes](#61-conflict-classes)
+  - [6.2 Semantic rebase](#62-semantic-rebase)
 - [7. Machine-first diagnostics](#7-machine-first-diagnostics)
+  - [7.1 Diagnostic schema](#71-diagnostic-schema)
+  - [7.2 Deterministic repair locality](#72-deterministic-repair-locality)
+  - [7.3 Example](#73-example)
 - [8. Minimal mutation protocol](#8-minimal-mutation-protocol)
+  - [8.1 Objective](#81-objective)
+  - [8.2 Minimal execution policy](#82-minimal-execution-policy)
+  - [8.3 Compact transport](#83-compact-transport)
+  - [8.4 Selection rules](#84-selection-rules)
 - [9. Context and accounting](#9-context-and-accounting)
 - [10. Interfaces with other XAX subsystems](#10-interfaces-with-other-xax-subsystems)
+  - [10.1 Canonical semantic graph](#101-canonical-semantic-graph)
+  - [10.2 Canonical serialization and Merkle DAG](#102-canonical-serialization-and-merkle-dag)
+  - [10.3 Types, values, constants, and layout](#103-types-values-constants-and-layout)
+  - [10.4 Memory, ownership, resources, effects, and errors](#104-memory-ownership-resources-effects-and-errors)
+  - [10.5 Compile-time execution and specialization](#105-compile-time-execution-and-specialization)
+  - [10.6 Target packages and cost models](#106-target-packages-and-cost-models)
+  - [10.7 Compiler, optimizer, and artifacts](#107-compiler-optimizer-and-artifacts)
+  - [10.8 Packages and build configuration](#108-packages-and-build-configuration)
 - [11. Invariants](#11-invariants)
 - [12. Rejected alternatives](#12-rejected-alternatives)
 - [13. Open issues](#13-open-issues)
+  - [13.1 Handle namespace shape](#131-handle-namespace-shape)
+  - [13.2 Transport framing](#132-transport-framing)
+  - [13.3 Repair-neighborhood minimization cost](#133-repair-neighborhood-minimization-cost)
+  - [13.4 Semantic rebase granularity](#134-semantic-rebase-granularity)
 - [14. Falsification criteria](#14-falsification-criteria)
 - [15. Snapshot-bound local mutation adapter (ADR-186)](#15-snapshot-bound-local-mutation-adapter-adr-186)
 - [16. The native workspace (ADR-360)](#16-the-native-workspace-adr-360)
@@ -40,8 +73,6 @@ This stage defines:
 - interfaces to serialization, verification, target, optimization, artifact, and package subsystems.
 
 This stage does **not** define a programming language, source syntax, optimizer or lowering implementation, or final wire encoding. Textual notation here is non-authoritative tooling. The canonical semantic graph remains authoritative.
-
----
 
 ## 2. Normative language
 
@@ -96,8 +127,6 @@ Temporary handles MUST become invalid after rollback or failed commit unless exp
 
 Local handles MUST NOT be interpreted as canonical serialization fields.
 
----
-
 ## 3. Semantic workspace model
 
 ### 3.1 Workspace state
@@ -151,8 +180,6 @@ For the same program root, query parameters, target facts, and verifier version,
 
 Presentation compression MAY vary only when it does not change semantic interpretation.
 
----
-
 ## 4. Query interface
 
 Queries are read-only. They MAY request authoritative facts, verifier-derived facts, optimizer-derived estimates, target-derived facts, or artifact mappings. Every derived result MUST be attributable to a dependency set or versioned subsystem.
@@ -183,9 +210,15 @@ Queries are read-only. They MAY request authoritative facts, verifier-derived fa
 
 A query result MUST distinguish authoritative facts, derived facts, estimates, unavailable or unknown facts, and stale facts. Target-cost estimates MUST NOT be presented as measured performance unless explicitly backed by measured profile data. Target-dependent queries MUST identify their target package. `users` results MUST preserve relation kinds.
 
-Artifact mapping results are derived facts keyed by the exact root, target/configuration, compiler/lowering identity, and artifact identity. A mapping binding SHOULD expose a compact artifact identity that commits to those dependencies plus the artifact digest and retained exact ranges; artifact inspection MAY expose the individual dependency identities needed to audit that binding. Compiler/lowering identities are explicit versioned tooling identities and MUST NOT be inferred from human-readable diagnostic text or disassembly. Any dependency mismatch makes the binding stale. Byte intervals are half-open `[start,end)`. Exact mappings SHOULD be recorded while emitting/lowering the artifact; tooling MUST NOT reverse-infer authoritative provenance from nearby instructions when that provenance was not retained. Semantic entities that erase or influence code non-locally MAY have no exact contiguous range and MUST then be classified unavailable/unknown. `map_artifact` returns all exactly known contributors within the declared bounds, using generation-local semantic handles. Artifact and mapping handles are workspace-local, generation-scoped tooling and participate in read-set/staleness rules when exposed as read dependencies. The query/result contract is target-neutral: raw machine-code images and structured containers such as WebAssembly modules use the same mapping semantics, while target-specific byte layout remains derived backend data.
+Artifact mapping results are derived facts keyed by the exact root, target/configuration, compiler/lowering identity, and artifact identity. A mapping binding SHOULD expose a compact artifact identity that commits to those dependencies plus the artifact digest and retained exact ranges; artifact inspection MAY expose the individual dependency identities needed to audit that binding. Compiler/lowering identities are explicit versioned tooling identities and MUST NOT be inferred from human-readable diagnostic text or disassembly.
 
-`proof` results are verifier-status evidence, not canonical proof artifacts. If a workspace makes a reported proof fact reusable as a transaction read dependency, it SHOULD expose a compact local proof-dependency handle while privately retaining the exact semantic subject, observed root, verifier identity/version, and required freshness scope. The handle MUST NOT be a persistent semantic identity. Subject-scoped proof dependencies may survive unrelated commits only when the exact content-addressed subject and verifier identity remain unchanged; root-scoped dependencies invalidate on any root change. A dependency-changing commit permanently invalidates that local proof handle even if later edits restore equivalent root bytes.
+Any dependency mismatch makes the binding stale. Byte intervals are half-open `[start,end)`. Exact mappings SHOULD be recorded while emitting/lowering the artifact; tooling MUST NOT reverse-infer authoritative provenance from nearby instructions when that provenance was not retained. Semantic entities that erase or influence code non-locally MAY have no exact contiguous range and MUST then be classified unavailable/unknown.
+
+`map_artifact` returns all exactly known contributors within the declared bounds, using generation-local semantic handles. Artifact and mapping handles are workspace-local, generation-scoped tooling and participate in read-set/staleness rules when exposed as read dependencies. The query/result contract is target-neutral: raw machine-code images and structured containers such as WebAssembly modules use the same mapping semantics, while target-specific byte layout remains derived backend data.
+
+`proof` results are verifier-status evidence, not canonical proof artifacts. If a workspace makes a reported proof fact reusable as a transaction read dependency, it SHOULD expose a compact local proof-dependency handle while privately retaining the exact semantic subject, observed root, verifier identity/version, and required freshness scope. The handle MUST NOT be a persistent semantic identity.
+
+Subject-scoped proof dependencies may survive unrelated commits only when the exact content-addressed subject and verifier identity remain unchanged; root-scoped dependencies invalidate on any root change. A dependency-changing commit permanently invalidates that local proof handle even if later edits restore equivalent root bytes.
 
 ### 4.3 Invalidation queries
 
@@ -205,8 +238,6 @@ invalidate set N3.op = mul.wrap
 ```
 
 Dependency classes MUST be machine-readable.
-
----
 
 ## 5. Transaction model
 
@@ -243,6 +274,14 @@ open(base_root)
 -> commit candidate root
 ```
 
+The same sequence as a diagram:
+
+```mermaid
+flowchart TD
+  A["open(base_root)"] --> B["apply mutations to private candidate state"] --> C["validate mutation preconditions"] --> D["verify required invariants"] --> E["derive new persistent objects"] --> F["compute candidate root"] --> G["atomically compare expected_root"] --> H["commit candidate root"]
+  G -->|"expected root is stale"| X["canonical commit fails; mutations not partially applied"]
+```
+
 If the expected root is stale, canonical commit MUST fail without partially applying mutations.
 
 ### 5.2 Mutation operations
@@ -263,19 +302,27 @@ The semantic mutation vocabulary MUST include the following operations. Exact bi
 | `commit` | Atomically publish candidate state if all required preconditions and verification rules succeed. |
 | `rollback` | Discard the uncommitted candidate state and all transaction-local handles. |
 
-Candidate-only `verify` is a workspace service boundary, not an alternate source representation. The bootstrap service may return a generation-scoped local handle such as `C0.0` only after the private candidate passes the same root/read/local-precondition checks and ordinary verifier used before commit. The response exposes verification/accounting facts, not candidate CIDs. Canonical root/generation remain unchanged, and transaction-local inserted-result identities remain private to candidate construction. `rollback(C...)` discards that private state only; repeated/unknown rollback is a structured candidate-handle failure. Any successful canonical commit invalidates outstanding candidate handles instead of rebasing them implicitly. Candidate verification MUST reject stale ordinary/proof/artifact dependencies and MUST NOT refresh them.
+Candidate-only `verify` is a workspace service boundary, not an alternate source representation. The bootstrap service may return a generation-scoped local handle such as `C0.0` only after the private candidate passes the same root/read/local-precondition checks and ordinary verifier used before commit. The response exposes verification/accounting facts, not candidate CIDs. Canonical root/generation remain unchanged, and transaction-local inserted-result identities remain private to candidate construction.
+
+`rollback(C...)` discards that private state only; repeated/unknown rollback is a structured candidate-handle failure. Any successful canonical commit invalidates outstanding candidate handles instead of rebasing them implicitly. Candidate verification MUST reject stale ordinary/proof/artifact dependencies and MUST NOT refresh them.
 
 `move` MUST NOT imply data-flow, control-flow, ownership, or effect rewiring unless those relations are explicitly included in the transaction or are defined as deterministic consequences of the moved container relation.
 
-For graph nodes, a bootstrap `move` may use an exact source block/node precondition plus an existing destination node as an insert-before anchor with exact block/node coordinates. Source or anchor drift is a containment conflict. Surviving graph-local value references are remapped by producer identity when node numbering changes; they are not left pointing at the old numeric position. Same-block pure-node move legality after remapping is decided by the ordinary verifier, so a reorder that places a use before its producer is rejected as SSA dominance failure with no publication. Self-anchor and unsupported cross-function/cross-block moves reject before publication. Typed carriers such as `MovePureNode` are tooling data only.
+For graph nodes, a bootstrap `move` may use an exact source block/node precondition plus an existing destination node as an insert-before anchor with exact block/node coordinates. Source or anchor drift is a containment conflict. Surviving graph-local value references are remapped by producer identity when node numbering changes; they are not left pointing at the old numeric position. Same-block pure-node move legality after remapping is decided by the ordinary verifier, so a reorder that places a use before its producer is rejected as SSA dominance failure with no publication.
+
+Self-anchor and unsupported cross-function/cross-block moves reject before publication. Typed carriers such as `MovePureNode` are tooling data only.
 
 `replace` MUST specify what relation class is replaced when ambiguity exists. Replacing a value use is not the same operation as replacing an operation entity. A value-use replacement carries the containing operation, operand position, expected old value reference, and replacement value reference; mismatch of the old relation is a relation conflict, while an incompatible replacement is rejected by ordinary semantic verification. Bootstrap host-language structures used to carry this request are tooling only, not an authoritative mutation syntax.
 
 `delete` MUST carry an exact containment precondition for the entity being removed. A graph-node deletion rejects as a containment conflict if the expected block/node relation no longer matches, and rejects as a delete/use conflict if a surviving operand, terminator value, or control-edge argument still references a produced value. Any node-index renumbering caused by deletion is a deterministic representation update, not an implicit semantic rewiring. The candidate is verified before publication. Bootstrap carriers such as a typed `DeleteNode` structure are tooling only.
 
-`insert` MUST identify an exact semantic container/relation position and carry enough local precondition data to detect position drift before publication. A bootstrap graph insertion may use an existing node handle as an insert-before anchor plus expected block/node coordinates. Node-index changes caused by insertion are deterministic representation remapping, not hidden rewiring. When a later mutation in the same transaction consumes the new result before persistent identity exists, it uses a transaction-local temporary handle/reference; that temporary identity is discarded at commit/rollback and never becomes XAX source. The candidate is verified normally after all transaction-local references are resolved. Bootstrap carriers such as typed `InsertPureNode` / `TransactionValueRef` structures are tooling only. An inserted node's result type MAY be named structurally (`bits<N>`) instead of by a bound handle: the canonical bits type is fully determined by its width, so the edit stays exact even when the store does not yet hold that type (ADR-255).
+`insert` MUST identify an exact semantic container/relation position and carry enough local precondition data to detect position drift before publication. A bootstrap graph insertion may use an existing node handle as an insert-before anchor plus expected block/node coordinates. Node-index changes caused by insertion are deterministic representation remapping, not hidden rewiring. When a later mutation in the same transaction consumes the new result before persistent identity exists, it uses a transaction-local temporary handle/reference; that temporary identity is discarded at commit/rollback and never becomes XAX source.
 
-For a block-terminator edge argument, `disconnect` identifies the containing block, edge index, argument index, and exact expected old value relation. `connect` identifies the same relation position plus the new graph-local or transaction-local value. Drift in the containing block/edge position is a containment conflict; argument-index or expected-old-value drift is a relation conflict. A disconnect that would leave the completed candidate invalid does not publish. A same-transaction disconnect+connect is applied only to private candidate state, after which the ordinary graph verifier decides branch-argument type/arity and SSA-dominance legality. Bootstrap carriers such as `DisconnectEdgeArgument` / `ConnectEdgeArgument` are typed tooling data, not XAX source or a permanent edit DSL.
+The candidate is verified normally after all transaction-local references are resolved. Bootstrap carriers such as typed `InsertPureNode` / `TransactionValueRef` structures are tooling only. An inserted node's result type MAY be named structurally (`bits<N>`) instead of by a bound handle: the canonical bits type is fully determined by its width, so the edit stays exact even when the store does not yet hold that type (ADR-255).
+
+For a block-terminator edge argument, `disconnect` identifies the containing block, edge index, argument index, and exact expected old value relation. `connect` identifies the same relation position plus the new graph-local or transaction-local value. Drift in the containing block/edge position is a containment conflict; argument-index or expected-old-value drift is a relation conflict. A disconnect that would leave the completed candidate invalid does not publish.
+
+A same-transaction disconnect+connect is applied only to private candidate state, after which the ordinary graph verifier decides branch-argument type/arity and SSA-dominance legality. Bootstrap carriers such as `DisconnectEdgeArgument` / `ConnectEdgeArgument` are typed tooling data, not XAX source or a permanent edit DSL.
 
 `specialize` MUST not be a textual macro substitution. It is semantic construction and compile-time evaluation using XAX semantics.
 
@@ -295,14 +342,11 @@ Local preconditions reduce accidental edits and enable conflict detection below 
 
 Proof-dependency reads are validated separately from ordinary entity handles. A stale proof read MUST produce a proof-dependency conflict rather than a generic missing/stale-handle conflict. Proof reads MUST be rechecked at final atomic publication so an intervening dependency change followed by root-byte restoration cannot revive an invalidated local proof handle. A currently valid proof dependency may be consumed by a transaction that changes its subject; after publication, that old dependency is no longer reusable unless its required subject/verifier dependencies were provably preserved.
 
-
 ### 5.4 Verification policy
 
 A transaction MUST NOT commit a candidate graph that violates canonical XAX invariants.
 
 A transaction MAY request stronger checks than the minimum commit rules, including whole-function, ownership/resource, effect, target-legality, compile-time determinism, equivalence, cost-regression, or artifact-regeneration checks. Failed verification produces diagnostics and leaves the canonical root unchanged.
-
----
 
 ## 6. Concurrent AI agents and conflict detection
 
@@ -331,8 +375,6 @@ Changes to disjoint entities SHOULD be mergeable when dependency analysis proves
 After a stale-root failure, tooling MAY offer semantic rebase. Rebase is not blind replay.
 
 For each mutation, rebase MUST confirm that the target still exists, relevant attributes/relations and read-set assumptions remain compatible, handles can be rebound deterministically, and local preconditions still hold. Otherwise it MUST return a structured conflict diagnostic.
-
----
 
 ## 7. Machine-first diagnostics
 
@@ -381,8 +423,6 @@ D17 {
 ```
 
 This notation is a tooling view, not XAX source.
-
----
 
 ## 8. Minimal mutation protocol
 
@@ -452,8 +492,6 @@ A compact transport MUST be unambiguous, deterministically framed, versioned, an
 
 Candidate transports SHOULD be compared on completion rate, invalid packet and transaction rates, repair turns, semantic entities transmitted, protocol overhead, and packet bytes. Tests SHOULD cover creation, literal/operation/control-flow edits, type and ownership/effect repair, targeted optimization, and stale-root recovery.
 
----
-
 ## 9. Context and accounting
 
 Every workspace SHOULD maintain machine-readable accounting:
@@ -475,8 +513,6 @@ Accounting data is operational telemetry, not program semantics.
 For benchmarkability, tooling SHOULD separately record protocol bytes, artifact bytes, semantic and diagnostic entities, verifier work, and target-cost query work.
 
 Workspace servers SHOULD support response budgets. The current bootstrap workspace supports an exact serialized response-byte budget as a transport control: paginated queries deterministically shrink to the largest positive-progress prefix that fits and return continuation; non-paginated responses or pages too small to make progress fail with `XAX.WORKSPACE.RESPONSE_BUDGET`. Budget failure publishes no new local handles and charges no unreturned query-response bytes.
-
----
 
 ## 10. Interfaces with other XAX subsystems
 
@@ -512,8 +548,6 @@ Optimization and lowering MAY expose queryable derived facts, but these do not r
 
 Workspace queries MAY traverse package/module identities and build-semantic objects. Package/build data remains XAX semantic data, not an external JSON/YAML/TOML protocol language.
 
----
-
 ## 11. Invariants
 
 The AI protocol MUST preserve all of the following:
@@ -532,8 +566,6 @@ The AI protocol MUST preserve all of the following:
 12. **Compact notation is tooling, not a second maintained language.**
 13. **No protocol feature may introduce hidden allocation, synchronization, ownership transfer, exception edges, or runtime behavior into program semantics.**
 
----
-
 ## 12. Rejected alternatives
 
 | Alternative | Rejection reason |
@@ -548,31 +580,37 @@ The AI protocol MUST preserve all of the following:
 | Treat byte size as the primary protocol metric | Small byte streams may increase invalid generations or repair turns. |
 | Encode target costs as semantic truth | Costs are model- and target-dependent estimates or measurements, not core program meaning. |
 
----
-
 ## 13. Open issues
 
 Only implementation evidence can settle the following:
 
+Each item names the register record that tracks it, with that record's status on 2026-11-24; [`XAX_OPEN_ISSUES.md`](../XAX_OPEN_ISSUES.md) is authoritative, and a `CLOSED` record supersedes the word "open" here.
+
 ### 13.1 Handle namespace shape
+
+Register: [OI-01](../XAX_OPEN_ISSUES.md#oi-01--ai-token-vocabulary-fallback-framing-and-handle-namespace), `OPEN`.
 
 It is not yet fixed whether handles should use typed namespaces such as `F3`, `N7`, `T2`, or a single dense integer namespace with out-of-band kind information. Error rate must decide.
 
 ### 13.2 Transport framing
 
+Register: [OI-01](../XAX_OPEN_ISSUES.md#oi-01--ai-token-vocabulary-fallback-framing-and-handle-namespace), `OPEN`.
+
 Textual separators, binary framing, or compact CBOR-like structures remain candidates.
 
 ### 13.3 Repair-neighborhood minimization cost
+
+Register: [OI-28](../XAX_OPEN_ISSUES.md#oi-28--diagnostic-payload-and-repair-neighborhood-minimum), `OPEN`.
 
 The verifier must determine whether computing a strictly minimal repair neighborhood is worth its cost. A deterministic near-minimal neighborhood may be preferable if it reduces verifier cost without increasing repair turns.
 
 ### 13.4 Semantic rebase granularity
 
+Register: [OI-64](../XAX_OPEN_ISSUES.md#oi-64--semantic-rebase-granularity-for-concurrent-agents), `OPEN`.
+
 The correct balance between whole-root compare-and-swap, entity-level preconditions, and explicit read-set validation requires implementation experience with concurrent AI agents.
 
 No other unresolved issue in this stage justifies weakening the invariants above.
-
----
 
 ## 14. Falsification criteria
 
@@ -784,7 +822,6 @@ default; `instructions(compact=False)` advertises the accepted long forms.
 Applicable help SHOULD state result-index notation for multi-result nodes
 and omit redundant optional spelling rules. A rejected pending request is
 not applied to the projected snapshot.
-
 
 ## 16. The native workspace (ADR-360)
 

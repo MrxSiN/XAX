@@ -30,8 +30,6 @@ It covers stage separation, compile-time values and types, specialization, seman
 
 This document does not define optimizer algorithms, target instruction semantics, package resolution policy, binary serialization details, or an implementation of the compile-time evaluator. It defines the semantic contract those subsystems must obey.
 
----
-
 ## 2. Normative terminology
 
 The key words **MUST**, **MUST NOT**, **SHOULD**, **SHOULD NOT**, and **MAY** are normative.
@@ -54,8 +52,6 @@ The key words **MUST**, **MUST NOT**, **SHOULD**, **SHOULD NOT**, and **MAY** ar
 | **specialization key** | Canonical identity of a specialization request, derived from the callee, compile-time arguments, declared dependencies, and semantic environment. |
 
 A compile-time stage is an execution context, not a textual region or second language.
-
----
 
 ## 3. Stage model
 
@@ -99,8 +95,6 @@ An operation is legal during compile-time execution only when:
 A runtime-only operation requested during compile-time execution is a stage error unless the operation is being represented as semantic data rather than executed.
 
 For example, compile-time code may construct a graph containing a runtime filesystem operation. It may not silently perform that filesystem operation on the compiler host.
-
----
 
 ## 4. Compile-time values and types
 
@@ -152,8 +146,6 @@ Capabilities MAY authorize operations such as:
 
 A capability MUST NOT imply access to undeclared compiler-host state.
 
----
-
 ## 5. Compile-time execution request
 
 A compile-time evaluation request is conceptually:
@@ -171,8 +163,6 @@ A compile-time evaluation request is conceptually:
 The request MUST be dependency-complete: every external fact capable of changing a successful result MUST appear directly or transitively in its dependency closure.
 
 The compiler MUST reject or isolate any undeclared environmental dependency that could affect the semantic result.
-
----
 
 ## 6. Environmental isolation
 
@@ -213,8 +203,6 @@ The ordinary XAX effect model remains applicable.
 Compile-time execution MUST NOT reinterpret an effectful operation as pure merely because it runs before runtime. If an effect is permitted at compile time, its authority and input/output dependency MUST be explicit.
 
 Compiler-internal introspection and construction actions MUST be represented through the meta-operation model or an equivalent explicit compiler capability interface. They MUST NOT masquerade as runtime effects.
-
----
 
 ## 7. Generic programming by specialization
 
@@ -266,8 +254,6 @@ A specialization key MUST include every semantic dependency capable of changing 
 
 Resource ceilings that can only terminate evaluation without changing a successful result SHOULD NOT be treated as semantic arguments. A budget-exhaustion result MUST NOT poison reuse under a later, larger budget.
 
----
-
 ## 8. Semantic introspection
 
 Compile-time XAX MAY inspect semantic objects through a bounded, typed introspection interface.
@@ -292,8 +278,6 @@ Introspection MUST NOT expose unstable compiler memory addresses or other accide
 Introspection of an immutable canonical object is read-only.
 
 A compile-time function MUST NOT mutate an already committed semantic object in place.
-
----
 
 ## 9. Semantic construction
 
@@ -347,8 +331,6 @@ Before a generated fragment can become part of the authoritative program, the co
 
 Verification failure rejects the generated candidate. Invalid generated semantics MUST NOT be partially committed.
 
----
-
 ## 10. Determinism and bounded execution
 
 ### 10.1 Deterministic semantics
@@ -392,8 +374,6 @@ There is no special template-recursion mechanism. Recursive compile-time functio
 
 A recursive specialization that exceeds active limits is rejected.
 
----
-
 ## 11. Memoization and content addressing
 
 ### 11.1 Pure-result reuse
@@ -418,8 +398,6 @@ A cached graph MAY skip reconstruction only when it corresponds to previously ve
 
 Changes to verifier semantics, evaluator semantics, target semantic inputs, or other meaning-affecting dependencies MUST invalidate incompatible cached results.
 
----
-
 ## 12. Target-package compile-time use
 
 A target package is XAX semantic data and XAX computation. It does not require a second target-description DSL.
@@ -443,8 +421,6 @@ A target operation that would perform device I/O at runtime may be inspected or 
 
 This separation supports cross-compilation, reproducibility, sandboxing, and future hardware.
 
----
-
 ## 13. Invariants
 
 The following are mandatory:
@@ -463,8 +439,6 @@ The following are mandatory:
 12. **Target symmetry:** target packages obey the same compile-time execution rules as other XAX packages.
 13. **Transactional failure:** evaluation or verification failure cannot partially mutate the authoritative program.
 
----
-
 ## 14. Rejected alternatives
 
 | Alternative | Status | Reason |
@@ -481,8 +455,6 @@ The following are mandatory:
 | Unverified generated graphs | Rejected | Metaprogramming cannot bypass type, effect, resource, memory, or target invariants. |
 | Implicit runtime reflection metadata | Rejected | Runtime metadata has cost and must be explicitly requested. |
 | Compiler-memory-address reflection | Rejected | Host representation is not XAX meaning and is not stable semantic identity. |
-
----
 
 ## 15. Interfaces with other XAX subsystems
 
@@ -502,13 +474,15 @@ The following are mandatory:
 | **Optimizer** | May consume specialized verified graphs; MUST NOT rely on textual macro artifacts. |
 | **Diagnostics** | Machine-readable stage, budget, capability, dependency, and verification failures. |
 
----
-
 ## 16. Open issues
 
 Only issues requiring implementation evidence remain open.
 
-### 17.1 Budget units
+Each item names the register record that tracks it, with that record's status on 2026-11-24; [`XAX_OPEN_ISSUES.md`](../XAX_OPEN_ISSUES.md) is authoritative, and a `CLOSED` record supersedes the word "open" here.
+
+### 16.1 Budget units
+
+Register: [OI-14](../XAX_OPEN_ISSUES.md#oi-14--compile-time-fuel-units-and-introspection-authority-granularity), `OPEN`.
 
 The architecture requires bounded evaluation, but the exact portable definition of "fuel" is not fixed.
 
@@ -516,19 +490,21 @@ A raw interpreter-instruction count may be simple but implementation-dependent. 
 
 The chosen unit must be deterministic enough for diagnostics and policy while not becoming an unnecessary permanent constraint on evaluator implementation.
 
-### 17.2 Granularity of introspection capabilities
+### 16.2 Granularity of introspection capabilities
+
+Register: [OI-14](../XAX_OPEN_ISSUES.md#oi-14--compile-time-fuel-units-and-introspection-authority-granularity), `OPEN`.
 
 It is not yet fixed whether introspection authority should be coarse-grained per semantic object class or fine-grained per operation family/property.
 
 This should be decided using evidence from self-hosting, target generation, verifier complexity, and least-authority enforcement.
 
-### 17.3 Canonical specialization boundaries
+### 16.3 Canonical specialization boundaries
+
+Register: [OI-15](../XAX_OPEN_ISSUES.md#oi-15--specialization-object-boundaries), `OPEN`.
 
 The semantic model permits specialization, reuse, inlining, and equivalence merging. The best canonical granularity for persistent specialization objects requires implementation data on cache reuse, graph size, optimization opportunity, and AI transaction locality.
 
 These issues do not justify a second metaprogramming language or weakening any invariant above.
-
----
 
 ## 17. Falsification criteria
 

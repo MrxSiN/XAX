@@ -3179,7 +3179,7 @@ def _candidate(
             for node in block.nodes
             # Any affected callee, not only an edited one: an edited caller of an
             # unedited function whose own callee changed must call the rebuilt
-            # function, never the stale one (ADR-197).
+            # function, never the stale one (ADR-420).
             if node.operation == Operation.CALL_DIRECT and node.entity.cid in affected
         }
 

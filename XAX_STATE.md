@@ -4,9 +4,13 @@ What holds now, then the dated record of every result, grouped by topic. Dated e
 supersedes an earlier figure, and a superseded entry is kept rather than rewritten. Decisions are in
 [`XAX_DECISIONS.md`](XAX_DECISIONS.md), the plan in [`XAX_IMPLEMENTATION_ROADMAP.md`](XAX_IMPLEMENTATION_ROADMAP.md).
 
+Only [Current status](#current-status) says what holds now. Every later section, including lists such as "Known gaps" and
+"Current blockers", records what was observed or planned when it was written.
+
 ## Contents
 
-Topic sections are listed here; the dated sections appended after them (from 2026-11-08) are not: `grep -n '^## ' XAX_STATE.md`.
+Topic sections are listed first, then every dated section in file order (oldest first). The list can lag a newly
+appended section: `grep -n '^## ' XAX_STATE.md` is authoritative.
 
 - [Current status](#current-status)
 - [Prototype milestones (M1-M14)](#prototype-milestones-m1-m14)
@@ -21,6 +25,59 @@ Topic sections are listed here; the dated sections appended after them (from 202
 - [Upgrade U1 targets](#upgrade-u1-targets) (4 entries)
 - [Open issues](#open-issues) (9 entries)
 - [Documentation and process](#documentation-and-process) (5 entries)
+
+Lists kept inside the historical status section (not current; the owners in [Current status](#current-status) say what holds now):
+
+- [Known gaps (as recorded at M14)](#known-gaps)
+- [Executed test state](#executed-test-state)
+- [Latest benchmark status](#latest-benchmark-status)
+- [Bootstrap dependencies](#bootstrap-dependencies)
+- [Current blockers (as recorded at M14)](#current-blockers)
+- [Prototype choices pending evidence](#prototype-choices-pending-evidence)
+
+Dated sections (historical records; a later section supersedes an earlier figure):
+
+- [Ledger 0022: constant folding and hoisted registers on x86-64 (2026-11-08)](#ledger-0022-constant-folding-and-hoisted-registers-on-x86-64-2026-11-08)
+- [BBC's importer bounds branch, the capacity word (ledger 0023) and the plan completed — 2026-11-08](#bbcs-importer-bounds-branch-the-capacity-word-ledger-0023-and-the-plan-completed--2026-11-08)
+- [Full self-hosting evidence for the ledger 0023 seed — 2026-11-10](#full-self-hosting-evidence-for-the-ledger-0023-seed--2026-11-10)
+- [Independent audit: x86-64 signed compares below 32 bits (2026-11-11)](#independent-audit-x86-64-signed-compares-below-32-bits-2026-11-11)
+- [Android R4 re-measured, ledger 0025 and the Windows stack probe — 2026-11-11 (ADR-394)](#android-r4-re-measured-ledger-0025-and-the-windows-stack-probe--2026-11-11-adr-394)
+- [OI-56 fixed in the stores: PE images commit their stack reserve (ledger 0026) — 2026-11-12 (ADR-396)](#oi-56-fixed-in-the-stores-pe-images-commit-their-stack-reserve-ledger-0026--2026-11-12-adr-396)
+- [The Windows seed is the production compiler and builds itself on Windows 11 — 2026-11-12 (ADR-397)](#the-windows-seed-is-the-production-compiler-and-builds-itself-on-windows-11--2026-11-12-adr-397)
+- [Windows row at R3: the compiler is the practical application — 2026-11-12](#windows-row-at-r3-the-compiler-is-the-practical-application--2026-11-12)
+- [Seed rotated after ledgers 0024 and 0025; OI-55 closed on Linux — 2026-11-12 (ADR-393)](#seed-rotated-after-ledgers-0024-and-0025-oi-55-closed-on-linux--2026-11-12-adr-393)
+- [Windows R4 measured and withheld: chains is at parity with rustc — 2026-11-12](#windows-r4-measured-and-withheld-chains-is-at-parity-with-rustc--2026-11-12)
+- [Linux seed rotated to ledger 0026 — 2026-11-12](#linux-seed-rotated-to-ledger-0026--2026-11-12)
+- [Windows chains: improved batch, a faster C arm, R4 still withheld — 2026-11-12](#windows-chains-improved-batch-a-faster-c-arm-r4-still-withheld--2026-11-12)
+- [Windows maintenance cycle recorded on xbench (R5 evidence; R6 not yet) — 2026-11-12](#windows-maintenance-cycle-recorded-on-xbench-r5-evidence-r6-not-yet--2026-11-12)
+- [Ledger 0027 (loop-slot rule) tried and dropped; OI-59 found — 2026-11-13](#ledger-0027-loop-slot-rule-tried-and-dropped-oi-59-found--2026-11-13)
+- [OI-59 diagnosed: edge copies overwrite shared edge spill slots; reference fixed — 2026-11-13](#oi-59-diagnosed-edge-copies-overwrite-shared-edge-spill-slots-reference-fixed--2026-11-13)
+- [Windows evolution ledger paths coexist — 2026-11-13](#windows-evolution-ledger-paths-coexist--2026-11-13)
+- [Ledger 0027 (edge-copy staging), both seeds, four rows at R3 — 2026-11-13](#ledger-0027-edge-copy-staging-both-seeds-four-rows-at-r3--2026-11-13)
+- [Native resolved-snapshot edits — 2026-11-13](#native-resolved-snapshot-edits--2026-11-13)
+- [Ledger 0029 (portable host memory ABI `xax-host-v1`), both seeds — 2026-11-14](#ledger-0029-portable-host-memory-abi-xax-host-v1-both-seeds--2026-11-14)
+- [Ledger 0030 (main allocates through `xax-host-v1`), Linux seed — 2026-11-14](#ledger-0030-main-allocates-through-xax-host-v1-linux-seed--2026-11-14)
+- [Ledger 0031 (main's file and exit calls are host functions), Linux and Windows seeds — 2026-11-14](#ledger-0031-mains-file-and-exit-calls-are-host-functions-linux-and-windows-seeds--2026-11-14)
+- [Ledger 0032 (DEX writer output for large modules), Linux and Windows seeds — 2026-11-15](#ledger-0032-dex-writer-output-for-large-modules-linux-and-windows-seeds--2026-11-15)
+- [OI-50 closed: cross-block compares through the native compiler — 2026-11-15](#oi-50-closed-cross-block-compares-through-the-native-compiler--2026-11-15)
+- [OI-50 test on the ledger 0032 seeds — 2026-11-15](#oi-50-test-on-the-ledger-0032-seeds--2026-11-15)
+- [Phase 2 profile: driver `xaxc edit` and `verify` — 2026-11-15](#phase-2-profile-driver-xaxc-edit-and-verify--2026-11-15)
+- [OI-55 closed: narrow signed compares through the Windows seed — 2026-11-15](#oi-55-closed-narrow-signed-compares-through-the-windows-seed--2026-11-15)
+- [OI-57 closed: the reference register lowering folds as the native `basics` does — 2026-11-15](#oi-57-closed-the-reference-register-lowering-folds-as-the-native-basics-does--2026-11-15)
+- [Native request tool at ledger 0032 (RFC step 5, Linux half) — 2026-11-15](#native-request-tool-at-ledger-0032-rfc-step-5-linux-half--2026-11-15)
+- [Windows generator at ledger 0032 (RFC step 5, Windows half) — 2026-11-15](#windows-generator-at-ledger-0032-rfc-step-5-windows-half--2026-11-15)
+- [The compiler request is derived (RFC step 6) — 2026-11-15](#the-compiler-request-is-derived-rfc-step-6--2026-11-15)
+- [Batch C, C-x86: ledgers 0033 and 0034 on `release/0033` — 2026-11-16](#batch-c-c-x86-ledgers-0033-and-0034-on-release0033--2026-11-16)
+- [Release 0033: ledgers 0033 to 0035, both seeds rotated — 2026-11-16](#release-0033-ledgers-0033-to-0035-both-seeds-rotated--2026-11-16)
+- [Evidence V2: frozen corpus, native runner and evaluator (RFC phase 3) — 2026-11-16](#evidence-v2-frozen-corpus-native-runner-and-evaluator-rfc-phase-3--2026-11-16)
+- [Seed rotation by release: RELEASES, POLICY, rotate.sh (RFC phase 6) — 2026-11-16](#seed-rotation-by-release-releases-policy-rotatesh-rfc-phase-6--2026-11-16)
+- [Native reference executor, slice 1 (ADR-405) — 2026-11-16](#native-reference-executor-slice-1-adr-405--2026-11-16)
+- [Native oracle: compare areas and recursion groups (ADR-405) — 2026-11-16](#native-oracle-compare-areas-and-recursion-groups-adr-405--2026-11-16)
+- [Release 0036: catching JVM ABIs verify (#49 part 1, ADR-406) — 2026-11-16](#release-0036-catching-jvm-abis-verify-49-part-1-adr-406--2026-11-16)
+- [#49 parts 2+3: the JVM call path mapped (ADR-406) — 2026-11-16](#49-parts-23-the-jvm-call-path-mapped-adr-406--2026-11-16)
+- [Release 0036: catching JVM calls lower (#49 parts 2–3, ADR-406) — 2026-11-16](#release-0036-catching-jvm-calls-lower-49-parts-23-adr-406--2026-11-16)
+- [Release 0036: catching JVM calls on the JVM and Android, seeds rotated — 2026-11-18](#release-0036-catching-jvm-calls-on-the-jvm-and-android-seeds-rotated--2026-11-18)
+- [ADR-410 pin retirement; release 0037 in progress (OI-61, #55) — 2026-11-18](#adr-410-pin-retirement-release-0037-in-progress-oi-61-55--2026-11-18)
 
 ## Current status
 
@@ -2244,7 +2301,7 @@ Built on Linux x86-64 (WSL 2) and Windows 11 (build 26300), on top of `43054ce`.
   in Chrome, a `wc` counter under Node WASI, a fingerprint kernel on an RTX 3060 and an AMD iGPU through an XAX Vulkan
   host). `wasm32-core` and `accelerator-simt-packet` are removed. RISC-V is deferred.
 - **Not done:** OI-60; RISC-V; R4 evidence for the four new R3 rows; tests for the Windows seed.
-# Native resolved-snapshot edits — 2026-11-13
+## Native resolved-snapshot edits — 2026-11-13
 
 Ledger 0028 extends native workspace ancestry rebuilding to unsigned resolved
 build snapshots. It follows ledger 0027's edge-copy staging fix. Package module

@@ -423,11 +423,13 @@ The semantic workspace should expose compact local handles for target entities a
 
 Only the following issues remain intentionally open:
 
-1. **Granularity of semantic instruction models.** Some targets may be best modeled per instruction, while others may benefit from shared semantic primitives plus encoding variants. The choice should be measured against verifier complexity, target-package size, and optimization quality.
-2. **Cost-model representation.** Static tables, symbolic models, profile-conditioned functions, or combinations may differ materially in accuracy and compilation cost. The semantic/non-semantic boundary is fixed; the most effective representation is not.
-3. **Legalization search discipline.** Rule ranking, bounded search, equality saturation, staged rewriting, or hybrid approaches may be appropriate. The required properties are semantic preservation, explicit failure, and detectable nontermination/cycles.
-4. **Opaque-contract minimums by hardware class.** The general minimum contract is defined above, but practical compiler validation may show that some device classes require additional mandatory fields to avoid excessive global barriers.
-5. **Scheduling-resource detail.** Micro-operation-level models may improve code quality but increase package size and maintenance cost. The necessary granularity must be determined experimentally.
+Each item names the register record that tracks it, with that record's status on 2026-11-24; [`XAX_OPEN_ISSUES.md`](../XAX_OPEN_ISSUES.md) is authoritative, and a `CLOSED` record supersedes the word "open" here.
+
+1. **Granularity of semantic instruction models.** Some targets may be best modeled per instruction, while others may benefit from shared semantic primitives plus encoding variants. The choice should be measured against verifier complexity, target-package size, and optimization quality. Register: [OI-16](../XAX_OPEN_ISSUES.md#oi-16--target-semanticinstruction-granularity-and-opaque-contract-minimums), `OPEN`.
+2. **Cost-model representation.** Static tables, symbolic models, profile-conditioned functions, or combinations may differ materially in accuracy and compilation cost. The semantic/non-semantic boundary is fixed; the most effective representation is not. Register: [OI-17](../XAX_OPEN_ISSUES.md#oi-17--target-cost-model-representation-and-calibration), `OPEN`.
+3. **Legalization search discipline.** Rule ranking, bounded search, equality saturation, staged rewriting, or hybrid approaches may be appropriate. The required properties are semantic preservation, explicit failure, and detectable nontermination/cycles. Register: [OI-18](../XAX_OPEN_ISSUES.md#oi-18--legalizationoptimizer-organization-and-machine-level-ir), `OPEN`.
+4. **Opaque-contract minimums by hardware class.** The general minimum contract is defined above, but practical compiler validation may show that some device classes require additional mandatory fields to avoid excessive global barriers. Register: [OI-16](../XAX_OPEN_ISSUES.md#oi-16--target-semanticinstruction-granularity-and-opaque-contract-minimums), `OPEN`.
+5. **Scheduling-resource detail.** Micro-operation-level models may improve code quality but increase package size and maintenance cost. The necessary granularity must be determined experimentally. Register: [OI-65](../XAX_OPEN_ISSUES.md#oi-65--scheduling-resource-detail-in-target-packages), `OPEN`.
 
 These are implementation-design questions, not permission to weaken the invariants of this document.
 
@@ -449,8 +451,6 @@ This design should be revised if implementation or benchmarking demonstrates any
 12. Exact target revisioning and configuration identity are insufficient to reproduce legality and encoding decisions across compiler sessions.
 
 Passing these tests does not establish that the design is optimal. It establishes only that the target model remains consistent with XAX’s central requirement: machine-specific knowledge can evolve independently while program meaning remains explicit, verifiable, and target-agnostic at the fundamental language level.
-
----
 
 ## 22. Android arm64-v8a shared-library target (2026-10-01)
 
@@ -501,7 +501,6 @@ helper or silently changing semantics.
 ## 23. Architectures 5 and 6: the JVM and RISC-V (2026-10-03)
 
 The target decoder knows six architectures: 1 x86-64, 2 wasm32, 3 AArch64, 4 the SIMT accelerator packet, 5 the JVM (ADR-112), and 6 RISC-V RV64 (ADR-113). Architectures 5 and 6 carry no register lists, because their convention is fixed by the identity (as for wasm32). Each accepts exactly one machine tuple. Adding them required no new operation, type form, or terminator. A package states its operation set, and every backend rejects operations outside it, so the JVM and RISC-V can each start with a subset and grow independently.
-
 
 ## 24. Architecture 7 and a second AArch64 platform (2026-10-03)
 

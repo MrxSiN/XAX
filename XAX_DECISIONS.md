@@ -6,7 +6,7 @@ This file records adopted decisions and their rationale. It is not normative: re
 
 Find a decision without reading this file: `grep -n '^## ADR-<n>' XAX_DECISIONS.md` gives its section;
 `grep -n 'ADR-<n>' XAX_DECISIONS.md` also finds later amendments and decisions that cite or supersede it; each ADR's
-`| Status |` row, where present, gives its state. The list below stops at ADR-363; the headings are complete.
+`| Status |` row, where present, gives its state. The list below covers every section heading in this file.
 
 - [2026-10-07: platform-carrier-replacement-v1](#2026-10-07-platform-carrier-replacement-v1)
 - ADR-001 to ADR-099
@@ -139,8 +139,8 @@ Find a decision without reading this file: `grep -n '^## ADR-<n>' XAX_DECISIONS.
   - [ADR-127 — Deterministic C header import (first OI-32 importer over a second ecosystem)](#adr-127--deterministic-c-header-import-first-oi-32-importer-over-a-second-ecosystem)
   - [ADR-128 — Board packages: bare metal with MMIO, interrupts, and explicit startup (U1.6)](#adr-128--board-packages-bare-metal-with-mmio-interrupts-and-explicit-startup-u16)
   - [ADR-129 — Static linking of existing C objects into bare-metal images](#adr-129--static-linking-of-existing-c-objects-into-bare-metal-images)
-  - [ADR-130 — Standard semantic libraries: packages, function granularity, instantiation](#adr-130--standard-semantic-libraries-packages-function-granularity-instantiation)
   - [ADR-131 — Small-set membership selection on the Linux x86-64 register allocator](#adr-131--small-set-membership-selection-on-the-linux-x86-64-register-allocator)
+  - [ADR-130 — Standard semantic libraries: packages, function granularity, instantiation](#adr-130--standard-semantic-libraries-packages-function-granularity-instantiation)
   - [ADR-132 — Self-hosting step S4: scalar operation typing rules are checked by XAX](#adr-132--self-hosting-step-s4-scalar-operation-typing-rules-are-checked-by-xax)
   - [ADR-133 — Self-hosting step S4b: aggregate and sum typing rules are checked by XAX](#adr-133--self-hosting-step-s4b-aggregate-and-sum-typing-rules-are-checked-by-xax)
   - [ADR-134 — Self-hosting step S4c: resource, effect, and meta typing rules are checked by XAX](#adr-134--self-hosting-step-s4c-resource-effect-and-meta-typing-rules-are-checked-by-xax)
@@ -199,7 +199,6 @@ Find a decision without reading this file: `grep -n '^## ADR-<n>' XAX_DECISIONS.
   - [ADR-192 — Immutable bindings and minimum scalar query context](#adr-192--immutable-bindings-and-minimum-scalar-query-context)
   - [ADR-193 — Accept matching bound commands and reuse ordinary repair](#adr-193--accept-matching-bound-commands-and-reuse-ordinary-repair)
   - [ADR-197 — Vector runtime executed on hardware; hot-reload register fix; heap-dump oracle; device ART route](#adr-197--vector-runtime-executed-on-hardware-hot-reload-register-fix-heap-dump-oracle-device-art-route)
-  - [ADR-197 — Workspace dependency order, type edits and implied-edit pruning](#adr-197--workspace-dependency-order-type-edits-and-implied-edit-pruning)
   - [ADR-198 — Android counter R4 restored: three arms, rotated passes, equal AOT compilation](#adr-198--android-counter-r4-restored-three-arms-rotated-passes-equal-aot-compilation)
   - [ADR-199 — General Android managed classes replace per-API managed carriers](#adr-199--general-android-managed-classes-replace-per-api-managed-carriers)
 - ADR-200 to ADR-299
@@ -311,8 +310,8 @@ Find a decision without reading this file: `grep -n '^## ADR-<n>' XAX_DECISIONS.
   - [ADR-306 — S15d.3: a real compiler change made only through the compiler's own transactions](#adr-306--s15d3-a-real-compiler-change-made-only-through-the-compilers-own-transactions)
   - [ADR-307 — S15e.0: the general program's code buffer sized to the compiler's largest function; the seed rotated](#adr-307--s15e0-the-general-programs-code-buffer-sized-to-the-compilers-largest-function-the-seed-rotated)
   - [ADR-308 — S15e decomposed; S15e.1: RISC-V raw images built by the production compiler](#adr-308--s15e-decomposed-s15e1-risc-v-raw-images-built-by-the-production-compiler)
-  - [ADR-309 — S15c.5: resolution under a given trust policy, with package signatures, in XAX](#adr-309--s15c5-resolution-under-a-given-trust-policy-with-package-signatures-in-xax)
   - [ADR-310 — S15c.5a: the general program's ELF buffer taken after the views; the seed rotated](#adr-310--s15c5a-the-general-programs-elf-buffer-taken-after-the-views-the-seed-rotated)
+  - [ADR-309 — S15c.5: resolution under a given trust policy, with package signatures, in XAX](#adr-309--s15c5-resolution-under-a-given-trust-policy-with-package-signatures-in-xax)
   - [ADR-311 — S15b.3d (more): nested decoders, group member functions with other references, lazy missing references, list counts, joins through parameters](#adr-311--s15b3d-more-nested-decoders-group-member-functions-with-other-references-lazy-missing-references-list-counts-joins-through-parameters)
   - [ADR-312 — S15d.4a: the edit engine replaces references and takes supplied objects](#adr-312--s15d4a-the-edit-engine-replaces-references-and-takes-supplied-objects)
   - [ADR-313 — S15b.3d (rest): declaration and stack-owner entry rejections rendered by XAX](#adr-313--s15b3d-rest-declaration-and-stack-owner-entry-rejections-rendered-by-xax)
@@ -361,23 +360,70 @@ Find a decision without reading this file: `grep -n '^## ADR-<n>' XAX_DECISIONS.
   - [ADR-356 — S15e.6h.3/S15e.6h.4: the self-built compiler builds unsigned APKs](#adr-356--s15e6h3s15e6h4-the-self-built-compiler-builds-unsigned-apks)
   - [ADR-357 — S15e.6i.1: the self-built compiler signs APKs](#adr-357--s15e6i1-the-self-built-compiler-signs-apks)
   - [ADR-358 — S15e.6i.2 and S15g: libxposed JVM modules in the self-built compiler; the whole compiler's B levels](#adr-358--s15e6i2-and-s15g-libxposed-jvm-modules-in-the-self-built-compiler-the-whole-compilers-b-levels)
+  - [ADR-359 — S15e.6i.3: libxposed JVM module records as `json.loads` reads them, compressed branding archives, large layer inputs](#adr-359--s15e6i3-libxposed-jvm-module-records-as-jsonloads-reads-them-compressed-branding-archives-large-layer-inputs)
   - [ADR-360 — S16a: the native workspace in `xaxc edit`: views, batches and rejection text](#adr-360--s16a-the-native-workspace-in-xaxc-edit-views-batches-and-rejection-text)
   - [ADR-361 — W2: the self-hosting stores are frozen; the evolution ledger applies to the committed stores](#adr-361--w2-the-self-hosting-stores-are-frozen-the-evolution-ledger-applies-to-the-committed-stores)
   - [ADR-362 — W3: the M14 Python bootstrap is retired; B levels come from the native compiler's records](#adr-362--w3-the-m14-python-bootstrap-is-retired-b-levels-come-from-the-native-compilers-records)
   - [ADR-363 — W4: the Python compiler moves to `compiler/reference/`](#adr-363--w4-the-python-compiler-moves-to-compilerreference)
-
-## ADR-335 — Pin the existing native Windows compiler as a distribution seed
-
-Date: 2026-10-27. Distribute the existing alias-index Windows compiler by exact executable digest and original
-canonical source revision under `compiler/bootstrap/windows`. Preserve its historical Python bootstrap provenance
-and explicit self-source decline. Consumers can verify/edit/resolve/build supported canonical programs using only
-native XAX executables, without installing the bootstrap SDK. The generic hash host's canonical build request is
-independent of application repositories. Application protocol code and schemas stay outside XAX.
-
-The versioned `xax-native-file-v1` contract retains current command/status meanings. Candidate editing is not a
-verified atomic commit: verify before publication and preserve old state on any failure. This decision neither
-silently changes `edit` semantics nor establishes Windows self-hosting, a bounded workspace service or new B/R
-levels. Evidence is `compiler/integration/windows_helpers/native_seed_evidence.json`.
+  - [ADR-364 — W5: the edit engine checks each new object's exact preimage (ledger 0001)](#adr-364--w5-the-edit-engine-checks-each-new-objects-exact-preimage-ledger-0001)
+  - [ADR-365 — The native backend's block layout and loop slots in linear memory (ledger 0002)](#adr-365--the-native-backends-block-layout-and-loop-slots-in-linear-memory-ledger-0002)
+  - [ADR-366 — Supplied objects bounded by the new-object table (ledger 0003, OI-52)](#adr-366--supplied-objects-bounded-by-the-new-object-table-ledger-0003-oi-52)
+  - [ADR-367 — N0: one native-evolution bootstrap, then XAX-only compiler evolution](#adr-367--n0-one-native-evolution-bootstrap-then-xax-only-compiler-evolution)
+  - [ADR-368 — N0.3: growable views (OI-52 R3)](#adr-368--n03-growable-views-oi-52-r3)
+  - [ADR-369 — N0.3: growable views as limit-bounded checked accesses](#adr-369--n03-growable-views-as-limit-bounded-checked-accesses)
+  - [ADR-370 — N0: the store family's views hold 256 MiB (ledger 0005), so growable views can land](#adr-370--n0-the-store-familys-views-hold-256-mib-ledger-0005-so-growable-views-can-land)
+  - [ADR-371 — N0.3: growable views in the native compiler (ledgers 0006, 0007)](#adr-371--n03-growable-views-in-the-native-compiler-ledgers-0006-0007)
+  - [ADR-372 — N0.4: the native evolution workflow, and N0's completion change (ledgers 0008, 0009)](#adr-372--n04-the-native-evolution-workflow-and-n0s-completion-change-ledgers-0008-0009)
+  - [ADR-373 — OI-52 R1: x86-64 checked bounds past imm32 (ledger 0010)](#adr-373--oi-52-r1-x86-64-checked-bounds-past-imm32-ledger-0010)
+  - [ADR-374 — OI-52 R1 on the frame path (ledger 0011)](#adr-374--oi-52-r1-on-the-frame-path-ledger-0011)
+  - [ADR-375 — `define`'s `object` form: native authoring of reference-free objects (ledger 0012)](#adr-375--defines-object-form-native-authoring-of-reference-free-objects-ledger-0012)
+  - [ADR-376 — The general backend fuses a compare only into its sole use (ledger 0013; closes OI-53)](#adr-376--the-general-backend-fuses-a-compare-only-into-its-sole-use-ledger-0013-closes-oi-53)
+  - [ADR-377 — Heap views on the general backend's frame path on every x86-64 target (ledger 0014)](#adr-377--heap-views-on-the-general-backends-frame-path-on-every-x86-64-target-ledger-0014)
+  - [ADR-378 — `define`'s `object` form takes references (ledger 0015)](#adr-378--defines-object-form-takes-references-ledger-0015)
+  - [ADR-379 — The frame path elides borrowed views at call sites (ledger 0016)](#adr-379--the-frame-path-elides-borrowed-views-at-call-sites-ledger-0016)
+  - [ADR-380 — Next-iteration prefetch only for views of at most 4096 blocks (ledger 0017)](#adr-380--next-iteration-prefetch-only-for-views-of-at-most-4096-blocks-ledger-0017)
+  - [ADR-381 — The x86-64 image buffer packed eight bytes to a word; a 48 MiB image cap (ledger 0018)](#adr-381--the-x86-64-image-buffer-packed-eight-bytes-to-a-word-a-48-mib-image-cap-ledger-0018)
+  - [ADR-382 — The full self-hosting record's C0 is the pinned seed](#adr-382--the-full-self-hosting-records-c0-is-the-pinned-seed)
+  - [ADR-383 — Leaf-call inlining within a value budget (ledger 0019)](#adr-383--leaf-call-inlining-within-a-value-budget-ledger-0019)
+  - [ADR-384 — AArch64 parameter aliases from per-parameter argument lists; an interval pool sized by liveness (ledger 0020)](#adr-384--aarch64-parameter-aliases-from-per-parameter-argument-lists-an-interval-pool-sized-by-liveness-ledger-0020)
+  - [ADR-385 — P1 (redundant block-parameter elimination) measured as a view pass; not adopted](#adr-385--p1-redundant-block-parameter-elimination-measured-as-a-view-pass-not-adopted)
+  - [ADR-386 — Step E's dynamic limits, packed bytes and `cycle`: measured budgets; each waits for a program that needs it](#adr-386--step-es-dynamic-limits-packed-bytes-and-cycle-measured-budgets-each-waits-for-a-program-that-needs-it)
+  - [ADR-387 — hanoi -O0's limit chain measured; the 8 MiB graph body (ledger 0021) prepared, not applied](#adr-387--hanoi--o0s-limit-chain-measured-the-8-mib-graph-body-ledger-0021-prepared-not-applied)
+  - [ADR-388 — the x86-64 register lowering folds pure integer nodes over constants and saves hoisted registers (ledger 0022)](#adr-388--the-x86-64-register-lowering-folds-pure-integer-nodes-over-constants-and-saves-hoisted-registers-ledger-0022)
+  - [ADR-389 — BBC's importer branches before each offset access; the AArch64 constant fold is not adopted](#adr-389--bbcs-importer-branches-before-each-offset-access-the-aarch64-constant-fold-is-not-adopted)
+  - [ADR-390 — hanoi -O0 needs VCAP 2^20: the importer cannot drop its pass-through views](#adr-390--hanoi--o0-needs-vcap-220-the-importer-cannot-drop-its-pass-through-views)
+  - [ADR-391 — the per-view value capacity is a workspace word (ledger 0023)](#adr-391--the-per-view-value-capacity-is-a-workspace-word-ledger-0023)
+  - [ADR-392 — signed compares below 32 bits are sign-corrected on the x86-64 frame path](#adr-392--signed-compares-below-32-bits-are-sign-corrected-on-the-x86-64-frame-path)
+  - [ADR-393 — signed compares below 32 bits are sign-corrected in the native x86-64 backend (ledger 0024); the seed is rotated](#adr-393--signed-compares-below-32-bits-are-sign-corrected-in-the-native-x86-64-backend-ledger-0024-the-seed-is-rotated)
+  - [ADR-394 — AArch64 copies for an edge that leaves a loop stay in its stub (ledger 0025)](#adr-394--aarch64-copies-for-an-edge-that-leaves-a-loop-stay-in-its-stub-ledger-0025)
+  - [ADR-396 — PE images commit their whole stack reserve (ledger 0026, OI-56)](#adr-396--pe-images-commit-their-whole-stack-reserve-ledger-0026-oi-56)
+  - [ADR-397 — The Windows seed is the production driver behind a four-node entry](#adr-397--the-windows-seed-is-the-production-driver-behind-a-four-node-entry)
+  - [ADR-398 — Edge copies stage the frame words they overwrite (ledger 0027, OI-59)](#adr-398--edge-copies-stage-the-frame-words-they-overwrite-ledger-0027-oi-59)
+  - [ADR-399 — Four rows reach R3; `wasm32-core` and `accelerator-simt-packet` leave the matrix](#adr-399--four-rows-reach-r3-wasm32-core-and-accelerator-simt-packet-leave-the-matrix)
+- ADR-400 to ADR-499
+  - [ADR-400 — A portable host memory ABI, `xax-host-v1` (ledger 0029)](#adr-400--a-portable-host-memory-abi-xax-host-v1-ledger-0029)
+  - [ADR-401 — The driver's main allocates and releases through `xax-host-v1` (ledger 0030)](#adr-401--the-drivers-main-allocates-and-releases-through-xax-host-v1-ledger-0030)
+  - [ADR-402 — Main's file and exit calls are host functions (ledger 0031); the Windows seed is built from the shared request](#adr-402--mains-file-and-exit-calls-are-host-functions-ledger-0031-the-windows-seed-is-built-from-the-shared-request)
+  - [ADR-403 — The DEX writer sizes its output for large modules (ledger 0032)](#adr-403--the-dex-writer-sizes-its-output-for-large-modules-ledger-0032)
+  - [ADR-404 — Driver changes are released in batches; full evidence and rotation are per release](#adr-404--driver-changes-are-released-in-batches-full-evidence-and-rotation-are-per-release)
+  - [ADR-405 — The correctness oracle becomes native; the Python reference is migration debt](#adr-405--the-correctness-oracle-becomes-native-the-python-reference-is-migration-debt)
+  - [ADR-406 — Catching JVM foreign calls (issue #49)](#adr-406--catching-jvm-foreign-calls-issue-49)
+  - [ADR-407 — Evidence V2: a line record, a frozen corpus and a native evaluator (RFC phase 3)](#adr-407--evidence-v2-a-line-record-a-frozen-corpus-and-a-native-evaluator-rfc-phase-3)
+  - [ADR-408 — Releases are recorded in RELEASES and gated by a native state program (RFC phase 6)](#adr-408--releases-are-recorded-in-releases-and-gated-by-a-native-state-program-rfc-phase-6)
+  - [ADR-409 — The DEX lowering of catching JVM calls (issue #49 part 6)](#adr-409--the-dex-lowering-of-catching-jvm-calls-issue-49-part-6)
+  - [ADR-410 — The release record is the only seed pin; B levels come from the native V2 levels](#adr-410--the-release-record-is-the-only-seed-pin-b-levels-come-from-the-native-v2-levels)
+  - [ADR-411 — libxposed lifecycle entries: the v3 module carrier (issue #48, design)](#adr-411--libxposed-lifecycle-entries-the-v3-module-carrier-issue-48-design)
+  - [ADR-411 amendment — each lifecycle entry is lowered by its own JVM run (2026-11-18)](#adr-411-amendment--each-lifecycle-entry-is-lowered-by-its-own-jvm-run-2026-11-18)
+  - [ADR-411 amendment 2 — how a lifecycle run gets its entry; v3 in the native programs (2026-11-18)](#adr-411-amendment-2--how-a-lifecycle-run-gets-its-entry-v3-in-the-native-programs-2026-11-18)
+  - [ADR-412 — C-cap: 64-bit checked offsets (OI-52 R2) and the order of OI-54's steps (2026-11-19)](#adr-412--c-cap-64-bit-checked-offsets-oi-52-r2-and-the-order-of-oi-54s-steps-2026-11-19)
+  - [ADR-413 — OI-54 step 1: hanoi -O0's front-end limits measured, four lifted (release 0039, 2026-11-20)](#adr-413--oi-54-step-1-hanoi--o0s-front-end-limits-measured-four-lifted-release-0039-2026-11-20)
+  - [ADR-414 — The JVM program rejects a function with two machine results (issue #137, release 0040, 2026-11-20)](#adr-414--the-jvm-program-rejects-a-function-with-two-machine-results-issue-137-release-0040-2026-11-20)
+  - [ADR-415 — libxposed JVM modules: `autoHotReload` and the minimum API version (issue #133, release 0040, 2026-11-20)](#adr-415--libxposed-jvm-modules-autohotreload-and-the-minimum-api-version-issue-133-release-0040-2026-11-20)
+  - [ADR-416 — Native carrier replacement: `replace <CID> @name` (issue #135, design, 2026-11-20)](#adr-416--native-carrier-replacement-replace-cid-name-issue-135-design-2026-11-20)
+  - [ADR-417 — The generated manifest carries `android:versionName` (issue #134, release 0041, 2026-11-21)](#adr-417--the-generated-manifest-carries-androidversionname-issue-134-release-0041-2026-11-21)
+  - [ADR-418 — Native carrier replacement implemented: `replace <CID> @name` (issue #135, ledger 0042, 2026-11-23)](#adr-418--native-carrier-replacement-implemented-replace-cid-name-issue-135-ledger-0042-2026-11-23)
+  - [ADR-419 — OI-54 step 2, part 1: the x86-64 container buffer is sized from the image (ledger 0042, 2026-11-23)](#adr-419--oi-54-step-2-part-1-the-x86-64-container-buffer-is-sized-from-the-image-ledger-0042-2026-11-23)
+  - [ADR-420 — Workspace dependency order, type edits and implied-edit pruning](#adr-420--workspace-dependency-order-type-edits-and-implied-edit-pruning)
 
 ## ADR-001 — The language is XAX
 
@@ -2165,14 +2211,6 @@ levels. Evidence is `compiler/integration/windows_helpers/native_seed_evidence.j
 | Consequences | The Android row's Vector blocker narrows to the nine breakpoint/invocation checks: package_callbacks, class_loader, intercepted, deopt_order, manual_unhook, module_services, remote_preferences, remote_files, protective. `android_libxposed_hot_reload_fixture.apk` and the Vector profile hashes changed; no other committed APK did. ADR-178's "no Vector execution has happened" is superseded. |
 | Limits | One device, one Vector build. The heap oracle reads Vector's obfuscated HookHandle record structurally (reachable strings and `XaxHooker` instances, two levels deep), not by field name. The JDWP abort is an ART/Vector interaction on this build, recorded rather than worked around. The ART execute layer still uses the recording stand-in framework and does not call the hot-reload callbacks. |
 
-## ADR-197 — Workspace dependency order, type edits and implied-edit pruning
-
-| Field | Record |
-|---|---|
-| Decision | (1) Workspace correctness fix: an edited function whose unedited callee depended on another edited function kept calling the stale callee. Edited and rebuilt functions now share one dependency order, and `tests/test_xax_workspace.py` has a regression test. (2) `type OLD_TYPE NEW_TYPE` (shown functions) and `type F OLD_TYPE NEW_TYPE` (one function) expand exactly into result-type and signature mutations. `type P NEW` on an entry parameter is that function's signature-parameter change. (3) Edits the batch already implies are dropped: exact duplicates, and signature edits of one function that agree field by field. Conflicts still reject. (4) Node diagnostics name the handle's kind ("Units.scale is a function; use sig …"). A trailing `;` stays malformed, because an existing negative vector treats it as possible truncation. |
-| Invariants | Acceptance does not change: exposure, generation, exact old fields, verification and staleness checks are identical. |
-| Evidence | Unit tests (`tests/test_xax_workspace.py`, `tests/test_xax_local_protocol.py`). |
-
 ## ADR-198 — Android counter R4 restored: three arms, rotated passes, equal AOT compilation
 
 | Field | Record |
@@ -3377,6 +3415,19 @@ feature. Tests and contract: compiler/integration/android/CARRIER_TRANSACTIONS.m
 | Evidence | EXECUTED on Linux x86-64. Stage A seed `5ad75027…` (16,597,833 bytes) and stage B seed `445bdf00…` (18,930,571 bytes): `selfbuild.sh` gives seed = C1 = C2 at each stage. `test_xax_selfhost_general_build.py` (including the new `test_jvm_jars`, which compares the driver's outcomes with `build`'s Python JVM path): 18 passed, 1 skipped. `test_store_regeneration.py` and `test_xax_selfhost_jvm.py`: 25 passed. The seed binary built the hello executable JAR; the JAR and its provenance are byte-equal to `build`'s, and `java -jar` printed its output and exited with 7. The selfhost closure and full-selfhost evidence are not re-run against these stores yet. |
 | Limits | The programs the JVM program declines (ADR-327-ADR-332: the memory machinery, recursion groups, the threaded launcher) are declined by the driver; the bootstrap still builds them when Python is present. |
 
+## ADR-335 — Pin the existing native Windows compiler as a distribution seed
+
+Date: 2026-10-27. Distribute the existing alias-index Windows compiler by exact executable digest and original
+canonical source revision under `compiler/bootstrap/windows`. Preserve its historical Python bootstrap provenance
+and explicit self-source decline. Consumers can verify/edit/resolve/build supported canonical programs using only
+native XAX executables, without installing the bootstrap SDK. The generic hash host's canonical build request is
+independent of application repositories. Application protocol code and schemas stay outside XAX.
+
+The versioned `xax-native-file-v1` contract retains current command/status meanings. Candidate editing is not a
+verified atomic commit: verify before publication and preserve old state on any failure. This decision neither
+silently changes `edit` semantics nor establishes Windows self-hosting, a bounded workspace service or new B/R
+levels. Evidence is `compiler/integration/windows_helpers/native_seed_evidence.json`.
+
 ## ADR-336 — The remaining S15 steps: S15e.5g-S15e.5j, S15e.6a-S15e.6h, S15g
 
 | Field | Record |
@@ -4171,3 +4222,12 @@ Superseded by [ADR-369](#adr-369--n03-growable-views-as-limit-bounded-checked-ac
 | Evidence | EXECUTED (WSL 2; the 0041 seed builds the candidate, C1): fixed point (`8d7745ab…`); corpus differential seed against C1, 198 cases, 0 differ; with C1 as the compiler, `test_native_large_image` (a 36 MiB image), `test_xax_oi52_r1`, `test_xax_selfhost_general_view`, `test_xax_selfhost_pe_legacy` and `test_xax_growable_views` pass (25), and `test_xax_oi54_limits` passes (4; run with the pin patched to C1, since its driver refuses an unpinned seed). `evolve.sh apply` and `check` pass. |
 | Findings for the rest of step 2 | (1) The first value-capacity check is the x86-64 prologue's capacity word (ADR-391), set by F355 (F8 and F573, the other two prologues that set it, do not serve x86-64 `lower`). Lowering declines at exactly 262,144 values (a chain of 259,200 builds, 266,400 declines in 0.3 s). (2) With part 1 and the capacity at 917,504, that chain fails again, on the arena: the next-free word reaches 253.7M against its end at 209.7M. (3) BBC's hanoi -O0 (bound by the 0041 `bbc.exe`, edited, verified and resolved by the candidate) reaches the backend and declines after 47.8 s, 1.68 GB: at capacity 917,504 the tables end at word 203.3M, 6M words below the arena's end, and the decline comes during the views (globals slot 46 is 13, the value counter is 0 and the container is not allocated). That the view's scratch is what runs out is inferred from this snapshot, not traced to the failing allocation. Located with gdb snapshots of the workspace at the first `munmap`. The tables at a capacity sized to hanoi (about 650k values, 55M words), its view scratch and its container do not fit the 84M-word arena together. The capacity can follow the program (a count of each function's lifted values before the tables are allocated, from `views_prologue`'s `order` and `members`), but the arena boundary must move too: the per-value tables need a region of their own, or the workspace must grow (OI-52). |
 | Limits | No program builds that did not before; this frees the arena for the rest of step 2. A container above `I_LEN + 1 MiB` (more than 1 MiB of headers and tables) now declines where it used to build; the corpus has none. |
+
+## ADR-420 — Workspace dependency order, type edits and implied-edit pruning
+
+| Field | Record |
+|---|---|
+| Status | Renumbered on 2026-11-24 from the second ADR-197, a duplicate of the Vector-runtime ADR-197; recorded 2026-10-08 (`fbe62ae`). Code comments and `XAX_OPEN_ISSUES.md` (OI-46) cited it as ADR-197. |
+| Decision | (1) Workspace correctness fix: an edited function whose unedited callee depended on another edited function kept calling the stale callee. Edited and rebuilt functions now share one dependency order, and `tests/test_xax_workspace.py` has a regression test. (2) `type OLD_TYPE NEW_TYPE` (shown functions) and `type F OLD_TYPE NEW_TYPE` (one function) expand exactly into result-type and signature mutations. `type P NEW` on an entry parameter is that function's signature-parameter change. (3) Edits the batch already implies are dropped: exact duplicates, and signature edits of one function that agree field by field. Conflicts still reject. (4) Node diagnostics name the handle's kind ("Units.scale is a function; use sig …"). A trailing `;` stays malformed, because an existing negative vector treats it as possible truncation. |
+| Invariants | Acceptance does not change: exposure, generation, exact old fields, verification and staleness checks are identical. |
+| Evidence | Unit tests (`tests/test_xax_workspace.py`, `tests/test_xax_local_protocol.py`). |

@@ -1,6 +1,29 @@
 # XAX Prototype Object Schema Revision 1
 
-Status: implementation fixture schema for Roadmap M1. This document fixes the bytes tested by the bootstrap compiler. It does not close evidence-dependent objectization issues or extend the normative language specification.
+**Status:** implementation fixture schema for Roadmap M1. This document fixes the bytes tested by the bootstrap compiler. It does not close evidence-dependent objectization issues or extend the normative language specification.
+
+## Contents
+
+- [1. Common encoding](#1-common-encoding)
+- [2. Object bodies](#2-object-bodies)
+  - [Kind 1: `program_root`](#kind-1-program_root)
+  - [Kind 2: `module`](#kind-2-module)
+  - [Kind 3: `function`](#kind-3-function)
+  - [Kind 4: `type`](#kind-4-type)
+  - [Kind 5: `constant`](#kind-5-constant)
+  - [Kind 6: `target`](#kind-6-target)
+  - [Kind 7: `graph_fragment`](#kind-7-graph_fragment)
+  - [Kind 8: `recursion_group`](#kind-8-recursion_group)
+  - [Kind 9: `package`](#kind-9-package)
+  - [Kind 10: `build`](#kind-10-build)
+  - [Kind 11: `call_contract`](#kind-11-call_contract)
+- [3. Fixture revision 1](#3-fixture-revision-1)
+- [4. Deliberate M1 limits](#4-deliberate-m1-limits)
+- [5. M2 execution fixture](#5-m2-execution-fixture)
+- [6. M3 stack-memory vector](#6-m3-stack-memory-vector)
+- [7. M4 x86-64 Windows load-image vectors](#7-m4-x86-64-windows-load-image-vectors)
+- [8. M5 WebAssembly core-module vectors](#8-m5-webassembly-core-module-vectors)
+- [9. M5 AArch64 bare-metal load-image vectors](#9-m5-aarch64-bare-metal-load-image-vectors)
 
 ## 1. Common encoding
 
@@ -511,7 +534,9 @@ Kind 10 uses a leading form tag:
     deterministic_bool
 ```
 
-Mode IDs are 1 hermetic-reproducible, 2 hermetic-nondeterministic, and 3 ambient. Capability IDs are 1 read-object, 2 read-external, 3 write-artifact, 4 network, 5 clock, 6 random, 7 sign, 8 invoke-tool, and 9 publish. Artifact kind 1 is a direct native/load-image or WebAssembly module selected by the explicit target package. Artifact kind 2 is an accelerator deployment artifact selected by an accelerator target package. Optimization objective ID 1 is code size. M12 optimization-policy integer fields are deterministic compiler-work/memory bounds; they do not encode wall-clock deadlines. Observed profile data is deliberately absent from form 7 and remains non-semantic tooling input. Collections are canonical sorted sets. Snapshot verification requires the exact transitive package closure; build identity includes snapshot, request, compiler, and lowering identities.
+Mode IDs are 1 hermetic-reproducible, 2 hermetic-nondeterministic, and 3 ambient. Capability IDs are 1 read-object, 2 read-external, 3 write-artifact, 4 network, 5 clock, 6 random, 7 sign, 8 invoke-tool, and 9 publish. Artifact kind 1 is a direct native/load-image or WebAssembly module selected by the explicit target package. Artifact kind 2 is an accelerator deployment artifact selected by an accelerator target package.
+
+Optimization objective ID 1 is code size. M12 optimization-policy integer fields are deterministic compiler-work/memory bounds; they do not encode wall-clock deadlines. Observed profile data is deliberately absent from form 7 and remains non-semantic tooling input. Collections are canonical sorted sets. Snapshot verification requires the exact transitive package closure; build identity includes snapshot, request, compiler, and lowering identities.
 
 ### Kind 11: `call_contract`
 
@@ -522,7 +547,9 @@ may_return_bool
 may_trap_bool
 ```
 
-Input/output references name kind-4 exact types in call order. The reference table is the usual CID-sorted deduplicated table; repeated signature types reuse one local reference. `may_return_bool` and `may_trap_bool` are canonical `0`/`1` bytes. In prototype revision 1 the bounded effect set is reconstructed from exact `effect<domain,instance>` input/output types, while resource/capability-bearing values remain explicit exact resource/interface types. There is no unknown-effects sentinel or omitted-contract meaning. A direct function may be checked against a kind-11 contract only when its exact interface matches, its derived effects are a subset of the contract bound, and its return/trap behavior is within the encoded control bound.
+Input/output references name kind-4 exact types in call order. The reference table is the usual CID-sorted deduplicated table; repeated signature types reuse one local reference. `may_return_bool` and `may_trap_bool` are canonical `0`/`1` bytes. In prototype revision 1 the bounded effect set is reconstructed from exact `effect<domain,instance>` input/output types, while resource/capability-bearing values remain explicit exact resource/interface types.
+
+There is no unknown-effects sentinel or omitted-contract meaning. A direct function may be checked against a kind-11 contract only when its exact interface matches, its derived effects are a subset of the contract bound, and its return/trap behavior is within the encoded control bound.
 
 Kind 11 is the OI-09-selected reusable contract identity. It does not add an indirect-call opcode by itself. Exact sealed dispatch sets remain optional optimizer/tooling facts rather than the sole contract authority.
 

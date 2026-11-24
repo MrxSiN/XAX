@@ -40,8 +40,6 @@ This stage defines:
 
 This stage does **not** fully define pointer provenance, object lifetime, allocation, loads/stores, ownership transfer, resource release, effect ordering, calls, or target lowering. Those systems consume the definitions here but specify their own behavioral rules.
 
----
-
 ## 2. Normative definitions
 
 | Term | Normative meaning |
@@ -60,8 +58,6 @@ This stage does **not** fully define pointer provenance, object lifetime, alloca
 | **reinterpretation** | Construction of a value of one type from the representation of another without a semantic numeric/structural conversion. |
 
 Normative keywords **MUST**, **MUST NOT**, **SHOULD**, **SHOULD NOT**, and **MAY** have their ordinary specification meanings.
-
----
 
 ## 3. Canonical type model
 
@@ -101,8 +97,6 @@ Canonical type descriptors are immutable and interned. Persistent identity SHOUL
 Structural types with identical canonical descriptors are identical after interning. For `opaque<K>` and `resource<K,state>`, nominal keys remain part of identity even when representations match.
 
 Type identity MUST NOT depend on names, formatting, irrelevant declaration order, local handles, or target layout unless layout is explicitly part of the type.
-
----
 
 ## 4. Values and exact scalar semantics
 
@@ -193,8 +187,6 @@ Constants preserve every distinction made observable by `F`, including signed ze
 
 Floating operations whose result varies by rounding, exception, contraction, denormal, or trap policy MUST carry that policy explicitly or depend on an explicit environment object defined by the effects stage. If a target lacks direct support, lowering MUST emulate, use another verified implementation, or reject the target/policy combination.
 
----
-
 ## 5. Aggregate and vector types
 
 ### 5.1 `vec<N,T>`
@@ -227,8 +219,6 @@ Its semantics define the alternative set and active variant, but no default disc
 Construction MUST identify the selected alternative. Extraction of a payload MUST be dominated by, conditioned on, or otherwise proven from evidence of the active variant.
 
 A sum has no implicit “zero variant.” Any default variant is an explicit higher-level convention, not a core rule.
-
----
 
 ## 6. Pointer, function, resource, effect, and opaque types
 
@@ -285,8 +275,6 @@ The ordering and consumption rules for effect values are defined by the effects 
 
 `opaque<K>` is a nominal semantic type owned by identity `K`. Target packages MAY define target-specific types through opaque or target-owned descriptors, but MUST provide enough contracts for verification and lowering. Target assumptions MUST NOT leak into fundamental XAX semantics.
 
----
-
 ## 7. Constants, zero values, traps, poison, and undefined values
 
 ### 7.1 Constant model
@@ -329,8 +317,6 @@ Uninitialized storage is a memory-state property, not a value; invalid loads are
 A trap is an explicit control/effect operation, not a value.
 
 Checked arithmetic, conversion, or representation operations MAY produce an ordinary result encoding success/failure or branch to an explicit trap according to their operation contract. No type implicitly traps merely because one physical bit pattern is unusual.
-
----
 
 ## 8. Semantic type versus physical layout
 
@@ -409,8 +395,6 @@ An explicit-layout type MUST NOT silently alter the semantics of its `logical_ty
 
 This mechanism is not a second target DSL. The descriptor is ordinary canonical XAX semantic data and may be constructed and inspected by XAX compile-time programs.
 
----
-
 ## 9. Representation equivalence and reinterpretation
 
 ### 9.1 Distinct relations
@@ -442,8 +426,6 @@ Such waiver MUST be machine-visible in the semantic graph. A raw operation does 
 
 Pointer, resource, effect, and function values SHOULD be excluded from generic raw bit reinterpretation unless their defining subsystem supplies a precise operation.
 
----
-
 ## 10. Refinements and zero-runtime-cost proof metadata
 
 XAX v0.1 keeps general ranges and refinements as verifier/optimizer proof facts rather than distinct runtime types. Examples include ranges, nonzero facts, known bits, alignment, and active sum variants.
@@ -451,8 +433,6 @@ XAX v0.1 keeps general ranges and refinements as verifier/optimizer proof facts 
 Proof facts MUST derive from canonical semantics, validated assumptions, or proof-producing operations; MUST NOT alter runtime representation; and MUST be invalidated when premises cease to hold. They MAY be recomputed or persisted as cache/proof objects.
 
 A refinement SHOULD become a distinct semantic type only when programs must observe it, an API requires nominal capability, or implementation evidence shows proof-only representation is inadequate.
-
----
 
 ## 11. Verifier rules
 
@@ -473,8 +453,6 @@ The Stage 03 verifier MUST enforce:
 
 Diagnostics SHOULD identify machine-readable rule IDs, involved entities, proof obligations, and the smallest repair neighborhood.
 
----
-
 ## 12. Invalid or rejected alternatives
 
 | Rejected alternative | Reason |
@@ -493,8 +471,6 @@ Diagnostics SHOULD identify machine-readable rule IDs, involved entities, proof 
 | Implicit pointer/integer or pointer/pointer reinterpretation | Can fabricate provenance, permissions, or address-space meaning. |
 | Hidden runtime type descriptors | Violates the no-hidden-runtime rule; runtime reflection must be explicitly requested. |
 
----
-
 ## 13. Interfaces with other XAX subsystems
 
 - **Semantic graph/serialization:** stores references to interned types and constants while preserving canonical identity and permitting compact local handles.
@@ -504,19 +480,17 @@ Diagnostics SHOULD identify machine-readable rule IDs, involved entities, proof 
 - **Target packages:** define machine value forms, address spaces, ABI/storage layouts, native floats/vectors, alignment, target types, and legalization without redefining core type meaning.
 - **Optimizer:** may use type, layout, and proof facts and change representation only when observable semantics are preserved.
 
----
-
 ## 14. Open issues requiring implementation evidence
 
 Only the following issues remain intentionally open for v0.1 implementation evidence:
 
-1. **Canonical float format catalog.** The semantic requirements for `F` are fixed, but the initial set of pre-interned common formats versus fully structural format descriptors should be selected by serializer and compiler-complexity measurements.
-2. **Proof-fact persistence policy.** The semantics of proof metadata are fixed, but which facts should be serialized, cached, or recomputed should be decided from incremental verification cost and artifact-size measurements.
-3. **Compact type vocabulary.** Canonical identity is fixed, but which high-frequency types receive dedicated transport IDs should be chosen empirically from storage and mutation benchmarks.
+Each item names the register record that tracks it, with that record's status on 2026-11-24; [`XAX_OPEN_ISSUES.md`](../XAX_OPEN_ISSUES.md) is authoritative, and a `CLOSED` record supersedes the word "open" here.
+
+1. **Canonical float format catalog.** The semantic requirements for `F` are fixed, but the initial set of pre-interned common formats versus fully structural format descriptors should be selected by serializer and compiler-complexity measurements. Register: [OI-04](../XAX_OPEN_ISSUES.md#oi-04--float-format-catalog-and-compact-type-vocabulary), `OPEN`.
+2. **Proof-fact persistence policy.** The semantics of proof metadata are fixed, but which facts should be serialized, cached, or recomputed should be decided from incremental verification cost and artifact-size measurements. Register: [OI-05](../XAX_OPEN_ISSUES.md#oi-05--proof-fact-persistence), `CLOSED` (2026-10-01).
+3. **Compact type vocabulary.** Canonical identity is fixed, but which high-frequency types receive dedicated transport IDs should be chosen empirically from storage and mutation benchmarks. Register: [OI-04](../XAX_OPEN_ISSUES.md#oi-04--float-format-catalog-and-compact-type-vocabulary), `OPEN`.
 
 These issues affect encoding and implementation efficiency, not program meaning.
-
----
 
 ## 15. Falsification criteria
 
