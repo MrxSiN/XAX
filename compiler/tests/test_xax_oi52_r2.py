@@ -314,6 +314,43 @@ class WasmTests(unittest.TestCase):
                 else:
                     self.assertEqual(run_wasm_isolated(image, (offset,))[0] & 255, BYTES[offset])
 
+    def test_legacy_profile_rejects(self):
+        """OI-62: the legacy ``oi06`` profile would compare a ``bits<64>`` offset's i64 local as i32, so it rejects the
+        access, with the same diagnostic in the reference and in the production compiler's ``build``."""
+        import subprocess
+        import sys
+        import tempfile
+        from pathlib import Path
+
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        from test_xax_byte_view_widening import _stack_callee
+        from xax_compiler import oi06_wasm32_target
+        from xax_selfhost_diagnostics import decode_record
+        from test_xax_selfhost_general_build import _program
+        from xax_compiler import Kind
+        from xax_wasm import compile_wasm_bound_target
+
+        target = oi06_wasm32_target()
+        function, objects = _stack_callee(1, offset_type=B64)
+        store = program_store(function, target, objects)
+        with self.assertRaises(XaxError) as raised:
+            compile_wasm_bound_target(store, function.cid, target)
+        reference = raised.exception.diagnostic
+        self.assertEqual((reference.code, reference.rule, reference.expected), ("XAX.WASM.CHECKED_OFFSET", "WASM-CHECKED-OFFSET-BITS", 32))
+        if not (platform.system() == "Linux" and platform.machine() == "x86_64"):
+            self.skipTest("the production compiler runs on Linux x86-64")
+        seed = Path(__file__).resolve().parents[1] / "bootstrap" / "seed" / "xaxc-linux-x86_64"
+        with tempfile.TemporaryDirectory() as directory:
+            work = Path(directory)
+            parts = tuple(o for o in store.objects() if o.kind not in (Kind.MODULE, Kind.PROGRAM_ROOT) and o.cid != target.cid)
+            (work / "s.xax").write_bytes(_program(parts, {b"image": function}, target).data)
+            status = subprocess.run([str(seed), "build", "s.xax", "out", "prov"], cwd=work, capture_output=True).returncode
+            data = (work / "out").read_bytes()
+        self.assertEqual(status, 1)
+        native = decode_record([int.from_bytes(data[k:k + 8], "little") for k in range(0, len(data), 8)])
+        self.assertEqual((native.code, native.entity, native.rule, native.expected, native.actual),
+                         (reference.code, reference.entity, reference.rule, reference.expected, reference.actual))
+
 
 if __name__ == "__main__":
     unittest.main()

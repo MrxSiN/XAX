@@ -903,6 +903,8 @@ needs one of: tables packed to 32-bit lanes (about 43 words per value, then also
 workspace view (a host ABI change), or growable views (OI-52 R3). Not decided here; step 3 (AArch64 liveness) also
 stays open.
 
+**Status: OPEN; step 2 part 1 on `release/0042` (2026-11-23, ledger 0042, ADR-419).** The x86-64 container buffer is sized from the image (I_LEN + 1 MiB, at most 48 MiB + 64 KiB) and its 273 checks read the allocated size, which frees about 49M of the arena's 84M words for ordinary builds. Measured: the first value-capacity limit is the x86-64 prologue's capacity word (262,144; F355); with part 1 and a capacity of 917,504, hanoi -O0 reaches the backend and declines during the views with 6M arena words left after the tables. The rest of step 2 is a layout change: the per-value tables need a region of their own (or the workspace must grow, OI-52), and the capacity can then follow the program (a count of each function's lifted values in `views_prologue`). The record of 2026-11-20 follows.
+
 **Status: OPEN; step 1 done (2026-11-20, release 0039, ADR-413).** BBC's hanoi -O0 decision (one 7.25 MB graph
 fragment) now verifies, resolves and takes a native edit. The front end's limits were measured rather than taken from
 the list below, and four were lifted, each with a test just past its old value (`tests/test_xax_oi54_limits.py`):
@@ -1131,6 +1133,8 @@ left for the C-cap step of release 0036.
 `JVM-FOREIGN-ARITY` (or a new diagnostic), and a test that builds one and gets the rejection.
 
 ## OI-62 — The legacy Wasm32 profile emits an invalid module for a `bits<64>` checked offset
+
+**Status: FIXED on `release/0042` (2026-11-23, ledger 0042); closes when release 0042's seed is rotated.** `0042-legacy-wasm-offset-bits` routes the legacy lowering's offset `local.get` (F786 by sorted CID in the 0041 driver) through a new `@g225`. It reads the offset's width the way the general profile does (the value's type, then the type's body) and rejects a width above 32 with `XAX.WASM.CHECKED_OFFSET` / `WASM-CHECKED-OFFSET-BITS` (expected 32, actual the width), written as F225 writes its own records. The reference (`xax_wasm_legacy.py`) rejects the same way at the same point. `test_xax_oi52_r2.WasmTests.test_legacy_profile_rejects` compares the reference's diagnostic with the production compiler's `build`: it fails with the 0041 seed (which emits the invalid module) and passes with the candidate; a `bits<32>` offset keeps its module bytes. The record of 2026-11-19 follows.
 
 **Status: OPEN (2026-11-19).** Since OI-52 R2 (ADR-412) a checked offset may be `bits<64>`. The general Wasm32 profile
 lowers it (`i64.gt_u`, then `i32.wrap_i64`), but the legacy profile that `oi06_wasm32_target` and other targets

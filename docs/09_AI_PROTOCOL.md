@@ -855,7 +855,14 @@ ret N2
 T0 bits32
 end
 replace F<n> @name       every object of the store that refers to F<n> refers to @name's function instead
+replace <CID> @name      the same for a TARGET object (kind 6) the store holds, @name an `object 6` definition
 ```
+
+The second `replace` form (issue #135, ledger 0042, ADR-416) swaps a carrier natively, for example a libxposed module's
+v1 carrier for a v3 one: `define @c` / `object 6 0x<new body>` / `end`, then `replace <old carrier's CID> @c`; the
+engine rebuilds the module and its ancestors as for a function. A 64-character operand is always read as a CID. One that
+is not a TARGET the store holds rejects `WORKSPACE-BATCH-REPLACE`. The new object's kind is not checked: `verify`
+decides whether the edited store holds.
 
 A definition whose body is the single line `object <kind> 0x<body>` (ledger 0012) supplies a canonical object with no
 references, of that kind and body, instead of a function; `@name` then names it as an entity, for example a foreign
