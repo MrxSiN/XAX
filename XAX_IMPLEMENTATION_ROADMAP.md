@@ -812,11 +812,11 @@ Not an R level and not a B milestone: a gate that restores a reproducible, deriv
 
 ### Snapshot-bound local mutation (2026-10-07, ADR-186 to ADR-188)
 
-The normal snapshot-bound local mutation interface is implemented in `compiler/src/xax_local_protocol.py`. Host-applied responses use it; normal setters reconstruct exact old edge, type and signature fields, and dead-chain pruning preserves surviving users. No backend runtime-speed improvement is claimed by this change.
+The normal snapshot-bound local mutation interface is implemented in `compiler/reference/xax_local_protocol.py`. Host-applied responses use it; normal setters reconstruct exact old edge, type and signature fields, and dead-chain pruning preserves surviving users. No backend runtime-speed improvement is claimed by this change.
 
 ### Android platform capability contracts (2026-10-08, ADR-202 to ADR-204)
 
-Done (STRUCTURAL): exact JNI floats and typed-record argument packs, platform declarations for the managed-class APK, POSIX async/ownership contracts, NDK window/codec/AAudio contracts, and the SDK capability table enforced at build time (`docs/ANDROID_PLATFORM_CAPABILITIES.md`). Next: device execution of each new contract on the authorized device, then OI-47 (path-exact ownership for media buffers, NULL windows and JNI-held SDK objects).
+Done (STRUCTURAL): exact JNI floats and typed-record argument packs, platform declarations for the managed-class APK, POSIX async/ownership contracts, NDK window/codec/AAudio contracts, and the SDK capability table enforced at build time (`docs/ANDROID_PLATFORM_CAPABILITIES.md`, deleted 2026-10-19; the table is in `compiler/reference/xax_android_platform.py`). Next: device execution of each new contract on the authorized device, then OI-47 (path-exact ownership for media buffers, NULL windows and JNI-held SDK objects).
 
 ### Native correctness oracle (2026-11-16, ADR-405)
 

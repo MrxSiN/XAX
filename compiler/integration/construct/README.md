@@ -1,7 +1,7 @@
 # Native `construct` (work in progress)
 
 `xax-construct-v1` has no native decoder. `xax_construct.construct` exists only as Python
-(`compiler/src/xax_construct.py`), so a native host cannot construct a program from a carrier, and a
+(`compiler/reference/xax_construct.py`), so a native host cannot construct a program from a carrier, and a
 consumer that needs one either runs Python or ships a second decoder. This directory is the start of a
 native decoder that keeps XAX as the only semantic authority.
 
@@ -57,7 +57,7 @@ $env:PYTHONPATH = (Resolve-Path compiler/src).Path
 python -B compiler/integration/construct/host.py build/construct_host --check
 ```
 
-```
+```text
 entry     ca66c72ad84a126a35b3d922c29b4b61c585260064a163d286409209ffc76c4f
 root      205acbdf03070039ea8e42dbaf5c691e6cf457d9cbb8f142b0bf60acd52ed4d3
 store     13086 bytes
@@ -100,7 +100,7 @@ python -B compiler/integration/construct/reader.py build/construct_reader --chec
     ..\XAX-MCP\native\sandbox_request.json ..\XAX-MCP\native\construction_request.json
 ```
 
-```
+```text
 entry     6539e017fad3bd82a0582a4143fbcfd1e1985fd2237ed18e95f785ece34680f0
 root      a87c6b33e690e7fdada5e67deb338b2c655bd37cb3185fdf99ea61db86a75d17
 store     280467 bytes
@@ -136,7 +136,7 @@ is skipped on the way to emission.
 `resolve.py` walks the tree step 3 built and turns every type and entity *name* into the canonical
 object the reference builds, emitting one line per occurrence in the native writer's batch shape:
 
-```
+```text
 <kind> <schema> <refs|-> <body hex>
 ```
 
@@ -156,7 +156,7 @@ python -B compiler/integration/construct/resolve.py build/construct_resolve --ch
     ..\XAX-MCP\native\sandbox_request.json ..\XAX-MCP\native\construction_request.json
 ```
 
-```
+```text
 entry     31f6fd4645420de285650b312446b8bba30a9a5b229e7fcbb32fedad61f40603
 entry fn  268d040bcef7a3e5d0df98c4fd4ebff23fb2809a3e2a4058116d04137e5d6a3c
 store     2121837 bytes
@@ -251,7 +251,7 @@ python -B compiler/integration/construct/resolve.py build/construct_resolve --ch
     ..\XAX-MCP\native\sandbox_request.json ..\XAX-MCP\native\construction_request.json
 ```
 
-```
+```text
 entry     4426818db95e2ad3997f4ec32b5f06d8b7998ba21eee698277f5228d1dc295b2
 entry fn  3d3a391c22e1baf03a0a037e33ce7689df0aaceea0f5e65e1bbdf0677a2bf564
 store     19085525 bytes
@@ -377,7 +377,7 @@ A canonical store's root is the snapshot object: `resolve_packages` selects the 
 dependency closure and returns the `Kind.BUILD` object with form `SNAPSHOT`. The program now emits it as
 the seventh appended object:
 
-```
+```text
 uleb(SNAPSHOT=3), uleb(rank(request)), uleb(len) + resolver identity, uleb(rank(policy)),
 uleb(packages) + their ranks, uleb(signatures) + their ranks, uleb(digests) + the 32-byte digests
 ```
@@ -439,7 +439,7 @@ returns are written there. The command is the program's own name rather than a w
 is the only output, so no listing path is asked for. The check runs it on both carriers and compares the
 store bytes with `xax_construct.construct(...).reader.canonical_bytes()` -- the committed stores again:
 
-```
+```text
 entry     096ef1b4a7b1233eed01679efce9e907cb42f6f7b2b41e3532eebf7a571d3cfa
 entry fn  3d3a391c22e1baf03a0a037e33ce7689df0aaceea0f5e65e1bbdf0677a2bf564
 store     19045135 bytes

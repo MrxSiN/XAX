@@ -1476,7 +1476,7 @@ The standard ecosystem is a set of independently linked semantic packages (alloc
 
 Package form (ADR-130). A library is a `PACKAGE` object whose logical identity is `name/version/parameters`, with one `MODULE` of functions and one named build entry per export. Applications call exports by CID, so a program store contains exactly the exports it reaches (unreachable objects are rejected, §3). Families are instantiated per static parameter (view extent, capacity); an instance's view types are part of each export's interface, and a call with another instance's view is rejected (`GRAPH-CALL-CONTRACT`).
 
-Library functions take memory only as borrowed heap-view triples and never allocate. Implemented families: `xax.text` and `xax.collections.hashset_u64` (`compiler/src/xax_stdlib.py`).
+Library functions take memory only as borrowed heap-view triples and never allocate. Implemented families: `xax.text` and `xax.collections.hashset_u64` (`compiler/reference/xax_stdlib.py`).
 
 ### 21.11 Observability
 

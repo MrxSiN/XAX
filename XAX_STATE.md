@@ -54,6 +54,7 @@ Dated sections (historical records; a later section supersedes an earlier figure
 - [OI-59 diagnosed: edge copies overwrite shared edge spill slots; reference fixed — 2026-11-13](#oi-59-diagnosed-edge-copies-overwrite-shared-edge-spill-slots-reference-fixed--2026-11-13)
 - [Windows evolution ledger paths coexist — 2026-11-13](#windows-evolution-ledger-paths-coexist--2026-11-13)
 - [Ledger 0027 (edge-copy staging), both seeds, four rows at R3 — 2026-11-13](#ledger-0027-edge-copy-staging-both-seeds-four-rows-at-r3--2026-11-13)
+- [Native resolved-snapshot edits — 2026-11-13](#native-resolved-snapshot-edits--2026-11-13)
 - [Ledger 0029 (portable host memory ABI `xax-host-v1`), both seeds — 2026-11-14](#ledger-0029-portable-host-memory-abi-xax-host-v1-both-seeds--2026-11-14)
 - [Ledger 0030 (main allocates through `xax-host-v1`), Linux seed — 2026-11-14](#ledger-0030-main-allocates-through-xax-host-v1-linux-seed--2026-11-14)
 - [Ledger 0031 (main's file and exit calls are host functions), Linux and Windows seeds — 2026-11-14](#ledger-0031-mains-file-and-exit-calls-are-host-functions-linux-and-windows-seeds--2026-11-14)
@@ -2300,7 +2301,7 @@ Built on Linux x86-64 (WSL 2) and Windows 11 (build 26300), on top of `43054ce`.
   in Chrome, a `wc` counter under Node WASI, a fingerprint kernel on an RTX 3060 and an AMD iGPU through an XAX Vulkan
   host). `wasm32-core` and `accelerator-simt-packet` are removed. RISC-V is deferred.
 - **Not done:** OI-60; RISC-V; R4 evidence for the four new R3 rows; tests for the Windows seed.
-# Native resolved-snapshot edits — 2026-11-13
+## Native resolved-snapshot edits — 2026-11-13
 
 Ledger 0028 extends native workspace ancestry rebuilding to unsigned resolved
 build snapshots. It follows ledger 0027's edge-copy staging fix. Package module

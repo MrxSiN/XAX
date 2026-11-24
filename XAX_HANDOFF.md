@@ -56,6 +56,7 @@ Dated sections (historical records; a later section supersedes an earlier one):
 - [OI-59 diagnosed: edge copies overwrite shared edge spill slots; reference fixed — 2026-11-13](#oi-59-diagnosed-edge-copies-overwrite-shared-edge-spill-slots-reference-fixed--2026-11-13)
 - [Windows evolution ledger paths coexist — 2026-11-13](#windows-evolution-ledger-paths-coexist--2026-11-13)
 - [Ledger 0027 (edge-copy staging), both seeds, four rows at R3 — 2026-11-13](#ledger-0027-edge-copy-staging-both-seeds-four-rows-at-r3--2026-11-13)
+- [Native resolved-snapshot mutation handoff — 2026-11-13](#native-resolved-snapshot-mutation-handoff--2026-11-13)
 - [Build/rotation campaign, steps 2–4 — 2026-11-15](#buildrotation-campaign-steps-24--2026-11-15)
 - [Build/rotation campaign: step 5 started (request tool) — 2026-11-15](#buildrotation-campaign-step-5-started-request-tool--2026-11-15)
 - [Build/rotation campaign: step 5 done (Windows generator) — 2026-11-15](#buildrotation-campaign-step-5-done-windows-generator--2026-11-15)
@@ -2158,7 +2159,7 @@ Built on Linux x86-64 (WSL 2) and Windows 11 (build 26300), on top of `43054ce`.
   in Chrome, a `wc` counter under Node WASI, a fingerprint kernel on an RTX 3060 and an AMD iGPU through an XAX Vulkan
   host). `wasm32-core` and `accelerator-simt-packet` are removed. RISC-V is deferred.
 - **Not done:** OI-60; RISC-V; R4 evidence for the four new R3 rows; tests for the Windows seed.
-# Native resolved-snapshot mutation handoff — 2026-11-13
+## Native resolved-snapshot mutation handoff — 2026-11-13
 
 Ledger 0028 and `compiler/bootstrap/evolution/native/0028/README.md` describe
 native snapshot ancestry rebuilding after the upstream ledger-0027 backend fix.
