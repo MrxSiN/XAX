@@ -1,6 +1,6 @@
 # XAX Architectural Decisions
 
-This file records merged v0.1 decisions. Each decision is normative unless superseded by a versioned architectural revision. Evidence-dependent choices remain in `XAX_OPEN_ISSUES.md`.
+This file records adopted decisions and their rationale. It is not normative: requirements live in `XAX_SPEC.md` and `docs/NN_*.md`, which win on conflict (`XAX_SPEC.md` §1). A decision stands until a later ADR supersedes it. Evidence-dependent choices remain in `XAX_OPEN_ISSUES.md`.
 
 ## Contents
 
