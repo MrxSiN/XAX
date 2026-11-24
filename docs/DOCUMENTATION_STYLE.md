@@ -72,7 +72,7 @@ Formatting MUST NOT change technical meaning. When a formatting choice and a fac
 - Number sections (`## 4. Name`, `### 4.2 Name`) only where the document is cited by number (specifications,
   stage documents, conformance, benchmarks, roadmap). Use `Part I — …` for top-level parts as those documents do.
   Number manually, in order, once; renumber never (see [section 2](#2-preservation-rules)).
-- Use the em dash form `## ADR-420 — Title` and `## OI-63 — Title` for identifier headings, as the existing
+- Use the em dash form `## ADR-<n> — Title` and `## OI-<n> — Title` for identifier headings, as the existing
   registers do.
 
 ### 3.2 Paragraphs and line length

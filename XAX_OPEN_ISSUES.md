@@ -2601,7 +2601,7 @@ In the same-prefill JVM comparison (ADR-195), every arm makes one request throug
 
 - [`ADR-200`](XAX_DECISIONS.md), [`ADR-207`](XAX_DECISIONS.md).
 - `ADR-195`, `ADR-196` were deleted from `XAX_DECISIONS.md` by `7af8108` (2026-10-30); their text is in git history at `7af8108^`.
-- It also cites `ADR-197` for option (b); that number is used twice in `XAX_DECISIONS.md`, and `7af8108` rewrote the decision this record cites.
+- "Option (b) measured (ADR-197)" below names the decision now numbered [`ADR-420`](XAX_DECISIONS.md) (renumbered 2026-11-24 from a duplicate ADR-197); `7af8108` removed its benchmark results from that record.
 
 <details>
 <summary>Historical Record</summary>

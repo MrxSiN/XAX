@@ -67,7 +67,7 @@ BOUND_FIELDS = {"set-constant": "INTEGER", "set-op": "add.wrap|sub.wrap|mul.wrap
 
 
 def _implied_removed(mutations):
-    """Drop edits a batch already implies (ADR-197): exact duplicates, and
+    """Drop edits a batch already implies (ADR-420): exact duplicates, and
     signature edits of one function that agree field by field merge into one.
     Disagreeing edits are kept, so the verifier still rejects the conflict."""
     unique = list(dict.fromkeys(mutations))
@@ -241,7 +241,7 @@ class LocalMutationSession:
     def _retype(self, old, new, only=None):
         """`type T NEW`: every use of T in the shown functions (or only in
         function `only`), expanded into the ordinary result-type and signature
-        mutations (ADR-197). Shown functions own an aliased node or value;
+        mutations (ADR-420). Shown functions own an aliased node or value;
         nothing outside them changes."""
         old_cid = self.snapshot.type_bindings[old][0]
         shown = set(self.aliases.values())
