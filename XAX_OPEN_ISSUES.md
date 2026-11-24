@@ -891,6 +891,18 @@ same objects, so the difference is in the tables the driver builds for them. BBC
 
 ## OI-54 — Function views past 2^18 values (BBC's hanoi -O0)
 
+**Status (2026-11-24): OPEN; step 2 part 1 is in release 0042 (ledger 0042 `container-from-image`, ADR-419), part 2
+moves to release 0043.** A census of the workspace (gdb at the first `munmap`, nonzero bytes per 2^20-word bucket
+of the 2 GiB view; words in Mi = 2^20) found what lies above the arena's end (Mi200 = 209,715,200). In a full
+self-build by the part-1 compiler (`8d7745ab…`, 2:52, 2.87 GB peak): the image buffer Mi200–Mi216, the image record
+Mi232–Mi239 and the top word page; free are Mi217–Mi231 and Mi240–Mi254, about 15 Mi words each. During hanoi -O0
+(declining, capacity 917,504): Mi200–Mi217, Mi236–Mi238 and Mi247–Mi255 hold data. The per-value tables at hanoi's
+size are about 86 words × 650,000 values = 56M words, and 112M with a ×2 capacity margin. Neither fits one free
+span, nor both together (31M words), so a region of their own inside the fixed 2 GiB workspace is not enough. Part 2
+needs one of: tables packed to 32-bit lanes (about 43 words per value, then also moving the image record), a second
+workspace view (a host ABI change), or growable views (OI-52 R3). Not decided here; step 3 (AArch64 liveness) also
+stays open.
+
 **Status: OPEN; step 2 part 1 on `release/0042` (2026-11-23, ledger 0042, ADR-419).** The x86-64 container buffer is sized from the image (I_LEN + 1 MiB, at most 48 MiB + 64 KiB) and its 273 checks read the allocated size, which frees about 49M of the arena's 84M words for ordinary builds. Measured: the first value-capacity limit is the x86-64 prologue's capacity word (262,144; F355); with part 1 and a capacity of 917,504, hanoi -O0 reaches the backend and declines during the views with 6M arena words left after the tables. The rest of step 2 is a layout change: the per-value tables need a region of their own (or the workspace must grow, OI-52), and the capacity can then follow the program (a count of each function's lifted values in `views_prologue`). The record of 2026-11-20 follows.
 
 **Status: OPEN; step 1 done (2026-11-20, release 0039, ADR-413).** BBC's hanoi -O0 decision (one 7.25 MB graph

@@ -395,10 +395,6 @@
         "spirv-backend"
       ]
     },
-    "xax_status_docs.py": {
-      "class": "D",
-      "note": "Generated status blocks."
-    },
     "xax_stdlib.py": {
       "class": "B",
       "components": [

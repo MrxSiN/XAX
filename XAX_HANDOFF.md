@@ -1,6 +1,13 @@
 # XAX Compiler Handoff
 
+**Start here.** The last `## ` section of this file is the current handoff: what landed, what runs, what is open and
+the next step. Every earlier section is a dated historical record (AGENTS.md); a later section supersedes it. List the
+sections with `grep -n '^## ' XAX_HANDOFF.md` and read only the last one, plus older ones it names. Open design
+questions are in `XAX_OPEN_ISSUES.md`; current levels are the generated blocks below.
+
 ## Contents
+
+Topic sections (to 2026-11-05) are listed here; the dated sections that follow them are not, so use the `grep` above.
 
 - [Invariants that must not drift](#invariants-that-must-not-drift)
 - [Current repository state](#current-repository-state)
@@ -31,7 +38,7 @@
 
 <!-- xax-status:bootstrap -->Bootstrap status (derived by `xax_selfhost_seed.bootstrap_status` from `compiler/bootstrap/evidence/records/0042.record`): whole production compiler: B0, B1, B2, B3, B4, B5, B6 established (release 0042's V2 record, by `xax_evidence levels`); S-step component fixed points are not B milestones (`XAX_SPEC.md` §16.5). Bootstrap seed: native-elf `compiler/bootstrap/seed/xaxc-linux-x86_64`, 31,851,585 bytes, requires Python: no.<!-- /xax-status:bootstrap -->
 
-Sections below are dated; a later section supersedes an earlier figure. The current full-suite result is under "Multi-language performance rule" and later entries in `XAX_STATE.md`.
+Sections below are dated; a later section supersedes an earlier figure. The current full-suite result is in the latest release section of this file that reports one.
 
 M1–M14 are complete for their explicitly declared prototype scopes. M14 adds function/graph introspection; generic semantic-object and byte META values; verifier-gated program materialization; canonical-store emission; semantic verification; recursive semantic-image compilation; and an immutable seed boundary.
 

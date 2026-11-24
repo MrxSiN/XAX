@@ -33,9 +33,9 @@ No milestone or B/R level is changed by this distribution update.
   - [S — Compiler migration ladder (after M14; runs alongside U1)](#s--compiler-migration-ladder-after-m14-runs-alongside-u1)
   - [EI — Evidence and canonical-state integrity (ADR-177; before S7b)](#ei--evidence-and-canonical-state-integrity-adr-177-before-s7b)
 - [Part IV — Dated follow-ups](#part-iv--dated-follow-ups)
-  - [JVM token optimization follow-up (2026-10-07, ADR-186)](#jvm-token-optimization-follow-up-2026-10-07-adr-186)
-  - [JVM host-response and compound-edit follow-up (2026-10-07, ADR-187/188)](#jvm-host-response-and-compound-edit-follow-up-2026-10-07-adr-187188)
+  - [Snapshot-bound local mutation (2026-10-07, ADR-186 to ADR-188)](#snapshot-bound-local-mutation-2026-10-07-adr-186-to-adr-188)
   - [Android platform capability contracts (2026-10-08, ADR-202 to ADR-204)](#android-platform-capability-contracts-2026-10-08-adr-202-to-adr-204)
+  - [Native correctness oracle (2026-11-16, ADR-405)](#native-correctness-oracle-2026-11-16-adr-405)
 
 ## Part I — Rules
 

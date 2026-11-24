@@ -1,8 +1,34 @@
 # XAX AI Instructions
 
-XAX has no canonical human-written source syntax. Do not invent or emit textual XAX programs as authoritative source.
+XAX is an AI-native programming language: a program is a verified, content-addressed semantic graph stored as
+canonical `.xax` objects, edited by small typed transactions and compiled directly to machine code or platform
+artifacts. XAX has no canonical human-written source syntax. Do not invent or emit textual XAX programs as
+authoritative source; protocol examples and diagnostic notation are tooling views, not XAX source.
 
-For XAX programming tasks:
+## Start here
+
+1. Read this file (always loaded; `CLAUDE.md` imports it).
+2. Read the scoped rules that apply to the files you change (mandatory, not optional):
+
+   | You change or run | Mandatory rules |
+   |---|---|
+   | anything under `compiler/` (stores, seeds, ledger, evidence, benchmarks, tests, BBC integration) | [`compiler/AGENTS.md`](compiler/AGENTS.md) |
+   | an XAX program (query, edit, verify, commit) | [`docs/09_AI_PROTOCOL.md`](docs/09_AI_PROTOCOL.md) |
+   | Markdown or status data | "Documents and status" below |
+
+3. Find your task in [`docs/README.md` → Task routes](docs/README.md#task-routes) and read only what its row names.
+4. To continue earlier work, read the last `## ` section of [`XAX_HANDOFF.md`](XAX_HANDOFF.md) (see its top).
+
+## Authority
+
+Document precedence is [`XAX_SPEC.md` §1](XAX_SPEC.md#1-normative-language-and-precedence): the specification is
+normative, `docs/NN_*.md` are subordinate detail, conformance and benchmark documents define obligations,
+`XAX_DECISIONS.md` records adopted rationale, and state, handoff and the replacement matrix record evidence, never
+requirements. For a program, the canonical semantic graph and current workspace state are authoritative.
+Implementation behavior is evidence of what the compiler does, not authority to change the specification: when they
+disagree, report the discrepancy; do not rewrite the specification to match the code.
+
+## XAX programming
 
 1. Read `docs/09_AI_PROTOCOL.md` and follow its normative requirements.
 2. Treat the canonical semantic graph and current workspace state as authoritative.
@@ -13,49 +39,27 @@ For XAX programming tasks:
 7. Use structured diagnostics and the supplied repair neighborhood for rejected mutations; do not request unrelated context.
 8. Verify required invariants and commit only through the XAX transaction/workspace interface.
 
-If the XAX workspace/compiler interface is available, use it instead of producing a source-like textual substitute. The native one is `xaxc edit <store> <input> <output>` (views, batches and rejection text; `docs/09_AI_PROTOCOL.md` §16). Human-readable protocol examples and diagnostic notation are tooling views, not XAX source.
+If the XAX workspace/compiler interface is available, use it instead of producing a source-like textual substitute. The native one is `xaxc edit <store> <input> <output>` (views, batches and rejection text; `docs/09_AI_PROTOCOL.md` §16).
 
-For repository maintenance (compiler, evidence, documentation):
+## Repository rules
 
-- Layout (ADR-363): `compiler/src/` holds the native compiler's Python-side runners and tooling (`xax_native`, the frozen programs' `xax_selfhost_*` runners, the ledger and seed tools, status derivation); `compiler/reference/` holds the Python reference compiler (`xax_compiler`, backends, workspace, `xaxc`) that tests compare the native compiler against until a native oracle replaces it (ADR-405). It is migration debt: add no new Python to it, and delete a module once nothing imports it. Existing Python compiler code belongs in `reference/`, never in `src/`. Run Python from `compiler` with `PYTHONPATH=src:reference:.` (pytest needs no `PYTHONPATH`: `pyproject.toml` sets it); `setup.py` packages both directories.
 - Language rule (2026-11-12): this repository is written in XAX. Any other language (Python, shell, awk, C, Go and the rest) is prohibited unless the thing cannot be written in XAX, for example a benchmark's baseline arm that must be in a specific language. Add no new file or logic in another language; where one is truly unavoidable, say why in the change. Existing code in other languages is to be rewritten as native XAX: when a change touches such a tool, replace it natively instead of extending it, and delete it once nothing runs it. BBC (`compiler/integration/bfx` and BBC's own repository) is Brainfuck and XAX only.
-- `XAX_REPLACEMENT_MATRIX.json` is the source of current replacement levels and of the README Targets table (each row's `name` and `summary`). After changing it, run `python -m xax_status_docs --write` from `compiler/src` to regenerate every `<!-- xax-status:levels -->` and `<!-- xax-status:targets -->` block; `tests/test_status_docs.py` fails while a block is stale.
-- B levels are derived, never written by hand: `xax_selfhost_seed.bootstrap_status` takes them from the native `xax_evidence levels` of the latest validated release's V2 record (`compiler/bootstrap/evidence/records/<n>.record`, ADR-410) into every `<!-- xax-status:bootstrap -->` block (`python -m xax_status_docs --write` from `compiler/src`, on Linux x86-64). An S-step self-compilation result is a component fixed point, not B1-B4 (ADR-177). The M14 Python bootstrap is retired (ADR-362): add no Python seed, and do not regenerate M14 evidence; `m14_selfhost_compiler.xax` is a frozen corpus store.
-- The self-hosting stores in `compiler/bootstrap/` are frozen (ADR-361): the committed store is the source and no Python builder exists. Change one only by a ledger transaction: `sh compiler/bootstrap/evolution/evolve.sh apply <record> <store>...` runs `xaxc edit <store> <record> <out>` then `verify` and appends the ledger line (`compiler/bootstrap/evolution/LEDGER`); `tests/test_store_regeneration.py` fails on every host while a store is not its ledger chain's end or a transaction does not make its recorded store.
-- The compiler seeds (`compiler/bootstrap/seed/xaxc-linux-x86_64`, ADR-286, and `compiler/bootstrap/windows/xaxc-windows-x86_64.exe`) are pinned only by the release record `compiler/bootstrap/RELEASES`, read through the native release tool (`rotate.sh state`, its `pin`; Python reads it with `xax_selfhost_seed.pin`). Replace them only by a release: `sh compiler/bootstrap/seed/rotate.sh build <n>`, `confirm` for both targets, the V2 `evidence/run.sh`, then `rotate.sh validate <record>` (ADR-408, ADR-410). The request store is derived from the driver store (see below).
-- Native evolution (ADR-367): after the N0 bootstrap, compiler logic is authored only as canonical XAX graphs through native XAX transactions; The correctness oracle is a native XAX reference executor, independent of the compiler: it shares no code with the backends it checks and is never generated from the compiler's stores (ADR-405). Until it covers an area, that area's Python reference and its comparison tests stay; a test moves to the native oracle only after both oracles agree on that area's corpus. No language other than XAX may generate or implement production compiler logic. N0 is complete (ADR-372): write a change as native batch text from `xaxc edit <store> <selector> <view>` (`define`, `replace`, docs/09 §16), one batch per store, and record it with `sh compiler/bootstrap/evolution/evolve.sh apply <batch> <store>` (the seed's `xaxc edit` and `verify`; `evolve.sh replay` and `check` re-run and check the ledger). Keep the driver's main within the general backend's limits: at most four machine parameters per function and four machine inputs per call, and nothing that inlines into main (it is 632 values below `VCAP`).
-- Change the production compiler by a transaction on `xax_compiler_driver_general.xax` only. `seed/xax_compiler_request.xax` is derived from it (the `derived` ledger line, RFC step 6): `evolve.sh apply` rewrites it with `evolution/request-tool/request.sh`, `evolve.sh check` requires it to equal that derivation, and `apply` refuses a transaction on it. The Windows seed's request comes from `windows/generator/generate.sh`. Driver and request transactions land on a release branch `release/<first ledger>` cut from `main`, one pull request per sub-batch into it, tested with C1 (the pinned seed's build of the candidate request; also C2 when x86-64 code generation changes); rebuild with `bootstrap/seed/selfbuild.sh`, rotate the seed and record full evidence once per release, then merge the release into `main` by one pull request (ADR-404). A transaction that changes a function of the edit engine, the semantic index or Ed25519 also fails the pin of their kept generators until those helper tests follow. A `bits<1>` comparison result may be used in a later block (ADR-376 fixed the general backend's branch fusion that ADR-304 worked around with 64-bit flags).
-- BBC's driver follows the production driver: `integration/bfx/bbc.xax` is the current `xax_compiler_driver_general.xax` plus only the Windows hosting layer (process entry, file I/O, lazily committed views). Once per release, after its seed rotation, rebuild BBC's driver from the released driver, rebuild `bbc.exe`, and rerun BBC's checks (ADR-404); never maintain or patch a separate driver copy.
-- Evidence that claims XAX-hosted execution must run with `XAX_REQUIRE_NATIVE=1` and record `xax_native.AUTHORITY`; never record a native result from a host that fell back to Python.
-- `MEASURED` performance needs raw per-arm samples (`wall_seconds_samples`); the matrix validator recomputes R4 from them: XAX median <= 0.9999x the fastest non-XAX median, with a significant advantage (ADR-207). R5 is autonomous maintenance (record a cycle with `benchmarks.bench_r5_maintenance`, ADR-209); R6 is a proven 100% XAX-developed application (create programs with `xax_construct.construct`, then change them only by workspace transactions; see `benchmarks.bench_r6_xb64`, ADR-210).
-- Dated sections in `XAX_STATE.md`, `XAX_HANDOFF.md`, `XAX_BENCHMARKS.md`, and `XAX_DECISIONS.md` are historical records; record a new result in a new section and point the superseded one at it instead of rewriting it.
-- Local mutation batches use `xax_local_protocol.LocalMutationSession` bound to the queried generation; never rebuild a stale session implicitly. Host-applied final requests use the ordinary snapshot session and exact compound carriers; return local diagnostics on rejection and never refresh before reporting staleness.
+- Evidence follows the ecosystem rule below. A skipped test, a successful compilation, existing code or a plan is not evidence of a capability. Native-execution and performance evidence rules are in `compiler/AGENTS.md`.
 
-Git workflow:
+## Documents and status
+
+- `XAX_REPLACEMENT_MATRIX.json` is the source of current replacement levels and of the README Targets table (each row's `name` and `summary`). After changing it, run `sh compiler/bootstrap/status-tool/status.sh write` (Linux x86-64) to regenerate every `<!-- xax-status:levels -->` and `<!-- xax-status:targets -->` block; `tests/test_status_docs.py` fails while a block is stale.
+- Never write a `<!-- xax-status:... -->` block by hand. B levels are derived from the latest validated release record (`compiler/AGENTS.md`, "Seeds, releases and bootstrap levels").
+- Dated sections in `XAX_STATE.md`, `XAX_HANDOFF.md`, `XAX_BENCHMARKS.md`, and `XAX_DECISIONS.md` are historical records; record a new result in a new section and point the superseded one at it instead of rewriting it.
+- Keep one authoritative owner per fact: link to it instead of restating it. When a change affects a rule, capability, interface, level or decision, update its owner (route "Documentation maintenance" in `docs/README.md`), regenerate generated blocks, and leave unrelated documents alone. Add no session summaries or audit reports beyond the dated sections above.
+
+## Git workflow
 
 - Do not add AI attribution to commits or pull requests: no `Co-Authored-By` trailers naming an AI assistant, no session links, no "Generated with" footers.
 - Commits are authored and committed by the repository's git identity (`git config user.name` / `user.email`), never by Claude or `noreply@anthropic.com`; check `git log -1 --format='%an <%ae> / %cn <%ce>'` before pushing. Claude never appears as a GitHub contributor (the only exceptions are past benchmark-evidence-only commits).
 - Pull request titles say what the change does in plain words, under about 70 characters ("General backend: limit prefetch to small views"). Never use the branch name (`Ccr 9a7d54f8 ss6wxl`, `Claude/...`), a "WIP" prefix, or a title cut off mid-word; spell out internal IDs (ADR, ledger, step numbers) only as a parenthetical after the plain description.
 - Pull request descriptions start with one or two sentences a newcomer can follow: what changed and why. Then a `## Changes` list with one plain line per commit or logical change, and an optional `## Details` section for technical depth. Never leave the description empty.
 - Open a pull request as soon as each task is finished and its tests pass; do not hold finished work until a larger set is complete.
-
-## Engineering principles for compiler and semantic-graph changes
-
-SOLID, DRY, KISS, YAGNI, the Law of Demeter, the Boy Scout Rule and Separation of Concerns are context-sensitive design rules here, not a checklist and not a reason to make XAX object-oriented. They never override semantic correctness, safety, verified state integrity, explicit runtime behavior, the native authoring and ledger rules above, or evidence quality; where one conflicts with those, it loses. Report a violation only with its concrete engineering consequence, never from a line or class count.
-
-- SRP: prefer cohesive compiler passes, verifiers, services and target components. A shared semantic entity (a node, a type, a function) may take part in many analyses without violating SRP; do not split graph objects to satisfy it.
-- OCP: extend target, ABI, platform and library support through the established contracts (target descriptions, platform and ABI packages, semantic libraries). Do not build speculative extensibility frameworks.
-- LSP: require behavioral substitution only where an explicit contract exists (a native component standing in for its reference, a target package behind a profile), and there preserve types, effects, ownership and observable behavior. Add no inheritance to satisfy it.
-- ISP: use focused, bounded, capability-aware query, mutation and tool interfaces. Avoid dependencies a caller does not need, and avoid gratuitous micro-interfaces.
-- DIP: keep fundamental semantic meaning independent of concrete transports and backends where a stable abstraction boundary justifies it; the canonical graph never depends on MCP, a carrier or one target.
-- DRY: keep one authoritative representation of each semantic fact, piece of metadata and current-status value, and generate repeated summaries from it. Independent evidence is not duplication: keep a second oracle (the reference executor, an independent checker, a differential baseline) and keep historical records.
-- KISS: prefer the smallest sound mechanism, explicit invariants and a simple failure model (accept, reject with a diagnostic, or decline).
-- YAGNI: add no hypothetical kernel operation, compiler framework, protocol mechanism or target support that no current requirement needs. This applies most strongly to the semantic kernel.
-- Law of Demeter: respect meaningful module, package and repository boundaries (consume a public record, not another component's internals). Traversing the semantic graph is the work, not a violation.
-- Boy Scout Rule: make safe, local, tested improvements in the code a change touches. Never put an unrelated refactor into a correctness change.
-- Separation of Concerns: keep semantic state, verification, optimization, code generation, ABI and platform contracts, MCP transport and evidence separate.
-
-A lowering or optimization is checked against the reference executor's result, not only against another compiler's bytes: byte equality with the bootstrap proves a port, not the meaning. `CLAUDE.md` only imports this file, so every rule lives here once.
 
 <!-- ecosystem-policy v1 (2026-11-13): identical in every MrxSiN first-party repository. Change it everywhere in one coordinated set of PRs, never in one repository alone. -->
 ## Ecosystem rules (v1)
