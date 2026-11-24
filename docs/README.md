@@ -42,14 +42,14 @@ Read a large document by section (its Contents list, or `grep -n '^## ' <file>`)
 | ABI and platform integration | [`11`](11_ABI_PLATFORM.md) | `compiler/integration/android/README.md`; [`XAX_OPEN_ISSUES.md`](../XAX_OPEN_ISSUES.md) OI-33, OI-42, OI-47 | target packages; integration stores | a device or host run of the ABI's cases |
 | Bootstrap and self-hosting | [`15`](15_BOOTSTRAP_SELFHOST.md); `compiler/AGENTS.md` "Seeds, releases and bootstrap levels" | `compiler/bootstrap/README.md`; `evidence/README.md` | `compiler/bootstrap/seed/`, `evidence/` | `selfbuild.sh` fixed point; B levels only from the release record |
 | Compiler evolution and release | `compiler/AGENTS.md` (all); [`proposals/build-bootstrap-rotation-rfc.md`](proposals/build-bootstrap-rotation-rfc.md) §3, §8, §13.7 | the last "Release … on `main`" section of `XAX_HANDOFF.md` (the recipe as run) | `rotate.sh build/confirm/validate`, `evidence/run.sh`, `RELEASES` | `evolve.sh check` and `replay`; `rotate.sh validate`; full suite |
-| Benchmarks and replacement levels | [`XAX_BENCHMARKS.md`](../XAX_BENCHMARKS.md) Part I; `compiler/AGENTS.md` "Evidence" | [`17`](17_BENCHMARKS_ROADMAP.md); ADR-207, ADR-209, ADR-210 | `compiler/benchmarks/`; `XAX_REPLACEMENT_MATRIX.json` | raw `wall_seconds_samples`; `tests/test_status_docs.py` after `xax_status_docs --write` |
+| Benchmarks and replacement levels | [`XAX_BENCHMARKS.md`](../XAX_BENCHMARKS.md) Part I; `compiler/AGENTS.md` "Evidence" | [`17`](17_BENCHMARKS_ROADMAP.md); ADR-207, ADR-209, ADR-210 | `compiler/benchmarks/`; `XAX_REPLACEMENT_MATRIX.json` | raw `wall_seconds_samples`; `tests/test_status_docs.py` after `status-tool/status.sh write` |
 | Conformance testing | [`XAX_CONFORMANCE.md`](../XAX_CONFORMANCE.md) Part I–II; [`16`](16_CONFORMANCE_EXAMPLES.md) | Part III (obligations) | `compiler/tests/` | the named tests, EXECUTED with `XAX_REQUIRE_NATIVE=1` where native |
 | BBC and BFX | [`18`](18_BFX_IMPORT.md); `compiler/integration/bfx/README.md` | `bfx/COMPILE.md`, `DYNAMIC_TAPE.md`, `SHARED.md` | `integration/bfx/bbc.xax` (follows the driver), BBC's repository | BBC's `check.py` with the release's `bbc.exe` |
 | XAX-MCP boundary | Ecosystem rules in `AGENTS.md`; `compiler/integration/mcp/README.md` | `compiler/integration/construct/README.md` | XAX-MCP's repository (transport, schemas, sandbox) | the pin XAX-MCP records |
 | Open issues and design questions | [`XAX_OPEN_ISSUES.md`](../XAX_OPEN_ISSUES.md) (Contents, then the one OI) | the ADRs it cites | — | the OI's "Evidence that closes it" |
 | Find a decision | `grep -n '^## ADR-<n>' XAX_DECISIONS.md`, then that section | later ADRs or amendments naming it (`grep -n 'ADR-<n>'`) | — | — |
 | Continue interrupted work | the top and the last `## ` section of [`XAX_HANDOFF.md`](../XAX_HANDOFF.md) | the OIs and issues it names | — | its "Next" items, against `git log` |
-| Documentation maintenance | this index; `AGENTS.md` "Documents and status" | `compiler/src/xax_status_docs.py` (generated blocks) | — | `tests/test_status_docs.py`; links resolve |
+| Documentation maintenance | this index; `AGENTS.md` "Documents and status" | `compiler/bootstrap/status-tool/README.md` (generated blocks) | — | `tests/test_status_docs.py`; links resolve |
 
 ## Reading order
 
