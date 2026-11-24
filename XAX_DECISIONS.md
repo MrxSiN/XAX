@@ -4,6 +4,10 @@ This file records merged v0.1 decisions. Each decision is normative unless super
 
 ## Contents
 
+Find a decision without reading this file: `grep -n '^## ADR-<n>' XAX_DECISIONS.md` gives its section;
+`grep -n 'ADR-<n>' XAX_DECISIONS.md` also finds later amendments and decisions that cite or supersede it; each ADR's
+`| Status |` row, where present, gives its state. The list below stops at ADR-363; the headings are complete.
+
 - [2026-10-07: platform-carrier-replacement-v1](#2026-10-07-platform-carrier-replacement-v1)
 - ADR-001 to ADR-099
   - [ADR-001 — The language is XAX](#adr-001--the-language-is-xax)
