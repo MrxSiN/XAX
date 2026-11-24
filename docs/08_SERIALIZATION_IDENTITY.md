@@ -550,7 +550,7 @@ The semantic model does not depend on one fixed default. Prototype measurements 
 
 ### 22.2 Index acceleration
 
-Register: no record.
+Register: [OI-63](../XAX_OPEN_ISSUES.md#oi-63--canonical-index-acceleration-for-large-stores), `OPEN`.
 
 The mandatory sorted CID index is sufficient for deterministic lookup. An additional canonical acceleration structure should be added only if large-store measurements show a material benefit greater than its byte and implementation cost. Any such structure remains non-semantic.
 

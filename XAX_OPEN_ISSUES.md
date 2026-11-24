@@ -90,6 +90,9 @@ This register lists the issues that require implementation, target, ecosystem, o
 | [OI-60](#oi-60--host-portability-gaps-left-after-the-2026-11-13-audit) | Host-portability gaps left after the 2026-11-13 audit | OPEN |
 | [OI-61](#oi-61--the-jvm-program-does-not-check-a-catching-calls-throwable-output-type) | The JVM program does not check a catching call's throwable output type | CLOSED |
 | [OI-62](#oi-62--the-legacy-wasm32-profile-emits-an-invalid-module-for-a-bits64-checked-offset) | The legacy Wasm32 profile emits an invalid module for a `bits<64>` checked offset | CLOSED |
+| [OI-63](#oi-63--canonical-index-acceleration-for-large-stores) | Canonical index acceleration for large stores | OPEN |
+| [OI-64](#oi-64--semantic-rebase-granularity-for-concurrent-agents) | Semantic rebase granularity for concurrent agents | OPEN |
+| [OI-65](#oi-65--scheduling-resource-detail-in-target-packages) | Scheduling-resource detail in target packages | OPEN |
 
 ## OI-01 — AI token vocabulary, fallback framing, and handle namespace
 
@@ -3366,3 +3369,73 @@ The fix as recorded on the release branch; see Resolution above.
 The legacy lowering decodes each type's width inline from its body. The native fix copies the general profile's width lookup (F112's blocks before its `i64.gt_u` choice) into F784's checked-access case and rejects when the offset's width is not 32, with a `WASM-CHECKED-OFFSET-BITS` diagnostic in the Wasm renderer (F589). The Python legacy reference rejects the same way.
 
 </details>
+
+## OI-63 — Canonical index acceleration for large stores
+
+**Status:** OPEN (2026-11-24)
+
+### Summary
+
+The mandatory sorted CID index is sufficient for deterministic lookup. An additional canonical acceleration structure should be added only if large-store measurements show a material benefit greater than its byte and implementation cost. Any such structure remains non-semantic.
+
+Recorded on 2026-11-24 from [`docs/08_SERIALIZATION_IDENTITY.md`](docs/08_SERIALIZATION_IDENTITY.md#222-index-acceleration) §22.2, an open question of that stage that no register record tracked.
+
+### Fixed Constraints
+
+- The sorted CID index stays mandatory and sufficient for deterministic lookup.
+- Any acceleration structure is non-semantic: it never changes a CID or the meaning of a store.
+
+### Closure Criteria
+
+- [ ] Large-store lookup measurements that compare the sorted index with a candidate acceleration structure, with the candidate's byte and implementation cost, `MEASURED`.
+- [ ] A decision: adopt the structure (as a versioned container feature) or record that the sorted index stays sufficient.
+
+### References
+
+- [`docs/08_SERIALIZATION_IDENTITY.md`](docs/08_SERIALIZATION_IDENTITY.md#222-index-acceleration) §22.2.
+
+## OI-64 — Semantic rebase granularity for concurrent agents
+
+**Status:** OPEN (2026-11-24)
+
+### Summary
+
+The correct balance between whole-root compare-and-swap, entity-level preconditions, and explicit read-set validation requires implementation experience with concurrent AI agents.
+
+Recorded on 2026-11-24 from [`docs/09_AI_PROTOCOL.md`](docs/09_AI_PROTOCOL.md#134-semantic-rebase-granularity) §13.4, an open question of that stage that no register record tracked.
+
+### Fixed Constraints
+
+- Commits stay atomic against `expected_root`; no rebase may publish a verifier-invalid or partially applied candidate ([`docs/09_AI_PROTOCOL.md`](docs/09_AI_PROTOCOL.md) §5).
+
+### Closure Criteria
+
+- [ ] Measurements of conflict, retry and repair rates for concurrent agents under whole-root compare-and-swap, entity-level preconditions and read-set validation, `MEASURED`.
+- [ ] A decision on the default granularity, recorded as an ADR.
+
+### References
+
+- [`docs/09_AI_PROTOCOL.md`](docs/09_AI_PROTOCOL.md#134-semantic-rebase-granularity) §13.4.
+
+## OI-65 — Scheduling-resource detail in target packages
+
+**Status:** OPEN (2026-11-24)
+
+### Summary
+
+Micro-operation-level models may improve code quality but increase package size and maintenance cost. The necessary granularity must be determined experimentally.
+
+Recorded on 2026-11-24 from [`docs/10_TARGET_MODEL.md`](docs/10_TARGET_MODEL.md#20-open-issues-requiring-implementation-evidence) item 5 of §20, an open question of that stage that no register record tracked.
+
+### Fixed Constraints
+
+- Scheduling data is target-package data; it does not change program meaning.
+
+### Closure Criteria
+
+- [ ] Code-quality and package-size measurements of at least two scheduling-model granularities on one target, `MEASURED`.
+- [ ] A decision on the granularity target packages use, recorded as an ADR.
+
+### References
+
+- [`docs/10_TARGET_MODEL.md`](docs/10_TARGET_MODEL.md#20-open-issues-requiring-implementation-evidence) item 5 of §20.

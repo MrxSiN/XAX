@@ -606,7 +606,7 @@ The verifier must determine whether computing a strictly minimal repair neighbor
 
 ### 13.4 Semantic rebase granularity
 
-Register: no record.
+Register: [OI-64](../XAX_OPEN_ISSUES.md#oi-64--semantic-rebase-granularity-for-concurrent-agents), `OPEN`.
 
 The correct balance between whole-root compare-and-swap, entity-level preconditions, and explicit read-set validation requires implementation experience with concurrent AI agents.
 
