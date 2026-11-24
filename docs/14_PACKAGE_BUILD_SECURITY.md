@@ -52,8 +52,6 @@ This stage depends on, but does not redefine, canonical serialization, compiler 
 
 Package/build support is not a runtime requirement. A bare-metal XAX program still requires only a program graph and target package.
 
----
-
 ## 2. Normative terminology
 
 The keywords **MUST**, **MUST NOT**, **SHOULD**, **SHOULD NOT**, and **MAY** are normative.
@@ -81,8 +79,6 @@ The keywords **MUST**, **MUST NOT**, **SHOULD**, **SHOULD NOT**, and **MAY** are
 | **trust policy** | Semantic rules specifying which identities, signatures, provenance claims, capabilities, or dependency sources are accepted. |
 
 Logical identity and version labels do not prove content; the package root is authoritative.
-
----
 
 ## 3. Canonical package model
 
@@ -148,8 +144,6 @@ Metadata MAY be excluded from package identity only when it cannot affect resolu
 
 No package requires a manifest written in an external data language.
 
----
-
 ## 4. Dependency graph and deterministic resolution
 
 Dependencies form a directed semantic graph.
@@ -205,8 +199,6 @@ The resolver MUST reject dependency sets that cannot satisfy required constraint
 
 Coexisting versions MUST remain distinct by immutable package identity.
 
----
-
 ## 5. Versioning policy
 
 XAX uses immutable content identity as the correctness mechanism. Human-style version numbers are not the authority for package integrity.
@@ -225,8 +217,6 @@ VersionInfo {
 XAX does not require one universal human-oriented version grammar. Resolution constraints MUST have exact semantic meaning and MUST NOT rely on implementation-specific textual range parsing. Compatibility declarations are claims, not automatic proof.
 
 An exact package root always denotes one immutable instance regardless of its version label.
-
----
 
 ## 6. Snapshot and lock model
 
@@ -255,8 +245,6 @@ A reproducible build SHOULD consume a snapshot, which MUST fix every dependency 
 External byte artifacts MUST be fixed by cryptographic digest plus required interpretation metadata.
 
 The snapshot replaces conventional lockfiles; any human-readable rendering is non-authoritative.
-
----
 
 ## 7. Build descriptions as XAX semantics
 
@@ -291,8 +279,6 @@ Absent network or filesystem capability, an action cannot perform those effects.
 
 Wall-clock time, randomness, ambient environment state, host process state, and network responses are prohibited in reproducible mode unless promoted to explicit declared inputs.
 
----
-
 ## 8. Target, profile, feature, and configuration model
 
 Target selection references semantic target/platform packages rather than compiler-internal target names alone.
@@ -321,8 +307,6 @@ A **profile** selects build policy. Examples include:
 
 A **feature** is package-defined and MUST have a declared semantic domain. Configuration values MUST be typed semantic values, and any output-affecting difference MUST change build identity.
 
----
-
 ## 9. Reproducible build input closure
 
 For an output artifact `A`, the build system MUST be able to identify the inputs allowed to influence `A`.
@@ -345,8 +329,6 @@ device_memory_limit
 
 Semantic inputs MUST be distinguishable from diagnostics-only observations.
 
----
-
 ## 10. Hermetic and sandboxed build modes
 
 XAX defines at least these build execution classes:
@@ -360,8 +342,6 @@ XAX defines at least these build execution classes:
 Hermetic mode SHOULD be the default for release artifact production.
 
 Sandbox mechanism is implementation-defined, but failure to enforce requested isolation is a build failure.
-
----
 
 ## 11. Capability and security boundaries
 
@@ -388,8 +368,6 @@ Dependency build logic MUST execute under the capabilities granted to that depen
 Privilege escalation through undeclared build behavior MUST be rejected.
 
 Trusting package content and authorizing package execution are separate decisions.
-
----
 
 ## 12. Artifact integrity, signatures, provenance, and trust
 
@@ -434,8 +412,6 @@ Trust metadata MUST NOT silently change program semantics.
 
 If trust policy affects whether a dependency or tool is accepted, the policy identity MUST be included in the resolution/build decision and SHOULD be recorded in the snapshot or provenance closure.
 
----
-
 ## 13. Dependency integrity and cache verification
 
 Every fetched immutable XAX object MUST be validated against its expected content identity before use.
@@ -469,8 +445,6 @@ A cached artifact MUST be rejected if:
 
 Cache corruption is an integrity failure, not a signal to weaken verification.
 
----
-
 ## 14. Workspace composition and multi-target builds
 
 A workspace is a semantic composition object referencing packages and build requests.
@@ -500,8 +474,6 @@ Target-specific dependencies MUST be selected by semantic predicates, not by hid
 
 An output for one target MUST NOT contaminate the cache identity of another target unless the artifact is proven target-independent.
 
----
-
 ## 15. Network policy
 
 Network access is not mandatory for XAX builds.
@@ -516,8 +488,6 @@ A build step that needs live network content must either:
 2. transform the acquired content into an immutable declared input before the reproducible build begins.
 
 "No network capability" MUST be enforceable as a build policy.
-
----
 
 ## 16. Invariants
 
@@ -539,8 +509,6 @@ The following invariants are normative:
 14. **No mandatory build network** — builds can run offline once their declared closure is present.
 15. **Transactional consistency** — snapshots, package roots, and build requests refer to immutable semantic objects and cannot be partially mutated in place.
 
----
-
 ## 17. Rejected alternatives
 
 | Alternative | Rejection reason |
@@ -560,8 +528,6 @@ The following invariants are normative:
 | One global feature-string namespace | Loses type ownership and creates ambiguous package interactions. |
 | Package-manager-specific source graph separate from the XAX graph | Duplicates authoritative identity and composition semantics. |
 
----
-
 ## 18. Interfaces with other XAX subsystems
 
 | Subsystem | Required interface |
@@ -578,8 +544,6 @@ The following invariants are normative:
 | Diagnostic protocol | Reports resolution conflicts, capability violations, integrity failures, and irreproducible inputs as structured machine data. |
 
 No subsystem may silently reinterpret package identity, dependency selection, target selection, or build capabilities outside these semantic interfaces.
-
----
 
 ## 19. Open issues
 
@@ -606,8 +570,6 @@ The design must balance verifiability, cache utility, and metadata size.
 ### 19.4 Sandbox enforcement portability
 
 The semantic capability model is fixed. The implementation mechanism for enforcing it on hosted platforms and bare-metal build environments remains target/platform-specific.
-
----
 
 ## 20. Falsification criteria
 

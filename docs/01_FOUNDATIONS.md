@@ -30,8 +30,6 @@ This stage fixes the meaning of the architecture’s top-level goals, non-goals,
 
 The foundation prevents later subsystems from reintroducing conventional source-language assumptions, separates requirements from implementation choices, makes ambitious goals measurable, and preserves applicability from bare metal through large applications.
 
----
-
 ## 2. Normative language and statement classes
 
 ### 2.1 Normative keywords
@@ -64,8 +62,6 @@ Every specification statement belongs conceptually to one of these classes:
 | **Open issue** | Decision deferred because evidence from implementation or benchmarking is required. |
 
 A later document MUST NOT convert an objective into a claimed guarantee without evidence. It MUST NOT weaken an invariant merely by choosing a different implementation technique.
-
----
 
 ## 3. Foundational model
 
@@ -157,8 +153,6 @@ The valid objective is cost-directed and measurable:
 
 Cost functions MAY include latency, throughput, code size, energy, memory, deterministic latency, or weighted combinations. A superiority claim MUST identify its comparison, target, workload, cost function, and measurement procedure.
 
----
-
 ## 4. Requirement priority
 
 When two design goals conflict, the following priority order governs unless an explicit architecture revision states otherwise:
@@ -176,8 +170,6 @@ When two design goals conflict, the following priority order governs unless an e
 | 9 | Human usability |
 
 The ordering is normative. A lower-priority property MUST NOT be improved by violating a higher-priority requirement. Human readability, human writability, human-friendly naming, and formatting have zero normative weight; they MAY be useful tooling properties but are not language-design constraints.
-
----
 
 ## 5. Normative definitions
 
@@ -220,8 +212,6 @@ An **environment** is external execution context not defined entirely by the XAX
 ### 5.8 Implementation artifact
 
 An **implementation artifact** is a non-authoritative item used to build or operate XAX, such as bootstrap source, generated tables, test harnesses, profiler data, or host build scripts. It MUST NOT silently become program meaning.
-
----
 
 ## 6. Core architectural invariants
 
@@ -277,8 +267,6 @@ The following invariants constrain all later stages.
 28. AI protocol efficiency MUST be evaluated using successful semantic work, not merely serialized byte or character count.
 29. Measured profile data MUST remain distinct from program semantics unless explicitly imported as a semantic assumption or policy.
 
----
-
 ## 7. Hard anti-goals
 
 XAX intentionally rejects the following as architectural goals:
@@ -300,8 +288,6 @@ XAX intentionally rejects the following as architectural goals:
 
 Convenience tooling MAY resemble rejected forms but MUST NOT become authoritative semantics or a mandatory dependency.
 
----
-
 ## 8. Feasibility boundaries
 
 The semantic model MUST support verification, optimization, target lowering, local mutation, and direct native code generation while keeping runtime dependencies explicit and target knowledge separable.
@@ -320,8 +306,6 @@ The architecture does not guarantee:
 - that compilation will always be fast.
 
 Where proof is impossible or too expensive, later stages MAY use bounded analysis, conservative rejection, explicit checks, target opacity, or translation validation if observable semantics and explicit-cost rules remain intact.
-
----
 
 ## 9. Interfaces with later XAX subsystems
 
@@ -367,8 +351,6 @@ Target packages MUST isolate machine-specific facts while exposing enough semant
 
 Packages, dependency identity, and build configuration MUST remain semantic XAX concepts rather than requiring external authoritative JSON, YAML, TOML, or another package/build language.
 
----
-
 ## 10. Compact glossary and notation
 
 | Term | Meaning |
@@ -392,8 +374,6 @@ Notation conventions:
 - Code-font terms are illustrative identifiers unless a later stage declares them canonical symbols.
 - Human-readable examples are explanatory projections and MUST NOT be interpreted as normative XAX source syntax.
 
----
-
 ## 11. Open issues
 
 Only questions requiring implementation evidence remain open at this stage.
@@ -405,8 +385,6 @@ The foundation requires canonical semantic authority and local mutation, but the
 **Required evidence:** implementation measurements of deduplication, mutation locality, verification cost, storage overhead, cache behavior, and merge/conflict behavior.
 
 No other foundation-level decision is intentionally left open.
-
----
 
 ## 12. Falsification criteria
 
@@ -425,8 +403,6 @@ The Stage 01 architecture should be revised if later evidence demonstrates any o
 11. **Canonicalization cost failure:** maintaining canonical semantic identity imposes storage, verification, or mutation costs large enough to outweigh its locality, deduplication, and correctness benefits.
 
 A single implementation failure does not falsify the architecture unless it follows from a required Stage 01 invariant or definition rather than an avoidable implementation choice.
-
----
 
 ## 13. Foundation summary
 

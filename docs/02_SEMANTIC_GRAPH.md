@@ -30,8 +30,6 @@ This stage defines semantic entities; module/function/block/value/node structure
 
 Binary serialization, detailed type layouts, ownership policy, complete effect-domain taxonomy, target encoding, optimizer algorithms, and AI transport packets are specified elsewhere.
 
----
-
 ## 2. Normative definitions
 
 The terms **MUST**, **MUST NOT**, **SHOULD**, **SHOULD NOT**, and **MAY** are normative.
@@ -61,8 +59,6 @@ The terms **MUST**, **MUST NOT**, **SHOULD**, **SHOULD NOT**, and **MAY** are no
 | workspace handle | One query/mutation session | Compact AI-facing handles such as `F3`, `B2`, `N7`. |
 
 Workspace handles MUST NOT be semantic identity. Graph-local identities MAY be renumbered if all references are updated and meaning is preserved. Persistent identities SHOULD be cryptographic content identities and SHOULD normally be hidden from AI context.
-
----
 
 ## 3. Canonical containment model
 
@@ -120,8 +116,6 @@ Naive content hashing cannot represent cyclic function hashes. Mutually recursiv
 
 Non-recursive functions MUST use the standalone acyclic `function` encoding; a group MUST hold exactly one recursive strongly connected component in canonical member order (`XAX_SPEC.md` §3.3). Recursion otherwise has ordinary call semantics and introduces no mandatory runtime, scheduler, allocation, or stack policy. The member identity is callable from outside the group through a group member function (`XAX_SPEC.md` §3.3, ADR-125).
 
----
-
 ## 4. Block-parameter SSA
 
 XAX uses block-parameter SSA.
@@ -153,8 +147,6 @@ The entry block has no internal predecessor. Its data/resource parameters corres
 ### 4.1 Loops
 
 A loop is an ordinary control-flow cycle. Loop-carried data, resources, and effect frontiers are header block parameters supplied by the back edge. No loop implicitly retains mutable state.
-
----
 
 ## 5. Edge classes
 
@@ -191,8 +183,6 @@ The verifier MUST reject illegal duplication, incompatible transitions, or disap
 ### 5.4 Target dependencies
 
 Core target-independent operations do not gain target edges merely because lowering is target-specific. A target operation or target-constrained semantic operation MUST explicitly reference the package contract that gives it meaning. Target meaning MUST NOT be inferred from the compiler host, file name, symbol name, or opcode spelling.
-
----
 
 ## 6. Operation and node schema
 
@@ -253,8 +243,6 @@ A node MUST NOT contain hidden operands, allocations, control edges, ownership t
 
 Families classify contracts; they do not require a large fixed opcode set.
 
----
-
 ## 7. Control semantics
 
 ### 7.1 Terminators and branches
@@ -289,8 +277,6 @@ Optimization MAY delete unreachable/dead entities; XAX has no source-preservatio
 
 A node cannot semantically occur "after" a terminator because node order is non-semantic. Operations that must precede termination must be connected by data, effect, resource, or control dependencies.
 
----
-
 ## 8. Constants and pure operations
 
 Constants are immutable semantic objects identified by exact type and value encoding.
@@ -298,8 +284,6 @@ Constants are immutable semantic objects identified by exact type and value enco
 Pure operations have no effect dependencies, hidden control transfer, or nondeterminism. They may be reordered or common-subexpression eliminated when dependencies permit.
 
 Arithmetic semantics are explicit. Wrapping, checked, and saturating addition are distinct semantic operations or exact operation modes. Signed/unsigned interpretation belongs to the operation contract where applicable rather than being assumed from stored bits.
-
----
 
 ## 9. Structural validity
 
@@ -341,8 +325,6 @@ A valid function satisfies all applicable rules.
 
 Other stages may add proof obligations without changing these structural classes.
 
----
-
 ## 10. Operation identity and semantic versioning
 
 Diagnostic operation names are not identity.
@@ -352,8 +334,6 @@ Each operation definition MUST have stable semantic identity. Compact numeric ke
 A semantic-version change is required for incompatible changes to operand/result interpretation, arithmetic behavior, effects, resource transitions, control behavior, proof obligations, target-visible semantics, or optimization legality. Purely diagnostic renaming does not require a new version.
 
 A verifier MUST reject operation versions it cannot interpret exactly. It MUST NOT guess a nearby version. Target-defined operations follow the same rule through target-package identities.
-
----
 
 ## 11. Minimal initial semantic kernel
 
@@ -377,8 +357,6 @@ A new core primitive SHOULD be added only when testing or semantic necessity sho
 
 Human familiarity, syntax convenience, or elegance is not sufficient.
 
----
-
 ## 12. Canonical semantics vs diagnostic notation
 
 A diagnostic view may show:
@@ -396,8 +374,6 @@ Editing diagnostic text changes nothing unless a tool converts it into a semanti
 
 The canonical graph MUST remain fully defined if all optional diagnostic text is removed.
 
----
-
 ## 13. Core invariants
 
 1. Meaning is the graph, not text.
@@ -412,8 +388,6 @@ The canonical graph MUST remain fully defined if all optional diagnostic text is
 10. Semantically meaningful attributes are typed and declared.
 11. Unknown operation semantics are rejected rather than guessed.
 12. Diagnostic readability has no normative weight.
-
----
 
 ## 14. Rejected alternatives
 
@@ -431,8 +405,6 @@ The canonical graph MUST remain fully defined if all optional diagnostic text is
 | permanent target DSL | Creates a second language. |
 | full sea-of-nodes initially | Adds control/verification complexity without demonstrated need. |
 | human source locations as identity | Human source structure has no normative weight. |
-
----
 
 ## 15. Subsystem interfaces
 
@@ -452,8 +424,6 @@ The canonical graph MUST remain fully defined if all optional diagnostic text is
 
 **Verifier/optimizer.** The verifier enforces structural and operation-specific obligations. The optimizer may rewrite any region when data, effect, resource, control, capability, and target semantics are preserved.
 
----
-
 ## 16. Open issues
 
 ### 16.1 Effect-domain granularity
@@ -467,8 +437,6 @@ Resolved by OI-03 (2026-10-01): non-recursive functions use the standalone `func
 ### 16.3 Indirect callable contracts — resolved by OI-09
 
 The bounded callable contract is a separately content-addressed `call_contract` semantic object referenced by first-class callable values. The contract identity is independent of implementation-function CIDs. Exact sealed dispatch sets remain optional optimization facts for devirtualization and MUST NOT replace the bounded contract merely because a current target set is known. Repeating the complete contract in each callable value is not semantic authority. Indirect calls remain invalid unless the verifier resolves the complete bounded contract; no unspecified-effects fallback exists.
-
----
 
 ## 17. Falsification criteria
 

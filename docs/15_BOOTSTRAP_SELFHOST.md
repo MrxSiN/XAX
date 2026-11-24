@@ -46,8 +46,6 @@ This stage specifies the trusted seed, migration to an XAX-hosted compiler, self
 
 This stage does not implement any bootstrap component and does not claim that any milestone has already been achieved.
 
----
-
 ## 2. Normative language
 
 The terms **MUST**, **MUST NOT**, **SHOULD**, **SHOULD NOT**, and **MAY** are normative.
@@ -100,8 +98,6 @@ A root MUST identify all state required to reproduce the revision's declared bui
 
 Conversation transcripts are not continuation state.
 
----
-
 ## 3. Bootstrap trust boundary
 
 The permanent trusted foundation SHOULD remain consistent with the XAX trusted-core objective: canonical semantic definitions, graph verification, canonical serialization, minimal target-independent lowering machinery, and enough target encoding capability to construct executable output.
@@ -121,8 +117,6 @@ The bootstrap trust boundary is therefore divided into two categories.
 The bootstrap seed MUST NOT be permitted to silently redefine XAX semantics. The meaning of accepted XAX artifacts is determined by canonical semantic definitions and verifier rules, not by undocumented seed behavior.
 
 Where the seed and the canonical semantics disagree, the seed is defective.
-
----
 
 ## 4. Minimal bootstrap artifact
 
@@ -146,8 +140,6 @@ Every field MUST name exact content-addressed state or an immutable executable a
 
 The bundle MUST NOT require textual source code as the authoritative XAX program representation. Any omitted external prerequisite is part of the bootstrap trust boundary and MUST be declared.
 
----
-
 ## 5. Seed compiler strategy
 
 The seed SHOULD implement the smallest semantic subset capable of compiling the first XAX-hosted compiler. It is a bridge, not the reference implementation.
@@ -165,8 +157,6 @@ The seed MUST:
 Correct verification and sufficient lowering take precedence over optimizer sophistication.
 
 The seed MUST NOT make XAX depend semantically on undocumented host behavior, host-language layouts absent from the target package, a host package manager, a permanent external assembler/linker, or a second target-description language. Any temporary host dependency MUST be recorded in provenance and eliminated before toolchain closure.
-
----
 
 ## 6. Self-hosting milestones
 
@@ -208,8 +198,6 @@ When exact binary identity is not a valid requirement because of declared metada
 
 The projection MUST be versioned and auditable. It MUST NOT be defined ad hoc merely to make a failing comparison pass.
 
----
-
 ## 7. Compiler and backend migration into XAX
 
 After B1, new compiler functionality SHOULD be implemented in XAX unless doing so would block the transition itself.
@@ -229,8 +217,6 @@ Migration SHOULD proceed from the most architecturally central and deterministic
 
 A bootstrap-only host implementation MAY temporarily coexist with an XAX implementation during validation. Once the XAX path is accepted, the host implementation MUST either be deleted from the maintained build path or retained only as non-authoritative historical/bootstrap material.
 
----
-
 ## 8. Targets, assembler functionality, and linking
 
 Target-specific knowledge belongs in target packages rather than fundamental XAX semantics. A target package MUST describe the machine facts needed by code generation, including instruction semantics and encodings, register constraints, memory spaces, relocations, calling conventions, object/executable formats, legalizations, and scheduling or cost data where available.
@@ -238,8 +224,6 @@ Target-specific knowledge belongs in target packages rather than fundamental XAX
 Instruction encoding SHOULD be performed by XAX-hosted compiler functionality using target-package data. Textual assembly MAY exist for diagnostics or interoperability but MUST NOT become authoritative.
 
 For a target claimed to have toolchain closure, XAX-hosted linking MUST cover identity resolution, required layout, relocation, import/export handling, elimination of unreachable objects when legal, and object/executable or load-image construction. External assemblers and linkers MAY be interoperability tools but MUST NOT be mandatory for a fully self-hosted target.
-
----
 
 ## 9. Bootstrap trust verification
 
@@ -261,8 +245,6 @@ compare(canonical_projection(A2),
 `seed_A` and `seed_B` SHOULD have sufficiently different provenance that a shared hidden trigger is materially less likely. Diversity MAY come from different historical implementations, architectures, compilers, operating environments, or independently produced bootstrap binaries.
 
 Bootstrap validation SHOULD also use conformance vectors, verifier consistency checks, canonical serialization vectors, deterministic self-builds, cross-target compilation, and exact provenance. Every trust check MUST name the roots, policy, target, and comparison projection used. Such checks reduce specific bootstrap risks; they do not prove compiler correctness.
-
----
 
 ## 10. Autonomous AI development workflow
 
@@ -288,8 +270,6 @@ AI-generated mutation MUST remain transactional.
 A transaction MUST identify its expected base root. If the base root is stale, the mutation MUST be rejected or rebased through an explicit semantic merge procedure.
 
 The AI SHOULD request only the semantic entities and evidence needed for the task. Repository scale MUST NOT force full-repository context transmission.
-
----
 
 ## 11. Multi-agent repository merge model
 
@@ -335,8 +315,6 @@ A merge function MUST itself have versioned semantics.
 
 Absence of a defined merge rule means conflicting writes are rejected rather than guessed.
 
----
-
 ## 12. Canonical repository state
 
 A repository revision SHOULD expose canonical roots:
@@ -359,8 +337,6 @@ RepositoryRoot {
 These roots identify, respectively, normative specification state; accepted/superseded/rejected/open decisions; compiler and toolchain programs; exact target packages; package state; conformance and reproducibility evidence; build policy; approved seeds and provenance; implementation maturity; and compact continuation state.
 
 The repository model is content-addressed. A filesystem layout MAY be synthesized for convenience but is not authoritative.
-
----
 
 ## 13. Concise handoff format
 
@@ -390,8 +366,6 @@ The handoff MUST NOT duplicate large semantic graphs. It references them.
 
 A new AI session MUST be able to obtain all additional details through repository queries derived from these identities.
 
----
-
 ## 14. Coupled update rules
 
 Specification, decisions, repository status, and conformance evidence are separate objects but MUST remain mutually consistent.
@@ -412,8 +386,6 @@ A milestone status MUST NOT advance unless its required evidence is present at t
 
 Repository policy SHOULD permit these related mutations to occur in one atomic transaction.
 
----
-
 ## 15. Elimination of the second implementation language
 
 XAX reaches the point where no independently maintained second implementation language remains when all of the following are true:
@@ -432,8 +404,6 @@ XAX reaches the point where no independently maintained second implementation la
 At this point, a host-language seed implementation MAY still exist in archival history, but it is no longer part of the live implementation dependency graph.
 
 If ordinary XAX evolution requires editing that seed implementation, bootstrap independence has not been achieved.
-
----
 
 ## 16. Invariants
 
@@ -456,8 +426,6 @@ The following invariants apply to this stage.
 | BS-13 | Human-readable repository views are non-authoritative projections. |
 | BS-14 | No claim of bootstrap closure or performance is accepted without falsifiable evidence. |
 
----
-
 ## 17. Rejected alternatives
 
 The following alternatives are rejected:
@@ -474,8 +442,6 @@ The following alternatives are rejected:
 | hidden manual release state | prevents reproducible autonomous reconstruction from canonical objects |
 
 Transition tools MAY temporarily use some of these mechanisms, but they MUST NOT become permanent architectural dependencies.
-
----
 
 ## 18. Interfaces and dependencies
 
@@ -496,8 +462,6 @@ This stage depends on and constrains other XAX subsystems.
 | security/supply chain model | artifact provenance, root authorization, bootstrap trust policy |
 
 Stage 15 does not replace those subsystem specifications. It defines the closure conditions connecting them.
-
----
 
 ## 19. Open issues requiring implementation evidence
 
@@ -520,8 +484,6 @@ The seed subset MUST remain smaller than the permanent language surface it boots
 The minimum acceptable independence between two bootstrap seeds is a policy and evidence question. Implementation experience must determine which combinations of architecture, provenance, historical compiler, and environment give useful diversity without creating an ongoing second implementation obligation.
 
 These issues do not alter the requirement for eventual XAX-hosted closure.
-
----
 
 ## 20. Falsification criteria
 

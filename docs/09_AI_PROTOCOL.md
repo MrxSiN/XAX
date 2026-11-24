@@ -74,8 +74,6 @@ This stage defines:
 
 This stage does **not** define a programming language, source syntax, optimizer or lowering implementation, or final wire encoding. Textual notation here is non-authoritative tooling. The canonical semantic graph remains authoritative.
 
----
-
 ## 2. Normative language
 
 The key words **MUST**, **MUST NOT**, **REQUIRED**, **SHOULD**, **SHOULD NOT**, and **MAY** are normative.
@@ -129,8 +127,6 @@ Temporary handles MUST become invalid after rollback or failed commit unless exp
 
 Local handles MUST NOT be interpreted as canonical serialization fields.
 
----
-
 ## 3. Semantic workspace model
 
 ### 3.1 Workspace state
@@ -183,8 +179,6 @@ If a complete answer exceeds the budget, the response MUST indicate truncation a
 For the same program root, query parameters, target facts, and verifier version, query results that claim determinism MUST have deterministic ordering and deterministic identity.
 
 Presentation compression MAY vary only when it does not change semantic interpretation.
-
----
 
 ## 4. Query interface
 
@@ -244,8 +238,6 @@ invalidate set N3.op = mul.wrap
 ```
 
 Dependency classes MUST be machine-readable.
-
----
 
 ## 5. Transaction model
 
@@ -350,14 +342,11 @@ Local preconditions reduce accidental edits and enable conflict detection below 
 
 Proof-dependency reads are validated separately from ordinary entity handles. A stale proof read MUST produce a proof-dependency conflict rather than a generic missing/stale-handle conflict. Proof reads MUST be rechecked at final atomic publication so an intervening dependency change followed by root-byte restoration cannot revive an invalidated local proof handle. A currently valid proof dependency may be consumed by a transaction that changes its subject; after publication, that old dependency is no longer reusable unless its required subject/verifier dependencies were provably preserved.
 
-
 ### 5.4 Verification policy
 
 A transaction MUST NOT commit a candidate graph that violates canonical XAX invariants.
 
 A transaction MAY request stronger checks than the minimum commit rules, including whole-function, ownership/resource, effect, target-legality, compile-time determinism, equivalence, cost-regression, or artifact-regeneration checks. Failed verification produces diagnostics and leaves the canonical root unchanged.
-
----
 
 ## 6. Concurrent AI agents and conflict detection
 
@@ -386,8 +375,6 @@ Changes to disjoint entities SHOULD be mergeable when dependency analysis proves
 After a stale-root failure, tooling MAY offer semantic rebase. Rebase is not blind replay.
 
 For each mutation, rebase MUST confirm that the target still exists, relevant attributes/relations and read-set assumptions remain compatible, handles can be rebound deterministically, and local preconditions still hold. Otherwise it MUST return a structured conflict diagnostic.
-
----
 
 ## 7. Machine-first diagnostics
 
@@ -436,8 +423,6 @@ D17 {
 ```
 
 This notation is a tooling view, not XAX source.
-
----
 
 ## 8. Minimal mutation protocol
 
@@ -507,8 +492,6 @@ A compact transport MUST be unambiguous, deterministically framed, versioned, an
 
 Candidate transports SHOULD be compared on completion rate, invalid packet and transaction rates, repair turns, semantic entities transmitted, protocol overhead, and packet bytes. Tests SHOULD cover creation, literal/operation/control-flow edits, type and ownership/effect repair, targeted optimization, and stale-root recovery.
 
----
-
 ## 9. Context and accounting
 
 Every workspace SHOULD maintain machine-readable accounting:
@@ -530,8 +513,6 @@ Accounting data is operational telemetry, not program semantics.
 For benchmarkability, tooling SHOULD separately record protocol bytes, artifact bytes, semantic and diagnostic entities, verifier work, and target-cost query work.
 
 Workspace servers SHOULD support response budgets. The current bootstrap workspace supports an exact serialized response-byte budget as a transport control: paginated queries deterministically shrink to the largest positive-progress prefix that fits and return continuation; non-paginated responses or pages too small to make progress fail with `XAX.WORKSPACE.RESPONSE_BUDGET`. Budget failure publishes no new local handles and charges no unreturned query-response bytes.
-
----
 
 ## 10. Interfaces with other XAX subsystems
 
@@ -567,8 +548,6 @@ Optimization and lowering MAY expose queryable derived facts, but these do not r
 
 Workspace queries MAY traverse package/module identities and build-semantic objects. Package/build data remains XAX semantic data, not an external JSON/YAML/TOML protocol language.
 
----
-
 ## 11. Invariants
 
 The AI protocol MUST preserve all of the following:
@@ -587,8 +566,6 @@ The AI protocol MUST preserve all of the following:
 12. **Compact notation is tooling, not a second maintained language.**
 13. **No protocol feature may introduce hidden allocation, synchronization, ownership transfer, exception edges, or runtime behavior into program semantics.**
 
----
-
 ## 12. Rejected alternatives
 
 | Alternative | Rejection reason |
@@ -602,8 +579,6 @@ The AI protocol MUST preserve all of the following:
 | Automatically transmit whole functions after every diagnostic | Violates minimal-context retrieval and can scale model context with repository size. |
 | Treat byte size as the primary protocol metric | Small byte streams may increase invalid generations or repair turns. |
 | Encode target costs as semantic truth | Costs are model- and target-dependent estimates or measurements, not core program meaning. |
-
----
 
 ## 13. Open issues
 
@@ -626,8 +601,6 @@ The verifier must determine whether computing a strictly minimal repair neighbor
 The correct balance between whole-root compare-and-swap, entity-level preconditions, and explicit read-set validation requires implementation experience with concurrent AI agents.
 
 No other unresolved issue in this stage justifies weakening the invariants above.
-
----
 
 ## 14. Falsification criteria
 
@@ -839,7 +812,6 @@ default; `instructions(compact=False)` advertises the accepted long forms.
 Applicable help SHOULD state result-index notation for multi-result nodes
 and omit redundant optional spelling rules. A rejected pending request is
 not applied to the projected snapshot.
-
 
 ## 16. The native workspace (ADR-360)
 

@@ -39,8 +39,6 @@ This stage specifies:
 
 Thread creation, scheduling, atomic ordering, interrupts, and real-time concurrency semantics are outside this stage. The `atomic` effect domain is reserved here only so later concurrency semantics can compose with this model.
 
----
-
 ## 2. Normative definitions
 
 The key words **MUST**, **MUST NOT**, **SHOULD**, **SHOULD NOT**, and **MAY** are normative.
@@ -62,8 +60,6 @@ The key words **MUST**, **MUST NOT**, **SHOULD**, **SHOULD NOT**, and **MAY** ar
 | **foreign exception** | Exceptional control behavior required by an external ABI or platform contract. It is represented only through an explicit interoperability operation or adapter. |
 
 Effect tokens are semantic ordering objects, not user-visible runtime state. Lowering MUST erase them unless a target operation requires corresponding runtime synchronization.
-
----
 
 ## 3. Effect model
 
@@ -179,8 +175,6 @@ Public interfaces, separately distributed modules, dynamic dispatch boundaries, 
 
 Stored summaries and inferred summaries MUST never disagree. A mismatch is a verification failure, not an optimizer hint.
 
----
-
 ## 5. Ordinary control flow
 
 ### 5.1 Block rule
@@ -238,8 +232,6 @@ If two operations have no ordering dependency, XAX deliberately leaves them unor
 
 Node identifiers, serialization order, diagnostic display order, AI transaction order, and construction timestamps MUST NOT create execution order.
 
----
-
 ## 7. Recoverable error semantics
 
 Recoverable errors are ordinary values.
@@ -270,8 +262,6 @@ An error value may contain arbitrary typed data, including resource values, prov
 
 The optimizer MAY specialize away error variants when proof shows only one variant can occur.
 
----
-
 ## 8. Foreign exception interoperability
 
 Core XAX `call` never throws.
@@ -299,8 +289,6 @@ A normal XAX function called after conversion sees ordinary values and ordinary 
 Foreign unwinding MUST NOT cross an ordinary XAX call frame unless that frame is explicitly represented as participating in the foreign ABI contract. Any required cleanup on an exceptional foreign edge MUST be explicit in the adapter graph or guaranteed by the foreign ABI package.
 
 This isolates platform exception machinery from core XAX semantics.
-
----
 
 ## 9. Effect inference, storage, and compression
 
@@ -348,8 +336,6 @@ An `unsafe` waiver is semantically significant even if it produces no runtime in
 
 Unsafe proof waivers MUST remain machine-visible after serialization/reconstruction and MUST NOT be erased merely because generated machine code is unchanged.
 
----
-
 ## 10. Verifier obligations
 
 The verifier MUST reject a graph that violates any of the following:
@@ -371,8 +357,6 @@ The verifier MUST reject a graph that violates any of the following:
 15. an operation's required privilege or unsafe capability is absent.
 
 Verification SHOULD produce machine-readable diagnostics naming the violated rule, entity, expected effect/control contract, actual contract, and repair neighborhood.
-
----
 
 ## 11. Optimization freedoms
 
@@ -402,8 +386,6 @@ The optimizer MUST NOT:
 - introduce hidden cleanup or exceptional control;
 - erase unsafe audit information from the canonical semantic record before the relevant verification/audit boundary.
 
----
-
 ## 12. Invariants
 
 1. **Meaning, not serialization order, determines execution order.**
@@ -422,8 +404,6 @@ The optimizer MUST NOT:
 14. **Unsafe waivers are machine-visible semantic facts.**
 15. **Optimization may exploit missing dependencies only when their absence is semantically justified.**
 
----
-
 ## 13. Rejected alternatives
 
 | Alternative | Rejection reason |
@@ -441,8 +421,6 @@ The optimizer MUST NOT:
 | Mandatory storage of every effect edge | Wastes persistent bytes when edges are uniquely reconstructible. |
 | Erasing unsafe markers because they emit no instructions | Loses audit and proof-waiver semantics. |
 
----
-
 ## 14. Interfaces and dependencies
 
 | Subsystem | Dependency |
@@ -455,8 +433,6 @@ The optimizer MUST NOT:
 | Target/platform packages | Define syscall ABIs, devices, privilege, trap lowering, foreign exceptions, and target-specific cross-domain constraints. |
 | Verifier/optimizer | Verification establishes legal dependencies and contracts; optimization exploits only proven freedoms. |
 | AI workspace | SHOULD expose compact effect summaries and local dependencies. Footprint edits MUST re-verify affected summaries and callers, not unrelated program text. |
-
----
 
 ## 15. Open issues requiring implementation evidence
 
@@ -477,8 +453,6 @@ The minimum portable core is one canonical unsigned 16-bit reason plus an option
 The OI-10 evidence maps the same reason through x86-64 Windows (`rax` + `ud2`) and AAPCS64 (`x0` + `brk #imm16`) while diagnostics expose `{reason,target_data,payload}`. Changing only target-specific bytes changes semantic identity but not either portable native trap sequence; changing the portable reason changes both native sequences. This closes the portability split without adding exceptions, cleanup, unwinding, or a target-independent runtime ABI.
 
 These issues concern representation efficiency or portability. They do not reopen the core semantic rules above.
-
----
 
 ## 16. Falsification criteria
 

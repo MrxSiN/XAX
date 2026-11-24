@@ -88,8 +88,6 @@ This register lists the issues that require implementation, target, ecosystem, o
 | [OI-61](#oi-61--the-jvm-program-does-not-check-a-catching-calls-throwable-output-type) | The JVM program does not check a catching call's throwable output type | CLOSED |
 | [OI-62](#oi-62--the-legacy-wasm32-profile-emits-an-invalid-module-for-a-bits64-checked-offset) | The legacy Wasm32 profile emits an invalid module for a `bits<64>` checked offset | CLOSED |
 
----
-
 ## OI-02 — Canonical object and graph-fragment granularity
 
 **Status:** CLOSED (2026-10-02)
@@ -167,8 +165,6 @@ This policy preserves one semantic identity: fragmented units are reassembled an
 - `compiler/benchmarks/oi02_granularity_evidence.json`
 - `compiler/benchmarks/oi02_granularity_timing.json`
 
----
-
 ## OI-03 — Recursion-group compact encoding
 
 **Status:** CLOSED (2026-10-01)
@@ -219,8 +215,6 @@ Should non-recursive functions always use the direct `function` carrier, and wha
 - `oi03_recursion_evidence.json`
 - `tests/test_oi03_recursion.py`
 - `XAX_SPEC.md` §3.3
-
----
 
 ## OI-04 — Float format catalog and compact type vocabulary
 
@@ -313,8 +307,6 @@ Eight deterministic mutation cells cover bit width, binary32->binary64, binary16
 - `oi04_type_vocabulary_evidence.json`
 - Test `test_catalog_body_form_would_split_identity`
 
----
-
 ## OI-05 — Proof-fact persistence
 
 **Status:** CLOSED (2026-10-01)
@@ -387,8 +379,6 @@ One-function literal edit:
 - `compiler/benchmarks/oi05_proof_cache_evidence.json`
 - `bench_oi05_proof_cache.py`
 - `tests/test_oi05_proof_cache.py`
-
----
 
 ## OI-06 — Alias/provenance representation and checked-access kernel surface
 
@@ -472,8 +462,6 @@ Checked access gained byte-view widening. On a `bits<8>` view a checked load/sto
 - `compiler/tests/test_oi06_memory_surface.py`
 - `docs/04_MEMORY_RESOURCES.md` §5.2.1
 
----
-
 ## OI-07 — DMA resource-state vocabulary
 
 **Status:** CLOSED (2026-10-01)
@@ -531,8 +519,6 @@ The cross-target DMA-buffer vocabulary is the six states above.
 - `compiler/benchmarks/oi07_dma_evidence.json`
 - `bench_oi07_dma.py`
 - `tests/test_oi07_dma.py`
-
----
 
 ## OI-08 — Effect partition granularity and persistent edge encoding
 
@@ -604,8 +590,6 @@ The evidence selects **verifier-proven semantic instance** as the granularity ru
 - `compiler/benchmarks/bench_oi08_effect_edges.py`
 - `compiler/benchmarks/oi08_effect_edges_evidence.json`
 - `compiler/tests/test_oi08_effect_edges.py`
-
----
 
 ## OI-09 — Indirect CallContract representation
 
@@ -681,8 +665,6 @@ This closure covers the representation only. Indirect-call execution/lowering su
 - `compiler/benchmarks/bench_oi09_call_contracts.py`
 - `compiler/benchmarks/oi09_call_contract_evidence.json`
 
----
-
 ## OI-10 — Portable trap payload core
 
 **Status:** CLOSED (2026-10-01)
@@ -721,8 +703,6 @@ The committed OI-10 evidence maps reason `0x1234` through two materially differe
 ### Closure Criteria
 
 - [x] Two materially different native targets plus diagnostic/ABI use cases demonstrating a common minimal payload.
-
----
 
 ## OI-11 — Non-native atomic synthesis policy
 
@@ -779,8 +759,6 @@ Observed executable-host latency is recorded separately from guaranteed timing m
 
 - [x] Correctness, code size, latency, lock-free/progress behavior, and target diversity across multiple architectures.
 
----
-
 ## OI-12 — Timing-proof representation
 
 **Status:** CLOSED (2026-10-02)
@@ -836,8 +814,6 @@ Exact incremental invalidation:
 
 - [x] At least two materially different timing models, measuring proof size, incremental invalidation, verifier cost, and query cost.
 
----
-
 ## OI-13 — GPU/accelerator synchronization-scope normalization
 
 **Status:** CLOSED (2026-10-02; the original record has no status line and states "OI-13 is closed for scope normalization")
@@ -881,8 +857,6 @@ The OI-13 measurement harness adds a second package-driven accelerator model wit
 M13 adds one non-CPU target package with explicit device/workgroup execution scopes, host/global/workgroup memory spaces, and deterministic rejection of an unsupported system-scope launch. This demonstrates the required reject path for one model but provides neither a second accelerator memory model nor portable cross-vendor atomic/barrier vectors, so OI-13 remains open.
 
 </details>
-
----
 
 ## OI-14 — Compile-time fuel units and introspection authority granularity
 
@@ -948,11 +922,9 @@ M9 uses deterministic counts for evaluated blocks/nodes, active frame storage, c
 
 </details>
 
----
-
 ## OI-15 — Specialization object boundaries
 
-**Status:** OPEN (2026-11-15). The 2026-10-02 closure paragraph below records cache reuse, graph size, optimization opportunity and transaction locality but no compile time, which "Evidence that closes it" requires.
+**Status:** OPEN (2026-11-15). The 2026-10-02 closure paragraph below records cache reuse, graph size, optimization opportunity and transaction locality but no compile time, which "Closure Criteria" requires.
 
 > [!NOTE]
 > Superseded claim: the 2026-10-02 closure evidence paragraph ends with "OI-15 is closed." The later status line above (2026-11-15, the audit that added status lines) supersedes it, because that paragraph does not meet every item of the closure criteria. The paragraph is kept as the historical record.
@@ -1017,8 +989,6 @@ M9 adds general compile-time evaluation and a content-derived request key. Its c
 
 </details>
 
----
-
 ## OI-16 — Target semantic/instruction granularity and opaque-contract minimums
 
 **Status:** OPEN (the original record has no status line; it states "OI-16 remains open")
@@ -1075,8 +1045,6 @@ M4 uses one compact x86-64 Windows raw-load-image package carrying machine width
 M13 adds generic target-operation contracts plus a non-CPU SIMT packet target whose topology, three memory spaces, typed target operations, scopes, synchronization/blocking flags, and packet opcodes reside in the target package. The core verifier interprets only the generic contract shape. This broadens the hardware class evidence but remains one synthetic accelerator model with Python bootstrap emission and no package-size/verifier-cost/code-quality comparison, so OI-16 remains open.
 
 </details>
-
----
 
 ## OI-17 — Target cost-model representation and calibration
 
@@ -1135,11 +1103,9 @@ M12 introduces a lowering-derived code-size oracle that measures the exact emitt
 
 </details>
 
----
-
 ## OI-18 — Legalization/optimizer organization and machine-level IR
 
-**Status:** OPEN (2026-11-15). The 2026-10-02 closure paragraph below records implementation volume, compile time and memory, incrementality, target extensibility and code quality on two architectures, but not verifier complexity, which "Evidence that closes it" requires.
+**Status:** OPEN (2026-11-15). The 2026-10-02 closure paragraph below records implementation volume, compile time and memory, incrementality, target extensibility and code quality on two architectures, but not verifier complexity, which "Closure Criteria" requires.
 
 > [!NOTE]
 > Superseded claim: the 2026-10-02 closure evidence paragraph ends with "OI-18 is closed." The later status line above (2026-11-15, the audit that added status lines) supersedes it, because that paragraph does not meet every item of the closure criteria. The paragraph is kept as the historical record.
@@ -1200,11 +1166,9 @@ M12 uses a deliberately small staged organization: deterministic local/CFG rewri
 
 </details>
 
----
-
 ## OI-19 — Transformation-proof granularity
 
-**Status:** OPEN (2026-11-15). The 2026-10-02 closure paragraph below records trusted code size, validation latency and bug detection, but not validation memory or optimization throughput, which "Evidence that closes it" requires.
+**Status:** OPEN (2026-11-15). The 2026-10-02 closure paragraph below records trusted code size, validation latency and bug detection, but not validation memory or optimization throughput, which "Closure Criteria" requires.
 
 > [!NOTE]
 > Superseded claim: the 2026-10-02 closure evidence paragraph ends with "OI-19 is closed." The later status line above (2026-11-15, the audit that added status lines) supersedes it, because that paragraph does not meet every item of the closure criteria. The paragraph is kept as the historical record.
@@ -1270,8 +1234,6 @@ M12 uses conservative trusted rewrite preconditions plus the ordinary verifier f
 
 </details>
 
----
-
 ## OI-20 — ABI/platform capability and classification representation
 
 **Status:** OPEN (the original record has no status line; it states "OI-20 remains open; no canonical ABI/capability representation is selected yet")
@@ -1315,11 +1277,9 @@ Foreign-contract inference is tooling-only. The suggestion binds the exact verif
 - [ ] Several real ABIs/platforms measuring reuse, graph/package size, verifier complexity, mutation cost, and unsupported-boundary diagnostics. Partial: three ABIs are measured at benchmark level; the original does not state this criterion as met.
 - [ ] A canonical ABI/capability representation is selected (not selected yet).
 
----
-
 ## OI-21 — Semantic-database dependency representation and cross-process parallelism
 
-**Status:** CLOSED (2026-10-02; status line added 2026-11-15). The closure evidence below meets every item of "Evidence that closes it".
+**Status:** CLOSED (2026-10-02; status line added 2026-11-15). The closure evidence below meets every item of "Closure Criteria".
 
 ### Summary
 
@@ -1400,11 +1360,9 @@ The workspace retains multiple verified generations for deterministic diff/rebas
 
 </details>
 
----
-
 ## OI-22 — Hash agility and migration
 
-**Status:** CLOSED (2026-10-02; status line added 2026-11-15). The closure evidence below meets every item of "Evidence that closes it".
+**Status:** CLOSED (2026-10-02; status line added 2026-11-15). The closure evidence below meets every item of "Closure Criteria".
 
 ### Summary
 
@@ -1454,11 +1412,9 @@ OI-22 is closed with the migration rule:
 - [x] Security/performance analysis.
 - [x] A prototype dual-suite migration demonstrating deterministic identity comparison, dependency resolution, cache behavior, and repository upgrade.
 
----
-
 ## OI-23 — Package resolver expressiveness and complexity bounds
 
-**Status:** CLOSED (2026-10-02; status line added 2026-11-15). The closure evidence below meets every item of "Evidence that closes it".
+**Status:** CLOSED (2026-10-02; status line added 2026-11-15). The closure evidence below meets every item of "Closure Criteria".
 
 ### Summary
 
@@ -1526,11 +1482,9 @@ M10 implements deterministic exact-root selection and the smallest logical const
 
 </details>
 
----
-
 ## OI-24 — Provenance granularity and sandbox portability
 
-**Status:** CLOSED (2026-10-02; status line added 2026-11-15). The closure evidence below meets every item of "Evidence that closes it".
+**Status:** CLOSED (2026-10-02; status line added 2026-11-15). The closure evidence below meets every item of "Closure Criteria".
 
 ### Summary
 
@@ -1587,8 +1541,6 @@ OI-24 is closed with closure-level provenance as the default.
 M10 records closure-level provenance over snapshot, request, target, profile, artifact digest, compiler, lowering, and optional producer identities. Package-local capability declarations plus profile grants reject undeclared/cross-package effects; live network/clock/random observations reject in hermetic-reproducible mode. The implemented build action is pure and exposes no ambient host API. Signature verification remains an explicit caller-supplied algorithm hook. No OS-level sandbox adapter, action-level DAG, multi-platform enforcement experiment, or metadata-cost study exists, so OI-24 remains open.
 
 </details>
-
----
 
 ## OI-25 — Bootstrap fixed-point comparison level
 
@@ -1647,8 +1599,6 @@ Policy:
 The declared `xax-semantic-image-v1` self-build reaches full byte identity: generations 0, 1, and 2 share root `097da62f7ba9832620f5d202297fc522783ed5b4c9e68f8da6b77515b185164d` and canonical-store BLAKE3-256 `6340c903f5da3e8aaf4d8ae886694a0d858687fc5c5520662a018518693f4788`. Four generation-equivalence vectors also match. This closes OI-25 for the semantic-image closure target by selecting full byte identity when the target is canonical by construction. The general question remains open for future targets that contain explicitly permitted non-semantic variability; any projection must still be predeclared and versioned.
 
 </details>
-
----
 
 ## OI-26 — Minimum practical bootstrap seed subset
 
@@ -1717,8 +1667,6 @@ M14 subsequently adds a 46,255-byte committed immutable seed runtime for the sem
 
 </details>
 
----
-
 ## OI-27 — Bootstrap trust diversity threshold
 
 **Status:** CLOSED (2026-10-02)
@@ -1771,8 +1719,6 @@ The minimum maintained diversity threshold is **one release-only independent ver
 The committed immutable seed establishes the declared B6 ordinary-release boundary for `xax-semantic-image-v1`, but it is not an independent implementation and therefore provides no diverse-double-compilation assurance. OI-27 remains open.
 
 </details>
-
----
 
 ## OI-28 — Diagnostic payload and repair-neighborhood minimum
 
@@ -1852,8 +1798,6 @@ General resource/effect verification distinguishes duplicate/drop, domain fork, 
 
 </details>
 
----
-
 ## OI-29 — Atomic litmus conformance corpus size
 
 **Status:** CLOSED (2026-10-02; the original marks the resolution evidence "CLOSED")
@@ -1897,8 +1841,6 @@ M8 includes an implementation-local abstract event validator for modification or
 
 </details>
 
----
-
 ## OI-30 — Deterministic-build manifest boundary — CLOSED
 
 **Status:** CLOSED (decision recorded 2026-10-02)
@@ -1928,8 +1870,6 @@ Same-implementation reproducibility identity is the existing build key over `(sn
 ### References
 
 - `bench_oi30_build_manifest.py`
-
----
 
 ## OI-32 — Foreign metadata importer scope and representation
 
@@ -1991,8 +1931,6 @@ The original CLOSED status states that this record is the historical record and 
 
 </details>
 
----
-
 ## OI-33 — Hosted process lifecycle, unwind, and TLS contracts
 
 **Status:** OPEN
@@ -2024,8 +1962,6 @@ Executed PE and ELF programs that:
 - [ ] produce symbolized stack traces;
 
 with measured size cost of the emitted metadata versus none.
-
----
 
 ## OI-34 — First production GPU target
 
@@ -2077,8 +2013,6 @@ SPIR-V for Vulkan is the selected first representation: `spirv-vulkan-compute-v1
 The 2026-11-15 check above supersedes the "execution on a physical GPU" part of this entry.
 
 </details>
-
----
 
 ## OI-35 — Managed-platform emission strategy (JVM, CLR)
 
@@ -2145,8 +2079,6 @@ The original CLOSED status states that this entry is the historical record and t
 
 </details>
 
----
-
 ## OI-36 — Standard semantic library granularity
 
 **Status:** CLOSED (2026-10-03, ADR-130)
@@ -2193,8 +2125,6 @@ MEASURED (`oi36_stdlib_evidence.json`):
 ### References
 
 - `oi36_stdlib_evidence.json`
-
----
 
 ## OI-37 — Pointer values stored in memory
 
@@ -2254,8 +2184,6 @@ On a 2^20-node chained hash table (`oi37_chains_evidence.json`), arena + index l
 
 </details>
 
----
-
 ## OI-38 — x86-64 register allocation: convergence and remaining code-quality gap
 
 **Status:** OPEN (partially addressed; ADR-131 bit-test selection; ADR-148 brings all three Linux workloads within 1.05× of the fastest of gcc, clang, and rustc)
@@ -2311,8 +2239,6 @@ PE now uses the Linux allocator first, with Win64 calls, stack storage, function
 
 </details>
 
----
-
 ## OI-39 — Shift and sign-extension selection versus kernel operations
 
 **Status:** OPEN
@@ -2330,8 +2256,6 @@ Shift and sign-extension kernel operations remain rejected as exact compositions
 #### Falsification condition
 
 Admit `shl`/`lshr`/`ashr`/`int.sign_extend` under §21.5 if lowering cannot select them reliably on another target.
-
----
 
 ## OI-40 — Breadth of the SysV C ABI on Linux
 
@@ -2363,8 +2287,6 @@ The original record states no separate closing evidence. It lists the following 
 ### References
 
 - `linux_c_interop_evidence.json`
-
----
 
 ## OI-41 — Check-free pointer reloads (typed mixed storage)
 
@@ -2421,8 +2343,6 @@ Measured motivation: the `pointer_rebase` check costs 1.51× in C on `chains`, a
 
 </details>
 
----
-
 ## OI-42 — Effectful foreign entries (callbacks that touch memory or effects)
 
 **Status:** CLOSED (2026-10-03, ADR-115)
@@ -2476,8 +2396,6 @@ Negative vectors:
 - `test_xax_lend_entry.py`
 - `linux_qsort_evidence.json`
 
----
-
 ## OI-43 — Browser event entries (host-invoked XAX entry points)
 
 **Status:** CLOSED (2026-10-02, ADR-104)
@@ -2523,8 +2441,6 @@ Candidate (a) was implemented.
 
 - `browser_fib_evidence.json`
 
----
-
 ## OI-44 — Hardware versus emulated execution as replacement evidence
 
 **Status:** OPEN
@@ -2551,8 +2467,6 @@ ADR-114 lets emulated execution (QEMU, Unicorn) satisfy `code_generation` and `r
 
 - [ ] One case where an emulator and hardware disagree on an XAX image (which would show that emulation is insufficient), or
 - [ ] a documented hardware run on two ISA rows with no discrepancy against the emulator corpus. Partial: one ISA row has run on hardware (Linux AArch64 static profile, ADR-254); one more is needed.
-
----
 
 ## OI-45 — Re-executing native evidence after a canonical change
 
@@ -2593,8 +2507,6 @@ The original status record, in chronological order:
 - `XAX_BENCHMARKS.md` §15.29, §15.30
 - `bench_selfhost_closure.py`, `bench_selfhost_x86_64.py`
 
----
-
 ## OI-47 — Path-exact ownership for Android platform objects
 
 **Status:** OPEN (2026-10-08, ADR-204)
@@ -2630,8 +2542,6 @@ How are these made exact without new kernel concepts?
 - [ ] A device run of a decode loop (configure, queue, dequeue, release).
 - [ ] An RFCOMM connect/close with no leaks under StrictMode.
 
----
-
 ## OI-48 — Windows host-process capabilities for VRAMBoost DX12
 
 **Status:** OPEN (2026-10-13)
@@ -2657,8 +2567,6 @@ VRAMBoost DX12 (`D:\GitHub\VRAMBoost`) is an XAX-only DirectX 12 memory tool tha
 ### Closure Criteria
 
 - [ ] Each open request closes only with the acceptance test named in the register, EXECUTED on Windows.
-
----
 
 ## OI-49 — Android ARM64 large composite return copy
 
@@ -2718,8 +2626,6 @@ Evidence that closed it, as stated then: a canonical XAX backend change with dis
 
 </details>
 
----
-
 ## OI-50 — x86-64 branch fusion loses cross-block comparison values
 
 **Status:** CLOSED (2026-11-15; opened 2026-10-20) by ADR-376 (ledger 0013, 2026-11-06)
@@ -2771,8 +2677,6 @@ The report summarized above as Summary is kept in the Summary section. The remai
 The [canonical control and fixed fixture](compiler/integration/windows_helpers/DRIVER.md) and [execution report](compiler/integration/windows_helpers/driver_execution.json) record the reproduction. Capturing the comparison as a 64-bit flag before the branch makes the equivalent fixed graph pass 256 native inputs. The Windows driver follows that convention for 522 results in 95 functions through an exact transaction. The Python emitter remains unchanged; arbitrary programs still need a general repair. No Linux execution is claimed by this report.
 
 </details>
-
----
 
 ## OI-51 — Windows native driver coverage and diagnostic parity
 
@@ -2831,8 +2735,6 @@ With packed decision lengths ([PACKED_LENGTHS.md](compiler/integration/bfx/PACKE
 - [resource evidence](compiler/integration/windows_helpers/resource_diagnosis.json)
 - [private records](compiler/integration/windows_helpers/diagnostics/README.md)
 - [PACKED_LENGTHS.md](compiler/integration/bfx/PACKED_LENGTHS.md)
-
----
 
 ## OI-52 — 64-bit checked offsets and growable views (roadmap)
 
@@ -2899,8 +2801,6 @@ Once R1–R2 land, BBC widens the tape and the movement bounds, and moves the de
 - [dynamic tape](compiler/integration/bfx/DYNAMIC_TAPE.md)
 - `docs/04_MEMORY_RESOURCES.md`
 
----
-
 ## OI-53 — `xaxc verify` rejects byte-view widening
 
 **Status:** CLOSED (2026-11-06, ADR-376, ledger 0013)
@@ -2932,8 +2832,6 @@ Before the fix, the production compiler's `verify` answered `MEMORY-CHECKED-STOR
 - The original record's last sentence reads: "Fix natively (a driver transaction), then lift the expected failure."
 
 </details>
-
----
 
 ## OI-54 — Function views past 2^18 values (BBC's hanoi -O0)
 
@@ -3006,8 +2904,6 @@ The Summary above and the steps listed under "Remaining steps" are from this rec
 
 </details>
 
----
-
 ## OI-55 — Native x86-64 signed compares below 32 bits
 
 **Status:** CLOSED (2026-11-15). The Linux half closed with ADR-393.
@@ -3064,8 +2960,6 @@ Closing evidence as stated then: a ledger transaction on `xax_compiler_driver_ge
 
 </details>
 
----
-
 ## OI-56 — PE images take large frames without a stack probe
 
 **Status:** CLOSED (2026-11-24)
@@ -3110,8 +3004,6 @@ The Windows seed is rebuilt from the fixed driver and builds itself on Windows 1
 Reproduced on Windows 11 (build 26300) with the `bbc.exe` the seed `a35fd59f…` builds from the committed `integration/bfx/bbc.xax` (36,319,232 bytes, SHA-256 `445b2fb2…`): every invocation, `bbc.exe compile windows-x86_64 hello.exe < hello.bf` included, ends with exception `0xC0000005` at image offset `0x15e1817`, the first store after `sub rsp, 0x13038` (gdb: `mov [rsp+0x20], rcx`). Wine commits the whole stack, so the Wine campaigns pass. With `SizeOfStackCommit` set to `SizeOfStackReserve` in a copy's header the same file compiles and its outputs run on Windows 11 and on a Pixel 8 Pro; the 2026-11-11 device measurements use such a copy.
 
 </details>
-
----
 
 ## OI-57 — The reference's S12c.2 analysis audit disagrees with the native `basics` since ledger 0022
 
@@ -3158,8 +3050,6 @@ The failure description is shown as the Summary above.
 Seen at commit `6bcaf77` with the seed `a35fd59f…` (2026-11-11) and again with the seed `fb31b03b…` (2026-11-12); it is not caused by ledger 0024 or the seed rotation. Not established: whether every failing case is this one cause (the emission difference was not traced). The later closure traced the emission difference to the missing save of `r15`.
 
 </details>
-
----
 
 ## OI-58 — Windows x86-64 code generation on the `chains` walk (R4 blocker for `windows-x86_64-pe`)
 
@@ -3217,8 +3107,6 @@ With items 1 and 2 worked around in the program, the XAX arm went from about 134
 - `compiler/benchmarks/windows_chains_soa_evidence.json`
 - `chains_soa.c`
 
----
-
 ## OI-59 — Edge copies overwrite a frame word another copy of the same edge still reads
 
 **Status:** CLOSED (2026-11-24)
@@ -3239,7 +3127,7 @@ Ledger 0027 is in both seeds and BBC's driver since 2026-11-13 and on `main`.
 
 ### Evidence and Measurements
 
-The native compiler returns the executor's result on the whole family (`XAX_STATE.md` 2026-11-13, ledger 0027 correctness, EXECUTED), which completes "Evidence that closes it". OI-58 item 1 can be retried.
+The native compiler returns the executor's result on the whole family (`XAX_STATE.md` 2026-11-13, ledger 0027 correctness, EXECUTED), which completes "Closure Criteria". OI-58 item 1 can be retried.
 
 ### Closure Criteria
 
@@ -3272,8 +3160,6 @@ The same staging as a native transaction on the x86-64 backend, driver and reque
 
 </details>
 
----
-
 ## OI-60 — Host-portability gaps left after the 2026-11-13 audit
 
 **Status:** OPEN (2026-11-13)
@@ -3301,8 +3187,6 @@ Left open, each needing either a native tool or new test glue that the language 
 
 - [ ] A native ledger tool and seed check that run on the Windows seed.
 - [ ] One test that runs a Windows-seed command against its pin.
-
----
 
 ## OI-61 — The JVM program does not check a catching call's throwable output type
 
@@ -3340,8 +3224,6 @@ The rejection test fails 6 of 6 on the stores before the fix (`XAX_STATE.md` 202
 Fixing it is one more transaction on F38 (about 45,600 view lines) in three stores, outside the DEX change of ADR-409, so it was left for the C-cap step of release 0036.
 
 </details>
-
----
 
 ## OI-62 — The legacy Wasm32 profile emits an invalid module for a `bits<64>` checked offset
 

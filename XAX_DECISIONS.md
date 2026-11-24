@@ -302,7 +302,6 @@ Find a decision without reading this file: `grep -n '^## ADR-<n>' XAX_DECISIONS.
   - [ADR-298 — S15 decomposed to its end: what each remaining step must show](#adr-298--s15-decomposed-to-its-end-what-each-remaining-step-must-show)
   - [ADR-299 — S15c.1: profile grants decided by the resolver in XAX](#adr-299--s15c1-profile-grants-decided-by-the-resolver-in-xax)
 - ADR-300 to ADR-399
-  - [ADR-335 — Pin the existing native Windows compiler as a distribution seed](#adr-335--pin-the-existing-native-windows-compiler-as-a-distribution-seed)
   - [ADR-300 — S15c.2: external input files for `resolve` and `build`](#adr-300--s15c2-external-input-files-for-resolve-and-build)
   - [ADR-301 — S15c.3: Ed25519 package signature verification in XAX](#adr-301--s15c3-ed25519-package-signature-verification-in-xax)
   - [ADR-302 — S15c.4: the driver's capacities are its own rejection](#adr-302--s15c4-the-drivers-capacities-are-its-own-rejection)
@@ -338,6 +337,7 @@ Find a decision without reading this file: `grep -n '^## ADR-<n>' XAX_DECISIONS.
   - [ADR-332 — S15e.5f: JVM aggregates and sums in the XAX JVM program](#adr-332--s15e5f-jvm-aggregates-and-sums-in-the-xax-jvm-program)
   - [ADR-333 — The full test run after the S15 steps, and its fixes](#adr-333--the-full-test-run-after-the-s15-steps-and-its-fixes)
   - [ADR-334 — S15e.5: JVM JARs built by the production compiler](#adr-334--s15e5-jvm-jars-built-by-the-production-compiler)
+  - [ADR-335 — Pin the existing native Windows compiler as a distribution seed](#adr-335--pin-the-existing-native-windows-compiler-as-a-distribution-seed)
   - [ADR-336 — The remaining S15 steps: S15e.5g-S15e.5j, S15e.6a-S15e.6h, S15g](#adr-336--the-remaining-s15-steps-s15e5g-s15e5j-s15e6a-s15e6h-s15g)
   - [ADR-337 — S15e.5g: the JVM memory profile in the XAX JVM program](#adr-337--s15e5g-the-jvm-memory-profile-in-the-xax-jvm-program)
   - [ADR-338 — S15e.5h and S15e.5i: the JVM general profile, recursion groups and the threaded launcher in XAX](#adr-338--s15e5h-and-s15e5i-the-jvm-general-profile-recursion-groups-and-the-threaded-launcher-in-xax)
@@ -424,19 +424,6 @@ Find a decision without reading this file: `grep -n '^## ADR-<n>' XAX_DECISIONS.
   - [ADR-417 — The generated manifest carries `android:versionName` (issue #134, release 0041, 2026-11-21)](#adr-417--the-generated-manifest-carries-androidversionname-issue-134-release-0041-2026-11-21)
   - [ADR-418 — Native carrier replacement implemented: `replace <CID> @name` (issue #135, ledger 0042, 2026-11-23)](#adr-418--native-carrier-replacement-implemented-replace-cid-name-issue-135-ledger-0042-2026-11-23)
   - [ADR-419 — OI-54 step 2, part 1: the x86-64 container buffer is sized from the image (ledger 0042, 2026-11-23)](#adr-419--oi-54-step-2-part-1-the-x86-64-container-buffer-is-sized-from-the-image-ledger-0042-2026-11-23)
-
-## ADR-335 — Pin the existing native Windows compiler as a distribution seed
-
-Date: 2026-10-27. Distribute the existing alias-index Windows compiler by exact executable digest and original
-canonical source revision under `compiler/bootstrap/windows`. Preserve its historical Python bootstrap provenance
-and explicit self-source decline. Consumers can verify/edit/resolve/build supported canonical programs using only
-native XAX executables, without installing the bootstrap SDK. The generic hash host's canonical build request is
-independent of application repositories. Application protocol code and schemas stay outside XAX.
-
-The versioned `xax-native-file-v1` contract retains current command/status meanings. Candidate editing is not a
-verified atomic commit: verify before publication and preserve old state on any failure. This decision neither
-silently changes `edit` semantics nor establishes Windows self-hosting, a bounded workspace service or new B/R
-levels. Evidence is `compiler/integration/windows_helpers/native_seed_evidence.json`.
 
 ## ADR-001 — The language is XAX
 
@@ -3435,6 +3422,19 @@ feature. Tests and contract: compiler/integration/android/CARRIER_TRANSACTIONS.m
 | Rationale | JVM JARs were one of the two target families only Python built (S15e.5). |
 | Evidence | EXECUTED on Linux x86-64. Stage A seed `5ad75027…` (16,597,833 bytes) and stage B seed `445bdf00…` (18,930,571 bytes): `selfbuild.sh` gives seed = C1 = C2 at each stage. `test_xax_selfhost_general_build.py` (including the new `test_jvm_jars`, which compares the driver's outcomes with `build`'s Python JVM path): 18 passed, 1 skipped. `test_store_regeneration.py` and `test_xax_selfhost_jvm.py`: 25 passed. The seed binary built the hello executable JAR; the JAR and its provenance are byte-equal to `build`'s, and `java -jar` printed its output and exited with 7. The selfhost closure and full-selfhost evidence are not re-run against these stores yet. |
 | Limits | The programs the JVM program declines (ADR-327-ADR-332: the memory machinery, recursion groups, the threaded launcher) are declined by the driver; the bootstrap still builds them when Python is present. |
+
+## ADR-335 — Pin the existing native Windows compiler as a distribution seed
+
+Date: 2026-10-27. Distribute the existing alias-index Windows compiler by exact executable digest and original
+canonical source revision under `compiler/bootstrap/windows`. Preserve its historical Python bootstrap provenance
+and explicit self-source decline. Consumers can verify/edit/resolve/build supported canonical programs using only
+native XAX executables, without installing the bootstrap SDK. The generic hash host's canonical build request is
+independent of application repositories. Application protocol code and schemas stay outside XAX.
+
+The versioned `xax-native-file-v1` contract retains current command/status meanings. Candidate editing is not a
+verified atomic commit: verify before publication and preserve old state on any failure. This decision neither
+silently changes `edit` semantics nor establishes Windows self-hosting, a bounded workspace service or new B/R
+levels. Evidence is `compiler/integration/windows_helpers/native_seed_evidence.json`.
 
 ## ADR-336 — The remaining S15 steps: S15e.5g-S15e.5j, S15e.6a-S15e.6h, S15g
 

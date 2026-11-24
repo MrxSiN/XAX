@@ -3,7 +3,7 @@
 **An AI-native programming language. Meaning is the source.**
 
 ![Status](https://img.shields.io/badge/status-research%20prototype-orange)
-![Python](https://img.shields.io/badge/bootstrap-Python%203.11%2B-blue)
+![Python](https://img.shields.io/badge/tests-Python%203.11%2B-blue)
 ![Dependencies](https://img.shields.io/badge/dependencies-none-brightgreen)
 
 XAX has no text syntax. A program is a verified **semantic graph**. AI agents read the smallest part they need, send a

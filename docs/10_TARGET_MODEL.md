@@ -450,8 +450,6 @@ This design should be revised if implementation or benchmarking demonstrates any
 
 Passing these tests does not establish that the design is optimal. It establishes only that the target model remains consistent with XAX’s central requirement: machine-specific knowledge can evolve independently while program meaning remains explicit, verifiable, and target-agnostic at the fundamental language level.
 
----
-
 ## 22. Android arm64-v8a shared-library target (2026-10-01)
 
 The prototype now contains one hosted Android target package:
@@ -501,7 +499,6 @@ helper or silently changing semantics.
 ## 23. Architectures 5 and 6: the JVM and RISC-V (2026-10-03)
 
 The target decoder knows six architectures: 1 x86-64, 2 wasm32, 3 AArch64, 4 the SIMT accelerator packet, 5 the JVM (ADR-112), and 6 RISC-V RV64 (ADR-113). Architectures 5 and 6 carry no register lists, because their convention is fixed by the identity (as for wasm32). Each accepts exactly one machine tuple. Adding them required no new operation, type form, or terminator. A package states its operation set, and every backend rejects operations outside it, so the JVM and RISC-V can each start with a subset and grow independently.
-
 
 ## 24. Architecture 7 and a second AArch64 platform (2026-10-03)
 

@@ -93,8 +93,6 @@ This stage specifies:
 - optional dynamic linking;
 - exact failure behavior for unsupported requirements.
 
----
-
 ## 2. Normative definitions
 
 | Term | Definition |
@@ -115,8 +113,6 @@ This stage specifies:
 | **dynamic capability** | A capability whose availability or usable instance is intentionally resolved at runtime rather than proven present at build time. |
 | **dynamic linking** | Runtime or load-time resolution of external binary symbols through a platform-supported loader facility. It is never implied by importing a foreign symbol. |
 
----
-
 ## 3. Architectural boundary
 
 ### 3.1 Core XAX owns meaning, not platform convention
@@ -130,8 +126,6 @@ C ABI rules, syscall numbering, red zones, loader behavior, visibility, name man
 ABI and platform descriptions are XAX semantic objects and XAX compile-time computations. XAX does not introduce a permanently maintained ABI DSL, target DSL, syscall DSL, or build-language syntax.
 
 Diagnostic or human-readable renderings may exist, but they are not authoritative program representations.
-
----
 
 ## 4. First-class ABI model
 
@@ -231,8 +225,6 @@ A foreign call that may unwind across XAX frames MUST have an explicit semantic 
 
 Unwind-table emission is therefore a consequence of selected ABI semantics, never an implicit language runtime feature.
 
----
-
 ## 5. Foreign import and export
 
 ### 5.1 Foreign import contract
@@ -310,8 +302,6 @@ C-family ABIs are ordinary ABI packages, not foundational XAX rules.
 
 Other ecosystems are importable only when their binary and behavioral contracts, including required runtime participation, can be represented explicitly. Otherwise the interface is rejected.
 
----
-
 ## 6. Syscall, kernel, firmware, and device ABIs
 
 System-call and device interfaces are foreign binary contracts.
@@ -335,8 +325,6 @@ Core XAX assigns no universal meaning to syscall numbers, interrupt vectors, fir
 A syscall-like operation that can block, mutate memory, access files, use networking, read time, or perform privileged work must expose the corresponding semantic effects and capability requirements.
 
 Bare-metal targets may instead expose device or firmware interfaces directly, with no operating-system layer.
-
----
 
 ## 7. Platform capability model
 
@@ -419,8 +407,6 @@ A dynamic capability therefore requires a platform facility capable of performin
 
 Runtime capability acquisition MUST expose effects and resource ownership when applicable.
 
----
-
 ## 8. Freestanding-first standard environment
 
 XAX has no mandatory monolithic standard runtime.
@@ -439,8 +425,6 @@ A useful conceptual layering is:
 
 No package gains authority to introduce hidden behavior. Unused allocators, schedulers, libc layers, and operating-system facilities remain absent.
 
----
-
 ## 9. Dynamic linking
 
 Dynamic linking is optional.
@@ -456,8 +440,6 @@ A foreign import does not imply dynamic linking. It may instead be resolved stat
 Dynamic lookup failure is explicit. Loader policies such as lazy binding, interposition, and version lookup must not silently change effects, identity, or determinism assumptions.
 
 If dynamic loading is unavailable and no explicit alternative is encoded, the environment is rejected.
-
----
 
 ## 10. Exact unsupported-platform behavior
 
@@ -485,8 +467,6 @@ Diagnostics SHOULD identify the requiring entity, selected environment, required
 
 The toolchain MUST NOT continue by weakening semantics unless that weakening is explicitly encoded as an alternative program path.
 
----
-
 ### 10.1 Portable trap reason and target detail
 
 Core `trap` carries a 16-bit portable reason plus optional opaque target/platform detail. The portable reason is not an exception class and does not imply unwinding, cleanup, allocation, or a runtime. Current native bootstrap mappings make the reason observable without standardizing the suffix: x86-64 Windows writes the reason to `rax` and executes `ud2`; AAPCS64 writes it to `x0` and executes `brk` with the same 16-bit immediate. A debugger, supervisor, crash collector, or firmware handler may inspect that target-specific machine state. The opaque suffix remains available to semantic diagnostics and may be mapped only by an explicit target/platform contract.
@@ -507,8 +487,6 @@ Core `trap` carries a 16-bit portable reason plus optional opaque target/platfor
 12. No adapter may introduce hidden allocation, synchronization, syscall, initialization, or resource transfer.
 13. ABI/platform descriptions use XAX semantic data and compile-time XAX computation rather than a second permanent language.
 14. Freestanding deployment remains a first-class valid environment.
-
----
 
 ## 12. Rejected alternatives
 
@@ -536,8 +514,6 @@ Rejected. Static, firmware, fixed-address, kernel-table, device-table, and other
 
 Rejected. It would contradict the requirements that unused facilities disappear and that bare-metal programs require no allocator, scheduler, libc, or OS.
 
----
-
 ## 13. Interfaces with other XAX subsystems
 
 | Subsystem | Dependency/interface |
@@ -553,8 +529,6 @@ Rejected. It would contradict the requirements that unused facilities disappear 
 | AI workspace/protocol | Allows local query and mutation of foreign contracts and capability requirements through semantic entities rather than source text. |
 | Universal target model | Supplies machine properties, object formats, relocations, instruction constraints, and target-level ABI primitives on which ABI instances depend. |
 | Package system | Distributes content-addressed ABI, platform, and hosted-library packages and records exact dependencies. |
-
----
 
 ## 14. Open issues
 
@@ -574,8 +548,6 @@ Future tooling may infer candidate foreign effect, ownership, or representation 
 
 Some ABIs may be best represented as declarative tables; others may require deterministic compile-time classifiers. The canonical system may support both forms as ordinary semantic data/computation, provided there is no second language and behavior remains deterministic.
 
----
-
 ## 15. Falsification criteria
 
 This design should be reconsidered if later implementation evidence shows one or more of the following:
@@ -592,8 +564,6 @@ This design should be reconsidered if later implementation evidence shows one or
 10. Real platform APIs routinely require implicit process-global state that cannot be made explicit enough for verification and optimization without unreasonable semantic overhead.
 
 Any such failure must be demonstrated with concrete ABI/platform cases or measured compiler/tooling evidence. Convenience alone is insufficient reason to move hosted assumptions into core XAX.
-
----
 
 ## 16. Android arm64-v8a / modern libxposed bounded ABI slice (2026-10-01)
 
@@ -678,7 +648,6 @@ allocator initialization, or default libc/libdl dependency.
 The modern packaging fixture places native module metadata under
 `META-INF/xposed/` and packages the already-generated `arm64-v8a` `.so`; Gradle
 is not part of XAX native code generation.
-
 
 ### 16.4a C callbacks into XAX (ADR-107)
 
@@ -848,7 +817,6 @@ Narrow JVM arguments (B, C, S) are narrowed explicitly with `i2b`/`i2c`/`i2s`, a
 ## 21. RISC-V RV64 raw slice (`riscv64-baremetal-raw-v1`, ADR-113, 2026-10-03)
 
 LP64 integer calling convention: arguments in a0–a7, one result in a0, `ra` for the return address, and s0–s11 preserved (the allocator uses s1–s11 and saves the ones it touches). The image needs only RV64I plus M and contains no data, relocations, or runtime. A wrapping container (Linux ELF, board package) adds the platform's entry contract, as on the other ISAs.
-
 
 ## 22. Linux AArch64 slice (`aarch64-linux-elf-*-v1`, ADR-123, 2026-10-03)
 

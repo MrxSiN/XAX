@@ -29,8 +29,6 @@ This stage does **not** define a scheduler, thread library, operating-system API
 
 The governing architectural rule remains: meaning is source. Concurrency behavior that can affect correctness or latency MUST therefore be represented by semantic operations, dependencies, capabilities, target contracts, or explicit environment assumptions. It MUST NOT arise from invisible runtime behavior.
 
----
-
 ## 2. Normative definitions
 
 The key words **MUST**, **MUST NOT**, **SHOULD**, **SHOULD NOT**, and **MAY** are normative.
@@ -94,8 +92,6 @@ A **real-time profile** is a semantic build policy containing admissibility pred
 A profile can reject a program even when the program is otherwise semantically valid.
 
 Profiles constrain compilation; they do not create hidden runtime behavior.
-
----
 
 ## 3. Atomic operation model
 
@@ -303,8 +299,6 @@ Effect dependencies SHOULD be as precise as the verifier can establish from:
 
 This precision permits unrelated atomic activity to remain independent.
 
----
-
 ## 4. Shared-memory race and synchronization rules
 
 ### 4.1 Non-atomic shared memory
@@ -344,8 +338,6 @@ A library implementation may erase to atomics and ordinary control flow after sp
 
 Concurrency operations and lowered sequences MAY expose `wait_free`, `lock_free`, `obstruction_free`, `blocking`, or `unknown` progress. This is a queryable property, not a promise inferred from an API name. A strict profile MAY reject unacceptable or unknown progress.
 
----
-
 ## 5. Threads, tasks, fibers, coroutines, actors, and schedulers
 
 XAX has no mandatory thread or asynchronous runtime.
@@ -368,8 +360,6 @@ A platform package may supply operations such as creating an operating-system th
 A program that uses none of these mechanisms links none of their machinery.
 
 Coroutine specialization MAY lower to explicit state/control flow, but any storage, allocation, synchronization, or scheduling it requires MUST remain visible. Spawn/join abstractions MUST explicitly state their synchronization semantics.
-
----
 
 ## 6. Interrupt, fault, and target-trap handlers
 
@@ -428,8 +418,6 @@ Profiles or target contracts MAY reject from a handler:
 
 A synchronous target fault or trap handler is not a XAX language exception. Its control behavior is defined by the target entry and resume/terminate contract.
 
----
-
 ## 7. SIMD and GPU parallelism boundary
 
 `vec<N,T>` expresses vector values; it does not itself create concurrent execution agents.
@@ -441,8 +429,6 @@ GPU and accelerator models may introduce lanes, waves/warps, workgroups, grids, 
 Portable atomic semantics apply only where a target can map their address-space and synchronization-scope contract correctly. Target-specific scopes form a declared scope relation or lattice. A verifier MUST reject an atomic or fence whose requested scope cannot be represented by the selected target.
 
 Device launch, command submission, queue synchronization, or host/device transfer is effectful and MUST be explicit.
-
----
 
 ## 8. Real-time profile model
 
@@ -515,8 +501,6 @@ The profile MAY permit external interaction only when the environment contract s
 
 A profile does not guarantee a deadline from source simplicity. Cache, memory, bus, device, preemption, and platform timing effects require target/environment guarantees or accepted assumptions before they can support a hard bound.
 
----
-
 ## 9. Guarantees versus estimates
 
 XAX distinguishes three classes of timing information:
@@ -532,8 +516,6 @@ A cost model may estimate that an operation takes a number of cycles. That estim
 The compiler MUST NOT relabel an estimate as a guarantee.
 
 A hard real-time claim is valid only when every component required by the claim is either proven, guaranteed by a target/platform contract, or bounded by an explicit environment assumption accepted by the profile.
-
----
 
 ## 10. Invariants
 
@@ -553,8 +535,6 @@ A hard real-time claim is valid only when every component required by the claim 
 14. Profile validation occurs after transformations that can materially change latency-relevant properties.
 15. Target cost estimates are never hard guarantees.
 16. Bare-metal programs can use atomics and interrupts without linking an operating-system or asynchronous runtime.
-
----
 
 ## 11. Rejected alternatives
 
@@ -594,8 +574,6 @@ Rejected. A real-time profile is an admissibility policy. If required bounds or 
 
 Rejected. Expected or modeled cost is not a proof of worst-case latency.
 
----
-
 ## 12. Interfaces with other XAX subsystems
 
 ### 12.1 Type and layout system
@@ -630,8 +608,6 @@ Optimizations MUST preserve the atomic memory model and handler contracts. They 
 
 The workspace SHOULD support compact queries for atomic capability, race neighborhoods, synchronization predecessors, handler reentrancy, latency properties, and profile violations. Diagnostics SHOULD identify the violating entity, required and observed properties, dependencies, and repair neighborhood.
 
----
-
 ## 13. Open issues requiring implementation evidence
 
 ### 13.1 Portable synthesis threshold for non-native atomics
@@ -645,8 +621,6 @@ The architecture requires a strict separation between guarantees and estimates, 
 ### 13.3 GPU synchronization-scope normalization
 
 Target-defined scope relations are required. Whether a small portable canonical subset can cover major GPU and accelerator models without semantic loss should be decided from actual target-package experiments rather than assumed in advance.
-
----
 
 ## 14. Falsification criteria
 

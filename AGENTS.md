@@ -59,7 +59,7 @@ native one is `xaxc edit <store> <input> <output>` (views, batches and rejection
 
 - `XAX_REPLACEMENT_MATRIX.json` is the source of current replacement levels and of the README Targets table (each row's
   `name` and `summary`). After changing it, run `sh compiler/bootstrap/status-tool/status.sh write` (Linux x86-64) to
-  regenerate every `<!-- xax-status:levels -->` and `<!-- xax-status:targets -->` block; `tests/test_status_docs.py`
+  regenerate every `<!-- xax-status:levels -->` and `<!-- xax-status:targets -->` block; `compiler/tests/test_status_docs.py`
   fails while a block is stale.
 - Follow [`docs/DOCUMENTATION_STYLE.md`](docs/DOCUMENTATION_STYLE.md) when you create or change Markdown. It governs
   form only and never overrides this section, the instruction hierarchy or the specification.

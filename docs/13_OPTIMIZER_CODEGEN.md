@@ -46,8 +46,6 @@ Human source structure is not preserved because it is not authoritative XAX mean
 
 Optimization and lowering MUST NOT invent hidden allocation, synchronization, syscalls, initialization, ownership transfer, exception edges, scheduler interaction, or other runtime behavior not permitted by the input program and selected environment.
 
----
-
 ## 2. Normative definitions
 
 | Term | Definition |
@@ -70,8 +68,6 @@ Optimization and lowering MUST NOT invent hidden allocation, synchronization, sy
 | **build policy** | Semantic configuration of objectives, budgets, determinism, and optimization permissions. |
 
 Normative keywords **MUST**, **MUST NOT**, **SHOULD**, **SHOULD NOT**, and **MAY** express stage requirements.
-
----
 
 ## 3. Canonical performance pipeline
 
@@ -128,8 +124,6 @@ Normalization SHOULD cover:
 - reconstructible effect-edge simplification.
 
 Normalization MUST preserve exact arithmetic behavior, floating-point rules, trapping behavior, memory provenance, effects, resource state, and target-visible semantics.
-
----
 
 ## 4. Target-independent optimization
 
@@ -205,8 +199,6 @@ Closed-world or whole-program compilation MAY perform global constant propagatio
 
 Externally visible ABI, symbol, relocation, and platform contracts MUST remain intact unless the compilation world proves they may change.
 
----
-
 ## 5. Equality saturation
 
 Equality saturation MAY be applied where many rewrite orders compete and the semantics admit a tractable equational model.
@@ -224,8 +216,6 @@ Build policy MUST bound equality saturation by one or more of:
 - extraction iterations.
 
 If search fails or yields no improvement, the original legal graph remains available.
-
----
 
 ## 6. Profile-guided optimization
 
@@ -247,8 +237,6 @@ Profiles MUST NOT legalize an otherwise invalid transformation.
 
 Profile records SHOULD identify program version, target, build policy, workload, collection method, measurement environment, and statistical metadata. Stale or mismatched profiles MAY be rejected or down-weighted.
 
----
-
 ## 7. Correctness of transformations
 
 Every transformation MUST have an explicit correctness mechanism.
@@ -265,8 +253,6 @@ Permitted mechanisms are:
 High-risk and search-generated transformations SHOULD prefer equivalence checking or translation validation so the optimizer itself need not be trusted.
 
 A failed proof or validation MUST reject the candidate transformation. It MUST NOT weaken semantics to make the transformation pass.
-
----
 
 ## 8. Target lowering, legalization, and instruction selection
 
@@ -317,8 +303,6 @@ Selected instructions MUST satisfy target-defined restrictions including:
 
 Multi-instruction selection SHOULD be permitted where independently selected instructions produce worse cost.
 
----
-
 ## 9. Scheduling and register allocation
 
 ### 9.1 Scheduling
@@ -354,8 +338,6 @@ Spilling is a compiler machine transformation, not a language allocation. Spill 
 
 The allocator MUST NOT assume spill memory exists. If the selected target forbids spilling and no legal assignment exists, compilation fails unless another legal target strategy is available.
 
----
-
 ## 10. Machine optimization and bounded superoptimization
 
 After selection and allocation, target-specific optimization MAY perform:
@@ -380,8 +362,6 @@ Every accepted search result MUST pass equivalence checking, translation validat
 
 Superoptimization is optional and never required for semantic correctness.
 
----
-
 ## 11. Layout, encoding, relocation, and emission
 
 Code layout controls placement of functions, blocks, hot/cold regions, literals, jump tables, and padding.
@@ -397,8 +377,6 @@ Relaxation MAY replace a valid encoding with a smaller or faster legal encoding 
 Final emission MAY produce a raw image, object file, executable, firmware image, or another target-defined binary container.
 
 No external assembler or linker is architecturally required. External tools MAY be used during bootstrap but are not part of the final required architecture.
-
----
 
 ## 12. Optimization policy and compile-time budget
 
@@ -425,8 +403,6 @@ Conceptual policy classes may include minimum-compile, balanced, size, speed, de
 An implementation MUST expose the actual selected policy as machine-readable data.
 
 Expensive optimization MUST be interruptible at policy boundaries while retaining a correct fallback result.
-
----
 
 ## 13. Cost objectives and machine-cost API
 
@@ -483,8 +459,6 @@ A measurement MUST identify enough workload and environment information to preve
 
 Target packages MUST NOT claim universal real-world performance from analytical estimates alone.
 
----
-
 ## 14. Invariants
 
 1. **Semantic preservation:** every accepted transformation preserves observable behavior under declared assumptions.
@@ -499,8 +473,6 @@ Target packages MUST NOT claim universal real-world performance from analytical 
 10. **Bounded expensive search:** equality saturation and superoptimization cannot require unbounded resources.
 11. **Deterministic mode:** identical semantic inputs, target data, profiles, compiler version, and deterministic policy MUST permit reproducible output.
 12. **Verifier authority:** transformations whose obligations cannot be discharged are rejected.
-
----
 
 ## 15. Rejected alternatives
 
@@ -518,8 +490,6 @@ Target packages MUST NOT claim universal real-world performance from analytical 
 | Implicit helper runtimes | Invalid for minimal and bare-metal environments unless explicitly selected. |
 | Fixed conventional O-level meanings | Objectives and budgets must be explicit, target-aware semantic configuration. |
 | Universal “faster than assembly” promise | Not logically supportable and not falsifiable as a universal claim. |
-
----
 
 ## 16. Interfaces with other XAX subsystems
 
@@ -551,8 +521,6 @@ Optimized or lowered artifacts MAY be content-addressed.
 
 The AI workspace MAY query cost, optimization decisions, proof status, hot regions, selected instruction sequences, register pressure, code size, and failed legality reasons. Machine data is preferred over mandatory prose.
 
----
-
 ## 17. Open issues requiring implementation evidence
 
 ### 17.1 Universal machine-level representation
@@ -570,8 +538,6 @@ The interface is fixed, but statistical models for latency, throughput, energy, 
 ### 17.4 Proof granularity
 
 The appropriate split among trusted rewrite rules, proof objects, solver-backed equivalence, and translation validation must be established by trusted-core size and compile-time evidence.
-
----
 
 ## 18. Falsification criteria
 

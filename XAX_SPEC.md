@@ -1,7 +1,9 @@
 # XAX Specification
 
-**Status:** merged v0.1 normative architecture  
-**Source set:** founding architecture plus Stages 01–17  
+**Status:** merged v0.1 normative architecture
+
+**Source set:** founding architecture plus Stages 01–17
+
 **Authority:** this document is the canonical merged documentation specification; it does not replace the canonical semantic program representation defined here.
 
 ## Contents
@@ -894,8 +896,6 @@ The canonical root and workspace generation MUST remain unchanged. Candidate han
 
 Failed verification and failed/repeated rollback MUST likewise leave canonical state unchanged. Stale root, ordinary read, proof-dependency, and artifact-dependency assumptions MUST reject candidate verification rather than being refreshed merely because a private candidate was requested. Candidate verification MUST revalidate dependencies before returning a reusable candidate handle so raw-root ABA cannot revive an invalidated local dependency.
 
-
-
 Read sets MAY contain proof-dependency handles returned by `proof`. Commit MUST validate those dependencies distinctly from ordinary entity-handle freshness. If a recorded proof dependency is no longer valid, commit MUST reject atomically with a proof-dependency conflict before publication. Proof dependencies MUST be revalidated at final publication, not only when candidate construction begins, so root-byte ABA cannot revive an invalidated local proof dependency. A transaction may rely on a currently valid proof dependency while changing its subject; that dependency is then stale for later transactions unless the workspace obtains a new verified dependency.
 
 Semantic rebase is permitted only after revalidating targets, attributes/relations, read-set assumptions, handles, and local preconditions. Blind replay is forbidden.
@@ -1482,8 +1482,6 @@ Library functions take memory only as borrowed heap-view triples and never alloc
 
 Semantic-to-machine maps, crash/stack mapping where platforms permit, disassembly maps, profiling, debugger integration, coverage, and instrumentation/sanitizer builds are derived, non-authoritative views (§9.8, ADR-030). Instrumented builds are distinct build policies; their artifacts never become source and never alter release semantics.
 
----
-
 ## Appendix A. Android arm64-v8a hosted target note (2026-10-01)
 
 The prototype includes `android-arm64-v8a-shared-v3` as an ordinary target/ABI
@@ -1505,7 +1503,6 @@ The Android emitter is a bounded direct ELF64 ET_DYN emitter. It preserves the
 existing register-resident AArch64 lowering and introduces no XAX runtime,
 startup runtime, implicit allocation, cleanup, exception, TLS, or scheduler
 semantics.
-
 
 The v3 Android package exposes the Android public JNI 1.6 invocation and native
 function tables only through ordinary fixed-offset `target-op` contracts.
@@ -1757,7 +1754,6 @@ and destruction synchronization contracts before use. This profile demonstrates
 an Activity/display surface only, not video decoding or protocol interoperability.
 See `compiler/integration/android/SURFACE_ACTIVITY.md` and
 `compiler/tests/test_xax_android_surface.py`.
-
 
 ### Platform declarations and capability contracts (2026-10-08, ADR-203/204)
 
