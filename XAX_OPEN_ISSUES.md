@@ -22,12 +22,13 @@ This register lists the issues that require implementation, target, ecosystem, o
 - Where an original record has no status line, the status shown is the one its own text states (for example "remains open" or "is closed"), and the record says so.
 - Where an earlier dated paragraph says closed and a later dated status line says open (OI-15, OI-18, OI-19), the later status line supersedes it; the record notes the superseded claim.
 - Closure-criteria checkboxes are ticked only where the original text states that the criterion is met.
-- Issue numbers OI-01, OI-31, and OI-46 are not used in the original and are not used here.
+- OI-01, OI-31, and OI-46 were removed from this register by commit `7af8108` (2026-10-30) and are restored from the version before it; the ADRs and evidence files they cite that were deleted at the same time are in git history.
 
 ## Issue Index
 
 | Issue ID | Title | Status |
 | --- | --- | --- |
+| [OI-01](#oi-01--ai-token-vocabulary-fallback-framing-and-handle-namespace) | AI token vocabulary, fallback framing, and handle namespace | OPEN |
 | [OI-02](#oi-02--canonical-object-and-graph-fragment-granularity) | Canonical object and graph-fragment granularity | CLOSED |
 | [OI-03](#oi-03--recursion-group-compact-encoding) | Recursion-group compact encoding | CLOSED |
 | [OI-04](#oi-04--float-format-catalog-and-compact-type-vocabulary) | Float format catalog and compact type vocabulary | OPEN |
@@ -57,6 +58,7 @@ This register lists the issues that require implementation, target, ecosystem, o
 | [OI-28](#oi-28--diagnostic-payload-and-repair-neighborhood-minimum) | Diagnostic payload and repair-neighborhood minimum | OPEN |
 | [OI-29](#oi-29--atomic-litmus-conformance-corpus-size) | Atomic litmus conformance corpus size | CLOSED |
 | [OI-30](#oi-30--deterministic-build-manifest-boundary--closed) | Deterministic-build manifest boundary | CLOSED |
+| [OI-31](#oi-31--run-the-tiny-c-vs-xax-experiment-in-codex-desktop) | Run the tiny C-vs-XAX experiment in Codex Desktop | CLOSED |
 | [OI-32](#oi-32--foreign-metadata-importer-scope-and-representation) | Foreign metadata importer scope and representation | CLOSED |
 | [OI-33](#oi-33--hosted-process-lifecycle-unwind-and-tls-contracts) | Hosted process lifecycle, unwind, and TLS contracts | OPEN |
 | [OI-34](#oi-34--first-production-gpu-target) | First production GPU target | OPEN |
@@ -71,6 +73,7 @@ This register lists the issues that require implementation, target, ecosystem, o
 | [OI-43](#oi-43--browser-event-entries-host-invoked-xax-entry-points) | Browser event entries (host-invoked XAX entry points) | CLOSED |
 | [OI-44](#oi-44--hardware-versus-emulated-execution-as-replacement-evidence) | Hardware versus emulated execution as replacement evidence | OPEN |
 | [OI-45](#oi-45--re-executing-native-evidence-after-a-canonical-change) | Re-executing native evidence after a canonical change | CLOSED |
+| [OI-46](#oi-46--fixed-client-overhead-in-r5-token-measurement) | Fixed client overhead in R5 token measurement | OPEN |
 | [OI-47](#oi-47--path-exact-ownership-for-android-platform-objects) | Path-exact ownership for Android platform objects | OPEN |
 | [OI-48](#oi-48--windows-host-process-capabilities-for-vramboost-dx12) | Windows host-process capabilities for VRAMBoost DX12 | OPEN |
 | [OI-49](#oi-49--android-arm64-large-composite-return-copy) | Android ARM64 large composite return copy | CLOSED |
@@ -87,6 +90,43 @@ This register lists the issues that require implementation, target, ecosystem, o
 | [OI-60](#oi-60--host-portability-gaps-left-after-the-2026-11-13-audit) | Host-portability gaps left after the 2026-11-13 audit | OPEN |
 | [OI-61](#oi-61--the-jvm-program-does-not-check-a-catching-calls-throwable-output-type) | The JVM program does not check a catching call's throwable output type | CLOSED |
 | [OI-62](#oi-62--the-legacy-wasm32-profile-emits-an-invalid-module-for-a-bits64-checked-offset) | The legacy Wasm32 profile emits an invalid module for a `bits<64>` checked offset | CLOSED |
+
+## OI-01 — AI token vocabulary, fallback framing, and handle namespace
+
+**Status:** OPEN (the original record has no status line; its last entry, "Remaining after this extension", leaves it open). It was removed from this register by commit `7af8108` (2026-10-30) and restored on 2026-11-24 from the version before that commit; its text below is unchanged.
+
+### Summary
+
+Which dedicated model tokens, fallback packet encoding, and local-handle namespace minimize total model tokens per successful semantic change without increasing invalid mutations or repair rounds?
+
+### Fixed Constraints
+
+- Transport is versioned, deterministic, unambiguous, non-source, and measured with the actual tokenizer/model. Full persistent hashes need not appear in normal AI context.
+
+### Closure Criteria
+
+- [ ] Controlled comparison of typed versus unified handles and multiple fallback framings across program creation, literal/op/control edits, type/resource/effect repair, stale-root recovery, and optimization tasks. Record tokens, error rates, repair turns, semantic entities, protocol bytes, and completion rates. Tokenizer-native vocabulary requires actual tokenizer/model integration.
+
+### References
+
+- The benchmark evidence it cites under `compiler/benchmarks/ai_native/` was removed from the tree by `227a976` (2026-10-30) and is in git history.
+
+<details>
+<summary>Historical Record</summary>
+
+**Earlier evidence.** One fixed 2026-09-29 static edit case measured generation-scoped `R0.0` against full-root text with `cl100k_base` and `o200k_base`; the alias reduced candidate output tokens from 60/61 to 28/28 and bootstrap transaction accounting from 77 to 47 bytes. The alias is implemented with ABA-safe generation freshness checks. The workspace now also has an exact serialized response-byte cap with deterministic positive-progress pagination, but the measured 178-byte cap increased the three-node query total from 424 to 520 bytes across pages; this is transport accounting, not tokenizer evidence. This evidence predates the 2026-10-01 model trial below and does not by itself select a transport.
+
+**Transport-candidate evidence (2026-10-01).** `compiler/benchmarks/ai_native` now compares two handle namespaces (current typed `P0`/`N0`; unified dense integers with kind out-of-band, `P0`→`0`, `Nk`→`k+1`) across three versioned `X1` fallback framings (`line` long verbs, `pipe` short verbs with `|`/`;`, compact `json`). Strict decoders reject unknown versions/verbs/fields, cross-namespace handles, non-canonical integers, and JSON type confusion; all six candidates decode to one identical workspace transaction and reach the target root for all five reference edits. Raw views/packets and counts are in `transport-oi01.json` (offline `tiktoken` 0.14.0). Five-task view+packet totals, `cl100k_base`/`o200k_base`: typed line 191+71/186+71, typed pipe 191+68/186+73, typed json 191+88/186+88, unified line 176+71/171+71, unified pipe 176+61/171+66, unified json 176+81/171+81; view+packet bytes 484/434/500/438/388/440. Unified handles save 15 view tokens under both encodings; `json` costs the most packet tokens. Each candidate is also runnable as a model-trial arm (`XAX-<TYPED|UNIFIED>-<LINE|PIPE|JSON>`).
+
+**Model-trial evidence (2026-10-01).** All 30 candidate trials (5 tasks × 6 arms, n=1 per cell) ran as fresh Claude Code `general-purpose` subagents on `claude-opus-5-5`; raw packets, per-invocation traces, and rows are in `runs-claude/` and `results-claude.csv`. Completion was 30/30. Harness-reported subagent tokens per arm (five tasks): typed line 278,750, typed pipe 280,478, typed json 280,648, unified line 278,301, unified pipe 281,968 (includes the standalone probe run), unified json 280,587; ~55.6k per trial is fixed harness context, so arm differences (about 1.3% peak-to-peak) are within run-to-run noise. Failed `verify`/`test` checks: line 0 (0/10 trials), pipe 2 (2/10; both submitted the unedited header-only packet), json 14 (9/10 trials; the model wrote the header and mutations as separate or nested arrays instead of one flat array). By handle namespace: typed 9, unified 7 failed checks, all attributable to framing. On this corpus and model, `line` framing is the only zero-repair candidate, `json` as specified is error-prone, and typed versus unified handles shows no measurable token or reliability difference.
+
+**Remaining to close.** (1) Repeated trials (n>1) and a second model family; the measured token differences are below noise and the OpenAI/Codex arm has not run. (2) Task families absent from the corpus: program creation, control-flow edits, type/resource/effect repair, stale-root recovery (only the rejection path is tested), and optimization. (3) Tokenizer-native vocabulary requires real tokenizer/model integration and remains unavailable.
+
+**Corpus/checker extension evidence (2026-10-02).** `compiler/benchmarks/ai_native` now adds exactly the six missing families without adding a seventh transport: program construction from a minimal semantic scaffold via the existing insertion mutation, branch-edge argument replacement via existing disconnect/connect mutations, verifier-driven `u8`/`u16` type repair, linear resource/effect repair, stale-root refresh/retry that advances from `R0.0` to `R0.1` before the requested edit, and one dead-node optimization request. All 11 tasks run through the same typed/unified × line/pipe/json `X1` arms. `corpus-oi01.json` contains 66 deterministic task/arm rows with the minimum local view, prefilled packet, exact target packet, semantic-entity count, byte counts, and exact final target root; every target packet decodes to the same transaction across framings/namespaces and reaches that root. The type/resource/stale prefilled candidates reject for the intended semantic reason and then pass after the exact repair. Trial recording now supports repeated `trial` rows and records client token usage, turns, failed checks, repairs, view/packet bytes, semantic entities, and final root; `oi01-summary` groups results by family and arm.
+
+**Remaining after this extension.** No new OpenAI/Codex-family model trial was available in the implementation environment, so there is still no n>=3 model evidence on the expanded corpus and no second-family confirmation. No fallback framing or typed-vs-unified default is selected by this change. Tokenizer-native vocabulary still requires actual tokenizer/model vocabulary integration and remains the dedicated-vocabulary blocker; offline tokenizer counts are not substituted for model usage. OI-01 remains open.
+
+</details>
 
 ## OI-02 — Canonical object and graph-fragment granularity
 
@@ -1871,6 +1911,36 @@ Same-implementation reproducibility identity is the existing build key over `(sn
 
 - `bench_oi30_build_manifest.py`
 
+## OI-31 — Run the tiny C-vs-XAX experiment in Codex Desktop
+
+**Status:** CLOSED (2026-10-06, ADR-174). It was removed from this register by commit `7af8108` (2026-10-30) and restored on 2026-11-24 from the version before that commit; its text below is unchanged.
+
+### Summary
+
+Resolution is one manual pass through all ten task/arm workspaces using the same Codex Desktop model and reasoning setting. Record every turn, failure, retry, and available token count in the flat results CSV. The complete procedure is `compiler/benchmarks/ai_native/README.md`; no API, tokenizer, transport automation, or statistical gate is required.
+
+### References
+
+- `ADR-174`, `ADR-175` were deleted from `XAX_DECISIONS.md` by `7af8108` (2026-10-30); their text is in git history at `7af8108^`.
+- The benchmark evidence it cites under `compiler/benchmarks/ai_native/` was removed from the tree by `227a976` (2026-10-30) and is in git history.
+
+<details>
+<summary>Historical Record</summary>
+
+**Status:** OPEN — historical Codex Desktop rows exist, but they do not establish the fixed model/reasoning setting or the required balanced arm order.
+
+**Evidence audit (2026-10-02).** The repository already contains ten primary rows in `compiler/benchmarks/ai_native/results.csv` and ten confirmation rows in `results-run-2.csv`, each labeled with a Codex Desktop session ID. All ten stored primary workspaces still pass their official checkers. The primary rows are C 5/5, 1,363,522 total tokens, median 261,725, 6 turns versus XAX 5/5, 1,698,890 total tokens, median 327,918, 7 turns; the confirmation rows are C 5/5, 1,320,698 tokens, median 262,319, 5 turns versus XAX 5/5, 1,632,943 tokens, median 333,673, 5 turns. Thus the historical measurements are negative for XAX on token usage, but they are not qualifying OI-31 closure evidence: the CSV schema does not record model/reasoning settings, the referenced Desktop session logs are absent here, and recorded row/session order is C then XAX for every pair rather than a balanced/alternating arm order. This environment also exposes no Codex Desktop/session store with which to perform or authenticate a fresh qualifying rerun. `OI31_RESULT_NOTE.md` records the raw-file hashes and checker audit. Do not replace these historical rows or infer the missing settings.
+
+**Post-upgrade smoke check (2026-10-02).** This was the lowest-token run possible: one pair (`task-02`, operation change) with fresh Claude Code `haiku` subagents in parallel. Both arms passed the official checker. C used 35,151 tokens and 3 tool calls; XAX used 36,492 tokens and 8 tool calls, i.e. XAX cost 1.04× C (`results-claude-haiku-u.csv`). One pair under a different product and model is not OI-31 evidence. Offline, with `tiktoken` installed, the committed OI-01 transport counts reproduce exactly (unified/pipe 237/237; typed/line 262/257).
+
+**Remaining to close.** Run one fresh ten-cell Codex Desktop pass under one explicitly recorded fixed model/reasoning setting and balanced/alternating arm order, preserving every failure/retry and importing exact session usage. A negative XAX result still closes the experiment.
+
+**Status: CLOSED (2026-10-06, ADR-174).** The status above is the historical record. A fresh ten-cell run used fixed `gpt-5.6-luna` low reasoning, one session per cell, and balanced alternating order. All cells passed in one turn with no repair. C-like text used 325,282 total tokens; XAX used 264,535 (0.813×, 18.675% fewer). Evidence is `compiler/benchmarks/ai_native/jvm-r5-evidence.json` and `jvm-r5-results.csv`. The run used the Codex CLI bundled with the desktop installation rather than manual UI chats; exact session usage and session IDs are retained, which satisfies the issue's fixed-model, fresh-session, balanced-order, failure-preservation, and exact-accounting intent. Broader §6.2 task classes and repeated trials are outside this closure.
+
+**Optimized follow-up (2026-10-06, ADR-175).** Under one controlled client profile for both arms, the task-local C workflow used 197,252 tokens and XAX-DIRECT used 98,432 across the same five edits (0.4990×; 50.098% fewer), with 10/10 passes and no repair. Evidence is `jvm-r5-optimized-evidence.json` and `jvm-r5-optimized-results.csv`. This supersedes the current bounded efficiency figure without changing the issue's closed status or completing the broader R5 corpus.
+
+</details>
+
 ## OI-32 — Foreign metadata importer scope and representation
 
 **Status:** CLOSED (2026-10-05, ADR-166). The earlier OPEN status is kept in the Historical Record below.
@@ -2506,6 +2576,41 @@ The original status record, in chronological order:
 
 - `XAX_BENCHMARKS.md` §15.29, §15.30
 - `bench_selfhost_closure.py`, `bench_selfhost_x86_64.py`
+
+## OI-46 — Fixed client overhead in R5 token measurement
+
+**Status:** OPEN (2026-10-07, ADR-195); deferred and unscheduled since 2026-10-08 (ADR-207). It was removed from this register by commit `7af8108` (2026-10-30) and restored on 2026-11-24 from the version before that commit; its text below is unchanged.
+
+### Summary
+
+In the same-prefill JVM comparison (ADR-195), every arm makes one request through the pinned Codex client. That client adds about 10,000 input tokens per request with its default instructions, and about 6,900 even with one-line base instructions. This floor is common to all arms and dominates edits that cost a few hundred task tokens, so a 0.50–0.55× ratio cannot be reached. Which measurement keeps "same model, same tools, equivalent context" and still measures the language and protocol?
+
+### Fixed Constraints
+
+- All arms use the same client, model, instructions and tool surface, and every token the model receives or emits is counted, including retries. No benchmark-only XAX shortcut, no weakened textual workflow, and no removal of a lower-token competitor are allowed. Historical profiles are never re-scored.
+
+### Alternatives Considered
+
+(a) A minimal client or direct API with identical, minimal instructions and no tool schemas for every arm. (b) A corpus whose textual context is legitimately larger: real multi-file repositories where a named-symbol excerpt is not available as cheaply as the XAX neighborhood. (c) Record R5 as unreachable for single-edit tasks under agent clients with a fixed overhead.
+
+### Closure Criteria
+
+- [ ] An owner-approved measurement design, then a complete three-trial v10 or successor run under it, independently audited.
+
+### References
+
+- [`ADR-200`](XAX_DECISIONS.md), [`ADR-207`](XAX_DECISIONS.md).
+- `ADR-195`, `ADR-196` were deleted from `XAX_DECISIONS.md` by `7af8108` (2026-10-30); their text is in git history at `7af8108^`.
+- It also cites `ADR-197` for option (b); that number is used twice in `XAX_DECISIONS.md`, and `7af8108` rewrote the decision this record cites.
+
+<details>
+<summary>Historical Record</summary>
+
+*Deferred (2026-10-08, ADR-207):* token efficiency is no longer R5; this issue belongs to the future AI-efficiency milestone and stays open but unscheduled.
+
+**Status.** OPEN (2026-10-07, ADR-195). *Option (a) measured (ADR-196):* the minimal Codex client still has a fixed floor of 3,501 input tokens per request. Floor-adjusted medians were XAX 200 and Kotlin 201 (0.995×), so removing client overhead does not make the gate reachable on this corpus. Closing this issue needs option (b), a corpus with legitimately larger textual context, or an owner decision to record R5 as unreachable for single small edits. *Option (b) measured (ADR-197):* on a multi-file corpus XAX is 0.35× whole-file textual workflows but 1.68× an IDE-style excerpt of the same call hierarchy, which the rules require as a valid lower-token competitor. The remaining gap is the fixed edit-form help in every request and lower model reliability on XAX. *Shared grammar (ADR-200):* the edit-form help can now be sent once as shared context (`edit_grammar`, `instructions(shared=ID)`). This has not been measured. Its effect depends on multi-request sessions or prompt caching, and on how the owner accounts the shared block.
+
+</details>
 
 ## OI-47 — Path-exact ownership for Android platform objects
 
