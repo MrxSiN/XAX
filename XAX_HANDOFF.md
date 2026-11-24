@@ -3181,3 +3181,47 @@ calls below were made without asking.
 - **Next:** #135 (ADR-416, `replace <CID> @name`; the batch parser's `replace` lives inside `ws_translate`'s
   closure in the driver), OI-54 step 2 (hanoi -O0), OI-62. Small: make `test_callback_programs` skip without
   `jmods`.
+
+## Release 0042 on `main`: carrier replace by CID, Wasm offset check, container sizing — 2026-11-24
+
+`main` = merge of #171 (`d8c2c61`). `rotate.sh state`: `validated 0042`, `profile released`.
+Seeds: Linux `8d7745ab…` (31,851,585 bytes), Windows `4d361a39…` (31,905,280). BBC pins it (MrxSiN/BBC#12).
+Supersedes the "Next" of "Release 0041 on `main`" above. The owner asked for the campaign to continue, so the calls
+below were made without asking.
+
+- **What landed** (four driver transactions, three sub-batch PRs into `release/0042`):
+  - #157 (#135, ADR-416, ADR-418): batch `replace <TARGET CID> @name` swaps a carrier natively.
+  - #158 (OI-62): the legacy Wasm32 profile rejects a checked offset wider than 32 bits (`WASM-CHECKED-OFFSET-BITS`).
+  - #161 (OI-54 step 2 part 1, ADR-419): the x86-64 container buffer is sized from the image.
+- **Before the rotation** (Phase 1): `evolve.sh check` passed and `evolve.sh replay` replayed 221 of 221 (1 h 45 min).
+  #47 and #51 were assessed and commented (not bounded for this release; XAX owns both; #47 waits on #51 and on an
+  AArch64 callback ADR). OI-49, OI-56, OI-59 and OI-61 got CLOSED lines (#162). OI-54 part 2 moved to 0043 after a
+  workspace census (#164): hanoi's per-value tables (56M words) do not fit the free spans above the arena.
+- **Rotation** (#169, EXECUTED, WSL 2): build, `confirm` on both targets, SNAPSHOTS line, `evidence/run.sh` (replay
+  221 of 221), `validated 0042 evidence=557aeaba…` on the first run. V1: python-free seed 390 s; full self-host
+  13,537 s, three generations `8d7745ab…`. `main` was merged into the release branch twice (#163, #170); the native
+  status tool reports every block current on the merged tree.
+- **BBC:** `rebuild.sh` for the four transactions (every driver blob matched the ledger); `bbc.exe` `92b24c61…`
+  (36,151,296 bytes); `check.py` 372 of 372, 488 runs, 0 mismatches, 5 of 5 error paths; capacity fixtures and
+  ThreadsHideAds equal 0039-0041. hanoi on Windows 11: -O1 builds (24.2 s) and runs; -O0 exits 5 (OI-54). `bbc.exe`
+  needs `bbc-windows-x86_64.xax` and `bbc-android-arm64.xax` beside it, or every command exits 3.
+- **Device** (Pixel 8 Pro, wireless adb `192.168.50.88:44929`): `test_libxposed_lifecycle.py` 7 of 7 with the 0042
+  seed, the v3 module run under `dalvikvm64`. The scratch `/root/work/bin/adb` wrapper lost its execute bit when edited
+  through `\wsl.localhost` (`sed -i`); the ART step then returns silently. Check `adb devices` through the wrapper.
+- **Full suite** (`-n 2`, 2 h 39 min): 1,666 passed, 11 failed. The expected nine (B1 binding, eight JVM/JDWP tests
+  with the Windows-`java` wrapper); 336 `test_xax_x86_64_views` subtests from fork ENOMEM (the file alone passes).
+  Two new, both pre-existing and found by hash-seed-dependent random corpora:
+  - `test_xax_selfhost_verify_exact::test_object_sites`: a store with a missing object is rejected by the reference
+    (`ID-REFERENCE-RESOLVED`) but declined by native `verify`, with the 0041 seed too; fails for `PYTHONHASHSEED` 0
+    and 1, passes for 2-5.
+  - `test_xax_selfhost_graph::test_mutated_bodies_give_the_same_parse_or_diagnostic`: the Python reference parser
+    raises `IndexError` on one mutated body. Reproduces alone (16 min).
+- **Also on `main` this session:** the agent entry point and task routes (#166, #167), deleted dead native dirs
+  (#165), and the native status tool replacing `xax_status_docs.py` (#168; `status-tool/status.sh check|write`).
+- **Next:**
+  1. The status tool on Windows: make its main driver-shaped so `windows/generator/generate.sh` hosts it unchanged,
+     and the PE target by batch `replace <target CID>` (needs the 0042 seed, now pinned); then
+     `test_status_docs.py` runs its levels, targets and rewrite cases on Windows (bootstrap stays Linux-only, OI-60).
+  2. The two new single-case failures above (a native verifier decline; a reference parser crash).
+  3. OI-54 step 2 part 2 (choose packed tables, a second workspace view, or growable views), then step 3.
+  4. `xax_replacement.py` and its test to native XAX (needs a JSON reader with exact binary64 conversion).
