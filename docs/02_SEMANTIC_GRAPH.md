@@ -426,7 +426,11 @@ The canonical graph MUST remain fully defined if all optional diagnostic text is
 
 ## 16. Open issues
 
+Each item names the register record that tracks it, with that record's status on 2026-11-24; [`XAX_OPEN_ISSUES.md`](../XAX_OPEN_ISSUES.md) is authoritative, and a `CLOSED` record supersedes the word "open" here.
+
 ### 16.1 Effect-domain granularity
+
+Register: [OI-08](../XAX_OPEN_ISSUES.md#oi-08--effect-partition-granularity-and-persistent-edge-encoding), `CLOSED` (2026-10-01).
 
 The graph requires explicit effect frontiers, but optimal memory/effect partitioning is not yet fixed. A single broad domain may over-serialize; very fine domains may inflate graph cost. Later stages and prototype measurements must determine safe granularity.
 

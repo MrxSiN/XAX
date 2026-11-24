@@ -484,9 +484,11 @@ Diagnostics SHOULD identify machine-readable rule IDs, involved entities, proof 
 
 Only the following issues remain intentionally open for v0.1 implementation evidence:
 
-1. **Canonical float format catalog.** The semantic requirements for `F` are fixed, but the initial set of pre-interned common formats versus fully structural format descriptors should be selected by serializer and compiler-complexity measurements.
-2. **Proof-fact persistence policy.** The semantics of proof metadata are fixed, but which facts should be serialized, cached, or recomputed should be decided from incremental verification cost and artifact-size measurements.
-3. **Compact type vocabulary.** Canonical identity is fixed, but which high-frequency types receive dedicated transport IDs should be chosen empirically from storage and mutation benchmarks.
+Each item names the register record that tracks it, with that record's status on 2026-11-24; [`XAX_OPEN_ISSUES.md`](../XAX_OPEN_ISSUES.md) is authoritative, and a `CLOSED` record supersedes the word "open" here.
+
+1. **Canonical float format catalog.** The semantic requirements for `F` are fixed, but the initial set of pre-interned common formats versus fully structural format descriptors should be selected by serializer and compiler-complexity measurements. Register: [OI-04](../XAX_OPEN_ISSUES.md#oi-04--float-format-catalog-and-compact-type-vocabulary), `OPEN`.
+2. **Proof-fact persistence policy.** The semantics of proof metadata are fixed, but which facts should be serialized, cached, or recomputed should be decided from incremental verification cost and artifact-size measurements. Register: [OI-05](../XAX_OPEN_ISSUES.md#oi-05--proof-fact-persistence), `CLOSED` (2026-10-01).
+3. **Compact type vocabulary.** Canonical identity is fixed, but which high-frequency types receive dedicated transport IDs should be chosen empirically from storage and mutation benchmarks. Register: [OI-04](../XAX_OPEN_ISSUES.md#oi-04--float-format-catalog-and-compact-type-vocabulary), `OPEN`.
 
 These issues affect encoding and implementation efficiency, not program meaning.
 

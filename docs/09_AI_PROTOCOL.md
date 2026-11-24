@@ -584,19 +584,29 @@ The AI protocol MUST preserve all of the following:
 
 Only implementation evidence can settle the following:
 
+Each item names the register record that tracks it, with that record's status on 2026-11-24; [`XAX_OPEN_ISSUES.md`](../XAX_OPEN_ISSUES.md) is authoritative, and a `CLOSED` record supersedes the word "open" here.
+
 ### 13.1 Handle namespace shape
+
+Register: [OI-01](../XAX_OPEN_ISSUES.md#oi-01--ai-token-vocabulary-fallback-framing-and-handle-namespace), `OPEN`.
 
 It is not yet fixed whether handles should use typed namespaces such as `F3`, `N7`, `T2`, or a single dense integer namespace with out-of-band kind information. Error rate must decide.
 
 ### 13.2 Transport framing
 
+Register: [OI-01](../XAX_OPEN_ISSUES.md#oi-01--ai-token-vocabulary-fallback-framing-and-handle-namespace), `OPEN`.
+
 Textual separators, binary framing, or compact CBOR-like structures remain candidates.
 
 ### 13.3 Repair-neighborhood minimization cost
 
+Register: [OI-28](../XAX_OPEN_ISSUES.md#oi-28--diagnostic-payload-and-repair-neighborhood-minimum), `OPEN`.
+
 The verifier must determine whether computing a strictly minimal repair neighborhood is worth its cost. A deterministic near-minimal neighborhood may be preferable if it reduces verifier cost without increasing repair turns.
 
 ### 13.4 Semantic rebase granularity
+
+Register: no record.
 
 The correct balance between whole-root compare-and-swap, entity-level preconditions, and explicit read-set validation requires implementation experience with concurrent AI agents.
 

@@ -378,7 +378,11 @@ Notation conventions:
 
 Only questions requiring implementation evidence remain open at this stage.
 
+Each item names the register record that tracks it, with that record's status on 2026-11-24; [`XAX_OPEN_ISSUES.md`](../XAX_OPEN_ISSUES.md) is authoritative, and a `CLOSED` record supersedes the word "open" here.
+
 ### 11.1 Canonical representation granularity
+
+Register: [OI-02](../XAX_OPEN_ISSUES.md#oi-02--canonical-object-and-graph-fragment-granularity), `CLOSED` (2026-10-02).
 
 The foundation requires canonical semantic authority and local mutation, but the ideal granularity of persistent content-addressed objects is not fixed here.
 

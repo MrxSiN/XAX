@@ -610,15 +610,23 @@ The workspace SHOULD support compact queries for atomic capability, race neighbo
 
 ## 13. Open issues requiring implementation evidence
 
+Each item names the register record that tracks it, with that record's status on 2026-11-24; [`XAX_OPEN_ISSUES.md`](../XAX_OPEN_ISSUES.md) is authoritative, and a `CLOSED` record supersedes the word "open" here.
+
 ### 13.1 Portable synthesis threshold for non-native atomics
+
+Register: [OI-11](../XAX_OPEN_ISSUES.md#oi-11--non-native-atomic-synthesis-policy), `CLOSED` (2026-10-02).
 
 The capability model permits bounded inline sequences and runtime assistance, but the default policy for when the compiler should synthesize a non-native atomic versus require an explicit library/target operation should be fixed only after code-size, correctness, and target-diversity evidence exists.
 
 ### 13.2 Timing-proof representation granularity
 
+Register: [OI-12](../XAX_OPEN_ISSUES.md#oi-12--timing-proof-representation), `CLOSED` (2026-10-02).
+
 The architecture requires a strict separation between guarantees and estimates, but the most compact persistent representation for path bounds, microarchitectural assumptions, and derived timing proofs should be selected after at least two substantially different target models are implemented.
 
 ### 13.3 GPU synchronization-scope normalization
+
+Register: [OI-13](../XAX_OPEN_ISSUES.md#oi-13--gpuaccelerator-synchronization-scope-normalization), `CLOSED` (2026-10-02).
 
 Target-defined scope relations are required. Whether a small portable canonical subset can cover major GPU and accelerator models without semantic loss should be decided from actual target-package experiments rather than assumed in advance.
 

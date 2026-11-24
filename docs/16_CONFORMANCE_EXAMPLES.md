@@ -362,9 +362,11 @@ A conformance test involving target-defined behavior MUST include the target/pla
 
 Only issues requiring implementation evidence remain open:
 
-1. **Diagnostic payload minimums.** Rule identifiers are normative, but the smallest dependency/repair-neighborhood payload that remains stable and useful should be fixed after verifier prototypes expose real failure graphs.
-2. **Cross-implementation atomic litmus corpus size.** The semantic requirement is exact, but the minimum practical corpus needed to detect incorrect orderings depends on target support and executable test methodology.
-3. **Deterministic optimizer boundary.** Same-implementation byte reproducibility is required for deterministic builds, but the exact set of build-policy inputs that must be hashed into a reproducibility manifest should be finalized with package/build implementation evidence.
+Each item names the register record that tracks it, with that record's status on 2026-11-24; [`XAX_OPEN_ISSUES.md`](../XAX_OPEN_ISSUES.md) is authoritative, and a `CLOSED` record supersedes the word "open" here.
+
+1. **Diagnostic payload minimums.** Rule identifiers are normative, but the smallest dependency/repair-neighborhood payload that remains stable and useful should be fixed after verifier prototypes expose real failure graphs. Register: [OI-28](../XAX_OPEN_ISSUES.md#oi-28--diagnostic-payload-and-repair-neighborhood-minimum), `OPEN`.
+2. **Cross-implementation atomic litmus corpus size.** The semantic requirement is exact, but the minimum practical corpus needed to detect incorrect orderings depends on target support and executable test methodology. Register: [OI-29](../XAX_OPEN_ISSUES.md#oi-29--atomic-litmus-conformance-corpus-size), `CLOSED` (2026-10-02).
+3. **Deterministic optimizer boundary.** Same-implementation byte reproducibility is required for deterministic builds, but the exact set of build-policy inputs that must be hashed into a reproducibility manifest should be finalized with package/build implementation evidence. Register: [OI-30](../XAX_OPEN_ISSUES.md#oi-30--deterministic-build-manifest-boundary--closed), `CLOSED` (2026-10-02).
 
 These issues do not permit semantic ambiguity in accepted programs.
 

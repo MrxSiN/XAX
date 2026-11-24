@@ -551,9 +551,11 @@ A failed memory/resource proof should identify the entity, violated rule, requir
 
 The following representation choices remain open because their best form depends on verifier complexity, target coverage, and size measurements rather than missing semantics:
 
-1. **Alias-class encoding.** The semantic relations above are fixed, but whether canonical storage uses explicit class objects, interval capabilities, compact relation tables, or reconstructed proof edges should be benchmarked.
-2. **Provenance compression.** Persistent object identity is required, but the best local-handle and serialization strategy for very large graphs requires measurement.
-3. **Checked-access kernel surface.** The rule that unproved ordinary access must become checked or raw is fixed. Which checked variants deserve kernel operations versus library specialization should be decided from code-size and target-lowering evidence.
+Each item names the register record that tracks it, with that record's status on 2026-11-24; [`XAX_OPEN_ISSUES.md`](../XAX_OPEN_ISSUES.md) is authoritative, and a `CLOSED` record supersedes the word "open" here.
+
+1. **Alias-class encoding.** The semantic relations above are fixed, but whether canonical storage uses explicit class objects, interval capabilities, compact relation tables, or reconstructed proof edges should be benchmarked. Register: [OI-06](../XAX_OPEN_ISSUES.md#oi-06--aliasprovenance-representation-and-checked-access-kernel-surface), `CLOSED` (2026-10-01).
+2. **Provenance compression.** Persistent object identity is required, but the best local-handle and serialization strategy for very large graphs requires measurement. Register: [OI-06](../XAX_OPEN_ISSUES.md#oi-06--aliasprovenance-representation-and-checked-access-kernel-surface), `CLOSED` (2026-10-01).
+3. **Checked-access kernel surface.** The rule that unproved ordinary access must become checked or raw is fixed. Which checked variants deserve kernel operations versus library specialization should be decided from code-size and target-lowering evidence. Register: [OI-06](../XAX_OPEN_ISSUES.md#oi-06--aliasprovenance-representation-and-checked-access-kernel-surface), `CLOSED` (2026-10-01).
 4. **DMA state vocabulary.** Closed by OI-07: the shared six-state vocabulary in §8.4 is sufficient for the measured coherent and non-coherent target packages; additional pinning/IOMMU/device-specific states remain target-defined until separate evidence justifies standardization.
 
 These are representation or vocabulary questions. They do not weaken the invariants of this stage.

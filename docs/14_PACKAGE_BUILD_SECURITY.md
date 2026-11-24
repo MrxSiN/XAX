@@ -549,7 +549,11 @@ No subsystem may silently reinterpret package identity, dependency selection, ta
 
 The following points require implementation evidence.
 
+Each item names the register record that tracks it, with that record's status on 2026-11-24; [`XAX_OPEN_ISSUES.md`](../XAX_OPEN_ISSUES.md) is authoritative, and a `CLOSED` record supersedes the word "open" here.
+
 ### 19.1 Hash agility
+
+Register: [OI-22](../XAX_OPEN_ISSUES.md#oi-22--hash-agility-and-migration), `CLOSED` (2026-10-02).
 
 The canonical identity stage must determine how hash-algorithm evolution is represented without ambiguous identities or unnecessary graph churn.
 
@@ -557,17 +561,23 @@ The requirement is fixed: identity comparisons must remain unambiguous and verif
 
 ### 19.2 Resolver complexity bounds
 
+Register: [OI-23](../XAX_OPEN_ISSUES.md#oi-23--package-resolver-expressiveness-and-complexity-bounds), `CLOSED` (2026-10-02).
+
 The semantic requirement for deterministic resolution is fixed, but the acceptable expressiveness of compatibility constraints depends on measured resolver cost and AI mutation efficiency.
 
 Constraint forms that create pathological resolution behavior may need to be restricted.
 
 ### 19.3 Provenance granularity
 
+Register: [OI-24](../XAX_OPEN_ISSUES.md#oi-24--provenance-granularity-and-sandbox-portability), `CLOSED` (2026-10-02).
+
 It remains to be measured whether provenance should normally record only a snapshot/toolchain closure or a finer action-level build DAG.
 
 The design must balance verifiability, cache utility, and metadata size.
 
 ### 19.4 Sandbox enforcement portability
+
+Register: [OI-24](../XAX_OPEN_ISSUES.md#oi-24--provenance-granularity-and-sandbox-portability), `CLOSED` (2026-10-02).
 
 The semantic capability model is fixed. The implementation mechanism for enforcing it on hosted platforms and bare-metal build environments remains target/platform-specific.
 

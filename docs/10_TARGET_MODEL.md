@@ -423,11 +423,13 @@ The semantic workspace should expose compact local handles for target entities a
 
 Only the following issues remain intentionally open:
 
-1. **Granularity of semantic instruction models.** Some targets may be best modeled per instruction, while others may benefit from shared semantic primitives plus encoding variants. The choice should be measured against verifier complexity, target-package size, and optimization quality.
-2. **Cost-model representation.** Static tables, symbolic models, profile-conditioned functions, or combinations may differ materially in accuracy and compilation cost. The semantic/non-semantic boundary is fixed; the most effective representation is not.
-3. **Legalization search discipline.** Rule ranking, bounded search, equality saturation, staged rewriting, or hybrid approaches may be appropriate. The required properties are semantic preservation, explicit failure, and detectable nontermination/cycles.
-4. **Opaque-contract minimums by hardware class.** The general minimum contract is defined above, but practical compiler validation may show that some device classes require additional mandatory fields to avoid excessive global barriers.
-5. **Scheduling-resource detail.** Micro-operation-level models may improve code quality but increase package size and maintenance cost. The necessary granularity must be determined experimentally.
+Each item names the register record that tracks it, with that record's status on 2026-11-24; [`XAX_OPEN_ISSUES.md`](../XAX_OPEN_ISSUES.md) is authoritative, and a `CLOSED` record supersedes the word "open" here.
+
+1. **Granularity of semantic instruction models.** Some targets may be best modeled per instruction, while others may benefit from shared semantic primitives plus encoding variants. The choice should be measured against verifier complexity, target-package size, and optimization quality. Register: [OI-16](../XAX_OPEN_ISSUES.md#oi-16--target-semanticinstruction-granularity-and-opaque-contract-minimums), `OPEN`.
+2. **Cost-model representation.** Static tables, symbolic models, profile-conditioned functions, or combinations may differ materially in accuracy and compilation cost. The semantic/non-semantic boundary is fixed; the most effective representation is not. Register: [OI-17](../XAX_OPEN_ISSUES.md#oi-17--target-cost-model-representation-and-calibration), `OPEN`.
+3. **Legalization search discipline.** Rule ranking, bounded search, equality saturation, staged rewriting, or hybrid approaches may be appropriate. The required properties are semantic preservation, explicit failure, and detectable nontermination/cycles. Register: [OI-18](../XAX_OPEN_ISSUES.md#oi-18--legalizationoptimizer-organization-and-machine-level-ir), `OPEN`.
+4. **Opaque-contract minimums by hardware class.** The general minimum contract is defined above, but practical compiler validation may show that some device classes require additional mandatory fields to avoid excessive global barriers. Register: [OI-16](../XAX_OPEN_ISSUES.md#oi-16--target-semanticinstruction-granularity-and-opaque-contract-minimums), `OPEN`.
+5. **Scheduling-resource detail.** Micro-operation-level models may improve code quality but increase package size and maintenance cost. The necessary granularity must be determined experimentally. Register: no record.
 
 These are implementation-design questions, not permission to weaken the invariants of this document.
 

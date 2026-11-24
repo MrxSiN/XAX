@@ -467,9 +467,11 @@ Stage 15 does not replace those subsystem specifications. It defines the closure
 
 Only the following issues remain intentionally unfixed.
 
-The register tracks them as OI-25, OI-26 and OI-27 in [`XAX_OPEN_ISSUES.md`](../XAX_OPEN_ISSUES.md), which records their current status. Until 2026-11-24 this section labelled them OI-15-1 to OI-15-3.
+Each item names the register record that tracks it, with that record's status on 2026-11-24; [`XAX_OPEN_ISSUES.md`](../XAX_OPEN_ISSUES.md) is authoritative, and a `CLOSED` record supersedes the word "unfixed" here. Until 2026-11-24 this section labelled them OI-15-1 to OI-15-3.
 
 ### 19.1 Fixed-point comparison level
+
+Register: [OI-25](../XAX_OPEN_ISSUES.md#oi-25--bootstrap-fixed-point-comparison-level), `CLOSED` (2026-10-02).
 
 It remains to be measured whether reproducible self-builds can require full binary identity on initial targets or whether a canonical projection is necessary for unavoidable non-semantic output variation.
 
@@ -477,11 +479,15 @@ The default preference is full identity.
 
 ### 19.2 Minimum practical seed subset
 
+Register: [OI-26](../XAX_OPEN_ISSUES.md#oi-26--minimum-practical-bootstrap-seed-subset), `CLOSED` (2026-10-02).
+
 The exact smallest semantic subset that can compile the first useful XAX-hosted compiler cannot be fixed without implementing the initial compiler architecture.
 
 The seed subset MUST remain smaller than the permanent language surface it bootstraps where practical.
 
 ### 19.3 Diversity threshold for bootstrap trust
+
+Register: [OI-27](../XAX_OPEN_ISSUES.md#oi-27--bootstrap-trust-diversity-threshold), `CLOSED` (2026-10-02).
 
 The minimum acceptable independence between two bootstrap seeds is a policy and evidence question. Implementation experience must determine which combinations of architecture, provenance, historical compiler, and environment give useful diversity without creating an ongoing second implementation obligation.
 

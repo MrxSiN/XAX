@@ -303,7 +303,11 @@ Progression is monotonic in semantic obligation, not necessarily in implementati
 
 ## 10. Open issues requiring implementation evidence
 
+Each item names the register record that tracks it, with that record's status on 2026-11-24; [`XAX_OPEN_ISSUES.md`](../XAX_OPEN_ISSUES.md) is authoritative, and a `CLOSED` record supersedes the word "open" here.
+
 ### 10.1 Target-cost magnitude calibration
+
+Register: [OI-17](../XAX_OPEN_ISSUES.md#oi-17--target-cost-model-representation-and-calibration), `OPEN`.
 
 Target packages can define structural cost models before hardware measurement, but the stable mapping from predicted cost units to measured cycles, latency, energy, or other physical units requires empirical calibration per target and environment. Ordering accuracy can still be tested before absolute calibration is trusted.
 

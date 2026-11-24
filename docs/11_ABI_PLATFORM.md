@@ -534,7 +534,11 @@ Rejected. It would contradict the requirements that unused facilities disappear 
 
 Only issues requiring implementation or ecosystem evidence remain open.
 
+Each item names the register record that tracks it, with that record's status on 2026-11-24; [`XAX_OPEN_ISSUES.md`](../XAX_OPEN_ISSUES.md) is authoritative, and a `CLOSED` record supersedes the word "open" here.
+
 ### 14.1 Capability granularity
+
+Register: [OI-20](../XAX_OPEN_ISSUES.md#oi-20--abiplatform-capability-and-classification-representation), `OPEN`.
 
 The correct granularity for widely used capabilities such as filesystem, networking, GPU, and process control may require prototype experience. Capabilities that are too coarse reduce portability; capabilities that are too fine increase graph and package overhead.
 
@@ -542,9 +546,13 @@ The invariant is fixed: capability boundaries must preserve exact semantics and 
 
 ### 14.2 Foreign contract inference
 
+Register: [OI-20](../XAX_OPEN_ISSUES.md#oi-20--abiplatform-capability-and-classification-representation), `OPEN`.
+
 Future tooling may infer candidate foreign effect, ownership, or representation contracts from machine-readable external metadata. Such inference cannot become authoritative unless verified against the imported interface contract.
 
 ### 14.3 ABI classification representation
+
+Register: [OI-20](../XAX_OPEN_ISSUES.md#oi-20--abiplatform-capability-and-classification-representation), `OPEN`.
 
 Some ABIs may be best represented as declarative tables; others may require deterministic compile-time classifiers. The canonical system may support both forms as ordinary semantic data/computation, provided there is no second language and behavior remains deterministic.
 

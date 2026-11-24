@@ -478,7 +478,11 @@ The following are mandatory:
 
 Only issues requiring implementation evidence remain open.
 
-### 17.1 Budget units
+Each item names the register record that tracks it, with that record's status on 2026-11-24; [`XAX_OPEN_ISSUES.md`](../XAX_OPEN_ISSUES.md) is authoritative, and a `CLOSED` record supersedes the word "open" here.
+
+### 16.1 Budget units
+
+Register: [OI-14](../XAX_OPEN_ISSUES.md#oi-14--compile-time-fuel-units-and-introspection-authority-granularity), `OPEN`.
 
 The architecture requires bounded evaluation, but the exact portable definition of "fuel" is not fixed.
 
@@ -486,13 +490,17 @@ A raw interpreter-instruction count may be simple but implementation-dependent. 
 
 The chosen unit must be deterministic enough for diagnostics and policy while not becoming an unnecessary permanent constraint on evaluator implementation.
 
-### 17.2 Granularity of introspection capabilities
+### 16.2 Granularity of introspection capabilities
+
+Register: [OI-14](../XAX_OPEN_ISSUES.md#oi-14--compile-time-fuel-units-and-introspection-authority-granularity), `OPEN`.
 
 It is not yet fixed whether introspection authority should be coarse-grained per semantic object class or fine-grained per operation family/property.
 
 This should be decided using evidence from self-hosting, target generation, verifier complexity, and least-authority enforcement.
 
-### 17.3 Canonical specialization boundaries
+### 16.3 Canonical specialization boundaries
+
+Register: [OI-15](../XAX_OPEN_ISSUES.md#oi-15--specialization-object-boundaries), `OPEN`.
 
 The semantic model permits specialization, reuse, inlining, and equivalence merging. The best canonical granularity for persistent specialization objects requires implementation data on cache reuse, graph size, optimization opportunity, and AI transaction locality.
 

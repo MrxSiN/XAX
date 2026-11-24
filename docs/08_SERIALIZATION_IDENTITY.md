@@ -538,13 +538,19 @@ No subsystem may derive semantic meaning from file offsets, insertion history, t
 
 ## 22. Open issues requiring implementation evidence
 
+Each item names the register record that tracks it, with that record's status on 2026-11-24; [`XAX_OPEN_ISSUES.md`](../XAX_OPEN_ISSUES.md) is authoritative, and a `CLOSED` record supersedes the word "open" here.
+
 ### 22.1 Graph-fragment granularity
+
+Register: [OI-02](../XAX_OPEN_ISSUES.md#oi-02--canonical-object-and-graph-fragment-granularity), `CLOSED` (2026-10-02).
 
 Small fragments improve edit locality and reuse but increase hash, object, index, and traversal overhead. Large fragments reduce overhead but amplify invalidation.
 
 The semantic model does not depend on one fixed default. Prototype measurements should determine practical fragmentation policies.
 
 ### 22.2 Index acceleration
+
+Register: no record.
 
 The mandatory sorted CID index is sufficient for deterministic lookup. An additional canonical acceleration structure should be added only if large-store measurements show a material benefit greater than its byte and implementation cost. Any such structure remains non-semantic.
 
