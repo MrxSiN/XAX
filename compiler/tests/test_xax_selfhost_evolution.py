@@ -121,12 +121,20 @@ class EvolutionTests(unittest.TestCase):
 
 @unittest.skipUnless(WINDOWS_X86_64, "the Windows ledger program runs where the Windows seed runs")
 class WindowsLedgerTests(unittest.TestCase):
-    """OI-60: evolve.sh on the Windows seed (ledger-tool/xax_ledger_windows.xax)."""
+    """OI-60: evolve.sh and request.sh on the Windows seed (xax_ledger_windows.xax, xax_request_windows.xax)."""
 
     def test_check_passes_on_the_committed_tree(self):
         run = subprocess.run(["sh", str(EVOLVE), "check"], capture_output=True, text=True, timeout=1800)
         self.assertEqual(run.returncode, 0, run.stderr)
         self.assertIn("every chain ends at its committed store", run.stdout)
+
+    def test_the_request_tool_derives_the_committed_request(self):
+        with tempfile.TemporaryDirectory() as directory:
+            out = Path(directory) / "request.xax"
+            tool = BOOTSTRAP / "evolution" / "request-tool"
+            subprocess.run(["sh", str(tool / "request.sh"), str(BOOTSTRAP / "xax_compiler_driver_general.xax"), str(tool / "x86_64-linux-elf-exec-v1.target"), str(out)],
+                           check=True, capture_output=True, timeout=1800)
+            self.assertEqual(out.read_bytes(), (BOOTSTRAP / "seed" / "xax_compiler_request.xax").read_bytes())
 
     def test_blob_is_the_git_blob_id(self):
         import hashlib

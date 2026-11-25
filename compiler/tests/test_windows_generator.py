@@ -50,6 +50,18 @@ class WindowsGeneratorTests(unittest.TestCase):
                 store = out
             self.assertEqual(store.read_bytes(), (tool / "xax_ledger.xax").read_bytes())
 
+    def test_the_request_tool_is_hosted_and_its_batches(self):
+        """xax_request.xax is request.batch then driver.batch on the ledger seed, and its Windows store is generate.sh's
+        output (OI-60)."""
+        tool = BOOTSTRAP / "evolution" / "request-tool"
+        with tempfile.TemporaryDirectory() as directory:
+            first, store, hosted = (Path(directory) / name for name in ("first.xax", "store.xax", "hosted.xax"))
+            subprocess.run([str(SEED), "edit", str(BOOTSTRAP / "evolution" / "ledger-tool" / "seed.xax"), str(tool / "request.batch"), str(first)], check=True, capture_output=True)
+            subprocess.run([str(SEED), "edit", str(first), str(tool / "driver.batch"), str(store)], check=True, capture_output=True)
+            self.assertEqual(store.read_bytes(), (tool / "xax_request.xax").read_bytes())
+            subprocess.run(["sh", str(GENERATOR / "generate.sh"), str(tool / "xax_request.xax"), str(hosted)], check=True, capture_output=True, timeout=1800)
+            self.assertEqual(hosted.read_bytes(), (tool / "xax_request_windows.xax").read_bytes())
+
     def test_the_request_is_the_recorded_one(self):
         from xax_selfhost_seed import WINDOWS_TARGET, identity, released
 

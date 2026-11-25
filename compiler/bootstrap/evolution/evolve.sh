@@ -29,8 +29,8 @@ set -eu
 here=$(cd "$(dirname "$0")" && pwd)
 bootstrap=$(dirname "$here")
 case $(uname -s) in
-    MINGW*|MSYS*|CYGWIN*) windows=1; seed=$bootstrap/windows/xaxc-windows-x86_64.exe; program=$here/ledger-tool/xax_ledger_windows.xax; exe=.exe ;;
-    *) windows=0; seed=$bootstrap/seed/xaxc-linux-x86_64; program=$here/ledger-tool/xax_ledger.xax; exe= ;;
+    MINGW*|MSYS*|CYGWIN*) seed=$bootstrap/windows/xaxc-windows-x86_64.exe; program=$here/ledger-tool/xax_ledger_windows.xax; exe=.exe ;;
+    *) seed=$bootstrap/seed/xaxc-linux-x86_64; program=$here/ledger-tool/xax_ledger.xax; exe= ;;
 esac
 xaxc=${XAXC:-$seed}
 
@@ -57,9 +57,6 @@ apply() {
     record=$1; shift
     [ $# -gt 0 ] || die "usage: evolve.sh apply <record> <store> [<store> ...]"
     [ -f "$record" ] || die "$record: no such record"
-    for store in "$@"; do  # the request derivation (request-tool) runs on Linux x86-64 only
-        [ $windows = 0 ] || [ "$store" != xax_compiler_driver_general.xax ] || die "a driver transaction derives the request: run it on Linux x86-64"
-    done
     name=$(basename "$record")
     if [ -e "$here/$name" ] && ! cmp -s "$record" "$here/$name"; then die "$name already names another record"; fi
     n=0
@@ -136,14 +133,10 @@ case "$command" in
     check)
         root=${1:-$bootstrap}
         ledger check "$root"
-        if [ $windows = 1 ]; then
-            echo "every chain ends at its committed store; the request derivation was not checked (request-tool runs on Linux x86-64)"
-        else
-            if [ -f "$root/seed/xax_compiler_request.xax" ]; then
-                derive "$root" "$work/request.xax"
-                cmp -s "$work/request.xax" "$root/seed/xax_compiler_request.xax" || die "seed/xax_compiler_request.xax is not the request of the committed driver (request-tool/request.sh)"
-            fi
-            echo "every chain ends at its committed store; the request is derived from the driver"
-        fi ;;
+        if [ -f "$root/seed/xax_compiler_request.xax" ]; then
+            derive "$root" "$work/request.xax"
+            cmp -s "$work/request.xax" "$root/seed/xax_compiler_request.xax" || die "seed/xax_compiler_request.xax is not the request of the committed driver (request-tool/request.sh)"
+        fi
+        echo "every chain ends at its committed store; the request is derived from the driver" ;;
     *) die "usage: evolve.sh apply <record> <store>... | replay [<store>] | check [<bootstrap>] | ledger <command> <argument>..." ;;
 esac
