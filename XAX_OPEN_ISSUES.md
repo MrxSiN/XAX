@@ -96,7 +96,7 @@ This register lists the issues that require implementation, target, ecosystem, o
 
 ## OI-01 — AI token vocabulary, fallback framing, and handle namespace
 
-**Status:** OPEN (the original record has no status line; its last entry, "Remaining after this extension", leaves it open). It was removed from this register by commit `7af8108` (2026-10-30) and restored on 2026-11-24 from the version before that commit; its text below is unchanged.
+**Status:** OPEN (2026-11-25): a measurement design is proposed below for the owner; nothing is run. The original record has no status line; its last entry, "Remaining after this extension", leaves it open. It was removed from this register by commit `7af8108` (2026-10-30) and restored on 2026-11-24 from the version before that commit.
 
 ### Summary
 
@@ -105,6 +105,25 @@ Which dedicated model tokens, fallback packet encoding, and local-handle namespa
 ### Fixed Constraints
 
 - Transport is versioned, deterministic, unambiguous, non-source, and measured with the actual tokenizer/model. Full persistent hashes need not appear in normal AI context.
+
+### Measurement design (proposed, 2026-11-25)
+
+Not run. A design for the closure criterion, for the owner to approve or change:
+
+- Arms: (a) typed handles (`F`, `N`, `P`, `T`), (b) one unified handle namespace, each with two fallback framings
+  (the current line form and a length-prefixed packet). Four arms, one native workspace (`xaxc edit`), one pinned
+  model and tokenizer, identical instructions and tool surface.
+- Tasks: 30 fixed tasks, 5 per family: program creation, literal/op/control edits, type/resource/effect repair,
+  stale-root recovery, optimization. Each has a verified target root, so success is exact.
+- Per attempt: input and output tokens from the API (retries included), protocol bytes, semantic entities touched,
+  invalid mutations, repair turns, completion within 6 turns.
+- Trials: 3 per task and arm, task order randomized per trial; report medians and the per-task spread, and a paired
+  comparison per task.
+- Decision rule: the arm with the lowest median tokens per completed task wins, provided its invalid-mutation rate
+  and repair turns are not higher than the current arm's; tokenizer-native vocabulary is a separate, later arm (it
+  needs model integration).
+- Needs the owner: ADR-207 defers AI-efficiency work, so nothing here runs until the owner approves the design and
+  the model budget. No agent runs these trials on its own initiative.
 
 ### Closure Criteria
 
@@ -903,7 +922,7 @@ M13 adds one non-CPU target package with explicit device/workgroup execution sco
 
 ## OI-14 — Compile-time fuel units and introspection authority granularity
 
-**Status:** OPEN (the original record has no status line; it states "OI-14 remains open until that split is adopted")
+**Status:** OPEN (2026-11-25): ADR-421 proposes adopting the function-interface/body authority split; this stays open until the owner accepts it. The original record has no status line; it states "OI-14 remains open until that split is adopted".
 
 ### Summary
 
@@ -1322,7 +1341,7 @@ M12 uses conservative trusted rewrite preconditions plus the ordinary verifier f
 
 ## OI-20 — ABI/platform capability and classification representation
 
-**Status:** OPEN (the original record has no status line; it states "OI-20 remains open; no canonical ABI/capability representation is selected yet")
+**Status:** OPEN (2026-11-25): ADR-422 proposes a canonical ABI/capability representation; this stays open until the owner accepts it and the remaining ABI measurements are made. The original record has no status line; it states "OI-20 remains open; no canonical ABI/capability representation is selected yet".
 
 ### Summary
 
@@ -1808,7 +1827,7 @@ The committed immutable seed establishes the declared B6 ordinary-release bounda
 
 ## OI-28 — Diagnostic payload and repair-neighborhood minimum
 
-**Status:** OPEN (the original record has no status line; it states "OI-28 remains open pending repeated controlled repair trials")
+**Status:** OPEN (2026-11-25): a measurement design for the repeated repair trials is proposed below; nothing is run. The original record has no status line; it states "OI-28 remains open pending repeated controlled repair trials".
 
 ### Summary
 
@@ -1832,6 +1851,21 @@ What minimum stable dependency/repair payload is useful, and is strict minimalit
 
 - Every case has an exact known repair target root. Payload staleness is generation-bound. The resource case exercises pagination. `oi28_repair_tasks.json` holds the repair tasks.
 - Repair turns and repair success remain unmeasured, and byte savings alone cannot select strict minimality.
+
+### Measurement design (proposed, 2026-11-25)
+
+Not run. For the two unmeasured items (repair success, repair turns) and the repeated trials:
+
+- Corpus: the nine `oi28_repair_tasks.json` cases plus real verifier failures: the `fixtures/declared_rejections`
+  stores (36) and a sample of 30 `test_xax_selfhost_verify_exact` rejections, each with a known repaired root.
+- Arms: `minimal` and `near` payloads, the same native workspace, model, instructions and turn limit (4).
+- Per attempt: success (the committed root equals a verified repair), repair turns, tokens, payload bytes, the
+  payload's construction time.
+- Trials: 3 per case and arm, order randomized; paired per case.
+- Decision rule: `near` is adopted only if it raises repair success or lowers median turns on the real failures by
+  more than the trial spread; otherwise `minimal` stays the default and strict minimality is not pursued further.
+- Needs the owner: ADR-207 defers AI-efficiency work, so nothing here runs until the owner approves the design and
+  the model budget. No agent runs these trials on its own initiative.
 
 ### Closure Criteria
 
@@ -2625,7 +2659,7 @@ The original status record, in chronological order:
 
 ## OI-46 — Fixed client overhead in R5 token measurement
 
-**Status:** OPEN (2026-10-07, ADR-195); deferred and unscheduled since 2026-10-08 (ADR-207). It was removed from this register by commit `7af8108` (2026-10-30) and restored on 2026-11-24 from the version before that commit; its text below is unchanged.
+**Status:** OPEN (2026-11-25): a measurement design is proposed below for the owner's approval; nothing is run. Opened 2026-10-07 (ADR-195); deferred and unscheduled since 2026-10-08 (ADR-207). It was removed from this register by commit `7af8108` (2026-10-30) and restored on 2026-11-24 from the version before that commit.
 
 ### Summary
 
@@ -2638,6 +2672,23 @@ In the same-prefill JVM comparison (ADR-195), every arm makes one request throug
 ### Alternatives Considered
 
 (a) A minimal client or direct API with identical, minimal instructions and no tool schemas for every arm. (b) A corpus whose textual context is legitimately larger: real multi-file repositories where a named-symbol excerpt is not available as cheaply as the XAX neighborhood. (c) Record R5 as unreachable for single-edit tasks under agent clients with a fixed overhead.
+
+### Measurement design (proposed, 2026-11-25)
+
+Not run. A design that combines alternatives (a) and (b), for the owner's approval (the closure criterion asks for
+an owner-approved design):
+
+- Client: a direct API caller with one fixed, minimal instruction block and no tool schemas, the same for every arm,
+  so the fixed overhead is a few hundred tokens and is reported separately.
+- Corpus: v10's single-edit tasks plus tasks on real multi-file repositories (alternative (b)), where the textual
+  arm's context is what a competent agent would actually read.
+- Counting: every token in and out, retries included; the fixed overhead reported per request; R5 ratios computed
+  with and without it.
+- Trials: three complete trials (the criterion's v10 successor), then an independent audit of the raw transcripts.
+- If (a) and (b) still cannot reach the R5 ratio for single edits, record (c): R5 is unreachable for single-edit
+  tasks under a fixed client overhead, and report multi-file tasks only.
+- Needs the owner: ADR-207 defers AI-efficiency work, so nothing here runs until the owner approves the design and
+  the model budget. No agent runs these trials on its own initiative.
 
 ### Closure Criteria
 
@@ -3475,7 +3526,7 @@ Recorded on 2026-11-24 from [`docs/08_SERIALIZATION_IDENTITY.md`](docs/08_SERIAL
 
 ## OI-64 — Semantic rebase granularity for concurrent agents
 
-**Status:** OPEN (2026-11-24)
+**Status:** OPEN (2026-11-25): a measurement design is proposed below; nothing is run. Recorded 2026-11-24.
 
 ### Summary
 
@@ -3486,6 +3537,22 @@ Recorded on 2026-11-24 from [`docs/09_AI_PROTOCOL.md`](docs/09_AI_PROTOCOL.md#13
 ### Fixed Constraints
 
 - Commits stay atomic against `expected_root`; no rebase may publish a verifier-invalid or partially applied candidate ([`docs/09_AI_PROTOCOL.md`](docs/09_AI_PROTOCOL.md) §5).
+
+### Measurement design (proposed, 2026-11-25)
+
+Not run:
+
+- Policies: whole-root compare-and-swap (today's `expected_root`), entity-level preconditions (each mutation's old
+  fields, as the workspace already checks), and read-set validation (the entities a batch read must be unchanged).
+- Load: 2, 4 and 8 concurrent agents on one store, each with an independent task stream from the OI-01 task set;
+  conflicts arise naturally from shared callees and types.
+- Per policy: commit conflicts, retries, repair turns after a conflict, wasted tokens, and whether any committed root
+  fails `verify` (must be zero for every policy).
+- Trials: 3 per policy and agent count.
+- Decision rule (ADR): the finest policy whose wasted-work saving is larger than the trial spread and that never
+  publishes an invalid root; otherwise whole-root compare-and-swap stays.
+- Needs the owner: ADR-207 defers AI-efficiency work, so nothing here runs until the owner approves the design and
+  the model budget. No agent runs these trials on its own initiative.
 
 ### Closure Criteria
 

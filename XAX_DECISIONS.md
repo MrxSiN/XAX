@@ -4231,3 +4231,24 @@ Superseded by [ADR-369](#adr-369--n03-growable-views-as-limit-bounded-checked-ac
 | Decision | (1) Workspace correctness fix: an edited function whose unedited callee depended on another edited function kept calling the stale callee. Edited and rebuilt functions now share one dependency order, and `tests/test_xax_workspace.py` has a regression test. (2) `type OLD_TYPE NEW_TYPE` (shown functions) and `type F OLD_TYPE NEW_TYPE` (one function) expand exactly into result-type and signature mutations. `type P NEW` on an entry parameter is that function's signature-parameter change. (3) Edits the batch already implies are dropped: exact duplicates, and signature edits of one function that agree field by field. Conflicts still reject. (4) Node diagnostics name the handle's kind ("Units.scale is a function; use sig …"). A trailing `;` stays malformed, because an existing negative vector treats it as possible truncation. |
 | Invariants | Acceptance does not change: exposure, generation, exact old fields, verification and staleness checks are identical. |
 | Evidence | Unit tests (`tests/test_xax_workspace.py`, `tests/test_xax_local_protocol.py`). |
+
+## ADR-421 — Compile-time introspection: a function-interface authority separate from body access (OI-14, proposal, 2026-11-25)
+
+| Field | Record |
+|---|---|
+| Status | Proposed (2026-11-25). Design only; no store changed. Closes OI-14's remaining sub-item when accepted. |
+| Decision | (1) Compile-time introspection has two function authorities: `inspect_function_interface` grants a function's interface facts (parameter and result arity and types, its call contract) and nothing else; `inspect_function` grants the graph and body as today and implies the interface. (2) A request that needs both names `inspect_function`; a request that needs only interface facts names `inspect_function_interface`. (3) No per-query capability family is added. (4) Budgets stay as OI-14's selected policy: one deterministic semantic-step limit per evaluation plus hard caps on call depth, active frame bytes, constructed objects and emitted graph nodes. |
+| Rationale | OI-14's three workloads (2026-10-02): the target-adapter workload needs interface facts only, so the split removes body authority from it, at one extra capability byte only when both are needed. Finer families had no measured least-authority benefit. |
+| Alternatives | Keep one `inspect_function` authority: rejected, it grants body access to interface-only generators. One capability per query: rejected, no workload needs it and it multiplies capability bytes and checks. |
+| Consequences | The evaluator's capability check gains one authority. Existing requests that name `inspect_function` are unchanged. Native work (ADR-367): the capability decode and check in the compile-time evaluator, by transaction on a release branch, with C1. |
+
+## ADR-422 — ABI classification as a data carrier and parameterized capability families (OI-20, proposal, 2026-11-25)
+
+| Field | Record |
+|---|---|
+| Status | Proposed (2026-11-25). Design only; no store changed. OI-20 stays open until this is accepted and its remaining measurements (more real ABIs) are made. |
+| Decision | (1) Each target package carries its ABI classification as one canonical data record (the measured carrier: argument/result classification fields, register sequences, aggregate-by-reference thresholds), not as backend code; backends read the record. (2) Platform capabilities are parameterized families: a family identity plus the exact members it authorizes (for example the named JNI table slots or POSIX declarations a program uses), not whole coarse families. (3) Foreign-contract inference stays tooling-only: a suggestion is authoritative only after exact rematerialization and verification, bound to the declaration CID, the ABI-carrier CID and the signature digest. |
+| Rationale | OI-20's 2026-10-02 evidence: carriers of 65–77 bytes for Win64, AAPCS64 bare metal and Android AAPCS64 reproduce the existing classifier's decisions with byte-identical artifacts, and Android reuses all 15 AAPCS64 fields; the classifier/codec is 71/73 lines against 109 backend helper lines. Parameterized families cost 40 bytes against 21 for coarse ones but remove 245 unrelated authorized members. |
+| Alternatives | Classification in backend code (today): rejected as the canonical form, since each ABI duplicates logic and cannot be checked as data. Coarse capability families: rejected, they authorize hundreds of unused members. Authoritative inference: rejected by OI-20's fixed constraint. |
+| Consequences | Before acceptance: measure at least SysV x86-64 and one more platform (for example Linux AArch64) for reuse, package size, verifier complexity, mutation cost and unsupported-boundary diagnostics (OI-20's first criterion). After: native work in the target decoder and each backend's classification, by transactions on a release branch. |
+
