@@ -59,9 +59,8 @@ compiler/bootstrap/evolution/LEDGER text eol=lf
 # Target objects the native request tool reads as raw bytes.
 compiler/bootstrap/evolution/request-tool/*.target -text
 
-# The Windows generator reads its layer line by line and patches its record template as raw bytes.
+# The Windows generator reads its layer line by line.
 compiler/bootstrap/windows/host_layer.txt text eol=lf
-compiler/bootstrap/windows/generator/pe_target.template -text
 compiler/bootstrap/evidence/inputs/* -text
 compiler/bootstrap/evidence/CORPUS text eol=lf
 compiler/bootstrap/evidence/SNAPSHOTS text eol=lf
@@ -73,3 +72,6 @@ compiler/bootstrap/POLICY text eol=lf
 compiler/bootstrap/RELEASES text eol=lf
 compiler/bootstrap/oracle/*.batch text eol=lf
 compiler/bootstrap/oracle/*.sh text eol=lf
+compiler/integration/bfx/transactions/production_driver/native/tools/CASES binary
+compiler/integration/bfx/transactions/production_driver/native/tools/*.xax -text
+compiler/integration/bfx/transactions/production_driver/native/tools/*.batch text eol=lf

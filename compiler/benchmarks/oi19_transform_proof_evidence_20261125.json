@@ -1,0 +1,380 @@
+{
+  "corpus": [
+    {
+      "candidate_cid": "b5249b70b73c41bcc5fa0aba185966152e8bdaf774dbf795a713ed98ffe059ac",
+      "candidate_store_bytes": 773,
+      "class": "local_rewrite",
+      "finite_translation_accepts": null,
+      "name": "local_add_zero_effect_preserved",
+      "source_cid": "d5d618dc7d615e2dc92bd4c9a8536aa6b798c24d3110b75545cc484871b8d947",
+      "verifier_accepts": true,
+      "witness_accepts": true,
+      "witness_bytes": 107,
+      "witness_sha256": "4403fb928c67071cdbbc44abc64e37c42b911d89e891c94da819fc530151cbcd"
+    },
+    {
+      "candidate_cid": "8df3f34404c8d3628e96d6c3c46196919c05374a929fe0ea435a845c1baa480b",
+      "candidate_store_bytes": 763,
+      "class": "local_rewrite",
+      "finite_translation_accepts": true,
+      "name": "local_const_fold",
+      "source_cid": "84ff673adefe029fda543eb51ce4ed90499d6dfdfa2e1c8e24782bd56b5f112c",
+      "verifier_accepts": true,
+      "witness_accepts": true,
+      "witness_bytes": 139,
+      "witness_sha256": "228b74d8ab6cd67a8f65ece4e350e9c156f82462b8faa1fdd74726026296e80e"
+    },
+    {
+      "candidate_cid": "cd85f84463daf28476e215ae0e4ce66132fe25204b48e642485d7f339c572596",
+      "candidate_store_bytes": 762,
+      "class": "local_rewrite",
+      "finite_translation_accepts": true,
+      "name": "local_wrap_overflow_fold",
+      "source_cid": "32ddf06a28962ecbd4d99de412d447794fe5370e56b4ec0322650c4563e8fdfe",
+      "verifier_accepts": true,
+      "witness_accepts": true,
+      "witness_bytes": 139,
+      "witness_sha256": "7f77863499bddaac457c8a021394099f7508b78b4b21bca2645b45765d409783"
+    },
+    {
+      "candidate_cid": "691b73a2c1a2d12f633524ffdaf569e25bead49dd31b1568bf50516351436854",
+      "candidate_store_bytes": 786,
+      "class": "cfg",
+      "finite_translation_accepts": true,
+      "name": "cfg_constant_branch",
+      "source_cid": "1d52b0d3490ac160aff95b83c1740a996b5101f5e9d7fe6816ac47cd2073bc18",
+      "verifier_accepts": true,
+      "witness_accepts": true,
+      "witness_bytes": 107,
+      "witness_sha256": "8efbb3c58c34ce7aac35fa1e888ef800a366843c6040948730000c04435da85d"
+    },
+    {
+      "candidate_cid": "c0106c5872e9781cba010371035d80793daa03c40ecbfc117abe8a44b365f5ec",
+      "candidate_store_bytes": 633,
+      "class": "inline",
+      "finite_translation_accepts": true,
+      "name": "inline_pure_single_block",
+      "source_cid": "1359d8d8685c4796351af7fffa0b1d67a0494617606cb0533d31d07768ca55a2",
+      "verifier_accepts": true,
+      "witness_accepts": true,
+      "witness_bytes": 139,
+      "witness_sha256": "ad05e9a1cbd22186d088348747a96170a10d439ec8bed804c0d1dcd1a787896b"
+    },
+    {
+      "candidate_cid": "5334c6723423efa0da44c263c85188ff2b6858b44a0e920cb4f818cebfdd8a0c",
+      "candidate_store_bytes": 631,
+      "class": "search",
+      "finite_translation_accepts": true,
+      "name": "search_mul2_to_add",
+      "source_cid": "216b04a01a36f28546bfb5117942cc8ca7cd44f6e3f786cfc1ae2fd90b1b0ce4",
+      "verifier_accepts": true,
+      "witness_accepts": true,
+      "witness_bytes": 139,
+      "witness_sha256": "fed2ad866d4edee0c2133e870c1853a973f94b3e98e20fea7a97283674707f3b"
+    }
+  ],
+  "decision": {
+    "effectful_or_resource_transform": "verifier alone is insufficient; any future untrusted transform that can alter effects/resources requires a checker that covers the observable effect/resource relation, otherwise reject",
+    "finite_oracle": "test-only exact oracle for <=4-bit pure concrete fixtures; not production semantics",
+    "ordinary_verifier": "always required for graph/type/effect/dominance validity; it is not semantic equivalence evidence",
+    "search_generated_wrapping_arithmetic": "use exact polynomial normal-form translation validation plus ordinary verifier; no proof object or solver is required",
+    "solver": "not justified by this corpus; no dependency added",
+    "trusted_conventional_rules": "keep current conservative local/CFG/inlining rule premises plus ordinary verifier; the witness prototype is not adopted because it would add a second checker unless it fully replaces the trusted rule implementation",
+    "witness_migration_threshold": "move a conventional rule family out of the trusted generator only when one independent witness checker covers the complete family, rejects all family fault fixtures, and its correctness-critical implementation is smaller than the trusted rule code it replaces; this prototype is 223 checker/codec lines versus 276 current local/CFG/inline generator lines but covers only the measured subset"
+  },
+  "false_rejection": {
+    "finite_translation": 0,
+    "verifier": 0,
+    "witness": 0
+  },
+  "fault_detection": {
+    "finite_translation": 6,
+    "finite_translation_applicable": 6,
+    "verifier": 1,
+    "verifier_total": 7,
+    "witness": 7,
+    "witness_total": 7
+  },
+  "faults": [
+    {
+      "candidate_cid": "a51ffbb2e3efaeab24f6dad88395504b8bad39b9fa37bf4b168cab0477ded03f",
+      "class": "dropped_effect",
+      "detected_by_finite_translation": null,
+      "detected_by_verifier": false,
+      "detected_by_witness": true,
+      "finite_translation_accepts": null,
+      "name": "dropped_effect",
+      "verifier_accepts": true,
+      "witness_accepts": false,
+      "witness_rejection_preserves_source": true
+    },
+    {
+      "candidate_cid": "db020b29dcceadd2b8c73d9fcc3054de07ea3fd7f90de2c68fc0ae43cab66592",
+      "class": "wrong_constant",
+      "detected_by_finite_translation": true,
+      "detected_by_verifier": false,
+      "detected_by_witness": true,
+      "finite_translation_accepts": false,
+      "name": "wrong_constant",
+      "verifier_accepts": true,
+      "witness_accepts": false,
+      "witness_rejection_preserves_source": true
+    },
+    {
+      "candidate_cid": "f8dbb0689aaf7a74ec67a618ba8d4050c170794b047e2b9c59a0029d7175c09e",
+      "class": "overflow_assumption",
+      "detected_by_finite_translation": true,
+      "detected_by_verifier": false,
+      "detected_by_witness": true,
+      "finite_translation_accepts": false,
+      "name": "overflow_assumption",
+      "verifier_accepts": true,
+      "witness_accepts": false,
+      "witness_rejection_preserves_source": true
+    },
+    {
+      "candidate_cid": "bfc29bec64f90acd7fa315f8f62fe177275cb8907fe5d9666a5b2188f09cd6e8",
+      "class": "wrong_control",
+      "detected_by_finite_translation": true,
+      "detected_by_verifier": false,
+      "detected_by_witness": true,
+      "finite_translation_accepts": false,
+      "name": "wrong_cfg_edge",
+      "verifier_accepts": true,
+      "witness_accepts": false,
+      "witness_rejection_preserves_source": true
+    },
+    {
+      "candidate_cid": "4c47dee11585d40e8bcc2e83eb05d6a2d184d349ea7395132c4b778b8bd296ff",
+      "class": "dropped_dependency",
+      "detected_by_finite_translation": true,
+      "detected_by_verifier": false,
+      "detected_by_witness": true,
+      "finite_translation_accepts": false,
+      "name": "wrong_inline_argument",
+      "verifier_accepts": true,
+      "witness_accepts": false,
+      "witness_rejection_preserves_source": true
+    },
+    {
+      "candidate_cid": "4ec3e25f26b60413f11ffe314eb803a18bf7b4b16a7151f784c208358c7f0aa8",
+      "class": "dropped_dependency",
+      "detected_by_finite_translation": true,
+      "detected_by_verifier": false,
+      "detected_by_witness": true,
+      "finite_translation_accepts": false,
+      "name": "dropped_dependency",
+      "verifier_accepts": true,
+      "witness_accepts": false,
+      "witness_rejection_preserves_source": true
+    },
+    {
+      "candidate_cid": "4a26046cd4f29a3122941ff3e0aded87242ef92a669e56ad77b7743b3638b14d",
+      "class": "dominance_error",
+      "detected_by_finite_translation": true,
+      "detected_by_verifier": true,
+      "detected_by_witness": true,
+      "finite_translation_accepts": false,
+      "name": "dominance_error",
+      "verifier_accepts": false,
+      "witness_accepts": false,
+      "witness_rejection_preserves_source": true
+    }
+  ],
+  "host_observations": {
+    "classification": "non-semantic compile-tooling measurements",
+    "raw_sha256": "387e5e79e80c68ca4e11f4f1fe1c1b79e6dc837442281ae8f59635964ef6f3ce",
+    "summary": [
+      {
+        "candidates_per_second": 2211.5918374568464,
+        "case": "local_add_zero_effect_preserved",
+        "class": "local_rewrite",
+        "mechanism": "verifier",
+        "median_ns": 452163,
+        "median_peak_bytes": 4168,
+        "p10_ns": 440240,
+        "p90_ns": 506232
+      },
+      {
+        "candidates_per_second": 1026.4537664694508,
+        "case": "local_add_zero_effect_preserved",
+        "class": "local_rewrite",
+        "mechanism": "witness",
+        "median_ns": 974228,
+        "median_peak_bytes": 6763,
+        "p10_ns": 928779,
+        "p90_ns": 1050661
+      },
+      {
+        "candidates_per_second": 2172.250799388294,
+        "case": "local_const_fold",
+        "class": "local_rewrite",
+        "mechanism": "verifier",
+        "median_ns": 460352,
+        "median_peak_bytes": 4028,
+        "p10_ns": 443131,
+        "p90_ns": 488260
+      },
+      {
+        "candidates_per_second": 1043.6343522683392,
+        "case": "local_const_fold",
+        "class": "local_rewrite",
+        "mechanism": "witness",
+        "median_ns": 958190,
+        "median_peak_bytes": 5858,
+        "p10_ns": 934755,
+        "p90_ns": 1030704
+      },
+      {
+        "candidates_per_second": 352.64101673457947,
+        "case": "local_const_fold",
+        "class": "local_rewrite",
+        "mechanism": "finite_translation",
+        "median_ns": 2835745,
+        "median_peak_bytes": 8900,
+        "p10_ns": 2793136,
+        "p90_ns": 2947433
+      },
+      {
+        "candidates_per_second": 2170.021157706288,
+        "case": "local_wrap_overflow_fold",
+        "class": "local_rewrite",
+        "mechanism": "verifier",
+        "median_ns": 460825,
+        "median_peak_bytes": 4032,
+        "p10_ns": 444211,
+        "p90_ns": 489598
+      },
+      {
+        "candidates_per_second": 1048.723703253141,
+        "case": "local_wrap_overflow_fold",
+        "class": "local_rewrite",
+        "mechanism": "witness",
+        "median_ns": 953540,
+        "median_peak_bytes": 5858,
+        "p10_ns": 919952,
+        "p90_ns": 1007805
+      },
+      {
+        "candidates_per_second": 354.76076530411336,
+        "case": "local_wrap_overflow_fold",
+        "class": "local_rewrite",
+        "mechanism": "finite_translation",
+        "median_ns": 2818801,
+        "median_peak_bytes": 8904,
+        "p10_ns": 2774906,
+        "p90_ns": 2958835
+      },
+      {
+        "candidates_per_second": 2072.053591594093,
+        "case": "cfg_constant_branch",
+        "class": "cfg",
+        "mechanism": "verifier",
+        "median_ns": 482613,
+        "median_peak_bytes": 4568,
+        "p10_ns": 451278,
+        "p90_ns": 505801
+      },
+      {
+        "candidates_per_second": 973.1734993178054,
+        "case": "cfg_constant_branch",
+        "class": "cfg",
+        "mechanism": "witness",
+        "median_ns": 1027566,
+        "median_peak_bytes": 7987,
+        "p10_ns": 971851,
+        "p90_ns": 1314147
+      },
+      {
+        "candidates_per_second": 53.757489963879806,
+        "case": "cfg_constant_branch",
+        "class": "cfg",
+        "mechanism": "finite_translation",
+        "median_ns": 18602059,
+        "median_peak_bytes": 29224,
+        "p10_ns": 18220967,
+        "p90_ns": 18887611
+      },
+      {
+        "candidates_per_second": 2412.7780726728756,
+        "case": "inline_pure_single_block",
+        "class": "inline",
+        "mechanism": "verifier",
+        "median_ns": 414460,
+        "median_peak_bytes": 3572,
+        "p10_ns": 404718,
+        "p90_ns": 446988
+      },
+      {
+        "candidates_per_second": 1046.7028337385818,
+        "case": "inline_pure_single_block",
+        "class": "inline",
+        "mechanism": "witness",
+        "median_ns": 955381,
+        "median_peak_bytes": 6301,
+        "p10_ns": 933881,
+        "p90_ns": 991510
+      },
+      {
+        "candidates_per_second": 8.226961125510806,
+        "case": "inline_pure_single_block",
+        "class": "inline",
+        "mechanism": "finite_translation",
+        "median_ns": 121551565,
+        "median_peak_bytes": 88532,
+        "p10_ns": 116759269,
+        "p90_ns": 131519570
+      },
+      {
+        "candidates_per_second": 2511.5657603263026,
+        "case": "search_mul2_to_add",
+        "class": "search",
+        "mechanism": "verifier",
+        "median_ns": 398158,
+        "median_peak_bytes": 3568,
+        "p10_ns": 381754,
+        "p90_ns": 432139
+      },
+      {
+        "candidates_per_second": 1306.3101310882216,
+        "case": "search_mul2_to_add",
+        "class": "search",
+        "mechanism": "witness",
+        "median_ns": 765515,
+        "median_peak_bytes": 7916,
+        "p10_ns": 735403,
+        "p90_ns": 873694
+      },
+      {
+        "candidates_per_second": 75.83587054877566,
+        "case": "search_mul2_to_add",
+        "class": "search",
+        "mechanism": "finite_translation",
+        "median_ns": 13186372,
+        "median_peak_bytes": 28424,
+        "p10_ns": 12905697,
+        "p90_ns": 13527251
+      },
+      {
+        "candidates_per_second": 1297.1379947284313,
+        "case": "search_mul2_to_add",
+        "class": "search",
+        "mechanism": "polynomial_translation",
+        "median_ns": 770928,
+        "median_peak_bytes": 8032,
+        "p10_ns": 745344,
+        "p90_ns": 845949
+      }
+    ]
+  },
+  "implementation": {
+    "benchmark_finite_oracle_lines": 18,
+    "benchmark_witness_codec_checker_lines": 223,
+    "existing_exact_polynomial_validator_lines": 83,
+    "existing_trusted_local_cfg_inline_generator_lines": 276,
+    "solver_dependency_lines": 0
+  },
+  "issue": "OI-19",
+  "scope": "transformation correctness mechanism granularity",
+  "semantic_identity_note": "witnesses and validation records are compiler artifacts only; no proof bytes enter canonical XAX identity"
+}

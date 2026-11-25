@@ -132,18 +132,30 @@ class EvidenceProgramTests(unittest.TestCase):
     def tearDownClass(cls):
         cls.directory.cleanup()
 
-    def test_the_store_is_its_batch(self):
+    def run_tool(self, *arguments) -> bytes:
+        """The tool's text: it writes it to a file, its last argument (README.md)."""
         with tempfile.TemporaryDirectory() as directory:
-            out = Path(directory) / "tool.xax"
-            subprocess.run([str(SEED), "edit", str(BOOTSTRAP / "evolution" / "ledger-tool" / "seed.xax"), str(EVIDENCE / "evidence.batch"), str(out)],
+            out = Path(directory) / "out"
+            subprocess.run([str(self.tool), *map(str, arguments), str(out)], capture_output=True, check=True)
+            return out.read_bytes()
+
+    def test_the_store_is_its_batch(self):
+        """evidence.batch, then driver.batch (2026-11-25: the general driver's entry and host functions); its Windows
+        store is generate.sh's output."""
+        with tempfile.TemporaryDirectory() as directory:
+            first, out, hosted = Path(directory) / "first.xax", Path(directory) / "tool.xax", Path(directory) / "hosted.xax"
+            subprocess.run([str(SEED), "edit", str(BOOTSTRAP / "evolution" / "ledger-tool" / "seed.xax"), str(EVIDENCE / "evidence.batch"), str(first)],
                            check=True)
+            subprocess.run([str(SEED), "edit", str(first), str(EVIDENCE / "driver.batch"), str(out)], check=True)
             self.assertEqual(out.read_bytes(), (EVIDENCE / "xax_evidence.xax").read_bytes())
+            subprocess.run(["sh", str(BOOTSTRAP / "windows" / "generator" / "generate.sh"), str(out), str(hosted)], check=True, capture_output=True, timeout=1800)
+            self.assertEqual(hosted.read_bytes(), (EVIDENCE / "xax_evidence_windows.xax").read_bytes())
 
     def test_sha_is_sha256(self):
         for path in (EVIDENCE / "CORPUS", SEED, BOOTSTRAP / "xax_compiler_driver_general.xax"):
-            made = subprocess.run([str(self.tool), "sha", str(path)], capture_output=True, check=True).stdout
+            made = self.run_tool("sha", path)
             self.assertEqual(made, hashlib.sha256(path.read_bytes()).hexdigest().encode() + b"\n")
-        missing = subprocess.run([str(self.tool), "sha", str(EVIDENCE / "missing")], capture_output=True, check=True).stdout
+        missing = self.run_tool("sha", EVIDENCE / "missing")
         self.assertEqual(missing, b"-\n")
 
     def test_the_corpus_inputs_are_named_by_their_digests(self):
@@ -164,8 +176,7 @@ class EvidenceProgramTests(unittest.TestCase):
                     record, corpus, snapshots, pinned = _v2(mutated_full, mutated_seed)
                     for file, text in (("record", record), ("CORPUS", corpus), ("SNAPSHOTS", snapshots)):
                         (work / file).write_text(text, encoding="ascii")
-                    made = subprocess.run([str(self.tool), "levels", str(work / "record"), str(work / "CORPUS"), str(work / "SNAPSHOTS"),
-                                           str(SEED if pinned else other)], capture_output=True, check=True).stdout.decode()
+                    made = self.run_tool("levels", work / "record", work / "CORPUS", work / "SNAPSHOTS", SEED if pinned else other).decode()
                     native = dict(line.split(" ") for line in made.splitlines())
                     reference = linux_x86_64_status(mutated_full, mutated_seed)
                     self.assertEqual({level: native[level] == "1" for level in (f"B{n}" for n in range(7))},

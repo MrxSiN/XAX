@@ -1,5 +1,10 @@
 """Documents that repeat current levels must match their sources; the XAX program `status-tool/xax_status.xax` writes
-the blocks (`sh status.sh check|write [<repo>]`, its README). This file only runs it."""
+the blocks (`sh status.sh check|write [<repo>]`, its README). This file only runs it.
+
+On Linux x86-64 every case runs with the pinned Linux seed. On Windows (with Git for Windows' `sh` on PATH) they run the
+tools' Windows stores (`*_windows.xax`) built by the pinned Windows seed (OI-60); only the batch and generator checks
+are Linux-only."""
+import hashlib
 import platform
 import re
 import shutil
@@ -13,6 +18,8 @@ REPO = Path(__file__).resolve().parents[2]
 MATRIX = REPO / "XAX_REPLACEMENT_MATRIX.json"
 TOOL = REPO / "compiler" / "bootstrap" / "status-tool" / "status.sh"
 LINUX_X86_64 = sys.platform.startswith("linux") and platform.machine().lower() in ("x86_64", "amd64")
+WINDOWS_X86_64 = sys.platform == "win32" and platform.machine().lower() in ("x86_64", "amd64") and shutil.which("sh") is not None
+BOOTSTRAP = TOOL.parents[1]
 BLOCK = re.compile(r"<!-- xax-status:(levels|targets|bootstrap) -->.*?<!-- /xax-status:\1 -->", re.S)
 
 
@@ -28,15 +35,35 @@ def page_repo(directory: str, text: str) -> tuple[Path, Path]:
     return root, page
 
 
-@unittest.skipUnless(LINUX_X86_64, "the status tool runs on the pinned Linux x86-64 seed")
+@unittest.skipUnless(LINUX_X86_64 or WINDOWS_X86_64, "the status tool runs on the pinned Linux or Windows x86-64 seed")
 class StatusDocsTests(unittest.TestCase):
+    @unittest.skipUnless(LINUX_X86_64, "the ledger seed's xaxc edit runs on the Linux seed")
     def test_the_program_is_its_batch_on_the_ledger_seed(self):
-        bootstrap = TOOL.parents[1]
         with tempfile.TemporaryDirectory() as directory:
             out = Path(directory) / "xax_status.xax"
-            subprocess.run([str(bootstrap / "seed" / "xaxc-linux-x86_64"), "edit", str(bootstrap / "evolution" / "ledger-tool" / "seed.xax"),
+            subprocess.run([str(BOOTSTRAP / "seed" / "xaxc-linux-x86_64"), "edit", str(BOOTSTRAP / "evolution" / "ledger-tool" / "seed.xax"),
                             str(TOOL.parent / "status.batch"), str(out)], check=True, capture_output=True)
             self.assertEqual(out.read_bytes(), (TOOL.parent / "xax_status.xax").read_bytes())
+
+    @unittest.skipUnless(LINUX_X86_64, "the Windows generator runs on the Linux seed")
+    def test_the_windows_program_is_the_generated_one(self):
+        with tempfile.TemporaryDirectory() as directory:
+            out = Path(directory) / "xax_status_windows.xax"
+            subprocess.run(["sh", str(BOOTSTRAP / "windows" / "generator" / "generate.sh"), str(TOOL.parent / "xax_status.xax"), str(out)],
+                           check=True, capture_output=True, timeout=1800)
+            self.assertEqual(out.read_bytes(), (TOOL.parent / "xax_status_windows.xax").read_bytes())
+
+    @unittest.skipUnless(WINDOWS_X86_64, "the Windows seed is checked where it runs")
+    def test_the_windows_seed_is_its_pin(self):
+        """OI-60: the seed these cases run is the released Windows seed (the candidate line of the latest validated
+        release in RELEASES)."""
+        lines = (BOOTSTRAP / "RELEASES").read_text(encoding="ascii").splitlines()
+        release = [line.split()[1] for line in lines if line.startswith("validated ")][-1]
+        candidate = next(line for line in lines if line.startswith(f"candidate {release} "))
+        pinned = next(word.split("=", 1)[1] for word in candidate.split() if word.startswith("x86_64-windows-pe-v1="))
+        seed = (BOOTSTRAP / "windows" / "xaxc-windows-x86_64.exe").read_bytes()
+        self.assertEqual(f"{hashlib.sha256(seed).hexdigest()}:{len(seed)}", pinned)
+
     def test_every_block_matches_its_source(self):
         documents = [p for p in REPO.rglob("*.md") if ".git" not in p.parts and BLOCK.search(p.read_text(encoding="utf-8"))]
         self.assertGreaterEqual(len(documents), 5)

@@ -13,12 +13,36 @@ Run from `compiler/` with `PYTHONPATH=src:reference:.`. All run the XAX general 
 - `call_one.py <CID prefix> <out store> [source store]`: a PE entry that calls one function of a store with constant
   bits arguments and freshly VirtualAlloc'd views for each pointer/view/memory triple, to reproduce a per-function
   failure in isolation (then `audit.py` on the output).
-- `check.py <bbc.exe> <work dir> [--bbc <BBC checkout>] [case ...]`: BBC's checks outside BBC. For 93 programs (pilot
-  programs, BBC's tests, both depth-512 programs, negative loops, 60 random programs, capacity cases) it runs
-  `wine bbc.exe compile <target> <level> <out>` for windows-x86_64 and android-arm64 at -O0/-O1, runs the result
-  (wine / qemu-aarch64) and compares output bytes and the exact exit status with an independent interpreter; then the
-  five compile error paths (exit status, no leftover files). Output goes through files, not pipes: wine's server and
-  services inherit a run's descriptors.
+- `xax_bbc_check.exe <bbc.exe> <integration dir> CASES <adb> <serial> <out>`, run in an empty work directory on
+  Windows: BBC's checks outside BBC, in XAX (it replaced `check.py` on 2026-11-26). See "The check tool" below.
+
+## The check tool
+
+For each of the 93 programs in `CASES` (pilot programs, BBC's tests, both depth-512 programs, negative loops, 60 random
+programs, capacity cases) it runs `bbc.exe compile <target> <level> <out>` for android-arm64 and windows-x86_64 at
+-O0 and -O1. It runs each Windows program natively and each Android program on the adb device (pushed to
+`/data/local/tmp/xax-bbc`, stdin and stdout through files there). It compares the output bytes and the exact exit
+status with the expectation in `CASES`, then checks the five compile error paths: their exit status, and that no new
+directory entry is left. It copies `bbc.exe` and both host requests (`<integration dir>/bbc-*.xax`) into the work
+directory first. `<out>` gets one line per compile (`<case> <level> <target> <compile exit> <pass>`), one per error path,
+and the summary JSON line that `check.py` printed. Exit 0 when everything passes, 1 when something fails, 3 when the tool
+cannot run (arguments, a file, adb).
+
+- `CASES` is data: `XAXBBC1`, the case count, then per case its name, source, and for each input the input, the
+  expected exit status and the expected output (lengths in decimal, each field ended by a newline). It was exported once
+  from `check.py`'s table and interpreter, with BBC's tests at BBC `main` on 2026-11-26 (93 cases, 122 inputs).
+- `check.batch` is a native batch (docs/09_AI_PROTOCOL.md §16) on `bootstrap/evolution/ledger-tool/seed.xax`. Its
+  result is `xax_bbc_check.xax`, whose main has the general driver's entry, so
+  `bootstrap/windows/generator/generate.sh` hosts it as `xax_bbc_check_windows.xax`. Build that with the Windows seed:
+  `resolve`, then `build`.
+- Main reads `CASES` and writes `<out>` through the host functions. It starts processes and handles the children's files
+  through kernel32 declarations that take view pointers (`CreateProcessW` with inherited standard handles,
+  `CreateFileW`, `ReadFile`, `WriteFile`, `DeleteFileW`, `CopyFileW`, `MoveFileW`, `FindFirstFileW` and the rest),
+  wrapped in small helpers (`@kopen`, `@krun`, `@kfile` and others). Their work area is one committed 1 MiB view:
+  ReadFile into uncommitted pages fails instead of faulting them in.
+- Limits: a child's output of at most 983,039 bytes, read with one `ReadFile`, and no timeout on a child.
+- Change it by a further batch on `xax_bbc_check.xax`, then regenerate the Windows store.
+  `tests/test_windows_generator.py` checks both stores against the batch and the generator.
 - `bench.py <arm>[,<arm>...] <work dir> <out.json> <trials> <baseline record> <program.b> ...`: build and run times per
   trial for one or more `bbc.exe` arms (`<name>=<path>`), all arms' trials in one shuffled order so they alternate, every
   output checked against the hash BBC's baseline benchmark record holds for that source.
