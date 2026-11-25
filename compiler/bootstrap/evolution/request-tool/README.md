@@ -1,7 +1,9 @@
 # The build request a driver store compiles to, as an XAX program
 
-`xax_request.xax` is a Linux x86-64 process, an XAX build request store (RFC
-`docs/proposals/build-bootstrap-rotation-rfc.md` §6, step 5 of §13.7).
+`xax_request.xax` is an XAX build request store (RFC `docs/proposals/build-bootstrap-rotation-rfc.md` §6, step 5 of
+§13.7). Since 2026-11-25 (`driver.batch`) its main has the general driver's entry and reaches files only through the
+driver's host functions, so `../../windows/generator/generate.sh` hosts it: `xax_request_windows.xax` is its output,
+which `request.sh` builds with the pinned Windows seed under Git for Windows' `sh`.
 
 ```text
 xax_request <driver> <target> <out>
@@ -49,3 +51,15 @@ Checked on Linux x86-64 (WSL 2, the pinned seed `0cd26742…`), EXECUTED:
   (SHA-256 `8345f64d…`), which the reference `compiler_request` also gives.
 - It took 3.3 s wall time and 123 MB peak RSS; a request-mirror ledger transaction takes about 41 s of `edit`.
 - A missing driver file exits 1 and writes nothing.
+
+## Driver-shaped main (2026-11-25)
+
+`driver.batch` on the previous `xax_request.xax` replaces `main` (F9) and keeps the computation: the same calls, in the
+same order, on views of the same `ptr<bits32>` types, which the driver's `xax-host-v1` reserve and commit give through
+`heap.view`. It supplies the driver's declarations (and a free declaration for `ptr<bits32>` with the 64 MiB view, the
+driver's 2 KiB one with that view type swapped in) and the driver's five host functions. Files are read through a
+64 KiB byte staging view and copied in 4-byte words, the last partial word by read-modify-write; the target is one read
+of at most 191 bytes, as before. EXECUTED: in WSL 2 with the release 0042 seed its output for the current driver and
+the Linux target equals the previous program's and `seed/xax_compiler_request.xax` (`fa474368…`), and a missing driver
+or a non-driver file exits 1 and writes nothing, as before. On Windows 11 the Windows build (65,024 bytes) writes the
+same request (1 s), and `evolve.sh check`, which derives it, passes there (4 s).

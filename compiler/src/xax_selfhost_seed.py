@@ -21,6 +21,7 @@ import atexit
 import functools
 import shutil
 import subprocess
+import sys
 import tempfile
 from pathlib import Path
 
@@ -37,18 +38,31 @@ ROTATE_STORE = SEED_DIRECTORY / "rotate-tool" / "xax_rotate.xax"
 EVIDENCE = BOOTSTRAP / "evidence"
 
 
+WINDOWS = sys.platform == "win32"
+FILE_OUTPUT = (ROTATE_STORE, EVIDENCE / "xax_evidence.xax")  # tools that write their text to a file, their last argument
+
+
 @functools.cache
 def native_tool(store: Path) -> Path:
-    """The XAX tool program ``store`` as the seed builds it (once per process, as ``rotate.sh`` does)."""
+    """The XAX tool program ``store`` as the seed builds it (once per process, as ``rotate.sh`` does). On Windows the
+    Windows seed builds the store's hosted copy (``<name>_windows.xax``, ``windows/generator/generate.sh``)."""
     directory = Path(tempfile.mkdtemp(prefix="xax-tool-"))
     atexit.register(shutil.rmtree, directory, True)
-    for arguments in (("resolve", store, directory / "tool.xax"), ("build", directory / "tool.xax", directory / "tool", directory / "provenance")):
-        subprocess.run([str(SEED_PATH), *map(str, arguments)], check=True, capture_output=True)
-    (directory / "tool").chmod(0o755)
-    return directory / "tool"
+    seed, program, tool = SEED_PATH, store, directory / "tool"
+    if WINDOWS:
+        seed, program, tool = BOOTSTRAP / "windows" / "xaxc-windows-x86_64.exe", store.with_name(store.stem + "_windows.xax"), directory / "tool.exe"
+    for arguments in (("resolve", program, directory / "tool.xax"), ("build", directory / "tool.xax", tool, directory / "provenance")):
+        subprocess.run([str(seed), *map(str, arguments)], check=True, capture_output=True)
+    tool.chmod(0o755)
+    return tool
 
 
 def run_tool(store: Path, *arguments) -> str:
+    if store in FILE_OUTPUT:  # the release and evidence tools write their text to a file, their last argument
+        with tempfile.TemporaryDirectory() as directory:
+            out = Path(directory) / "out"
+            subprocess.run([str(native_tool(store)), *map(str, arguments), str(out)], check=True, capture_output=True)
+            return out.read_text(encoding="ascii")
     return subprocess.run([str(native_tool(store)), *map(str, arguments)], check=True, capture_output=True).stdout.decode()
 
 

@@ -87,7 +87,7 @@ This register lists the issues that require implementation, target, ecosystem, o
 | [OI-57](#oi-57--the-references-s12c2-analysis-audit-disagrees-with-the-native-basics-since-ledger-0022) | The reference's S12c.2 analysis audit disagrees with the native `basics` since ledger 0022 | CLOSED |
 | [OI-58](#oi-58--windows-x86-64-code-generation-on-the-chains-walk-r4-blocker-for-windows-x86_64-pe) | Windows x86-64 code generation on the `chains` walk (R4 blocker for `windows-x86_64-pe`) | OPEN |
 | [OI-59](#oi-59--edge-copies-overwrite-a-frame-word-another-copy-of-the-same-edge-still-reads) | Edge copies overwrite a frame word another copy of the same edge still reads | CLOSED |
-| [OI-60](#oi-60--host-portability-gaps-left-after-the-2026-11-13-audit) | Host-portability gaps left after the 2026-11-13 audit | OPEN |
+| [OI-60](#oi-60--host-portability-gaps-left-after-the-2026-11-13-audit) | Host-portability gaps left after the 2026-11-13 audit | CLOSED |
 | [OI-61](#oi-61--the-jvm-program-does-not-check-a-catching-calls-throwable-output-type) | The JVM program does not check a catching call's throwable output type | CLOSED |
 | [OI-62](#oi-62--the-legacy-wasm32-profile-emits-an-invalid-module-for-a-bits64-checked-offset) | The legacy Wasm32 profile emits an invalid module for a `bits<64>` checked offset | CLOSED |
 | [OI-63](#oi-63--canonical-index-acceleration-for-large-stores) | Canonical index acceleration for large stores | OPEN |
@@ -3386,7 +3386,7 @@ The same staging as a native transaction on the x86-64 backend, driver and reque
 
 ## OI-60 — Host-portability gaps left after the 2026-11-13 audit
 
-**Status:** OPEN (2026-11-25). A test now runs Windows-seed commands against the seed's pin (the status tool); the native ledger tool and seed check on the Windows seed are open.
+**Status:** CLOSED (2026-11-25). The ledger, request, release, evidence, hosting and status tools run on the Windows seed, `selfbuild.sh` rebuilds the Windows seed from itself there, and tests run Windows-seed commands against the pin. The remaining findings below are not closure criteria.
 
 **Related Issues:** [OI-58](#oi-58--windows-x86-64-code-generation-on-the-chains-walk-r4-blocker-for-windows-x86_64-pe)
 
@@ -3401,7 +3401,8 @@ A read-only audit of the tracked repository for Linux-host assumptions found the
 
 Left open, each needing either a native tool or new test glue that the language rule does not allow in Python:
 
-- The ledger program (`evolve.sh apply/replay/check`) and `selfbuild.sh` run only where the Linux seed runs.
+- `rotate.sh build`, `confirm` and `evidence/run.sh` still run on Linux x86-64 (they drive the Linux seed's generations; the
+  Windows confirm runs the Windows seed through WSL interop).
 - No test exercises the Windows seed (`compiler/bootstrap/windows`), and the seed tools pin the Linux seed only.
 - About 130 test modules gate on Linux x86-64 although several only call seed commands.
 - `benchmarks/linux_harness.py` reads `/proc/cpuinfo` without a fallback (the other three benchmark readers have one).
@@ -3409,11 +3410,32 @@ Left open, each needing either a native tool or new test glue that the language 
 
 ### Closure Criteria
 
-- [ ] A native ledger tool and seed check that run on the Windows seed.
+- [x] A native ledger tool and seed check that run on the Windows seed (2026-11-25).
 - [x] One test that runs a Windows-seed command against its pin (2026-11-25: `test_status_docs.py` on Windows).
 
 <details>
 <summary>Historical Record</summary>
+
+#### 2026-11-25: CLOSED — the seed check on the Windows seed
+
+The release tool (`seed/rotate-tool`), the evidence tool and the Windows generator's hosting tool got the same
+driver-shaped `main` (`driver.batch` each; every output byte for byte the previous tool's). `generate.sh` now runs on
+Windows with the Windows seed (the compiler's Windows request byte for byte, `0ee68b3c…`, 296 s), so `selfbuild.sh` does
+there: EXECUTED on Windows 11, the Windows seed rebuilt itself twice and `xaxc1.exe`, `xaxc2.exe` and the pinned seed are
+all `4d361a39…` (720 s). `rotate.sh state` and `status.sh` (bootstrap block included) run there too; on Windows
+`test_status_docs.py` 6 passed, `test_rotate_tool.py`, `test_xax_selfhost_evolution.py` and `test_status_docs.py` 10
+passed. Both closure criteria are met.
+
+#### 2026-11-25: the ledger tool runs on the Windows seed
+
+`ledger-tool/xax_ledger.xax` has the driver's entry (`driver.batch`) and `generate.sh` hosts it
+(`xax_ledger_windows.xax`; the hosting tool's entry lookup was fixed for it, `entry.batch`). Every command gives the
+previous tool's output byte for byte (14 cases, WSL 2). On Windows 11 with the Windows seed, EXECUTED:
+`evolve.sh check` passes (2 s), `evolve.sh replay xax_jvm_general.xax` replays 7 of 7, and three tests in
+`test_xax_selfhost_evolution.py` pass. The same day the request tool followed (`request-tool/driver.batch`,
+`xax_request_windows.xax`): on Windows it writes the committed compiler request byte for byte, so `evolve.sh check`
+derives and compares it there too (4 s), and four Windows tests pass. `evolve.sh apply` was not run on Windows. The first
+closure criterion still needs a seed check there.
 
 #### 2026-11-25: the status tool runs on the Windows seed
 
