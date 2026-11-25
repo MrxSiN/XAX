@@ -1,9 +1,9 @@
 """Documents that repeat current levels must match their sources; the XAX program `status-tool/xax_status.xax` writes
 the blocks (`sh status.sh check|write [<repo>]`, its README). This file only runs it.
 
-On Linux x86-64 every case runs with the pinned Linux seed. On Windows (with Git for Windows' `sh` on PATH) the levels,
-targets and rewrite cases run `xax_status_windows.xax` built by the pinned Windows seed (OI-60); the repository and
-bootstrap cases need the Linux-only evidence and release tools."""
+On Linux x86-64 every case runs with the pinned Linux seed. On Windows (with Git for Windows' `sh` on PATH) they run the
+tools' Windows stores (`*_windows.xax`) built by the pinned Windows seed (OI-60); only the batch and generator checks
+are Linux-only."""
 import hashlib
 import platform
 import re
@@ -64,7 +64,6 @@ class StatusDocsTests(unittest.TestCase):
         seed = (BOOTSTRAP / "windows" / "xaxc-windows-x86_64.exe").read_bytes()
         self.assertEqual(f"{hashlib.sha256(seed).hexdigest()}:{len(seed)}", pinned)
 
-    @unittest.skipUnless(LINUX_X86_64, "the repository holds bootstrap blocks, which need the Linux-only tools")
     def test_every_block_matches_its_source(self):
         documents = [p for p in REPO.rglob("*.md") if ".git" not in p.parts and BLOCK.search(p.read_text(encoding="utf-8"))]
         self.assertGreaterEqual(len(documents), 5)
@@ -96,7 +95,6 @@ class StatusDocsTests(unittest.TestCase):
             root, page = page_repo(directory, text)
             self.assertEqual((status("check", root).returncode, page.read_text(encoding="utf-8")), (0, text))
 
-    @unittest.skipUnless(LINUX_X86_64, "the bootstrap line needs the Linux-only evidence and release tools")
     def test_bootstrap_block_is_the_derived_status(self):
         """STATUS_DOCS_SYNCHRONIZED for B levels: the block comes from the executed records, never prose. The oracle is
         ``bootstrap_status`` (W3, ADR-362: no M14 evidence, and the bootstrap seed is the native compiler)."""

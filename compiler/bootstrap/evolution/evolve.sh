@@ -23,20 +23,35 @@
 # transaction and `check` requires the committed request to be that derivation. Its historical transactions replay.
 #
 # The ledger's logic (blob ids, chain ends, the transaction list, the check) is the XAX program ledger-tool/xax_ledger.xax
-# (ledger-tool/README.md), built here with the compiler; this script only runs xaxc, git and that program.
+# (ledger-tool/README.md), built here with the compiler; this script only runs xaxc, git and that program. On Windows
+# (Git for Windows' sh) the pinned Windows seed builds ledger-tool/xax_ledger_windows.xax instead.
 set -eu
 here=$(cd "$(dirname "$0")" && pwd)
 bootstrap=$(dirname "$here")
-xaxc=${XAXC:-"$bootstrap/seed/xaxc-linux-x86_64"}
+case $(uname -s) in
+    MINGW*|MSYS*|CYGWIN*) seed=$bootstrap/windows/xaxc-windows-x86_64.exe; program=$here/ledger-tool/xax_ledger_windows.xax; exe=.exe ;;
+    *) seed=$bootstrap/seed/xaxc-linux-x86_64; program=$here/ledger-tool/xax_ledger.xax; exe= ;;
+esac
+xaxc=${XAXC:-$seed}
 
 die() { echo "evolve.sh: $*" >&2; exit 1; }
 
 work=$(mktemp -d "${TMPDIR:-/tmp}/xax-evolve.XXXXXX")
 trap 'rm -rf "$work"' EXIT
-"$xaxc" resolve "$here/ledger-tool/xax_ledger.xax" "$work/ledger.xax" || die "xaxc resolve of the ledger program failed"
-"$xaxc" build "$work/ledger.xax" "$work/xax_ledger" "$work/ledger.provenance" || die "xaxc build of the ledger program failed"
-chmod 755 "$work/xax_ledger"
-tool="$work/xax_ledger"
+"$xaxc" resolve "$program" "$work/ledger.xax" || die "xaxc resolve of the ledger program failed"
+"$xaxc" build "$work/ledger.xax" "$work/xax_ledger$exe" "$work/ledger.provenance" || die "xaxc build of the ledger program failed"
+chmod 755 "$work/xax_ledger$exe"
+tool="$work/xax_ledger$exe"
+
+ledger() {  # ledger <command> <argument>...: the program writes its text to a file (the last argument); print it,
+            # to standard error for `check` (the stores it reports), and keep the program's exit status
+    rm -f "$work/ledger.out"
+    status=0; "$tool" "$@" "$work/ledger.out" || status=$?
+    if [ -f "$work/ledger.out" ]; then
+        if [ "$1" = check ]; then cat "$work/ledger.out" >&2; else cat "$work/ledger.out"; fi
+    fi
+    return $status
+}
 
 apply() {
     record=$1; shift
@@ -48,14 +63,14 @@ apply() {
     for store in "$@"; do
         path="$bootstrap/$store"
         [ -f "$path" ] || die "$store is not a store under bootstrap/"
-        before=$("$tool" head "$bootstrap" "$store") || die "$store is not a frozen store (no ledger chain, a broken one, or derived)"
-        [ "$("$tool" blob "$path")" = "$before" ] || die "$store is not its ledger chain's end"
+        before=$(ledger head "$bootstrap" "$store") || die "$store is not a frozen store (no ledger chain, a broken one, or derived)"
+        [ "$(ledger blob "$path")" = "$before" ] || die "$store is not its ledger chain's end"
         n=$((n + 1))
         if ! "$xaxc" edit "$path" "$record" "$work/$n.xax"; then
             die "xaxc edit $store: rejected (the diagnostic record is $work/$n.xax; xaxc edit <store> <it> <out> renders it)"
         fi
         "$xaxc" verify "$work/$n.xax" "$work/$n.verify" || die "xaxc verify of the edited $store: rejected"
-        echo "$name $store $before $("$tool" blob "$work/$n.xax")" >> "$work/lines"
+        echo "$name $store $before $(ledger blob "$work/$n.xax")" >> "$work/lines"
     done
     [ -e "$here/$name" ] || cp -- "$record" "$here/$name"
     n=0
@@ -79,23 +94,23 @@ replay() {
     status=0 total=0 replayed=0
     # Strict (docs/proposals/build-bootstrap-rotation-rfc.md section 5): every transaction is replayed or the replay fails.
     [ "$(git -C "$bootstrap" rev-parse --is-shallow-repository)" = false ] || die "shallow clone: replay needs the full history"
-    "$tool" transactions "$bootstrap" > "$work/transactions"
+    ledger transactions "$bootstrap" > "$work/transactions"
     while read -r name store before after; do
         [ -z "$only" ] || [ "$store" = "$only" ] || continue
         total=$((total + 1))
         made="$work/made-$(echo "$store" | tr / _)"  # this store's last replayed result
-        if [ "$("$tool" blob "$bootstrap/$store")" = "$before" ]; then
+        if [ "$(ledger blob "$bootstrap/$store")" = "$before" ]; then
             cp -- "$bootstrap/$store" "$work/before.xax"
         elif git -C "$bootstrap" cat-file blob "$before" > "$work/before.xax" 2>/dev/null; then
             :
-        elif [ -f "$made" ] && [ "$("$tool" blob "$made")" = "$before" ]; then
+        elif [ -f "$made" ] && [ "$(ledger blob "$made")" = "$before" ]; then
             cp -- "$made" "$work/before.xax"  # a transaction chained in one commit: git holds only the chain's end
         else
             echo "FAIL $name $store: the repository does not hold $before" >&2
             status=1
             continue
         fi
-        if "$xaxc" edit "$work/before.xax" "$here/$name" "$work/after.xax" && [ "$("$tool" blob "$work/after.xax")" = "$after" ]; then
+        if "$xaxc" edit "$work/before.xax" "$here/$name" "$work/after.xax" && [ "$(ledger blob "$work/after.xax")" = "$after" ]; then
             cp -- "$work/after.xax" "$made"
             replayed=$((replayed + 1))
             echo "ok   $name $store"
@@ -105,7 +120,7 @@ replay() {
         fi
     done < "$work/transactions"
     [ "$total" -gt 0 ] || { echo "FAIL no transaction${only:+ for $only}" >&2; status=1; }
-    echo "replayed $replayed of $total LEDGER=$("$tool" blob "$here/LEDGER") xaxc=$("$tool" blob "$xaxc")"
+    echo "replayed $replayed of $total LEDGER=$(ledger blob "$here/LEDGER") xaxc=$(ledger blob "$xaxc")"
     return $status
 }
 
@@ -114,10 +129,10 @@ command=${1:-}
 case "$command" in
     apply) apply "$@" ;;
     replay) replay "$@" ;;
-    ledger) "$tool" "$@" ;;
+    ledger) ledger "$@" ;;
     check)
         root=${1:-$bootstrap}
-        "$tool" check "$root"
+        ledger check "$root"
         if [ -f "$root/seed/xax_compiler_request.xax" ]; then
             derive "$root" "$work/request.xax"
             cmp -s "$work/request.xax" "$root/seed/xax_compiler_request.xax" || die "seed/xax_compiler_request.xax is not the request of the committed driver (request-tool/request.sh)"

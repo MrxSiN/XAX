@@ -32,17 +32,20 @@ module cases, whose branding archive carries a timestamp; freezing removes that 
 
 ## The program
 
-`xax_evidence.xax` is a Linux x86-64 process, an XAX build request store:
+`xax_evidence.xax` is an XAX build request store with the general driver's entry (since 2026-11-25, `driver.batch`), so
+`../windows/generator/generate.sh` hosts it (`xax_evidence_windows.xax`, which the Windows seed builds where the
+status and release scripts run on Windows). Every command writes its text to an output file, its last argument
+(`run.sh`'s `ev` prints it back); `plan`'s zero file is still `<dir>/zero`:
 
 ```text
-xax_evidence sha <file>                  the file's SHA-256 in hexadecimal and a newline; "-" when it cannot be read
-xax_evidence elf <file>                  1 when the ELF file has a PT_INTERP program header, else 0; "-" when unreadable
-xax_evidence diag <file>                 "<code> <rule>" from xaxc's text rendering of a rejection record (the values
+xax_evidence sha <file> <out>            the file's SHA-256 in hexadecimal and a newline; "-" when it cannot be read
+xax_evidence elf <file> <out>            1 when the ELF file has a PT_INTERP program header, else 0; "-" when unreadable
+xax_evidence diag <file> <out>           "<code> <rule>" from xaxc's text rendering of a rejection record (the values
                                          of its `code` and `rule` lines, "-" for a missing one); "- -" when unreadable
-xax_evidence plan <corpus> <dir>         one line per case: "<index> <command> <arguments>", with outputs
+xax_evidence plan <corpus> <dir> <out>   one line per case: "<index> <command> <arguments>", with outputs
                                          <dir>/<index>.<k>; it writes <dir>/zero when a case needs zero bytes;
                                          exit 3 when the corpus cannot be read
-xax_evidence levels <record> <corpus> <snapshots> <seed>
+xax_evidence levels <record> <corpus> <snapshots> <seed> <out>
                                          the B levels of a V2 record (below), one "<name> 0|1" line each: B0 to B6,
                                          rotated, python; <seed> is the pinned seed file, whose SHA-256 is compared
                                          with the record's; exit 3 when the record cannot be read
@@ -66,6 +69,11 @@ How it was made, without a generator of its logic:
   table, `@cindex` indexes the corpus, and `@gens`, `@cases` (with `@exact1` and `@agree`) and `@levels` derive the
   levels.
 - Change it by a further batch on `xax_evidence.xax` (`xaxc edit` lists and shows its functions), then `xaxc verify`.
+- `driver.batch` (2026-11-25) replaces `main` (F35) with the general driver's entry and host functions and keeps every
+  call. EXECUTED in WSL 2 with the release 0042 seed: `sha`, `elf`, `diag` (including unreadable files), `plan` (its
+  199 lines and its 68,157,440-byte zero file) and `levels` (the 0042 record, with the pinned and another seed) equal
+  the previous program's output and exit status byte for byte. On Windows 11 the Windows build (48,128 bytes) gives the
+  same `sha` and `levels` (B0-B6 1 for release 0042).
 
 ## The record
 
