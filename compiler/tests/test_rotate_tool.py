@@ -21,6 +21,7 @@ BOOTSTRAP = Path(__file__).resolve().parents[1] / "bootstrap"
 TOOL = BOOTSTRAP / "seed" / "rotate-tool"
 SEED = BOOTSTRAP / "seed" / "xaxc-linux-x86_64"
 LINUX_X86_64 = sys.platform.startswith("linux") and platform.machine().lower() in ("x86_64", "amd64")
+WINDOWS_X86_64 = sys.platform == "win32" and platform.machine().lower() in ("x86_64", "amd64") and shutil.which("sh") is not None
 H1, H2 = "1" * 64, "2" * 64
 
 
@@ -40,13 +41,18 @@ class RotateToolTests(unittest.TestCase):
         cls.directory.cleanup()
 
     def run_tool(self, *arguments):
-        done = subprocess.run([str(self.tool), *map(str, arguments)], capture_output=True, check=False)
-        return done.returncode, done.stdout.decode()
+        """(exit status, text): the tool writes its text to a file, its last argument (rotate-tool/README.md)."""
+        with tempfile.TemporaryDirectory() as directory:
+            out = Path(directory) / "out"
+            done = subprocess.run([str(self.tool), *map(str, arguments), str(out)], capture_output=True, check=False)
+            return done.returncode, out.read_bytes().decode() if out.exists() else ""
 
     def test_the_store_is_its_batch(self):
+        """rotate.batch, then driver.batch (2026-11-25: the general driver's entry and host functions)."""
         with tempfile.TemporaryDirectory() as directory:
-            out = Path(directory) / "tool.xax"
-            subprocess.run([str(SEED), "edit", str(BOOTSTRAP / "evolution" / "ledger-tool" / "seed.xax"), str(TOOL / "rotate.batch"), str(out)], check=True)
+            first, out = Path(directory) / "first.xax", Path(directory) / "tool.xax"
+            subprocess.run([str(SEED), "edit", str(BOOTSTRAP / "evolution" / "ledger-tool" / "seed.xax"), str(TOOL / "rotate.batch"), str(first)], check=True)
+            subprocess.run([str(SEED), "edit", str(first), str(TOOL / "driver.batch"), str(out)], check=True)
             self.assertEqual(out.read_bytes(), (TOOL / "xax_rotate.xax").read_bytes())
 
     def test_the_committed_state_and_pins(self):
@@ -102,6 +108,18 @@ class RotateToolTests(unittest.TestCase):
             for text, status in ((good, 0), (good.replace("B6 1", "B6 0"), 1), (good.replace("python 0", "python 1"), 1), (good + "\n", 1)):
                 levels.write_text(text, encoding="ascii")
                 self.assertEqual(self.run_tool("valid", levels)[0], status)
+
+
+@unittest.skipUnless(WINDOWS_X86_64, "the Windows release tool runs where the Windows seed runs")
+class WindowsRotateToolTests(unittest.TestCase):
+    """OI-60: rotate.sh's release tool on the Windows seed (rotate-tool/xax_rotate_windows.xax)."""
+
+    def test_state_names_the_released_profile(self):
+        run = subprocess.run(["sh", str(BOOTSTRAP / "seed" / "rotate.sh"), "state"], capture_output=True, text=True, timeout=1800)
+        self.assertEqual(run.returncode, 0, run.stderr)
+        lines = run.stdout.splitlines()
+        self.assertTrue(lines[0].startswith("ledger ") and any(line.startswith("validated ") for line in lines), run.stdout)
+        self.assertIn(lines[-1], ("profile released", "profile candidate", "profile development"))
 
 
 if __name__ == "__main__":

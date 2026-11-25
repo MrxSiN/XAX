@@ -14,7 +14,12 @@ rec=$out/record
 "$seed" resolve "$here/xax_evidence.xax" "$out/tool.xax" && "$seed" build "$out/tool.xax" "$out/xax_evidence" "$out/tool.provenance" || {
     echo "run.sh: building xax_evidence failed" >&2; exit 3; }
 chmod 755 "$out/xax_evidence"
-t=$out/xax_evidence
+ev() {  # ev <command> <argument>...: the evidence program writes its text to a file, its last argument; print it
+    "$out/xax_evidence" "$@" "$out/ev.out"; status=$?
+    [ ! -f "$out/ev.out" ] || cat "$out/ev.out"; rm -f "$out/ev.out"
+    return $status
+}
+t=ev
 request=$bootstrap/seed/xax_compiler_request.xax
 tiny=$bootstrap/evolution/ledger-tool/seed.xax
 cd "$bootstrap" || exit 3

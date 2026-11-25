@@ -11,7 +11,9 @@ xaxc build snapshot.xax xaxc.exe xaxc.provenance
 It replaces the hand-written `hosting.batch` and `pe_target.edit`, which had to be rewritten for each ledger (RFC
 `docs/proposals/build-bootstrap-rotation-rfc.md` §7, step 5 of §13.7).
 
-`xax_hosting.xax` is a Linux x86-64 process, an XAX build request store, with three commands:
+`xax_hosting.xax` is an XAX build request store with the general driver's entry (since 2026-11-25, `driver.batch`),
+so it hosts itself: `xax_hosting_windows.xax` is its own `generate.sh` output, which `generate.sh` builds with the
+Windows seed under Git for Windows' `sh`. It has three commands:
 
 ```text
 xax_hosting e <request> <listing> - <out>    main's handle ("F<n>"): the request's package's build entry, found in
@@ -53,11 +55,14 @@ How it was made, without a generator of its logic:
   package's layout, and so missed the ledger program's entry. It now reads it after the package identity and the entry
   name (one module, no dependencies, one entry, as every hosted request has). `xax_hosting.xax` is `generator.batch`
   then `entry.batch` on the ledger seed.
+- `driver.batch` (2026-11-25) gives `main` the general driver's entry and host functions; every store `generate.sh`
+  made before (the compiler request and the status, ledger, request and release tools) is made byte for byte again.
 
 **Limits:**
 
 - Main must have at most two `arg_copy` reads, and each must take its view as the parameter right after its pointer
   (the shape main has had since ledger 0031).
 - Every file must be under 63 MiB.
-- The program runs on Linux x86-64 only, like the ledger and request tools.
+- On Linux x86-64 the Linux seed builds `xax_hosting.xax`; on Windows the Windows seed builds `xax_hosting_windows.xax`
+  (2026-11-25: there `generate.sh` makes the compiler's Windows request byte for byte, `0ee68b3c…`, in 296 s).
 - A new host function or startup read needs a new layer and a new rewrite rule.

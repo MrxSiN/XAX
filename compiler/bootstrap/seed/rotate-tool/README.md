@@ -1,20 +1,24 @@
 # The release state as an XAX program
 
-RFC `docs/proposals/build-bootstrap-rotation-rfc.md` §3, §8 and §9, phase 6. `xax_rotate.xax` is a Linux x86-64
-process, an XAX build request store. `../rotate.sh` builds it with the pinned seed and runs it.
+RFC `docs/proposals/build-bootstrap-rotation-rfc.md` §3, §8 and §9, phase 6. `xax_rotate.xax` is an XAX build
+request store with the general driver's entry (since 2026-11-25, `driver.batch`): it reaches files only through the
+driver's host functions, so `../../windows/generator/generate.sh` hosts it (`xax_rotate_windows.xax`). `../rotate.sh`
+builds it with the pinned seed of its host (the Windows seed under Git for Windows' `sh`) and runs it. Every command
+writes its text to an output file, its last argument; `rotate.sh` prints it back.
+
 
 ```text
-xax_rotate state <bootstrap>             the release state, one line each: ledger <head record>, validated <n|none>,
+xax_rotate state <bootstrap> <out>       the release state, one line each: ledger <head record>, validated <n|none>,
                                          candidate <n|none>, any blocked line, pending <target> per unconfirmed host,
                                          then profile <development|candidate|released> or unmet <blocked|confirm>;
                                          exit 1 with an unmet line
-xax_rotate tests <bootstrap>             the tests POLICY selects: for development, the rest of every `test` line
+xax_rotate tests <bootstrap> <out>       the tests POLICY selects: for development, the rest of every `test` line
                                          whose store a transaction since the last validated release changed (or *);
                                          `all` for a candidate; nothing when released or blocked
-xax_rotate pin <bootstrap> <target>      <sha256>:<size> of that host's seed in the last validated release; exit 1
+xax_rotate pin <bootstrap> <target> <out><sha256>:<size> of that host's seed in the last validated release; exit 1
                                          when there is none
-xax_rotate id <file>                     <sha256>:<size> of the file
-xax_rotate valid <levels>                exit 0 when an `xax_evidence levels` output is B0-B6 1, rotated 1, python 0
+xax_rotate id <file> <out>               <sha256>:<size> of the file
+xax_rotate valid <levels> <out>          exit 0 when an `xax_evidence levels` output is B0-B6 1, rotated 1, python 0
 ```
 
 It reads `<bootstrap>/RELEASES`, `<bootstrap>/evolution/LEDGER` and `<bootstrap>/POLICY` into one view (at 0,
@@ -69,3 +73,12 @@ Checked on Linux x86-64 (WSL 2, the pinned seed `36e2b756…`), EXECUTED, 2026-1
   6 min 17 s. `state` then moved from `unmet confirm` to `profile candidate`. A first attempt, before `rotate.sh`
   made an executable copy, showed the NOT RUN path: exit 1 and no `confirmed` line.
 - `rotate.sh gate` on the committed tree: profile released, `evolve.sh check` passes, and no tests are selected.
+
+## Driver-shaped main (2026-11-25)
+
+`driver.batch` on the previous `xax_rotate.xax` replaces `main` (F14) and keeps every helper and call. EXECUTED in WSL 2
+with the release 0042 seed: `state`, `tests`, `pin` (both hosts and an unknown one), `id` (the seed, `/dev/null`, an
+empty file) and `valid` (a holding and a failing levels file) give the previous program's standard output and exit
+status byte for byte; a missing bootstrap traps in `state` (exit 132) in both. On Windows 11 the Windows build (35,328
+bytes) gives the Linux build's `state` and `id`, the Windows seed's `id` equals its `pin`, and `rotate.sh state` runs
+there; `build`, `confirm` and `validate` still need the Linux seed and the evidence program.

@@ -24,12 +24,23 @@ LINUX_X86_64 = sys.platform.startswith("linux") and platform.machine().lower() i
 class WindowsGeneratorTests(unittest.TestCase):
     def test_the_store_is_its_batches(self):
         """generator.batch on the ledger seed, then entry.batch (2026-11-25: the package entry is read after the package
-        identity and the entry name, not at a fixed byte)."""
+        identity and the entry name, not at a fixed byte), then driver.batch (the general driver's entry)."""
         with tempfile.TemporaryDirectory() as directory:
             first, out = Path(directory) / "first.xax", Path(directory) / "tool.xax"
             subprocess.run([str(SEED), "edit", str(BOOTSTRAP / "evolution" / "ledger-tool" / "seed.xax"), str(GENERATOR / "generator.batch"), str(first)], check=True)
-            subprocess.run([str(SEED), "edit", str(first), str(GENERATOR / "entry.batch"), str(out)], check=True)
+            second = Path(directory) / "second.xax"
+            subprocess.run([str(SEED), "edit", str(first), str(GENERATOR / "entry.batch"), str(second)], check=True)
+            subprocess.run([str(SEED), "edit", str(second), str(GENERATOR / "driver.batch"), str(out)], check=True)
             self.assertEqual(out.read_bytes(), (GENERATOR / "xax_hosting.xax").read_bytes())
+
+    def test_the_hosted_tools_are_generated(self):
+        """The hosting tool's own Windows store and the release tool's are generate.sh's output (OI-60)."""
+        with tempfile.TemporaryDirectory() as directory:
+            for store, hosted in ((GENERATOR / "xax_hosting.xax", GENERATOR / "xax_hosting_windows.xax"),
+                                  (BOOTSTRAP / "seed" / "rotate-tool" / "xax_rotate.xax", BOOTSTRAP / "seed" / "rotate-tool" / "xax_rotate_windows.xax")):
+                out = Path(directory) / hosted.name
+                subprocess.run(["sh", str(GENERATOR / "generate.sh"), str(store), str(out)], check=True, capture_output=True, timeout=1800)
+                self.assertEqual(out.read_bytes(), hosted.read_bytes(), hosted.name)
 
     def test_the_ledger_tool_is_hosted(self):
         """The ledger program's Windows store is generate.sh's output for its Linux store (OI-60)."""
