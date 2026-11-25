@@ -1,8 +1,11 @@
-"""Test driver outside BBC (BBC's AGENTS.md): compile Brainfuck programs with bbc.exe under wine for both targets,
-run them (wine / qemu-aarch64) and compare output bytes and exit status with an independent interpreter; then the
-compile error paths (exit statuses and no leftover files).
+"""Test driver outside BBC (BBC's AGENTS.md): compile Brainfuck programs with bbc.exe for both targets, run them and
+compare output bytes and exit status with an independent interpreter; then the compile error paths (exit statuses and
+no leftover files). On Linux bbc.exe and the Windows programs run under wine; on Windows they run natively. The Android
+programs run under the --aarch64 command (default qemu-aarch64; on Windows, for example, `wsl -- qemu-aarch64`).
 
-Usage: check.py <bbc.exe> <work directory> --bbc <BBC checkout> [case name ...]
+Usage: check.py <bbc.exe> <work directory> --bbc <BBC checkout> [--aarch64 <command>] [case name ...]
+
+It stays Python (the language rule's exception): it starts processes, which XAX's host interface does not offer.
 The cases follow the 2026-10-21 campaign (single_process_evidence.json): pilot programs, BBC's tests, both depth-512
 programs, negative loops, 60 random programs and capacity cases.
 """
@@ -16,6 +19,9 @@ import sys
 import time
 from pathlib import Path
 
+WINDOWS = sys.platform == "win32"
+WINE = [] if WINDOWS else ["wine"]
+AARCH64 = ["qemu-aarch64"]
 TAPE = 2_147_246_080
 IO_LIMIT = 65536
 OFF_TAPE, OUTPUT_FULL, INPUT_LENGTH = 1, 2, 3  # BBC's run statuses (docs/01_BRAINFUCK_PROFILE.md)
@@ -145,15 +151,15 @@ ERROR_PATHS = [  # (name, arguments, source, expected compile exit)
 
 def _compile(work: Path, env, arguments, source):
     start = time.time()
-    compiled = run(["wine", "bbc.exe", "compile", *arguments], source, cwd=work, env=env, timeout=3600)
+    compiled = run([*WINE, str(work / "bbc.exe") if WINDOWS else "bbc.exe", "compile", *arguments], source, cwd=work, env=env, timeout=3600)
     return compiled, round(time.time() - start, 2)
 
 
 def _execute(work: Path, env, target: str, out: str, given: bytes):
     if target.startswith("windows"):
-        return run(["wine", out], given, cwd=work, env=env, timeout=600)
+        return run([*WINE, str(work / out) if WINDOWS else out], given, cwd=work, env=env, timeout=600)
     (work / out).chmod(0o755)
-    return run(["qemu-aarch64", str(work / out)], given, cwd=work, timeout=600)
+    return run([*AARCH64, f"./{out}" if WINDOWS else str(work / out)], given, cwd=work, timeout=600)
 
 
 def check_case(work: Path, env, name, source, inputs, level, target, expected=None):
@@ -207,10 +213,14 @@ def check_error_paths(work: Path, env):
 def main():
     arguments = sys.argv[1:]
     if "--bbc" not in arguments:
-        sys.exit("usage: check.py <bbc.exe> <work directory> --bbc <BBC checkout> [case name ...]")
+        sys.exit("usage: check.py <bbc.exe> <work directory> --bbc <BBC checkout> [--aarch64 <command>] [case name ...]")
     k = arguments.index("--bbc")
     bbc_repo = Path(arguments[k + 1])
     del arguments[k:k + 2]
+    if "--aarch64" in arguments:
+        k = arguments.index("--aarch64")
+        AARCH64[:] = arguments[k + 1].split()
+        del arguments[k:k + 2]
     bbc, work = Path(arguments[0]).resolve(), Path(arguments[1]).resolve()
     table = cases(bbc_repo)
     names = arguments[2:] or list(table)
