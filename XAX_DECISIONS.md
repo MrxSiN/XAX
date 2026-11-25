@@ -424,6 +424,10 @@ Find a decision without reading this file: `grep -n '^## ADR-<n>' XAX_DECISIONS.
   - [ADR-418 — Native carrier replacement implemented: `replace <CID> @name` (issue #135, ledger 0042, 2026-11-23)](#adr-418--native-carrier-replacement-implemented-replace-cid-name-issue-135-ledger-0042-2026-11-23)
   - [ADR-419 — OI-54 step 2, part 1: the x86-64 container buffer is sized from the image (ledger 0042, 2026-11-23)](#adr-419--oi-54-step-2-part-1-the-x86-64-container-buffer-is-sized-from-the-image-ledger-0042-2026-11-23)
   - [ADR-420 — Workspace dependency order, type edits and implied-edit pruning](#adr-420--workspace-dependency-order-type-edits-and-implied-edit-pruning)
+  - [ADR-424 — Native cross-function workspace queries (proposal, 2026-11-25)](#adr-424--native-cross-function-workspace-queries-proposal-2026-11-25)
+  - [ADR-425 — Automatic token and block-parameter threading in `define` (proposal, 2026-11-25)](#adr-425--automatic-token-and-block-parameter-threading-in-define-proposal-2026-11-25)
+  - [ADR-426 — Backend limits reported by `verify` (proposal, 2026-11-25)](#adr-426--backend-limits-reported-by-verify-proposal-2026-11-25)
+  - [ADR-427 — AI-efficiency evidence before AI-efficiency features (proposal, 2026-11-25)](#adr-427--ai-efficiency-evidence-before-ai-efficiency-features-proposal-2026-11-25)
 
 ## ADR-001 — The language is XAX
 
@@ -4287,3 +4291,42 @@ Superseded by [ADR-369](#adr-369--n03-growable-views-as-limit-bounded-checked-ac
 | Plan | Release 0044, cut from `main` once release 0043 is merged. (a) Per function, independently (no type changes): each workspace offset stays 64-bit (the `int.truncate` to `bits<32>` before a checked access becomes a same-value 64-bit node), in batches of functions with C1 each and a byte-identical C2 self-build at the end. (b) One driver-wide transaction: the workspace type becomes the 8 GiB one in every signature, main's two reservations and frees take the new size and declarations, and the clamp constants become 2^30; a scripted rewrite of every function's view, applied as one batch (signature changes must land together), with C1 and C2. (c) The arena's end and the layout constants above it move up; C1, C2. (d) `views_prologue` sizes the capacity from the function. (e) hanoi -O0 for Windows x86-64 builds with BBC's driver (BBC's main is its Windows form, so BBC gets its own batch for (b), not `rebuild.sh`) and matches the interpreter; the full suite and the release's rotation. |
 | Risks | The rewrite's size (one batch of the whole driver's text in (b)); the x86-64 bound for an extent past 2^31 takes the 64-bit compare path (ADR-373), which can change the compiler's own speed; an 8 GiB reservation per workspace on Linux under heuristic overcommit (two of them in main, about 21 GiB of reservations in all), to be measured before (b). |
 
+
+## ADR-424 — Native cross-function workspace queries (proposal, 2026-11-25)
+
+| Field | Record |
+|---|---|
+| Status | Proposed (2026-11-25). Design only; no store changed. From the 2026-11-25 architecture review. |
+| Decision | `xaxc edit <store> <selector> <view>` gains query selectors, answered from the store with the root CID as the first line and `F<n>` handles valid only with it: `?callers F<n>`, `?callees F<n>`, `?reaches F<a> F<b>` (one shortest call chain), `?uses <CID>` (functions whose graph refers to an object) and `?const <value>` (functions holding a `bits` constant of that value). No new object kind and no persistent index: OI-63 stays the owner of any acceleration structure. |
+| Rationale | Release 0043 and ADR-423's trace needed exactly these questions (who reaches F86, which functions hold the capacity word); they were answered by scratch scripts over the Python reference `StoreReader`, which the language rule (AGENTS.md) and ADR-405 make migration debt. docs/09 §3.2 requires minimal-context retrieval, and a per-function view cannot give it for a cross-function question. |
+| Alternatives | Embedding or similarity search: deferred, not deterministic evidence. A persistent semantic index: deferred to OI-63's measurements. |
+| Consequences | Depends on workspace headroom: docs/09 §16 records that the workspace can add no command while the driver's main is at the values-per-function limit, so the dispatch goes into a callee of main, not main. Acceptance: on the driver store, each query's output equals the scratch scripts' answer, with C1 and C2. |
+
+## ADR-425 — Automatic token and block-parameter threading in `define` (proposal, 2026-11-25)
+
+| Field | Record |
+|---|---|
+| Status | Proposed (2026-11-25). Design only. From the 2026-11-25 architecture review. |
+| Decision | A `define` may omit block parameters and edge arguments that only forward a value unchanged (memory and effect tokens, pointer and view parameters): the engine threads each such value from its single dominating definition to every block that uses it or passes it on, and writes the full graph. The canonical graph and the edit record are exactly those of the fully written `define`, so identity, verification and the ledger are unchanged. An ambiguous thread (two reaching definitions) rejects with the block, the value and its candidates. |
+| Rationale | In the 2026-11 Windows tool ports most rejected batches were bookkeeping, not logic: 22 memory tokens threaded by hand through every block, one token used and passed in the same terminator, and calls given a derived pointer instead of its base (HEAP-VIEW-CALL-BASE). Removing that work lowers failed mutations without any semantic change, and it matters most for smaller models. |
+| Alternatives | Higher-level construction templates or a textual surface language: rejected, a textual source is not authoritative (AGENTS.md) and templates add vocabulary before this simpler mechanism is measured. |
+| Consequences | Engine work in the edit functions by transaction on a release branch; the edit engine's kept generator pins follow (compiler/AGENTS.md). Acceptance: re-authoring release 0043's batches with threading makes byte-identical stores; the line count and reject count of each are recorded. Depends on workspace headroom. |
+
+## ADR-426 — Backend limits reported by `verify` (proposal, 2026-11-25)
+
+| Field | Record |
+|---|---|
+| Status | Proposed (2026-11-25). Design only. From the 2026-11-25 architecture review. |
+| Decision | `xaxc verify` checks the general backend's per-function limits that today surface only as a later decline: the values per function (`VCAP`), at most four machine parameters per function and four machine inputs per call. Each failure is a rejection record (docs/09 §7) naming the function, the count and the limit. The limits stay target facts; `verify` reads them, it does not define them. |
+| Rationale | `compiler/AGENTS.md` asks every author to keep main 632 values below `VCAP` by hand; ADR-423's first amendment was withdrawn because a 23rd token would have made the self-build decline. A check at the verify step turns a long build-then-decline cycle into one rejection. |
+| Alternatives | Leave it to the build: rejected, the decline comes after the slowest step and carries less location. |
+| Consequences | One verifier rule per limit, C1. Acceptance: a candidate that exceeds each limit is rejected by `verify` with the function's handle, and the current driver still verifies. |
+
+## ADR-427 — AI-efficiency evidence before AI-efficiency features (proposal, 2026-11-25)
+
+| Field | Record |
+|---|---|
+| Status | Proposed (2026-11-25). From the 2026-11-25 architecture review. |
+| Decision | (1) No claim that XAX lowers tokens, failed mutations or completion time is made until the OI-46, OI-01 and OI-28 designs run, in that order: OI-46 first, because a client floor of about 7,000-10,000 input tokens per request dominates edits of a few hundred task tokens. (2) Results are raw per-arm samples, as ADR-207 requires for R4. (3) No separate A0-A6 AI maturity ladder is added: R5 and R6 (ADR-207, ADR-209, ADR-210) already cover maintenance and an XAX-only application, and the metrics go into `XAX_BENCHMARKS.md`. (4) Externally proposed reduction targets (70% tokens, 80% failed mutations) are not adopted; targets are preregistered per OI-01's design. (5) Not adopted: requirements or intent in the canonical graph, a separate knowledge system (the handoff, state, decisions, register and ledger already hold it), and a separate semantic version-control system (content-addressed roots, the ledger and exact-root transactions already provide history and compare-and-swap; a root-to-root diff is the missing piece). |
+| Rationale | OI-31's C-vs-XAX evidence is no longer in the tree (`227a976`); no other measurement supports such a claim. A second maturity ladder would be a second status owner without data. |
+| Consequences | ADR-424 to ADR-426 are judged by these measurements' failed-mutation and token counts, not by their existence. |
