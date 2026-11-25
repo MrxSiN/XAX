@@ -4,13 +4,19 @@
 # `xaxc edit` and accepted by `xaxc verify`.  Only the batch's store handles change: its root line becomes BBC's
 # root and each function handle F<n> of the production store becomes that function's CID (an entity) or its handle
 # in BBC's store (the function line and `replace`).  The engine rebuilds every caller, BBC's entry and its four
-# driver entries among them.  Run it once per transaction, in ledger order.  sh, grep, cut, sed, sort and xaxc only.
+# driver entries among them.  Run it once per transaction, in ledger order.  sh, grep, cut, sed, sort, uname and xaxc only;
+# it runs on Linux x86-64 and on Windows (Git for Windows' sh).
 #
 # Ceiling: a batch that names the production entry itself declines here (BBC's entry is its Windows form, another
 # function); write that transaction for BBC's entry as its own native batch.
 set -eu
 here=$(cd "$(dirname "$0")" && pwd)
-xaxc=${XAXC:-$here/../../../../../bootstrap/seed/xaxc-linux-x86_64}
+bootstrap=$here/../../../../../bootstrap
+case $(uname -s) in  # on Windows (Git for Windows' sh) the pinned Windows seed
+    MINGW*|MSYS*|CYGWIN*) seed=$bootstrap/windows/xaxc-windows-x86_64.exe ;;
+    *) seed=$bootstrap/seed/xaxc-linux-x86_64 ;;
+esac
+xaxc=${XAXC:-$seed}
 [ $# -eq 4 ] || { echo "usage: rebuild.sh <driver store before> <batch> <BBC store> <BBC store out>" >&2; exit 3; }
 before=$1; batch=$2; bbc=$3; out=$4
 work=$(mktemp -d "${TMPDIR:-/tmp}/bbc-rebuild.XXXXXX")
