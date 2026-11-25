@@ -3292,3 +3292,20 @@ below were made without asking.
   2. The two new single-case failures above (a native verifier decline; a reference parser crash).
   3. OI-54 step 2 part 2 (choose packed tables, a second workspace view, or growable views), then step 3.
   4. `xax_replacement.py` and its test to native XAX (needs a JSON reader with exact binary64 conversion).
+
+## Release 0043 open on `release/0043`: one driver sub-batch in — 2026-11-25
+
+`main` = `39695c2`. `release/0043` = `75827cb` (cut from `5aadffa`), not rotated; the pinned seed is still 0042.
+Continues "Release 0042 on `main`" above.
+
+- **Release branch** (#175, ledger 0043 `snapshot-missing-reference`): native `verify` declined a snapshot whose
+  package or signature reference is missing; the plan (F1012) now calls a new `@lmscan` and rejects with the
+  reference's `ID-REFERENCE-RESOLVED`. C1 EXECUTED (3 min 27 s); with the candidate `test_xax_selfhost_verify_exact`
+  8 of 8, `test_object_sites` under PYTHONHASHSEED 0 and 1 230 exact, 0 declined. The new fixture test fails with the
+  0042 seed until rotation.
+- **On `main`:** #176, the reference's memory-fact pass no longer raises `IndexError` on an operand-less node
+  (`test_xax_selfhost_graph.py` 4 passed, 3,018 subtests, 21 min 53 s); #174, OI-60's two developer paths removed.
+- **Not started:** OI-54 step 2 part 2 (a layout decision, then step 3), OI-58 item 1, so 1d stays closed by its own
+  condition; the Windows status tool (2a), OI-60's ledger tool, OI-51, the measurement items, rotation, full suite.
+- **Next:** OI-54 part 2 and OI-58 item 1 as further sub-batches into `release/0043`, then rotate once.
+  Shell note: from Git Bash, run `wsl` with `MSYS_NO_PATHCONV=1`, or `/mnt/...` arguments are rewritten.
