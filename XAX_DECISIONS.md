@@ -4263,3 +4263,10 @@ Superseded by [ADR-369](#adr-369--n03-growable-views-as-limit-bounded-checked-ac
 | Plan | Release 0044, one sub-batch each, C1 (and C2 for x86-64 code generation) per sub-batch: (a) the Windows layer and BBC's hosting take a 23rd token, main allocates and passes the table view, nothing uses it yet; (b) the backend entry and the table users' signatures take it; (c) the table accesses move, family by family, with a byte-identical C2 check on the self-build after each; (d) `views_prologue` sizes the capacity from the function; (e) hanoi -O0 for Windows x86-64 builds and matches the interpreter. Android ARM64 also needs step 3. |
 | Evidence needed | C2 byte-identical self-builds after (a)-(c); hanoi -O0 on Windows 11 equal to the interpreter's output; BBC's check (372 of 372) unchanged; the full suite at the release. |
 
+## ADR-423 amendment — sub-batch (a) cannot add a 23rd token to main (2026-11-25)
+
+| Field | Record |
+|---|---|
+| Decision | ADR-423's plan (a) is withdrawn before any batch was written. A memory token added to main's signature must reach main's `ret`, so it becomes one more parameter of every block of main (thousands), and main is 632 values below `VCAP` (`compiler/AGENTS.md`): the driver's own self-build would then decline. All 22 of main's tokens are consumed by its 22 view allocations. Release 0044 starts only once one of these is chosen and recorded: (1) main frees, before the backend runs, a view whose token the table view can then take (needs a lifetime census of main's views); (2) `VCAP` is first raised enough for main (an ADR-391 capacity-word change on its own); (3) the table view is allocated outside main, by the process entry (`@XAXC` on Windows, the ELF entry on Linux), and reaches the backend another way (a host-ABI design). The rest of ADR-423 (a growable table view, a runtime limit, per-function capacity) is unchanged. |
+| Rationale | Found while preparing (a): the plan counted the host layers but not main's value budget. |
+
