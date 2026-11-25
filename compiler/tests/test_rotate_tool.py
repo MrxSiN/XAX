@@ -58,7 +58,7 @@ class RotateToolTests(unittest.TestCase):
     def test_the_committed_state_and_pins(self):
         status, text = self.run_tool("state", BOOTSTRAP)
         self.assertEqual(status, 0)
-        self.assertIn("validated 0042\ncandidate none\nprofile released\n", text)
+        self.assertIn("validated 0043\ncandidate none\nprofile released\n", text)
         for target, seed in (("x86_64-linux-elf-exec-v1", SEED), ("x86_64-windows-pe-v1", BOOTSTRAP / "windows" / "xaxc-windows-x86_64.exe")):
             data = seed.read_bytes()
             self.assertEqual(self.run_tool("pin", BOOTSTRAP, target), (0, f"{hashlib.sha256(data).hexdigest()}:{len(data)}\n"), target)
@@ -86,19 +86,19 @@ class RotateToolTests(unittest.TestCase):
                     self.assertEqual(self.run_tool("tests", root), (0, tests))
 
             policy = {line.split()[1]: " ".join(line.split()[2:]) for line in (BOOTSTRAP / "POLICY").read_text().splitlines() if line.startswith("test ")}
-            append("evolution/LEDGER", "0043-x.batch xax_x86_64_general.xax aaaa bbbb")
+            append("evolution/LEDGER", "0044-x.batch xax_x86_64_general.xax aaaa bbbb")
             append("evolution/LEDGER", "derived seed/xax_compiler_request.xax cccc dddd")
             check("profile development", tests=f"{policy['*']}\n{policy['xax_x86_64_general.xax']}\n")
-            append("RELEASES", f"candidate 0043 ledger=0043-x.batch driver=ff policy=00 x86_64-linux-elf-exec-v1={H1}:10 x86_64-windows-pe-v1={H2}:20")
+            append("RELEASES", f"candidate 0044 ledger=0044-x.batch driver=ff policy=00 x86_64-linux-elf-exec-v1={H1}:10 x86_64-windows-pe-v1={H2}:20")
             check("unmet confirm", ("x86_64-linux-elf-exec-v1", "x86_64-windows-pe-v1"), "all\n", 1)
-            append("RELEASES", f"confirmed 0043 x86_64-linux-elf-exec-v1 {H1} ee")
-            append("RELEASES", f"confirmed 0043 x86_64-windows-pe-v1 {H1} ee")
+            append("RELEASES", f"confirmed 0044 x86_64-linux-elf-exec-v1 {H1} ee")
+            append("RELEASES", f"confirmed 0044 x86_64-windows-pe-v1 {H1} ee")
             check("unmet confirm", ("x86_64-windows-pe-v1",), status=1)
-            append("RELEASES", f"confirmed 0043 x86_64-windows-pe-v1 {H2} ee")
+            append("RELEASES", f"confirmed 0044 x86_64-windows-pe-v1 {H2} ee")
             check("profile candidate", tests="all\n")
-            append("evolution/LEDGER", "0044-y.batch xax_android.xax aaaa bbbb")
+            append("evolution/LEDGER", "0045-y.batch xax_android.xax aaaa bbbb")
             check("profile development", tests=f"{policy['*']}\n{policy['xax_x86_64_general.xax']}\n{policy['xax_android.xax']}\n")
-            append("RELEASES", "blocked 0043 c1 three repairs failed")
+            append("RELEASES", "blocked 0044 c1 three repairs failed")
             check("unmet blocked", tests="", status=1)
 
     def test_valid_levels(self):

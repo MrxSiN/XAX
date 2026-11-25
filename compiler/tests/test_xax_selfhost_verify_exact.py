@@ -180,6 +180,15 @@ class VerifyExactTests(unittest.TestCase):
         self.assertEqual(tally.get("declined_rejection", 0), 0, tally)  # S15b.3d (ADR-311)
         self.assertGreater(tally["exact"], 100, tally)
 
+    def test_snapshot_missing_signature(self):
+        """Ledger 0043: a snapshot whose header holds and whose signature reference is missing (test_object_sites
+        under PYTHONHASHSEED 0 and 1).  decode_snapshot resolves its package and signature references before any
+        later check, so the driver rejects with that reference as verify_store does; it declined before."""
+        reader = StoreReader((Path(__file__).parent / "fixtures" / "snapshot_missing_signature.xax").read_bytes())
+        tally = dict.fromkeys(("accepted", "exact", "driver_record", "declined", "host_error"), 0)
+        self.check(reader, tally)
+        self.assertEqual(tally["exact"], 1, tally)
+
     def test_declared_rejections(self):
         """S15b.3d (ADR-313): every fixture rejects with its rule, and the driver writes the bootstrap's exact record."""
         fixtures = sorted((Path(__file__).parent / "fixtures" / "declared_rejections").glob("*.xax"))
