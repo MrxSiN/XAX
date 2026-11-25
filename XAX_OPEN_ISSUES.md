@@ -3055,7 +3055,7 @@ Before the fix, the production compiler's `verify` answered `MEMORY-CHECKED-STOR
 
 ## OI-54 — Function views past 2^18 values (BBC's hanoi -O0)
 
-**Status:** OPEN (2026-11-24). Step 1 done (2026-11-20, release 0039, ADR-413). Step 2 part 1 is in release 0042 (ledger 0042 `container-from-image`, ADR-419); part 2 moves to release 0043. Step 3 (AArch64 liveness) stays open.
+**Status:** OPEN (2026-11-25). Step 2 part 2's design is chosen (growable views; ADR-423, proposed); revised to enlarging the workspace view to 8 GiB (ADR-423 amendment 3), planned as release 0044's five sub-batches; not started. Step 3 (AArch64 liveness) stays open. Step 1 done (release 0039, ADR-413); step 2 part 1 in release 0042 (ADR-419).
 
 **Related ADRs:** ADR-386, ADR-387, ADR-390, ADR-391, ADR-413, ADR-419
 
@@ -3078,7 +3078,11 @@ A census of the workspace (gdb at the first `munmap`, nonzero bytes per 2^20-wor
 
 - The per-value tables at hanoi's size are about 86 words × 650,000 values = 56M words, and 112M with a ×2 capacity margin.
 - Neither fits one free span, nor both together (31M words), so a region of their own inside the fixed 2 GiB workspace is not enough.
-- Part 2 needs one of: tables packed to 32-bit lanes (about 43 words per value, then also moving the image record), a second workspace view (a host ABI change), or growable views (OI-52 R3). Not decided here.
+- Part 2 needs one of: tables packed to 32-bit lanes (about 43 words per value, then also moving the image record), a second workspace view (a host ABI change), or growable views (OI-52 R3). Decided 2026-11-25: growable views (ADR-423).
+
+#### Release 0043 check (2026-11-25)
+
+With the release 0043 `bbc.exe` (`4521cc64…`) on Windows 11, EXECUTED: hanoi -O1 for Windows x86-64 builds (33 s, 359,424 bytes, byte-identical to 0042's) and runs (19,090 bytes of output, equal to the independent interpreter's); -O0 for both targets and -O1 for Android ARM64 decline (exit 5), as with 0042.
 
 #### Remaining steps
 
