@@ -1,6 +1,7 @@
 #!/bin/sh
 # sh generate.sh <request> <out>: the Windows seed's build request from the shared compiler request (README.md).
-# The logic is the XAX program xax_hosting.xax; this script only runs xaxc and that program.
+# The logic is the XAX program xax_hosting.xax; this script only runs xaxc and that program, and puts the hosted
+# store's root line before pe_target.batch.
 set -eu
 [ $# -eq 2 ] || { echo "usage: generate.sh <request> <out>" >&2; exit 3; }
 here=$(cd "$(dirname "$0")" && pwd)
@@ -20,6 +21,7 @@ tool="$work/xax_hosting"
 "$tool" b "$work/main.view" "$work/listing" "$windows/host_layer.txt" "$work/hosting.batch"
 "$xaxc" edit "$1" "$work/hosting.batch" "$work/hosted.xax"
 "$xaxc" verify "$work/hosted.xax" "$work/hosted.diag"
-"$tool" r "$work/hosted.xax" "$here/pe_target.template" /dev/null "$work/pe_target.edit"
-"$xaxc" edit "$work/hosted.xax" "$work/pe_target.edit" "$2"
+"$xaxc" edit "$work/hosted.xax" "$work/empty" "$work/hosted.listing"
+{ head -n 1 "$work/hosted.listing"; echo F0; cat "$here/pe_target.batch"; } > "$work/pe_target.batch"
+"$xaxc" edit "$work/hosted.xax" "$work/pe_target.batch" "$2"
 "$xaxc" verify "$2" "$work/request.diag"
