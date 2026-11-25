@@ -49,6 +49,10 @@ How it was made, without a generator of its logic:
 - It reuses the request tool's declarations and byte helpers (`../../evolution/request-tool/README.md` gives
   their rules).
 - Change it by a further batch on `xax_hosting.xax`, then `xaxc verify`.
+- `entry.batch` (2026-11-25) is that: `e` read the package entry's reference index at body byte 22, the compiler
+  package's layout, and so missed the ledger program's entry. It now reads it after the package identity and the entry
+  name (one module, no dependencies, one entry, as every hosted request has). `xax_hosting.xax` is `generator.batch`
+  then `entry.batch` on the ledger seed.
 
 **Limits:**
 

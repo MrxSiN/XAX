@@ -22,11 +22,33 @@ LINUX_X86_64 = sys.platform.startswith("linux") and platform.machine().lower() i
 
 @unittest.skipUnless(LINUX_X86_64, "the pinned seed runs on Linux x86-64")
 class WindowsGeneratorTests(unittest.TestCase):
-    def test_the_store_is_its_batch(self):
+    def test_the_store_is_its_batches(self):
+        """generator.batch on the ledger seed, then entry.batch (2026-11-25: the package entry is read after the package
+        identity and the entry name, not at a fixed byte)."""
         with tempfile.TemporaryDirectory() as directory:
-            out = Path(directory) / "tool.xax"
-            subprocess.run([str(SEED), "edit", str(BOOTSTRAP / "evolution" / "ledger-tool" / "seed.xax"), str(GENERATOR / "generator.batch"), str(out)], check=True)
+            first, out = Path(directory) / "first.xax", Path(directory) / "tool.xax"
+            subprocess.run([str(SEED), "edit", str(BOOTSTRAP / "evolution" / "ledger-tool" / "seed.xax"), str(GENERATOR / "generator.batch"), str(first)], check=True)
+            subprocess.run([str(SEED), "edit", str(first), str(GENERATOR / "entry.batch"), str(out)], check=True)
             self.assertEqual(out.read_bytes(), (GENERATOR / "xax_hosting.xax").read_bytes())
+
+    def test_the_ledger_tool_is_hosted(self):
+        """The ledger program's Windows store is generate.sh's output for its Linux store (OI-60)."""
+        tool = BOOTSTRAP / "evolution" / "ledger-tool"
+        with tempfile.TemporaryDirectory() as directory:
+            out = Path(directory) / "xax_ledger_windows.xax"
+            subprocess.run(["sh", str(GENERATOR / "generate.sh"), str(tool / "xax_ledger.xax"), str(out)], check=True, capture_output=True, timeout=1800)
+            self.assertEqual(out.read_bytes(), (tool / "xax_ledger_windows.xax").read_bytes())
+
+    def test_the_ledger_tool_is_its_batches(self):
+        """xax_ledger.xax is check.batch, commands.batch, derived.batch and driver.batch on the ledger seed."""
+        tool = BOOTSTRAP / "evolution" / "ledger-tool"
+        with tempfile.TemporaryDirectory() as directory:
+            store = tool / "seed.xax"
+            for k, batch in enumerate(("check", "commands", "derived", "driver")):
+                out = Path(directory) / f"{k}.xax"
+                subprocess.run([str(SEED), "edit", str(store), str(tool / f"{batch}.batch"), str(out)], check=True, capture_output=True)
+                store = out
+            self.assertEqual(store.read_bytes(), (tool / "xax_ledger.xax").read_bytes())
 
     def test_the_request_is_the_recorded_one(self):
         from xax_selfhost_seed import WINDOWS_TARGET, identity, released

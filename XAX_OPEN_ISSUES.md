@@ -3382,7 +3382,7 @@ The same staging as a native transaction on the x86-64 backend, driver and reque
 
 ## OI-60 — Host-portability gaps left after the 2026-11-13 audit
 
-**Status:** OPEN (2026-11-25). A test now runs Windows-seed commands against the seed's pin (the status tool); the native ledger tool and seed check on the Windows seed are open.
+**Status:** OPEN (2026-11-25). The status tool and the ledger tool run on the Windows seed (`evolve.sh check`, `replay`, `ledger`); the seed check and the request tool are still Linux-only.
 
 **Related Issues:** [OI-58](#oi-58--windows-x86-64-code-generation-on-the-chains-walk-r4-blocker-for-windows-x86_64-pe)
 
@@ -3397,7 +3397,9 @@ A read-only audit of the tracked repository for Linux-host assumptions found the
 
 Left open, each needing either a native tool or new test glue that the language rule does not allow in Python:
 
-- The ledger program (`evolve.sh apply/replay/check`) and `selfbuild.sh` run only where the Linux seed runs.
+- `selfbuild.sh`, the release tool (`rotate.sh`, the pins) and the request tool (`evolution/request-tool`, so a driver
+  transaction's request derivation) run only where the Linux seed runs; `evolve.sh` refuses a driver transaction on
+  Windows and says that it did not check the request derivation.
 - No test exercises the Windows seed (`compiler/bootstrap/windows`), and the seed tools pin the Linux seed only.
 - About 130 test modules gate on Linux x86-64 although several only call seed commands.
 - `benchmarks/linux_harness.py` reads `/proc/cpuinfo` without a fallback (the other three benchmark readers have one).
@@ -3410,6 +3412,14 @@ Left open, each needing either a native tool or new test glue that the language 
 
 <details>
 <summary>Historical Record</summary>
+
+#### 2026-11-25: the ledger tool runs on the Windows seed
+
+`ledger-tool/xax_ledger.xax` has the driver's entry (`driver.batch`) and `generate.sh` hosts it
+(`xax_ledger_windows.xax`; the hosting tool's entry lookup was fixed for it, `entry.batch`). Every command gives the
+previous tool's output byte for byte (14 cases, WSL 2). On Windows 11 with the Windows seed, EXECUTED:
+`evolve.sh check` passes (2 s), `evolve.sh replay xax_jvm_general.xax` replays 7 of 7, and three tests in
+`test_xax_selfhost_evolution.py` pass. The first closure criterion still needs a seed check there.
 
 #### 2026-11-25: the status tool runs on the Windows seed
 
