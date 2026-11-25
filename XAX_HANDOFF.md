@@ -88,6 +88,8 @@ Dated sections (historical records; a later section supersedes an earlier one):
 - [Release 0040 on `main`: consumer issues #136, #137, #133 — 2026-11-21](#release-0040-on-main-consumer-issues-136-137-133--2026-11-21)
 - [Release 0041 on `main`: `versionName` and uppercase CID digits — 2026-11-23](#release-0041-on-main-versionname-and-uppercase-cid-digits--2026-11-23)
 - [Release 0042 on `main`: carrier replace by CID, Wasm offset check, container sizing — 2026-11-24](#release-0042-on-main-carrier-replace-by-cid-wasm-offset-check-container-sizing--2026-11-24)
+- [Release 0043 open on `release/0043`: one driver sub-batch in — 2026-11-25](#release-0043-open-on-release0043-one-driver-sub-batch-in--2026-11-25)
+- [Release 0043 on `main`; release 0044 needs an owner decision — 2026-11-26](#release-0043-on-main-release-0044-needs-an-owner-decision--2026-11-26)
 
 ## Invariants that must not drift
 
@@ -3309,3 +3311,58 @@ Continues "Release 0042 on `main`" above.
   condition; the Windows status tool (2a), OI-60's ledger tool, OI-51, the measurement items, rotation, full suite.
 - **Next:** OI-54 part 2 and OI-58 item 1 as further sub-batches into `release/0043`, then rotate once.
   Shell note: from Git Bash, run `wsl` with `MSYS_NO_PATHCONV=1`, or `/mnt/...` arguments are rewritten.
+
+## Release 0043 on `main`; release 0044 needs an owner decision — 2026-11-26
+
+`main` = merge of #195 (`631bef2`). `rotate.sh state`: `validated 0043`, `profile released`.
+Seeds: Linux `0f009fe9…` (31,853,393 bytes), Windows `f95af786…` (31,906,816). BBC pins it (MrxSiN/BBC#13).
+Supersedes "Release 0043 open on `release/0043`" above. The owner asked for the campaign to run overnight without
+questions, so the calls below were made without asking.
+
+- **Release 0043** (one driver transaction, #175: native `verify` rejects a snapshot whose package or signature
+  reference is missing). Rotation #193, main merged in #194, release #195. EXECUTED on WSL 2 unless noted:
+  - `evolve.sh check` and `replay` (222 of 222, 1 h 47 min) before the rotation; the evidence run's replay 222 of 222.
+  - `rotate.sh build`, `confirm` on both targets, SNAPSHOTS line, `validated 0043 evidence=162dc6e2…`, B0-B6 hold.
+  - V1: python-free seed 462 s; full self-host 16,201 s, three generations `0f009fe9…`.
+  - BBC: `rebuild.sh` for the transaction (the driver blobs matched the ledger); `bbc.exe` `4521cc64…` (36,152,832
+    bytes). `check.py` (WSL, qemu for Android) and the native check tool (#191) on Windows 11 with the Pixel 8 Pro
+    (`192.168.50.88:43827`) both give 372 of 372 compiles, 488 runs, 0 mismatches, 5 of 5 error paths (native: 232 s).
+    Capacity fixtures and the six ThreadsHideAds programs equal 0039-0042.
+  - Full suite (`-n 2`, `XAX_REQUIRE_NATIVE=1`, 3 h 10 min): 1,671 passed, 9 failed, 302 skipped, 337 failed subtests.
+    The expected nine (B1 binding, eight JVM/JDWP tests with the Windows-`java` wrapper); 336 `test_xax_x86_64_views`
+    subtests from fork ENOMEM (the file alone: 4 passed, 336 subtests); one `test_xax_selfhost_driver` subtest: the
+    frozen pre-0029 driver now rejects the 0043 driver store with `FOREIGN-CALL-ABI` first (fixed in #193; 29 subtests
+    pass alone). On the tree with main merged (#194): `status.sh check` exit 0; the rotation, status, Windows
+    generator, evidence and evolution tests 25 passed, 6 skipped (1 h 54 min, a full replay with main's `evolve.sh`).
+  - hanoi with the 0043 `bbc.exe` on Windows 11: -O1 builds (21.7 s) and runs (exit 0, 19,090 bytes); -O0 exits 5.
+- **Release 0044 (ADR-423 amendment 3) is blocked on an owner decision**, recorded as ADR-423 amendment 4 (#192,
+  proposal). `release/0044` was not cut. EXECUTED on Windows 11 with the 0043 Windows seed:
+  - (a) as one define batch (1,006 functions with 164,266 workspace offsets plus their callers: 1,036 definitions,
+    176,763,558 bytes) is rejected at once: `XAX.DRIVER.CAPACITY`, `DRIVER-FILE-CAPACITY`, expected 16,777,216.
+  - The edit engine keeps the batch text, the record and every new object's preimage inside the 2 GiB workspace, one
+    byte per word, with 16 MiB / 2^24-byte / 256-mutation limits. (b) changes every workspace signature at once (it
+    cannot be split) and needs about 62 MB of preimage. Amendment 4 lists three options; option 1 (recommended):
+    `replace <CID>` for a type object plus larger mutation and preimage limits in 0044, (b) as a small batch in 0045.
+  - Batch rules measured: several `replace`s per batch apply and verify, also when the replaced functions share a
+    direct caller; a replaced function must not be an ancestor of another one in the same batch (verify then fails
+    with a missing object, in either order, with or without `@` references). (a) split into antichains under the
+    16 MiB text and an estimated 13 MB preimage per batch takes 61 transactions, so it was not started: the owner's
+    choice decides whether larger limits come first.
+  - (c) found: F86 sets the x86-64 arena to [125,829,120, 209,715,200) words (words 268,435,404/405, and the end once
+    more at a record's +210); 42,545 constants lie between the arena's end and 2^28 − 1. Moving the arena to
+    [2^28, 2^30) after (b) leaves them alone.
+  - Amendment 3's overcommit risk, MEASURED on WSL 2 (`overcommit_memory` 0, 19.2 GiB RAM, 5 GiB swap, beside the
+    full suite): main's 22 reservations with both workspaces at 8 GiB, as the Linux layer makes them
+    (`mmap(0, n, 3, 34, -1, 0)`), all succeed, 20.46 GiB in all. The heuristic checks each mapping against RAM plus
+    swap, so a host with less than 8 GiB of both would refuse each workspace.
+  - The 0044 batch generators are scratch (never committed), kept outside the repository in WSL
+    `/root/work/r44-tools/` (README.txt there). Views for them come from the test reference renderer
+    (`tests/test_xax_selfhost_edit.ws_view`), byte-identical to `xaxc edit`'s views and 8 min for the whole driver
+    against about 45 s per function natively.
+- **Part C (ADR-424 to ADR-429) not started:** it waits for 0044's merge, and the architecture-review session's
+  agreement not to touch main or the build entry before then still holds. Main's census on release 0043 equals the
+  hand-off's (2,329 blocks, 41,097 nodes, 261,602 values, 542 below `VCAP`); main did not change in 0043.
+- **Open issues touched:** OI-54 OPEN (step 2 part 2 waits on amendment 4's choice). OI-52 R3 OPEN. Others untouched.
+- **Next:**
+  1. The owner picks an option in ADR-423 amendment 4; then cut `release/0044` from `main` and follow it.
+  2. Part C after 0044 merges.
