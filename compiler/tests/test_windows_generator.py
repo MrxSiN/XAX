@@ -73,6 +73,17 @@ class WindowsGeneratorTests(unittest.TestCase):
             subprocess.run(["sh", str(GENERATOR / "generate.sh"), str(tool / "xax_request.xax"), str(hosted)], check=True, capture_output=True, timeout=1800)
             self.assertEqual(hosted.read_bytes(), (tool / "xax_request_windows.xax").read_bytes())
 
+    def test_the_bbc_check_tool_is_hosted_and_its_batch(self):
+        """xax_bbc_check.xax (BBC's check tool, which replaced check.py) is check.batch on the ledger seed, and its
+        Windows store is generate.sh's output."""
+        tool = BOOTSTRAP.parent / "integration" / "bfx" / "transactions" / "production_driver" / "native" / "tools"
+        with tempfile.TemporaryDirectory() as directory:
+            store, hosted = Path(directory) / "store.xax", Path(directory) / "hosted.xax"
+            subprocess.run([str(SEED), "edit", str(BOOTSTRAP / "evolution" / "ledger-tool" / "seed.xax"), str(tool / "check.batch"), str(store)], check=True, capture_output=True)
+            self.assertEqual(store.read_bytes(), (tool / "xax_bbc_check.xax").read_bytes())
+            subprocess.run(["sh", str(GENERATOR / "generate.sh"), str(tool / "xax_bbc_check.xax"), str(hosted)], check=True, capture_output=True, timeout=1800)
+            self.assertEqual(hosted.read_bytes(), (tool / "xax_bbc_check_windows.xax").read_bytes())
+
     def test_the_request_is_the_recorded_one(self):
         from xax_selfhost_seed import WINDOWS_TARGET, identity, released
 
