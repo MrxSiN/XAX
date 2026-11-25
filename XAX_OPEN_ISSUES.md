@@ -3055,7 +3055,7 @@ Before the fix, the production compiler's `verify` answered `MEMORY-CHECKED-STOR
 
 ## OI-54 — Function views past 2^18 values (BBC's hanoi -O0)
 
-**Status:** OPEN (2026-11-25). Step 2 part 2's design is chosen (growable views; ADR-423, proposed); the table view borrows main's view 20 token at the one backend call (ADR-423 amendment 2, checked by a census of main), so release 0044 can start; not started. Step 3 (AArch64 liveness) stays open. Step 1 done (release 0039, ADR-413); step 2 part 1 in release 0042 (ADR-419).
+**Status:** OPEN (2026-11-25). Step 2 part 2's design is chosen (growable views; ADR-423, proposed); revised to enlarging the workspace view to 8 GiB (ADR-423 amendment 3), planned as release 0044's five sub-batches; not started. Step 3 (AArch64 liveness) stays open. Step 1 done (release 0039, ADR-413); step 2 part 1 in release 0042 (ADR-419).
 
 **Related ADRs:** ADR-386, ADR-387, ADR-390, ADR-391, ADR-413, ADR-419
 
