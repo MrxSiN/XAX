@@ -31,6 +31,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 BOOTSTRAP = Path(__file__).resolve().parents[1] / "bootstrap"
 EVOLVE = BOOTSTRAP / "evolution" / "evolve.sh"
 LINUX_X86_64 = sys.platform.startswith("linux") and platform.machine().lower() in ("x86_64", "amd64")
+WINDOWS_X86_64 = sys.platform == "win32" and platform.machine().lower() in ("x86_64", "amd64") and shutil.which("sh") is not None
 
 
 
@@ -116,6 +117,37 @@ class EvolutionTests(unittest.TestCase):
         self.assertEqual(driver.resolve(request, output, *paths[:INPUTS_LIMIT]), 0)
         self.assertEqual(("store", output.read_bytes()), resolve_expected(fixture.request_store(), values[:INPUTS_LIMIT]))
         self.assertEqual(driver.resolve(request, output, *paths), 3)
+
+
+@unittest.skipUnless(WINDOWS_X86_64, "the Windows ledger program runs where the Windows seed runs")
+class WindowsLedgerTests(unittest.TestCase):
+    """OI-60: evolve.sh and request.sh on the Windows seed (xax_ledger_windows.xax, xax_request_windows.xax)."""
+
+    def test_check_passes_on_the_committed_tree(self):
+        run = subprocess.run(["sh", str(EVOLVE), "check"], capture_output=True, text=True, timeout=1800)
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertIn("every chain ends at its committed store", run.stdout)
+
+    def test_the_request_tool_derives_the_committed_request(self):
+        with tempfile.TemporaryDirectory() as directory:
+            out = Path(directory) / "request.xax"
+            tool = BOOTSTRAP / "evolution" / "request-tool"
+            subprocess.run(["sh", str(tool / "request.sh"), str(BOOTSTRAP / "xax_compiler_driver_general.xax"), str(tool / "x86_64-linux-elf-exec-v1.target"), str(out)],
+                           check=True, capture_output=True, timeout=1800)
+            self.assertEqual(out.read_bytes(), (BOOTSTRAP / "seed" / "xax_compiler_request.xax").read_bytes())
+
+    def test_blob_is_the_git_blob_id(self):
+        import hashlib
+
+        path = BOOTSTRAP / "evolution" / "LEDGER"
+        data = path.read_bytes()
+        self.assertEqual(ledger("blob", path), hashlib.sha1(b"blob %d\0" % len(data) + data).hexdigest())
+
+    def test_head_names_a_chain_end_and_refuses_an_unknown_store(self):
+        head = ledger("head", BOOTSTRAP, "xax_compiler_driver_general.xax")
+        self.assertRegex(head, r"^[0-9a-f]{40}$")
+        run = subprocess.run(["sh", str(EVOLVE), "ledger", "head", str(BOOTSTRAP), "no_such_store.xax"], capture_output=True, text=True)
+        self.assertEqual((run.returncode, run.stdout), (1, ""))
 
 
 if __name__ == "__main__":

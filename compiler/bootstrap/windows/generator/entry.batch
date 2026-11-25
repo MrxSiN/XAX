@@ -1,0 +1,76 @@
+R f75873696cc8aa19fd13f773f1616dc8bc5f7c65170d0d7dc69645fd59ad92e5
+F5
+define @me
+(T0,T1,T2,T0,T1,T2,T0,T1,T2,T0,T1,T2)->(T0,T1,T2,T0,T1,T2,T0,T1,T2,T0,T1,T2,T3)
+B0(P0:T0,P1:T1,P2:T2,P3:T0,P4:T1,P5:T2,P6:T0,P7:T1,P8:T2,P9:T0,P10:T1,P11:T2)
+N0 constant 39 -> T3
+N1 call.direct entity=F9 P0 P1 P2 N0 -> T0,T1,T2,T3
+N2 constant 4294967296 -> T3
+N3 udiv N1.R3 N2 -> T3
+N4 call.direct entity=F9 N1 N1.R1 N1.R2 N3 -> T0,T1,T2,T3
+N5 udiv N4.R3 N2 -> T3
+N6 call.direct entity=F9 N4 N4.R1 N4.R2 N5 -> T0,T1,T2,T3
+N7 udiv N6.R3 N2 -> T3
+N8 constant 7 -> T3
+N9 constant 32 -> T3
+N10 call.direct entity=F21 N6 N6.R1 N6.R2 P9 P10 P11 N8 N9 -> T0,T1,T2,T0,T1,T2
+N11 constant 0 -> T3
+N12 call.direct entity=F22 N10 N10.R1 N10.R2 N10.R3 N10.R4 N10.R5 N7 N11 -> T0,T1,T2,T0,T1,T2,T3
+N13 constant 34 -> T3
+N14 add.wrap N12.R6 N13 -> T3
+N15 call.direct entity=F9 N12 N12.R1 N12.R2 N14 -> T0,T1,T2,T3
+N16 udiv N15.R3 N2 -> T3
+N17 urem N15.R3 N2 -> T3
+N18 mul.wrap N17 N9 -> T3
+N19 add.wrap N16 N18 -> T3
+N20 call.direct entity=F9 N15 N15.R1 N15.R2 N19 -> T0,T1,T2,T3
+N21 udiv N20.R3 N2 -> T3
+N22 constant 1 -> T3
+N23 add.wrap N21 N22 -> T3
+N24 call.direct entity=F28 N20 N20.R1 N20.R2 N23 -> T0,T1,T2,T3
+N25 mul.wrap N24.R3 N9 -> T3
+N26 add.wrap N16 N25 -> T3
+N27 constant 137438953472 -> T3
+N28 add.wrap N26 N27 -> T3
+N29 call.direct entity=F21 N24 N24.R1 N24.R2 N12.R3 N12.R4 N12.R5 N28 N9 -> T0,T1,T2,T0,T1,T2
+N30 call.direct entity=F22 N29 N29.R1 N29.R2 N29.R3 N29.R4 N29.R5 N7 N9 -> T0,T1,T2,T0,T1,T2,T3
+N31 add.wrap N30.R6 N13 -> T3
+N32 call.direct entity=F9 N30 N30.R1 N30.R2 N31 -> T0,T1,T2,T3
+N33 udiv N32.R3 N2 -> T3
+N34 urem N32.R3 N2 -> T3
+N35 mul.wrap N34 N9 -> T3
+N36 add.wrap N33 N35 -> T3
+N37 call.direct entity=F9 N32 N32.R1 N32.R2 N36 -> T0,T1,T2,T3
+N38 udiv N37.R3 N2 -> T3
+N39 call.direct entity=F28 N37 N37.R1 N37.R2 N38 -> T0,T1,T2,T3
+N40 constant 5 -> T3
+N41 add.wrap N38 N39.R3 -> T3
+N42 add.wrap N41 N40 -> T3
+N43 call.direct entity=F28 N39 N39.R1 N39.R2 N42 -> T0,T1,T2,T3
+N44 constant 1 -> T3
+N45 add.wrap N42 N44 -> T3
+N46 add.wrap N45 N43.R3 -> T3
+N47 call.direct entity=F28 N43 N43.R1 N43.R2 N46 -> T0,T1,T2,T3
+N48 mul.wrap N47.R3 N9 -> T3
+N49 add.wrap N33 N48 -> T3
+N50 constant 274877906944 -> T3
+N51 add.wrap N49 N50 -> T3
+N52 call.direct entity=F21 N47 N47.R1 N47.R2 N30.R3 N30.R4 N30.R5 N51 N9 -> T0,T1,T2,T0,T1,T2
+N53 constant 64 -> T3
+N54 constant 128 -> T3
+N55 call.direct entity=F16 N52.R3 N52.R4 N52.R5 N53 N54 -> T0,T1,T2
+N56 call.direct entity=F29 P3 P4 P5 N55 N55.R1 N55.R2 N54 -> T0,T1,T2,T0,T1,T2,T3
+N57 constant 70 -> T3
+N58 call.direct entity=F15 N56.R3 N56.R4 N56.R5 N57 -> T0,T1,T2
+N59 call.direct entity=F25 N58 N58.R1 N58.R2 N56.R6 -> T0,T1,T2
+N60 constant 10 -> T3
+N61 call.direct entity=F15 N59 N59.R1 N59.R2 N60 -> T0,T1,T2
+N62 constant 62914556 -> T3
+N63 call.direct entity=F13 N61 N61.R1 N61.R2 N62 -> T0,T1,T2,T3
+ret N52 N52.R1 N52.R2 N56 N56.R1 N56.R2 P6 P7 P8 N63 N63.R1 N63.R2 N63.R3
+T0 form2 4212a370a8bc08bf6d7e194762a534cbd58252e151bb2a165dadf6ec810aadff
+T1 form4 dfec06167c1acaa3fa45575130099694ef486573fc59ae91ef08ebb1a93aaa07
+T2 form3 2b2704e5644b2a600cc1c05f91f133f54c03637cddb3aaf658a635fff068bd0a
+T3 bits64
+end
+replace F5 @me

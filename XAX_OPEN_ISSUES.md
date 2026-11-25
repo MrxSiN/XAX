@@ -20,7 +20,7 @@ This register lists the issues that require implementation, target, ecosystem, o
 
 - The date in a status line is the date the original record gives for that status. Statuses that the original gives in other words (for example `FIXED IN THE STORES`, `OPEN (partially addressed)`) are kept verbatim inside the Historical Record of the issue that used them.
 - Where an original record has no status line, the status shown is the one its own text states (for example "remains open" or "is closed"), and the record says so.
-- Where an earlier dated paragraph says closed and a later dated status line says open (OI-15, OI-18, OI-19), the later status line supersedes it; the record notes the superseded claim.
+- Where an earlier dated paragraph says closed and a later dated status line says open (OI-15, OI-18, OI-19 until 2026-11-25), the later status line supersedes it; the record notes the superseded claim.
 - Closure-criteria checkboxes are ticked only where the original text states that the criterion is met.
 - OI-01, OI-31, and OI-46 were removed from this register by commit `7af8108` (2026-10-30) and are restored from the version before it; the ADRs and evidence files they cite that were deleted at the same time are in git history.
 
@@ -42,11 +42,11 @@ This register lists the issues that require implementation, target, ecosystem, o
 | [OI-12](#oi-12--timing-proof-representation) | Timing-proof representation | CLOSED |
 | [OI-13](#oi-13--gpuaccelerator-synchronization-scope-normalization) | GPU/accelerator synchronization-scope normalization | CLOSED |
 | [OI-14](#oi-14--compile-time-fuel-units-and-introspection-authority-granularity) | Compile-time fuel units and introspection authority granularity | OPEN |
-| [OI-15](#oi-15--specialization-object-boundaries) | Specialization object boundaries | OPEN |
+| [OI-15](#oi-15--specialization-object-boundaries) | Specialization object boundaries | CLOSED |
 | [OI-16](#oi-16--target-semanticinstruction-granularity-and-opaque-contract-minimums) | Target semantic/instruction granularity and opaque-contract minimums | OPEN |
 | [OI-17](#oi-17--target-cost-model-representation-and-calibration) | Target cost-model representation and calibration | OPEN |
-| [OI-18](#oi-18--legalizationoptimizer-organization-and-machine-level-ir) | Legalization/optimizer organization and machine-level IR | OPEN |
-| [OI-19](#oi-19--transformation-proof-granularity) | Transformation-proof granularity | OPEN |
+| [OI-18](#oi-18--legalizationoptimizer-organization-and-machine-level-ir) | Legalization/optimizer organization and machine-level IR | CLOSED |
+| [OI-19](#oi-19--transformation-proof-granularity) | Transformation-proof granularity | CLOSED |
 | [OI-20](#oi-20--abiplatform-capability-and-classification-representation) | ABI/platform capability and classification representation | OPEN |
 | [OI-21](#oi-21--semantic-database-dependency-representation-and-cross-process-parallelism) | Semantic-database dependency representation and cross-process parallelism | CLOSED |
 | [OI-22](#oi-22--hash-agility-and-migration) | Hash agility and migration | CLOSED |
@@ -87,7 +87,7 @@ This register lists the issues that require implementation, target, ecosystem, o
 | [OI-57](#oi-57--the-references-s12c2-analysis-audit-disagrees-with-the-native-basics-since-ledger-0022) | The reference's S12c.2 analysis audit disagrees with the native `basics` since ledger 0022 | CLOSED |
 | [OI-58](#oi-58--windows-x86-64-code-generation-on-the-chains-walk-r4-blocker-for-windows-x86_64-pe) | Windows x86-64 code generation on the `chains` walk (R4 blocker for `windows-x86_64-pe`) | OPEN |
 | [OI-59](#oi-59--edge-copies-overwrite-a-frame-word-another-copy-of-the-same-edge-still-reads) | Edge copies overwrite a frame word another copy of the same edge still reads | CLOSED |
-| [OI-60](#oi-60--host-portability-gaps-left-after-the-2026-11-13-audit) | Host-portability gaps left after the 2026-11-13 audit | OPEN |
+| [OI-60](#oi-60--host-portability-gaps-left-after-the-2026-11-13-audit) | Host-portability gaps left after the 2026-11-13 audit | CLOSED |
 | [OI-61](#oi-61--the-jvm-program-does-not-check-a-catching-calls-throwable-output-type) | The JVM program does not check a catching call's throwable output type | CLOSED |
 | [OI-62](#oi-62--the-legacy-wasm32-profile-emits-an-invalid-module-for-a-bits64-checked-offset) | The legacy Wasm32 profile emits an invalid module for a `bits<64>` checked offset | CLOSED |
 | [OI-63](#oi-63--canonical-index-acceleration-for-large-stores) | Canonical index acceleration for large stores | OPEN |
@@ -96,7 +96,7 @@ This register lists the issues that require implementation, target, ecosystem, o
 
 ## OI-01 — AI token vocabulary, fallback framing, and handle namespace
 
-**Status:** OPEN (the original record has no status line; its last entry, "Remaining after this extension", leaves it open). It was removed from this register by commit `7af8108` (2026-10-30) and restored on 2026-11-24 from the version before that commit; its text below is unchanged.
+**Status:** OPEN (2026-11-25): a measurement design is proposed below for the owner; nothing is run. The original record has no status line; its last entry, "Remaining after this extension", leaves it open. It was removed from this register by commit `7af8108` (2026-10-30) and restored on 2026-11-24 from the version before that commit.
 
 ### Summary
 
@@ -105,6 +105,25 @@ Which dedicated model tokens, fallback packet encoding, and local-handle namespa
 ### Fixed Constraints
 
 - Transport is versioned, deterministic, unambiguous, non-source, and measured with the actual tokenizer/model. Full persistent hashes need not appear in normal AI context.
+
+### Measurement design (proposed, 2026-11-25)
+
+Not run. A design for the closure criterion, for the owner to approve or change:
+
+- Arms: (a) typed handles (`F`, `N`, `P`, `T`), (b) one unified handle namespace, each with two fallback framings
+  (the current line form and a length-prefixed packet). Four arms, one native workspace (`xaxc edit`), one pinned
+  model and tokenizer, identical instructions and tool surface.
+- Tasks: 30 fixed tasks, 5 per family: program creation, literal/op/control edits, type/resource/effect repair,
+  stale-root recovery, optimization. Each has a verified target root, so success is exact.
+- Per attempt: input and output tokens from the API (retries included), protocol bytes, semantic entities touched,
+  invalid mutations, repair turns, completion within 6 turns.
+- Trials: 3 per task and arm, task order randomized per trial; report medians and the per-task spread, and a paired
+  comparison per task.
+- Decision rule: the arm with the lowest median tokens per completed task wins, provided its invalid-mutation rate
+  and repair turns are not higher than the current arm's; tokenizer-native vocabulary is a separate, later arm (it
+  needs model integration).
+- Needs the owner: ADR-207 defers AI-efficiency work, so nothing here runs until the owner approves the design and
+  the model budget. No agent runs these trials on its own initiative.
 
 ### Closure Criteria
 
@@ -903,7 +922,7 @@ M13 adds one non-CPU target package with explicit device/workgroup execution sco
 
 ## OI-14 — Compile-time fuel units and introspection authority granularity
 
-**Status:** OPEN (the original record has no status line; it states "OI-14 remains open until that split is adopted")
+**Status:** OPEN (2026-11-25): ADR-421 proposes adopting the function-interface/body authority split; this stays open until the owner accepts it. The original record has no status line; it states "OI-14 remains open until that split is adopted".
 
 ### Summary
 
@@ -967,7 +986,7 @@ M9 uses deterministic counts for evaluated blocks/nodes, active frame storage, c
 
 ## OI-15 — Specialization object boundaries
 
-**Status:** OPEN (2026-11-15). The 2026-10-02 closure paragraph below records cache reuse, graph size, optimization opportunity and transaction locality but no compile time, which "Closure Criteria" requires.
+**Status:** CLOSED (2026-11-25). The missing compile-time criterion is measured (see "Compile time (2026-11-25)"); the 2026-10-02 decision stands.
 
 > [!NOTE]
 > Superseded claim: the 2026-10-02 closure evidence paragraph ends with "OI-15 is closed." The later status line above (2026-11-15, the audit that added status lines) supersedes it, because that paragraph does not meet every item of the closure criteria. The paragraph is kept as the historical record.
@@ -1003,6 +1022,22 @@ A one-input change rewrites the same **5 semantic objects / 815 bytes** for all 
 - A specialization reachable only from a constant-dead branch is absent from the post-optimization runtime closure (**19 to 15 objects**).
 - Cache keys include source semantic CID, exact specialized parameter/type/value inputs, specializer identity, evaluator identity/version, and verifier identity. Corrupt or stale records reject deterministically.
 
+#### Compile time (2026-11-25)
+
+`bench_oi15_specialization_boundaries.py` re-run, MEASURED on WSL 2 on the Ryzen 9 5900HS, CPython 3.12.3, the Python reference (11 samples per metric, raw samples in
+`compiler/benchmarks/oi15_specialization_timing_20261125.json`; the evidence file reproduced unchanged):
+
+| Step | Median | p10–p90 |
+| --- | ---: | ---: |
+| Specializing the eight requests (shared by every boundary) | 1.390 ms | 1.313–1.708 ms |
+| Cache record, whole-function identity | 0.044 ms | 0.042–0.070 ms |
+| Cache record, graph + shell | 0.064 ms | 0.063–0.087 ms |
+| Cache record, module aggregate | 0.014 ms | 0.013–0.017 ms |
+| Code-size query (x86-64 emission of the seven functions) | 9.464 ms | 8.627–10.982 ms |
+
+The boundaries differ only in their cache record, at most 0.05 ms per run against 1.39 ms of specialization; compile
+time does not change the decision below.
+
 ### Decision
 
 - The mechanical default is **whole specialized-function identity/cache entries**, while retaining the existing independently interned canonical graph fragment beneath the function.
@@ -1015,7 +1050,7 @@ A one-input change rewrites the same **5 semantic objects / 815 bytes** for all 
 
 - [x] Cache reuse.
 - [x] Graph size.
-- [ ] Compile time (not recorded; this is what the 2026-11-15 status line names as missing).
+- [x] Compile time (2026-11-25, MEASURED; see "Compile time (2026-11-25)").
 - [x] Optimization opportunity.
 - [x] Transaction locality.
 
@@ -1148,7 +1183,7 @@ M12 introduces a lowering-derived code-size oracle that measures the exact emitt
 
 ## OI-18 — Legalization/optimizer organization and machine-level IR
 
-**Status:** OPEN (2026-11-15). The 2026-10-02 closure paragraph below records implementation volume, compile time and memory, incrementality, target extensibility and code quality on two architectures, but not verifier complexity, which "Closure Criteria" requires.
+**Status:** CLOSED (2026-11-25). Verifier complexity is recorded (see "Verifier complexity (2026-11-25)"); the 2026-10-02 decision stands.
 
 > [!NOTE]
 > Superseded claim: the 2026-10-02 closure evidence paragraph ends with "OI-18 is closed." The later status line above (2026-11-15, the audit that added status lines) supersedes it, because that paragraph does not meet every item of the closure criteria. The paragraph is kept as the historical record.
@@ -1183,6 +1218,17 @@ OI-18 compares the current staged semantic optimizer/direct lowering with one be
 - The explicit unsupported WebAssembly atomic case rejects deterministically both in the selector and unchanged backend.
 - Existing optimizer search remains bounded by deterministic fuel and ordinary candidate validation.
 
+#### Verifier complexity (2026-11-25)
+
+`bench_oi18_optimizer_organization.py --measure` re-run, EXECUTED on WSL 2 on the Ryzen 9 5900HS, CPython 3.12.3, the Python reference (deterministic counts in
+`compiler/benchmarks/oi18_optimizer_organization_evidence_20261125.json`, its `verifier` record; timing samples
+beside it):
+
+- The selected organization needs no verifier of its own: no machine IR exists, so the ordinary semantic verifier and
+  the optimizer's candidate validation are the whole correctness surface. Over the ten cold cells they check 21 store
+  objects and 8 optimizer events, and validate 192 search candidates, rejecting 186.
+- The alternate adds 60 legality/selection checks on top of that, for byte-identical output.
+
 ### Decision
 
 The simpler organization remains the mechanical default: **staged semantic optimization followed by direct target-specialized lowering, with no universal persistent machine IR and no additional demand-selection layer**.
@@ -1196,7 +1242,7 @@ The simpler organization remains the mechanical default: **staged semantic optim
 - [x] Compiler implementation volume.
 - [x] Compile time/memory.
 - [x] Incrementality.
-- [ ] Verifier complexity (not recorded; this is what the 2026-11-15 status line names as missing).
+- [x] Verifier complexity (2026-11-25; see "Verifier complexity (2026-11-25)").
 - [x] Target extensibility.
 - [x] Generated-code quality across at least two architectures.
 
@@ -1211,7 +1257,7 @@ M12 uses a deliberately small staged organization: deterministic local/CFG rewri
 
 ## OI-19 — Transformation-proof granularity
 
-**Status:** OPEN (2026-11-15). The 2026-10-02 closure paragraph below records trusted code size, validation latency and bug detection, but not validation memory or optimization throughput, which "Closure Criteria" requires.
+**Status:** CLOSED (2026-11-25). Validation memory and throughput are measured (see "Validation memory and throughput (2026-11-25)"); the 2026-10-02 policy stands.
 
 > [!NOTE]
 > Superseded claim: the 2026-10-02 closure evidence paragraph ends with "OI-19 is closed." The later status line above (2026-11-15, the audit that added status lines) supersedes it, because that paragraph does not meet every item of the closure criteria. The paragraph is kept as the historical record.
@@ -1248,6 +1294,22 @@ The corpus contains six accepted transforms across local wrapping rewrites (incl
 - Correct witnesses are **107–139 bytes** and bind exact subject, candidate, and dependency identities.
 - The benchmark witness codec/checker is **223 lines** versus **276 lines** for the existing local/CFG/inline generator logic, but it covers only the measured subset. Adding it without removing those trusted generators would expand the correctness-critical implementation.
 
+#### Validation memory and throughput (2026-11-25)
+
+`bench_oi19_transform_proofs.py --measure` re-run, MEASURED on WSL 2 on the Ryzen 9 5900HS, CPython 3.12.3, the Python reference (21 samples per case and mechanism; raw elapsed
+time and `tracemalloc` peak bytes in `compiler/benchmarks/oi19_transform_proof_timing_20261125.json`):
+
+| Mechanism | Cases | Median validation time | Median peak memory | Throughput |
+| --- | ---: | ---: | ---: | ---: |
+| Ordinary verifier | 6 | 0.398–0.483 ms | 3,568–4,568 bytes | about 2,250 per second |
+| Witness checker (+ verifier) | 6 | 0.766–1.028 ms | 5,858–7,987 bytes | about 1,065 per second |
+| Exact polynomial validator | 1 | 0.771 ms | 8,032 bytes | about 1,300 per second |
+| Finite-domain oracle (testing only) | 5 | 2.819–121.552 ms | 8,900–88,532 bytes | about 31 per second |
+
+Throughput is validated transforms per second: the number of cases over the sum of their median validation times
+(candidate generation is not timed). The policy's mechanisms (verifier, witness, polynomial) stay under 8 KB and
+above 1,000 transforms per second; only the testing oracle is costly.
+
 ### Decision
 
 The mechanical policy:
@@ -1264,9 +1326,9 @@ Failed checks retain the prior accepted function CID, and proof artifacts never 
 
 - [x] Trusted code size.
 - [x] Validation latency.
-- [ ] Validation memory (not recorded; named as missing by the 2026-11-15 status line).
+- [x] Validation memory (2026-11-25, MEASURED).
 - [x] Bug detection.
-- [ ] Optimization throughput (not recorded; named as missing by the 2026-11-15 status line).
+- [x] Optimization throughput (2026-11-25, MEASURED as validated transforms per second).
 
 <details>
 <summary>Historical Record</summary>
@@ -1279,7 +1341,7 @@ M12 uses conservative trusted rewrite preconditions plus the ordinary verifier f
 
 ## OI-20 — ABI/platform capability and classification representation
 
-**Status:** OPEN (the original record has no status line; it states "OI-20 remains open; no canonical ABI/capability representation is selected yet")
+**Status:** OPEN (2026-11-25): ADR-422 proposes a canonical ABI/capability representation; this stays open until the owner accepts it and the remaining ABI measurements are made. The original record has no status line; it states "OI-20 remains open; no canonical ABI/capability representation is selected yet".
 
 ### Summary
 
@@ -1765,7 +1827,7 @@ The committed immutable seed establishes the declared B6 ordinary-release bounda
 
 ## OI-28 — Diagnostic payload and repair-neighborhood minimum
 
-**Status:** OPEN (the original record has no status line; it states "OI-28 remains open pending repeated controlled repair trials")
+**Status:** OPEN (2026-11-25): a measurement design for the repeated repair trials is proposed below; nothing is run. The original record has no status line; it states "OI-28 remains open pending repeated controlled repair trials".
 
 ### Summary
 
@@ -1789,6 +1851,21 @@ What minimum stable dependency/repair payload is useful, and is strict minimalit
 
 - Every case has an exact known repair target root. Payload staleness is generation-bound. The resource case exercises pagination. `oi28_repair_tasks.json` holds the repair tasks.
 - Repair turns and repair success remain unmeasured, and byte savings alone cannot select strict minimality.
+
+### Measurement design (proposed, 2026-11-25)
+
+Not run. For the two unmeasured items (repair success, repair turns) and the repeated trials:
+
+- Corpus: the nine `oi28_repair_tasks.json` cases plus real verifier failures: the `fixtures/declared_rejections`
+  stores (36) and a sample of 30 `test_xax_selfhost_verify_exact` rejections, each with a known repaired root.
+- Arms: `minimal` and `near` payloads, the same native workspace, model, instructions and turn limit (4).
+- Per attempt: success (the committed root equals a verified repair), repair turns, tokens, payload bytes, the
+  payload's construction time.
+- Trials: 3 per case and arm, order randomized; paired per case.
+- Decision rule: `near` is adopted only if it raises repair success or lowers median turns on the real failures by
+  more than the trial spread; otherwise `minimal` stays the default and strict minimality is not pursued further.
+- Needs the owner: ADR-207 defers AI-efficiency work, so nothing here runs until the owner approves the design and
+  the model budget. No agent runs these trials on its own initiative.
 
 ### Closure Criteria
 
@@ -2582,7 +2659,7 @@ The original status record, in chronological order:
 
 ## OI-46 — Fixed client overhead in R5 token measurement
 
-**Status:** OPEN (2026-10-07, ADR-195); deferred and unscheduled since 2026-10-08 (ADR-207). It was removed from this register by commit `7af8108` (2026-10-30) and restored on 2026-11-24 from the version before that commit; its text below is unchanged.
+**Status:** OPEN (2026-11-25): a measurement design is proposed below for the owner's approval; nothing is run. Opened 2026-10-07 (ADR-195); deferred and unscheduled since 2026-10-08 (ADR-207). It was removed from this register by commit `7af8108` (2026-10-30) and restored on 2026-11-24 from the version before that commit.
 
 ### Summary
 
@@ -2595,6 +2672,23 @@ In the same-prefill JVM comparison (ADR-195), every arm makes one request throug
 ### Alternatives Considered
 
 (a) A minimal client or direct API with identical, minimal instructions and no tool schemas for every arm. (b) A corpus whose textual context is legitimately larger: real multi-file repositories where a named-symbol excerpt is not available as cheaply as the XAX neighborhood. (c) Record R5 as unreachable for single-edit tasks under agent clients with a fixed overhead.
+
+### Measurement design (proposed, 2026-11-25)
+
+Not run. A design that combines alternatives (a) and (b), for the owner's approval (the closure criterion asks for
+an owner-approved design):
+
+- Client: a direct API caller with one fixed, minimal instruction block and no tool schemas, the same for every arm,
+  so the fixed overhead is a few hundred tokens and is reported separately.
+- Corpus: v10's single-edit tasks plus tasks on real multi-file repositories (alternative (b)), where the textual
+  arm's context is what a competent agent would actually read.
+- Counting: every token in and out, retries included; the fixed overhead reported per request; R5 ratios computed
+  with and without it.
+- Trials: three complete trials (the criterion's v10 successor), then an independent audit of the raw transcripts.
+- If (a) and (b) still cannot reach the R5 ratio for single edits, record (c): R5 is unreachable for single-edit
+  tasks under a fixed client overhead, and report multi-file tasks only.
+- Needs the owner: ADR-207 defers AI-efficiency work, so nothing here runs until the owner approves the design and
+  the model budget. No agent runs these trials on its own initiative.
 
 ### Closure Criteria
 
@@ -2788,11 +2882,29 @@ The [canonical control and fixed fixture](compiler/integration/windows_helpers/D
 
 ## OI-51 — Windows native driver coverage and diagnostic parity
 
-**Status:** OPEN (2026-10-20). Check (2026-11-15): still OPEN.
+**Status:** OPEN (2026-11-25). Scope moved to the Windows seed; it accepts the self-store and re-ran the verify-exact corpora with no decline. The large flag record is refused by the edit engine's 16 MiB capacity.
 
 **Related Issues:** [OI-52](#oi-52--64-bit-checked-offsets-and-growable-views-roadmap)
 
 ### Current Findings
+
+#### Windows seed run (2026-11-25)
+
+Scope decision: the criteria are judged on the Windows seed, the production driver built as a PE image (ADR-397,
+ADR-402); the prototype below is superseded and is not developed further. Runs, all EXECUTED on Windows 11 with the
+release 0042 Windows seed (`4d361a39…`) as a native Windows process:
+
+| Criterion | Run | Result |
+| --- | --- | --- |
+| Accept the corrected self-store | `xaxc verify compiler/integration/windows_helpers/driver.xax` | exit 0 (13 s) |
+| Replay the large flag transaction | the prototype's base (driver at `dc25d2b`, root `68347cdf…`), then `windows_host.edit`, then `windows_flags.edit` | the host record gives the flag record's expected root `eec166ea…` (14 s); the flag record is refused: `DRIVER-EDIT-CAPACITY`, expected 16,777,216, actual larger |
+| Re-run the corpus | `test_xax_selfhost_verify_exact`'s seven corpora with the Windows seed as the driver (through WSL interop) | 938 exact diagnostics, 377 accepts, 0 declines, 0 driver records (114 s) |
+
+- The original 212-case inputs were generated by an SDK harness outside the repository and are not kept; the
+  verify-exact corpora (object sites, types and constants, graphs, uses, memory facts, resource callees, the 36
+  declared rejections) cover every object kind, and no case declined, so no decline is read as a validity claim.
+- Left open: the flag record (15.9 MB) exceeds a fixed 16 MiB region of the edit engine. Lifting it is edit-engine
+  work in the production driver (the same kind of limit OI-54 step 1 raised for bodies), not a Windows matter.
 
 #### Check (2026-11-15): still OPEN
 
@@ -2832,9 +2944,9 @@ With packed decision lengths ([PACKED_LENGTHS.md](compiler/integration/bfx/PACKE
 
 ### Closure Criteria
 
-- [ ] Canonical graph changes preserving rejection and diagnostic ordering, accepting the corrected self-store.
+- [x] Canonical graph changes preserving rejection and diagnostic ordering, accepting the corrected self-store (2026-11-25, Windows seed).
 - [ ] Replaying the large transaction byte for byte.
-- [ ] Re-running the corpus without treating declines as validity claims or removing the diagnostic mismatch.
+- [x] Re-running the corpus without treating declines as validity claims or removing the diagnostic mismatch (2026-11-25, Windows seed, the verify-exact corpora).
 
 ### References
 
@@ -2943,7 +3055,7 @@ Before the fix, the production compiler's `verify` answered `MEMORY-CHECKED-STOR
 
 ## OI-54 — Function views past 2^18 values (BBC's hanoi -O0)
 
-**Status:** OPEN (2026-11-24). Step 1 done (2026-11-20, release 0039, ADR-413). Step 2 part 1 is in release 0042 (ledger 0042 `container-from-image`, ADR-419); part 2 moves to release 0043. Step 3 (AArch64 liveness) stays open.
+**Status:** OPEN (2026-11-25). Step 2 part 2's design is chosen (growable views; ADR-423, proposed); revised to enlarging the workspace view to 8 GiB (ADR-423 amendment 3), planned as release 0044's five sub-batches; not started. Step 3 (AArch64 liveness) stays open. Step 1 done (release 0039, ADR-413); step 2 part 1 in release 0042 (ADR-419).
 
 **Related ADRs:** ADR-386, ADR-387, ADR-390, ADR-391, ADR-413, ADR-419
 
@@ -2966,7 +3078,11 @@ A census of the workspace (gdb at the first `munmap`, nonzero bytes per 2^20-wor
 
 - The per-value tables at hanoi's size are about 86 words × 650,000 values = 56M words, and 112M with a ×2 capacity margin.
 - Neither fits one free span, nor both together (31M words), so a region of their own inside the fixed 2 GiB workspace is not enough.
-- Part 2 needs one of: tables packed to 32-bit lanes (about 43 words per value, then also moving the image record), a second workspace view (a host ABI change), or growable views (OI-52 R3). Not decided here.
+- Part 2 needs one of: tables packed to 32-bit lanes (about 43 words per value, then also moving the image record), a second workspace view (a host ABI change), or growable views (OI-52 R3). Decided 2026-11-25: growable views (ADR-423).
+
+#### Release 0043 check (2026-11-25)
+
+With the release 0043 `bbc.exe` (`4521cc64…`) on Windows 11, EXECUTED: hanoi -O1 for Windows x86-64 builds (33 s, 359,424 bytes, byte-identical to 0042's) and runs (19,090 bytes of output, equal to the independent interpreter's); -O0 for both targets and -O1 for Android ARM64 decline (exit 5), as with 0042.
 
 #### Remaining steps
 
@@ -3270,7 +3386,7 @@ The same staging as a native transaction on the x86-64 backend, driver and reque
 
 ## OI-60 — Host-portability gaps left after the 2026-11-13 audit
 
-**Status:** OPEN (2026-11-25). The two developer paths are gone; the Windows-seed criteria are open.
+**Status:** CLOSED (2026-11-25). The ledger, request, release, evidence, hosting and status tools run on the Windows seed, `selfbuild.sh` rebuilds the Windows seed from itself there, and tests run Windows-seed commands against the pin. The remaining findings below are not closure criteria.
 
 **Related Issues:** [OI-58](#oi-58--windows-x86-64-code-generation-on-the-chains-walk-r4-blocker-for-windows-x86_64-pe)
 
@@ -3285,7 +3401,8 @@ A read-only audit of the tracked repository for Linux-host assumptions found the
 
 Left open, each needing either a native tool or new test glue that the language rule does not allow in Python:
 
-- The ledger program (`evolve.sh apply/replay/check`) and `selfbuild.sh` run only where the Linux seed runs.
+- `rotate.sh build`, `confirm` and `evidence/run.sh` still run on Linux x86-64 (they drive the Linux seed's generations; the
+  Windows confirm runs the Windows seed through WSL interop).
 - No test exercises the Windows seed (`compiler/bootstrap/windows`), and the seed tools pin the Linux seed only.
 - About 130 test modules gate on Linux x86-64 although several only call seed commands.
 - `benchmarks/linux_harness.py` reads `/proc/cpuinfo` without a fallback (the other three benchmark readers have one).
@@ -3293,11 +3410,39 @@ Left open, each needing either a native tool or new test glue that the language 
 
 ### Closure Criteria
 
-- [ ] A native ledger tool and seed check that run on the Windows seed.
-- [ ] One test that runs a Windows-seed command against its pin.
+- [x] A native ledger tool and seed check that run on the Windows seed (2026-11-25).
+- [x] One test that runs a Windows-seed command against its pin (2026-11-25: `test_status_docs.py` on Windows).
 
 <details>
 <summary>Historical Record</summary>
+
+#### 2026-11-25: CLOSED — the seed check on the Windows seed
+
+The release tool (`seed/rotate-tool`), the evidence tool and the Windows generator's hosting tool got the same
+driver-shaped `main` (`driver.batch` each; every output byte for byte the previous tool's). `generate.sh` now runs on
+Windows with the Windows seed (the compiler's Windows request byte for byte, `0ee68b3c…`, 296 s), so `selfbuild.sh` does
+there: EXECUTED on Windows 11, the Windows seed rebuilt itself twice and `xaxc1.exe`, `xaxc2.exe` and the pinned seed are
+all `4d361a39…` (720 s). `rotate.sh state` and `status.sh` (bootstrap block included) run there too; on Windows
+`test_status_docs.py` 6 passed, `test_rotate_tool.py`, `test_xax_selfhost_evolution.py` and `test_status_docs.py` 10
+passed. Both closure criteria are met.
+
+#### 2026-11-25: the ledger tool runs on the Windows seed
+
+`ledger-tool/xax_ledger.xax` has the driver's entry (`driver.batch`) and `generate.sh` hosts it
+(`xax_ledger_windows.xax`; the hosting tool's entry lookup was fixed for it, `entry.batch`). Every command gives the
+previous tool's output byte for byte (14 cases, WSL 2). On Windows 11 with the Windows seed, EXECUTED:
+`evolve.sh check` passes (2 s), `evolve.sh replay xax_jvm_general.xax` replays 7 of 7, and three tests in
+`test_xax_selfhost_evolution.py` pass. The same day the request tool followed (`request-tool/driver.batch`,
+`xax_request_windows.xax`): on Windows it writes the committed compiler request byte for byte, so `evolve.sh check`
+derives and compares it there too (4 s), and four Windows tests pass. `evolve.sh apply` was not run on Windows. The first
+closure criterion still needs a seed check there.
+
+#### 2026-11-25: the status tool runs on the Windows seed
+
+The status tool's main is driver-shaped, so `windows/generator/generate.sh` hosts it (`xax_status_windows.xax`). On
+Windows 11, `test_status_docs.py` checks the Windows seed against the `RELEASES` pin and runs the levels, targets and
+rewrite cases with it (EXECUTED: 4 passed; the repository and bootstrap cases stay Linux-only). On Linux the file and
+`test_windows_generator.py` pass (9 passed, 1 skipped).
 
 #### 2026-11-25: the two developer paths removed
 
@@ -3407,7 +3552,7 @@ Recorded on 2026-11-24 from [`docs/08_SERIALIZATION_IDENTITY.md`](docs/08_SERIAL
 
 ## OI-64 — Semantic rebase granularity for concurrent agents
 
-**Status:** OPEN (2026-11-24)
+**Status:** OPEN (2026-11-25): a measurement design is proposed below; nothing is run. Recorded 2026-11-24.
 
 ### Summary
 
@@ -3418,6 +3563,22 @@ Recorded on 2026-11-24 from [`docs/09_AI_PROTOCOL.md`](docs/09_AI_PROTOCOL.md#13
 ### Fixed Constraints
 
 - Commits stay atomic against `expected_root`; no rebase may publish a verifier-invalid or partially applied candidate ([`docs/09_AI_PROTOCOL.md`](docs/09_AI_PROTOCOL.md) §5).
+
+### Measurement design (proposed, 2026-11-25)
+
+Not run:
+
+- Policies: whole-root compare-and-swap (today's `expected_root`), entity-level preconditions (each mutation's old
+  fields, as the workspace already checks), and read-set validation (the entities a batch read must be unchanged).
+- Load: 2, 4 and 8 concurrent agents on one store, each with an independent task stream from the OI-01 task set;
+  conflicts arise naturally from shared callees and types.
+- Per policy: commit conflicts, retries, repair turns after a conflict, wasted tokens, and whether any committed root
+  fails `verify` (must be zero for every policy).
+- Trials: 3 per policy and agent count.
+- Decision rule (ADR): the finest policy whose wasted-work saving is larger than the trial spread and that never
+  publishes an invalid root; otherwise whole-root compare-and-swap stays.
+- Needs the owner: ADR-207 defers AI-efficiency work, so nothing here runs until the owner approves the design and
+  the model budget. No agent runs these trials on its own initiative.
 
 ### Closure Criteria
 

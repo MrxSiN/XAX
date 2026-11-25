@@ -4,27 +4,30 @@ The directory is `ledger-tool/` so it can coexist with the `../LEDGER` file on
 case-insensitive Windows filesystems. This naming change leaves canonical store
 and batch bytes unchanged; `evolve.sh` and the copy-based test use the new path.
 
-`xax_ledger.xax` is a Linux x86-64 process, an XAX build request store. It holds the ledger's logic; `evolve.sh`
-builds it with the pinned seed and keeps only the loops that run `xaxc` and `git`.
+`xax_ledger.xax` is an XAX build request store with the general driver's entry (since 2026-11-25, `driver.batch`):
+`main` takes and returns the file system, the process and 22 memory tokens, and reaches files only through the
+driver's host functions. So `../../windows/generator/generate.sh` hosts it, and `xax_ledger_windows.xax` is its output;
+`evolve.sh` builds that one with the pinned Windows seed under Git for Windows' `sh`. It holds the ledger's logic;
+`evolve.sh` keeps only the loops that run `xaxc` and `git`. Every command writes its text to an output file, its last
+argument (`evolve.sh`'s `ledger` function prints it back, to standard error for `check`):
 
 ```text
-xax_ledger check <bootstrap>          exit 0 when every frozen store is its ledger chain's end; 1 after writing to
-                                      standard error the path of each store that is not, whose chain is broken (a
-                                      transaction that does not start at the chain's end) or that cannot be read;
-                                      3 when the ledger cannot be read
-xax_ledger head <bootstrap> <store>   the store's chain end, 40 hexadecimal digits and a newline; exit 1 when the
-                                      store has no baseline or its chain is broken
-xax_ledger transactions <bootstrap>   the ledger's transaction lines (every line that is not a comment, a baseline or
-                                      empty), as they are
-xax_ledger blob <file>                the file's git blob id (SHA-1 of "blob <size>\0" and the bytes) and a newline;
-                                      exit 3 when the file cannot be read
+xax_ledger check <bootstrap> <out>          exit 0 when every frozen store is its ledger chain's end; 1 after writing
+                                            the path of each store that is not, whose chain is broken (a transaction
+                                            that does not start at the chain's end) or that cannot be read;
+                                            3 when the ledger cannot be read
+xax_ledger head <bootstrap> <store> <out>   the store's chain end, 40 hexadecimal digits and a newline; exit 1 when the
+                                            store has no baseline or its chain is broken
+xax_ledger transactions <bootstrap> <out>   the ledger's transaction lines (every line that is not a comment, a baseline
+                                            or empty), as they are
+xax_ledger blob <file> <out>                the file's git blob id (SHA-1 of "blob <size>\0" and the bytes) and a
+                                            newline; exit 3 when the file cannot be read
 ```
 
 It replaced the Python `xax_selfhost_evolution` module (removed) and, in `evolve.sh`, the shell check loop, the awk chain lookup,
 the awk transaction filter and `git hash-object`/`sha1sum` for blob ids.
 
-Limits: the ledger at most 1 MiB, a file at most 256 MiB, a path at most 64 KiB; a missing argument traps (the
-program reads `argv` without checking `argc`; `evolve.sh` always passes them).
+Limits: the ledger under 1 MiB, a file under 256 MiB, an argument under 4 KiB; a wrong argument count exits 3.
 
 How it was made, without a Python generator of its logic:
 
@@ -64,3 +67,15 @@ appended:
 - `check` exits 0, `transactions` is unchanged, and `head` of the request exits 1;
 - with a byte appended to the request, `check` still exits 0, while a byte appended to the driver fails it;
 - a derived line whose final blob is not the chain end fails `check`.
+
+## Driver-shaped main (2026-11-25)
+
+`driver.batch` on the previous `xax_ledger.xax` replaces `main` (F5) and keeps every helper. It supplies the driver's
+`xax-host-v1` declarations (and a free declaration for the 1 MiB view type, the driver's 8 MiB one with that type
+swapped in), copies the driver's five host functions, and reads every file in 64 KiB chunks. EXECUTED in WSL 2 with
+the release 0042 seed: `blob` (empty, 16 KiB, the 63 MB driver, a missing file), `transactions` (31,674 bytes),
+`head` (three stores and an unknown one), and `check` (the committed tree, a damaged copy, a missing ledger) give the
+previous program's standard output and error byte for byte, with the same exit statuses. On Windows 11 the Windows
+build (39,936 bytes) gives the Linux build's `transactions`, `head` and `blob` output, `evolve.sh check` passes in 2 s,
+and `evolve.sh replay xax_jvm_general.xax` replays 7 of 7 transactions (54 s). `evolve.sh` still refuses a driver
+transaction and skips the request derivation there: `../request-tool` is a Linux x86-64 program.

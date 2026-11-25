@@ -19,17 +19,27 @@ set -u
 here=$(cd "$(dirname "$0")" && pwd)
 bootstrap=$(dirname "$here")
 seed=$here/xaxc-linux-x86_64
+store=$here/rotate-tool/xax_rotate.xax exe= hosted=
+case $(uname -s) in  # on Windows (Git for Windows' sh) `state`, `pin`, `tests` and `validate`'s checks use the Windows seed
+    MINGW*|MSYS*|CYGWIN*) seed=$bootstrap/windows/xaxc-windows-x86_64.exe; store=$here/rotate-tool/xax_rotate_windows.xax; exe=.exe hosted=_windows ;;
+esac
 xaxc=${XAXC:-$seed}
 die() { echo "rotate.sh: $*" >&2; exit 1; }
 work=$(mktemp -d "${TMPDIR:-/tmp}/xax-rotate.XXXXXX")
 trap 'rm -rf "$work"' EXIT
 
 tool() {  # tool <store> <name>: build an XAX tool program with xaxc
-    "$xaxc" resolve "$1" "$work/$2.xax" && "$xaxc" build "$work/$2.xax" "$work/$2" "$work/$2.provenance" || die "building $2 failed"
-    chmod 755 "$work/$2"
+    "$xaxc" resolve "$1" "$work/$2.xax" && "$xaxc" build "$work/$2.xax" "$work/$2$exe" "$work/$2.provenance" || die "building $2 failed"
+    chmod 755 "$work/$2$exe"
 }
-tool "$here/rotate-tool/xax_rotate.xax" rotate
-r=$work/rotate
+tool "$store" rotate
+rot() {  # rot <command> <argument>...: the release tool writes its text to a file (its last argument); print it
+    rm -f "$work/rotate.out"
+    status=0; "$work/rotate$exe" "$@" "$work/rotate.out" || status=$?
+    [ ! -f "$work/rotate.out" ] || cat "$work/rotate.out"
+    return $status
+}
+r=rot
 winpath() { if command -v wslpath >/dev/null 2>&1; then wslpath -w "$1"; else printf %s "$1"; fi; }
 candidate() { "$r" state "$bootstrap" | sed -n 's/^candidate //p'; }
 
@@ -134,8 +144,8 @@ confirm)
 validate)
     record=${2:?usage: rotate.sh validate <record>}
     "$r" state "$bootstrap" | grep -qx "profile candidate" || die "validate: no fully confirmed candidate"
-    tool "$bootstrap/evidence/xax_evidence.xax" evidence
-    "$work/evidence" levels "$record" "$bootstrap/evidence/CORPUS" "$bootstrap/evidence/SNAPSHOTS" "$seed" > "$work/levels" || exit 3
+    tool "$bootstrap/evidence/xax_evidence$hosted.xax" evidence
+    "$work/evidence$exe" levels "$record" "$bootstrap/evidence/CORPUS" "$bootstrap/evidence/SNAPSHOTS" "$here/xaxc-linux-x86_64" "$work/levels" || exit 3
     "$r" valid "$work/levels" || { cat "$work/levels" >&2; die "validate: not every level holds"; }
     sha=$("$r" id "$record")
     echo "validated $(candidate) evidence=${sha%%:*}" >> "$bootstrap/RELEASES" ;;
