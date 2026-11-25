@@ -17,7 +17,7 @@ It replaces the hand-written `hosting.batch` and `pe_target.edit`, which had to 
 xax_hosting e <request> <listing> - <out>    main's handle ("F<n>"): the request's package's build entry, found in
                                               the listing (`xaxc edit <request> <empty file>`)
 xax_hosting b <view> <listing> <layer> <out> the hosting batch for main's view (`xaxc edit <request> F<n>`)
-xax_hosting r <hosted> <template> - <out>    the PE target record for the hosted store
+xax_hosting r <hosted> <template> - <out>    the ledger 0032 PE target record for the hosted store (no longer used)
 ```
 
 `-` stands for any file; `generate.sh` passes `/dev/null`.
@@ -36,9 +36,11 @@ xax_hosting r <hosted> <template> - <out>    the PE target record for the hosted
 4. the layer's tail, `@XAXC`, the process entry;
 5. `replace F<main> @XAXC`.
 
-**The record** is `pe_target.template`, the ledger 0032 `pe_target.edit`. Only the hosted store's root (at bytes 8
-and 139) and its module's CID (at byte 42) are written into it. The rest is fixed: the two reference replacements to
-the supplied `x86_64-windows-pe-v1` target.
+**The target** is replaced by a batch (2026-11-25): `generate.sh` writes the hosted store's root line and `F0` before
+`pe_target.batch`, which supplies the `x86_64-windows-pe-v1` target (`define @pe` / `object 6 0x…`) and replaces the
+shared request's target `28f1deec…` with it (`replace <CID> @pe`, ledger 0042). For the compiler request it makes the
+same bytes as the earlier record template (`pe_target.template`, deleted), and it works for any store whose request
+names that target, such as the status tool's.
 
 How it was made, without a generator of its logic:
 
