@@ -527,13 +527,13 @@ Each item names the register record that tracks it, with that record's status on
 
 ### 17.1 Universal machine-level representation
 
-Register: [OI-18](../XAX_OPEN_ISSUES.md#oi-18--legalizationoptimizer-organization-and-machine-level-ir), `OPEN`.
+Register: [OI-18](../XAX_OPEN_ISSUES.md#oi-18--legalizationoptimizer-organization-and-machine-level-ir), `CLOSED`.
 
 It remains open whether all targets should share one machine-level graph or target packages should define more specialized machine forms. The choice depends on verifier complexity, target extensibility, optimizer quality, and implementation volume.
 
 ### 17.2 Global optimizer organization
 
-Register: [OI-18](../XAX_OPEN_ISSUES.md#oi-18--legalizationoptimizer-organization-and-machine-level-ir), `OPEN`.
+Register: [OI-18](../XAX_OPEN_ISSUES.md#oi-18--legalizationoptimizer-organization-and-machine-level-ir), `CLOSED`.
 
 The architecture does not yet choose a conventional pass pipeline, demand-driven rewriting, equality-saturation hybrid, or another organization. Compile time, incrementality, implementation complexity, and generated-code quality must decide.
 
@@ -545,7 +545,7 @@ The interface is fixed, but statistical models for latency, throughput, energy, 
 
 ### 17.4 Proof granularity
 
-Register: [OI-19](../XAX_OPEN_ISSUES.md#oi-19--transformation-proof-granularity), `OPEN`.
+Register: [OI-19](../XAX_OPEN_ISSUES.md#oi-19--transformation-proof-granularity), `CLOSED`.
 
 The appropriate split among trusted rewrite rules, proof objects, solver-backed equivalence, and translation validation must be established by trusted-core size and compile-time evidence.
 

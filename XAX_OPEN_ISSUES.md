@@ -20,7 +20,7 @@ This register lists the issues that require implementation, target, ecosystem, o
 
 - The date in a status line is the date the original record gives for that status. Statuses that the original gives in other words (for example `FIXED IN THE STORES`, `OPEN (partially addressed)`) are kept verbatim inside the Historical Record of the issue that used them.
 - Where an original record has no status line, the status shown is the one its own text states (for example "remains open" or "is closed"), and the record says so.
-- Where an earlier dated paragraph says closed and a later dated status line says open (OI-15, OI-18, OI-19), the later status line supersedes it; the record notes the superseded claim.
+- Where an earlier dated paragraph says closed and a later dated status line says open (OI-15, OI-18, OI-19 until 2026-11-25), the later status line supersedes it; the record notes the superseded claim.
 - Closure-criteria checkboxes are ticked only where the original text states that the criterion is met.
 - OI-01, OI-31, and OI-46 were removed from this register by commit `7af8108` (2026-10-30) and are restored from the version before it; the ADRs and evidence files they cite that were deleted at the same time are in git history.
 
@@ -42,11 +42,11 @@ This register lists the issues that require implementation, target, ecosystem, o
 | [OI-12](#oi-12--timing-proof-representation) | Timing-proof representation | CLOSED |
 | [OI-13](#oi-13--gpuaccelerator-synchronization-scope-normalization) | GPU/accelerator synchronization-scope normalization | CLOSED |
 | [OI-14](#oi-14--compile-time-fuel-units-and-introspection-authority-granularity) | Compile-time fuel units and introspection authority granularity | OPEN |
-| [OI-15](#oi-15--specialization-object-boundaries) | Specialization object boundaries | OPEN |
+| [OI-15](#oi-15--specialization-object-boundaries) | Specialization object boundaries | CLOSED |
 | [OI-16](#oi-16--target-semanticinstruction-granularity-and-opaque-contract-minimums) | Target semantic/instruction granularity and opaque-contract minimums | OPEN |
 | [OI-17](#oi-17--target-cost-model-representation-and-calibration) | Target cost-model representation and calibration | OPEN |
-| [OI-18](#oi-18--legalizationoptimizer-organization-and-machine-level-ir) | Legalization/optimizer organization and machine-level IR | OPEN |
-| [OI-19](#oi-19--transformation-proof-granularity) | Transformation-proof granularity | OPEN |
+| [OI-18](#oi-18--legalizationoptimizer-organization-and-machine-level-ir) | Legalization/optimizer organization and machine-level IR | CLOSED |
+| [OI-19](#oi-19--transformation-proof-granularity) | Transformation-proof granularity | CLOSED |
 | [OI-20](#oi-20--abiplatform-capability-and-classification-representation) | ABI/platform capability and classification representation | OPEN |
 | [OI-21](#oi-21--semantic-database-dependency-representation-and-cross-process-parallelism) | Semantic-database dependency representation and cross-process parallelism | CLOSED |
 | [OI-22](#oi-22--hash-agility-and-migration) | Hash agility and migration | CLOSED |
@@ -967,7 +967,7 @@ M9 uses deterministic counts for evaluated blocks/nodes, active frame storage, c
 
 ## OI-15 — Specialization object boundaries
 
-**Status:** OPEN (2026-11-15). The 2026-10-02 closure paragraph below records cache reuse, graph size, optimization opportunity and transaction locality but no compile time, which "Closure Criteria" requires.
+**Status:** CLOSED (2026-11-25). The missing compile-time criterion is measured (see "Compile time (2026-11-25)"); the 2026-10-02 decision stands.
 
 > [!NOTE]
 > Superseded claim: the 2026-10-02 closure evidence paragraph ends with "OI-15 is closed." The later status line above (2026-11-15, the audit that added status lines) supersedes it, because that paragraph does not meet every item of the closure criteria. The paragraph is kept as the historical record.
@@ -1003,6 +1003,22 @@ A one-input change rewrites the same **5 semantic objects / 815 bytes** for all 
 - A specialization reachable only from a constant-dead branch is absent from the post-optimization runtime closure (**19 to 15 objects**).
 - Cache keys include source semantic CID, exact specialized parameter/type/value inputs, specializer identity, evaluator identity/version, and verifier identity. Corrupt or stale records reject deterministically.
 
+#### Compile time (2026-11-25)
+
+`bench_oi15_specialization_boundaries.py` re-run, MEASURED on WSL 2 on the Ryzen 9 5900HS, CPython 3.12.3, the Python reference (11 samples per metric, raw samples in
+`compiler/benchmarks/oi15_specialization_timing_20261125.json`; the evidence file reproduced unchanged):
+
+| Step | Median | p10–p90 |
+| --- | ---: | ---: |
+| Specializing the eight requests (shared by every boundary) | 1.390 ms | 1.313–1.708 ms |
+| Cache record, whole-function identity | 0.044 ms | 0.042–0.070 ms |
+| Cache record, graph + shell | 0.064 ms | 0.063–0.087 ms |
+| Cache record, module aggregate | 0.014 ms | 0.013–0.017 ms |
+| Code-size query (x86-64 emission of the seven functions) | 9.464 ms | 8.627–10.982 ms |
+
+The boundaries differ only in their cache record, at most 0.05 ms per run against 1.39 ms of specialization; compile
+time does not change the decision below.
+
 ### Decision
 
 - The mechanical default is **whole specialized-function identity/cache entries**, while retaining the existing independently interned canonical graph fragment beneath the function.
@@ -1015,7 +1031,7 @@ A one-input change rewrites the same **5 semantic objects / 815 bytes** for all 
 
 - [x] Cache reuse.
 - [x] Graph size.
-- [ ] Compile time (not recorded; this is what the 2026-11-15 status line names as missing).
+- [x] Compile time (2026-11-25, MEASURED; see "Compile time (2026-11-25)").
 - [x] Optimization opportunity.
 - [x] Transaction locality.
 
@@ -1148,7 +1164,7 @@ M12 introduces a lowering-derived code-size oracle that measures the exact emitt
 
 ## OI-18 — Legalization/optimizer organization and machine-level IR
 
-**Status:** OPEN (2026-11-15). The 2026-10-02 closure paragraph below records implementation volume, compile time and memory, incrementality, target extensibility and code quality on two architectures, but not verifier complexity, which "Closure Criteria" requires.
+**Status:** CLOSED (2026-11-25). Verifier complexity is recorded (see "Verifier complexity (2026-11-25)"); the 2026-10-02 decision stands.
 
 > [!NOTE]
 > Superseded claim: the 2026-10-02 closure evidence paragraph ends with "OI-18 is closed." The later status line above (2026-11-15, the audit that added status lines) supersedes it, because that paragraph does not meet every item of the closure criteria. The paragraph is kept as the historical record.
@@ -1183,6 +1199,17 @@ OI-18 compares the current staged semantic optimizer/direct lowering with one be
 - The explicit unsupported WebAssembly atomic case rejects deterministically both in the selector and unchanged backend.
 - Existing optimizer search remains bounded by deterministic fuel and ordinary candidate validation.
 
+#### Verifier complexity (2026-11-25)
+
+`bench_oi18_optimizer_organization.py --measure` re-run, EXECUTED on WSL 2 on the Ryzen 9 5900HS, CPython 3.12.3, the Python reference (deterministic counts in
+`compiler/benchmarks/oi18_optimizer_organization_evidence_20261125.json`, its `verifier` record; timing samples
+beside it):
+
+- The selected organization needs no verifier of its own: no machine IR exists, so the ordinary semantic verifier and
+  the optimizer's candidate validation are the whole correctness surface. Over the ten cold cells they check 21 store
+  objects and 8 optimizer events, and validate 192 search candidates, rejecting 186.
+- The alternate adds 60 legality/selection checks on top of that, for byte-identical output.
+
 ### Decision
 
 The simpler organization remains the mechanical default: **staged semantic optimization followed by direct target-specialized lowering, with no universal persistent machine IR and no additional demand-selection layer**.
@@ -1196,7 +1223,7 @@ The simpler organization remains the mechanical default: **staged semantic optim
 - [x] Compiler implementation volume.
 - [x] Compile time/memory.
 - [x] Incrementality.
-- [ ] Verifier complexity (not recorded; this is what the 2026-11-15 status line names as missing).
+- [x] Verifier complexity (2026-11-25; see "Verifier complexity (2026-11-25)").
 - [x] Target extensibility.
 - [x] Generated-code quality across at least two architectures.
 
@@ -1211,7 +1238,7 @@ M12 uses a deliberately small staged organization: deterministic local/CFG rewri
 
 ## OI-19 — Transformation-proof granularity
 
-**Status:** OPEN (2026-11-15). The 2026-10-02 closure paragraph below records trusted code size, validation latency and bug detection, but not validation memory or optimization throughput, which "Closure Criteria" requires.
+**Status:** CLOSED (2026-11-25). Validation memory and throughput are measured (see "Validation memory and throughput (2026-11-25)"); the 2026-10-02 policy stands.
 
 > [!NOTE]
 > Superseded claim: the 2026-10-02 closure evidence paragraph ends with "OI-19 is closed." The later status line above (2026-11-15, the audit that added status lines) supersedes it, because that paragraph does not meet every item of the closure criteria. The paragraph is kept as the historical record.
@@ -1248,6 +1275,22 @@ The corpus contains six accepted transforms across local wrapping rewrites (incl
 - Correct witnesses are **107–139 bytes** and bind exact subject, candidate, and dependency identities.
 - The benchmark witness codec/checker is **223 lines** versus **276 lines** for the existing local/CFG/inline generator logic, but it covers only the measured subset. Adding it without removing those trusted generators would expand the correctness-critical implementation.
 
+#### Validation memory and throughput (2026-11-25)
+
+`bench_oi19_transform_proofs.py --measure` re-run, MEASURED on WSL 2 on the Ryzen 9 5900HS, CPython 3.12.3, the Python reference (21 samples per case and mechanism; raw elapsed
+time and `tracemalloc` peak bytes in `compiler/benchmarks/oi19_transform_proof_timing_20261125.json`):
+
+| Mechanism | Cases | Median validation time | Median peak memory | Throughput |
+| --- | ---: | ---: | ---: | ---: |
+| Ordinary verifier | 6 | 0.398–0.483 ms | 3,568–4,568 bytes | about 2,250 per second |
+| Witness checker (+ verifier) | 6 | 0.766–1.028 ms | 5,858–7,987 bytes | about 1,065 per second |
+| Exact polynomial validator | 1 | 0.771 ms | 8,032 bytes | about 1,300 per second |
+| Finite-domain oracle (testing only) | 5 | 2.819–121.552 ms | 8,900–88,532 bytes | about 31 per second |
+
+Throughput is validated transforms per second: the number of cases over the sum of their median validation times
+(candidate generation is not timed). The policy's mechanisms (verifier, witness, polynomial) stay under 8 KB and
+above 1,000 transforms per second; only the testing oracle is costly.
+
 ### Decision
 
 The mechanical policy:
@@ -1264,9 +1307,9 @@ Failed checks retain the prior accepted function CID, and proof artifacts never 
 
 - [x] Trusted code size.
 - [x] Validation latency.
-- [ ] Validation memory (not recorded; named as missing by the 2026-11-15 status line).
+- [x] Validation memory (2026-11-25, MEASURED).
 - [x] Bug detection.
-- [ ] Optimization throughput (not recorded; named as missing by the 2026-11-15 status line).
+- [x] Optimization throughput (2026-11-25, MEASURED as validated transforms per second).
 
 <details>
 <summary>Historical Record</summary>
