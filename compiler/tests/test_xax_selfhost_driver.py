@@ -127,9 +127,12 @@ class DriverTests(unittest.TestCase):
                 if _lists_growable_operations(data):
                     # ADR-371: these stores hold targets listing operations 77 and 78. This driver, frozen before
                     # them, rejects the list as not canonical, or (the general driver store) a graph value tag its
-                    # decoder predates before it reaches the targets.
+                    # decoder predates, or the xax-host-v1 foreign ABI it predates (ledger 0029), whichever it
+                    # reaches first; since ledger 0043 the general driver store's object order reaches the ABI first.
                     self.assertEqual(outcome[0], "rejected")
-                    self.assertIn(outcome[1].rule, ("TARGET-OPERATIONS-CANONICAL", "GRAPH-VALUE-TAG"))
+                    self.assertIn(outcome[1].rule, ("TARGET-OPERATIONS-CANONICAL", "GRAPH-VALUE-TAG", "FOREIGN-CALL-ABI"))
+                    if outcome[1].rule == "FOREIGN-CALL-ABI":
+                        self.assertEqual(outcome[1].actual, "xax-host-v1")
                     continue
                 self.assertEqual(outcome, expected)
                 outcomes.add(expected[0])
