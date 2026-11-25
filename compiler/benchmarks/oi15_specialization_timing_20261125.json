@@ -1,0 +1,109 @@
+{
+  "host_observation_only": true,
+  "metrics": {
+    "codegen_size_query": {
+      "max_ns": 12565006,
+      "median_ns": 9463747,
+      "min_ns": 8627214,
+      "p10_ns": 8627214,
+      "p90_ns": 10982351,
+      "samples_ns": [
+        8702763,
+        8627214,
+        9463747,
+        9342986,
+        9668576,
+        9596329,
+        9508487,
+        12565006,
+        9343572,
+        10982351,
+        9110516
+      ]
+    },
+    "module_aggregate_cache_encode": {
+      "max_ns": 20008,
+      "median_ns": 13579,
+      "min_ns": 12664,
+      "p10_ns": 12664,
+      "p90_ns": 17478,
+      "samples_ns": [
+        13569,
+        13373,
+        13579,
+        13703,
+        13136,
+        13939,
+        12664,
+        20008,
+        13312,
+        17478,
+        13579
+      ]
+    },
+    "shared_fragment_shell_cache_encode": {
+      "max_ns": 111215,
+      "median_ns": 64223,
+      "min_ns": 62515,
+      "p10_ns": 62515,
+      "p90_ns": 87173,
+      "samples_ns": [
+        63286,
+        62628,
+        62515,
+        65581,
+        64727,
+        87173,
+        64994,
+        111215,
+        63205,
+        64141,
+        64223
+      ]
+    },
+    "specialization": {
+      "max_ns": 1818435,
+      "median_ns": 1389573,
+      "min_ns": 1313036,
+      "p10_ns": 1313036,
+      "p90_ns": 1708259,
+      "samples_ns": [
+        1337314,
+        1389573,
+        1336058,
+        1818435,
+        1708259,
+        1389100,
+        1399376,
+        1489152,
+        1360902,
+        1313036,
+        1442695
+      ]
+    },
+    "whole_function_cache_encode": {
+      "max_ns": 91155,
+      "median_ns": 44225,
+      "min_ns": 41807,
+      "p10_ns": 41807,
+      "p90_ns": 70180,
+      "samples_ns": [
+        70180,
+        41807,
+        49131,
+        43165,
+        42805,
+        44225,
+        43155,
+        91155,
+        43927,
+        52104,
+        50263
+      ]
+    }
+  },
+  "platform": "Linux-6.18.58.1-microsoft-standard-WSL2-x86_64-with-glibc2.39",
+  "python": "3.12.3",
+  "samples_per_metric": 11,
+  "schema": "xax.oi15.specialization-boundaries.timing.v1"
+}

@@ -500,7 +500,7 @@ This should be decided using evidence from self-hosting, target generation, veri
 
 ### 16.3 Canonical specialization boundaries
 
-Register: [OI-15](../XAX_OPEN_ISSUES.md#oi-15--specialization-object-boundaries), `OPEN`.
+Register: [OI-15](../XAX_OPEN_ISSUES.md#oi-15--specialization-object-boundaries), `CLOSED`.
 
 The semantic model permits specialization, reuse, inlining, and equivalence merging. The best canonical granularity for persistent specialization objects requires implementation data on cache reuse, graph size, optimization opportunity, and AI transaction locality.
 

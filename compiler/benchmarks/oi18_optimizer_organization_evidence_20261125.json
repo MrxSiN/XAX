@@ -1,0 +1,1048 @@
+{
+  "all_artifacts_byte_identical": true,
+  "all_semantic_vectors_match": true,
+  "alternate": "xax-oi18-demand-select-v1",
+  "closure": {
+    "closed": true,
+    "reason": "alternate adds conversion/legality work and memory with byte-identical output; its block-cache locality does not reduce backend recompilation, so no material total benefit justifies a new MIR/selection layer",
+    "selected": "current staged semantic optimizer with direct target-specific lowering"
+  },
+  "code_quality": {
+    "all_outputs_identical": true,
+    "artifact_bytes_changed": 0,
+    "optimization_improvements": 0
+  },
+  "corpus": {
+    "root_cid": "f885a51855cc1e7dfb4e2cbce57987685d98344588a13bd8bdd017896378e20f",
+    "store_objects": 21,
+    "targets": [
+      "x86_64",
+      "aarch64"
+    ],
+    "workloads": [
+      "arithmetic",
+      "branch_merge",
+      "stack_memory",
+      "direct_call",
+      "seq_cst_atomic"
+    ]
+  },
+  "decision_candidate": "keep staged semantic optimizer + direct target lowering; no persistent universal MIR",
+  "implementation": {
+    "alternate_selector_lines": 51,
+    "persistent_machine_ir_objects": 0,
+    "production_lines_changed": 0,
+    "target_duplication_reduced_lines": 0,
+    "target_specific_production_lines_added": 0
+  },
+  "incremental": {
+    "aarch64": {
+      "cache_hits_after_local_edit": 2,
+      "cache_misses_after_local_edit": 1,
+      "cached_blocks_before": 3,
+      "selection_work_units_after_local_edit": 5,
+      "timing": {
+        "baseline": {
+          "median_peak_bytes": 19696,
+          "median_wall_ns": 10661648,
+          "peak_bytes": [
+            19696,
+            19696,
+            19696,
+            19696,
+            19696,
+            19696,
+            19696,
+            19696,
+            19696,
+            19696,
+            19696
+          ],
+          "wall_ns": [
+            10464382,
+            10661648,
+            10948466,
+            10403359,
+            10503422,
+            10470368,
+            10500911,
+            10776958,
+            10740808,
+            13105894,
+            10704649
+          ]
+        },
+        "demand": {
+          "median_peak_bytes": 29785,
+          "median_wall_ns": 12013703,
+          "peak_bytes": [
+            29785,
+            29785,
+            29785,
+            29785,
+            23513,
+            29785,
+            29785,
+            29785,
+            29785,
+            29785,
+            29785
+          ],
+          "wall_ns": [
+            12016070,
+            17562570,
+            11957361,
+            11856329,
+            12013703,
+            12673483,
+            12325507,
+            12081270,
+            11724418,
+            11716064,
+            11833543
+          ]
+        }
+      }
+    },
+    "x86_64": {
+      "cache_hits_after_local_edit": 2,
+      "cache_misses_after_local_edit": 1,
+      "cached_blocks_before": 3,
+      "selection_work_units_after_local_edit": 5,
+      "timing": {
+        "baseline": {
+          "median_peak_bytes": 19850,
+          "median_wall_ns": 10601170,
+          "peak_bytes": [
+            20802,
+            19962,
+            19850,
+            19850,
+            19850,
+            19850,
+            19850,
+            19850,
+            19850,
+            19850,
+            19850
+          ],
+          "wall_ns": [
+            10797357,
+            10898757,
+            10624811,
+            10599545,
+            10468394,
+            10483783,
+            10673817,
+            10625026,
+            10572027,
+            10601170,
+            10534386
+          ]
+        },
+        "demand": {
+          "median_peak_bytes": 30528,
+          "median_wall_ns": 12568780,
+          "peak_bytes": [
+            30816,
+            30744,
+            30528,
+            23515,
+            30528,
+            30528,
+            30528,
+            30528,
+            23515,
+            30528,
+            30528
+          ],
+          "wall_ns": [
+            12163136,
+            12223233,
+            13880952,
+            13182195,
+            12760194,
+            12425757,
+            12703058,
+            12652537,
+            12266850,
+            12568780,
+            12293845
+          ]
+        }
+      }
+    }
+  },
+  "rows": [
+    {
+      "artifact_bytes": 5,
+      "baseline_deterministic_work_units": 50,
+      "demand_cache_misses": 1,
+      "demand_deterministic_work_units": 53,
+      "demand_selection_work_units": 3,
+      "emission_work_units": 2,
+      "exact_output_equivalence": true,
+      "function_cid": "e07bd34c4be97bbbc8f63a4387e8642832802fe485aa6420be88e29b0e20d27f",
+      "legalizations": [
+        []
+      ],
+      "optimization_events": 3,
+      "optimized_cid": "949339b59e4a8283ca0b269155c0f7db1573663e44bcf5cde1cd182a11ae9a7b",
+      "search_candidates": 48,
+      "search_equivalent_candidates": 3,
+      "search_peak_bytes": 4992,
+      "search_rejected_validation": 45,
+      "search_steps": 48,
+      "semantic_vectors_match": true,
+      "target": "x86_64",
+      "timing": {
+        "baseline": {
+          "median_peak_bytes": 75892,
+          "median_wall_ns": 42332992,
+          "peak_bytes": [
+            70429,
+            61965,
+            77767,
+            83260,
+            83052,
+            79748,
+            69399,
+            56021,
+            75940,
+            59759,
+            75892
+          ],
+          "wall_ns": [
+            46317208,
+            41691843,
+            41993473,
+            42015374,
+            41305374,
+            41983711,
+            42332992,
+            42869983,
+            43618674,
+            44276653,
+            44853126
+          ]
+        },
+        "demand": {
+          "median_peak_bytes": 75812,
+          "median_wall_ns": 45678590,
+          "peak_bytes": [
+            75884,
+            58290,
+            75868,
+            75852,
+            58258,
+            75836,
+            75828,
+            58234,
+            75812,
+            75812,
+            58226
+          ],
+          "wall_ns": [
+            45799186,
+            48384665,
+            45038007,
+            45776030,
+            46740156,
+            45678590,
+            45507096,
+            45774395,
+            43586352,
+            43296078,
+            43834355
+          ]
+        }
+      },
+      "workload": "arithmetic"
+    },
+    {
+      "artifact_bytes": 38,
+      "baseline_deterministic_work_units": 5,
+      "demand_cache_misses": 3,
+      "demand_deterministic_work_units": 13,
+      "demand_selection_work_units": 8,
+      "emission_work_units": 5,
+      "exact_output_equivalence": true,
+      "function_cid": "988c572deb9d0d2744fabf7ba5cd33b592b23c01d75ced6de698d5812d70827c",
+      "legalizations": [
+        [],
+        [],
+        []
+      ],
+      "optimization_events": 0,
+      "optimized_cid": "988c572deb9d0d2744fabf7ba5cd33b592b23c01d75ced6de698d5812d70827c",
+      "search_candidates": 0,
+      "search_equivalent_candidates": 0,
+      "search_peak_bytes": 0,
+      "search_rejected_validation": 0,
+      "search_steps": 0,
+      "semantic_vectors_match": true,
+      "target": "x86_64",
+      "timing": {
+        "baseline": {
+          "median_peak_bytes": 20694,
+          "median_wall_ns": 10317748,
+          "peak_bytes": [
+            20750,
+            20694,
+            20694,
+            20694,
+            20694,
+            20694,
+            20694,
+            20694,
+            20694,
+            20694,
+            20694
+          ],
+          "wall_ns": [
+            10404603,
+            10317748,
+            10236202,
+            10108815,
+            10514728,
+            10118156,
+            10174139,
+            10256046,
+            10338076,
+            10388555,
+            10466161
+          ]
+        },
+        "demand": {
+          "median_peak_bytes": 24044,
+          "median_wall_ns": 13993484,
+          "peak_bytes": [
+            24484,
+            24332,
+            24244,
+            24164,
+            24060,
+            24044,
+            24036,
+            24028,
+            24020,
+            24012,
+            24004
+          ],
+          "wall_ns": [
+            14209175,
+            14104955,
+            14312365,
+            13886116,
+            13919755,
+            14353803,
+            14049106,
+            13828353,
+            13902112,
+            13993484,
+            13800208
+          ]
+        }
+      },
+      "workload": "branch_merge"
+    },
+    {
+      "artifact_bytes": 43,
+      "baseline_deterministic_work_units": 5,
+      "demand_cache_misses": 1,
+      "demand_deterministic_work_units": 11,
+      "demand_selection_work_units": 6,
+      "emission_work_units": 5,
+      "exact_output_equivalence": true,
+      "function_cid": "a73f64f3d1540cf8527a2a7f21fa87455b0a82f3937b4d96b0a1f4976b99313b",
+      "legalizations": [
+        []
+      ],
+      "optimization_events": 0,
+      "optimized_cid": "a73f64f3d1540cf8527a2a7f21fa87455b0a82f3937b4d96b0a1f4976b99313b",
+      "search_candidates": 0,
+      "search_equivalent_candidates": 0,
+      "search_peak_bytes": 0,
+      "search_rejected_validation": 0,
+      "search_steps": 0,
+      "semantic_vectors_match": true,
+      "target": "x86_64",
+      "timing": {
+        "baseline": {
+          "median_peak_bytes": 20670,
+          "median_wall_ns": 9957563,
+          "peak_bytes": [
+            20726,
+            20670,
+            20670,
+            20670,
+            20670,
+            20670,
+            20670,
+            20670,
+            20670,
+            20670,
+            20670
+          ],
+          "wall_ns": [
+            10314303,
+            9548905,
+            9701083,
+            9630101,
+            10539489,
+            10536382,
+            10592066,
+            9957563,
+            9716905,
+            9677916,
+            10001345
+          ]
+        },
+        "demand": {
+          "median_peak_bytes": 22600,
+          "median_wall_ns": 10851283,
+          "peak_bytes": [
+            22704,
+            22632,
+            22624,
+            22616,
+            22608,
+            22600,
+            22600,
+            22600,
+            22600,
+            22600,
+            22600
+          ],
+          "wall_ns": [
+            10969699,
+            10972034,
+            10779016,
+            10610800,
+            10741879,
+            10596439,
+            10560434,
+            10983504,
+            11059969,
+            10851283,
+            11014407
+          ]
+        }
+      },
+      "workload": "stack_memory"
+    },
+    {
+      "artifact_bytes": 17,
+      "baseline_deterministic_work_units": 52,
+      "demand_cache_misses": 1,
+      "demand_deterministic_work_units": 57,
+      "demand_selection_work_units": 5,
+      "emission_work_units": 4,
+      "exact_output_equivalence": true,
+      "function_cid": "26411ad5aab0f930e0fa891f2e1feffcf455fb694a4fde020a67320e86760774",
+      "legalizations": [
+        []
+      ],
+      "optimization_events": 1,
+      "optimized_cid": "afe9877384bb2dcc7634a8689da0ae5e4b78c90b29672cb7996671f355920932",
+      "search_candidates": 48,
+      "search_equivalent_candidates": 0,
+      "search_peak_bytes": 4992,
+      "search_rejected_validation": 48,
+      "search_steps": 48,
+      "semantic_vectors_match": true,
+      "target": "x86_64",
+      "timing": {
+        "baseline": {
+          "median_peak_bytes": 33314,
+          "median_wall_ns": 17655279,
+          "peak_bytes": [
+            37050,
+            33314,
+            33314,
+            33314,
+            33314,
+            29660,
+            33314,
+            33314,
+            33314,
+            33314,
+            29660
+          ],
+          "wall_ns": [
+            19073039,
+            17761258,
+            17655279,
+            17500015,
+            17721436,
+            17724645,
+            17477476,
+            17266896,
+            17331037,
+            17445112,
+            17838638
+          ]
+        },
+        "demand": {
+          "median_peak_bytes": 35036,
+          "median_wall_ns": 20901554,
+          "peak_bytes": [
+            35036,
+            35036,
+            35036,
+            35036,
+            29660,
+            35036,
+            35036,
+            35036,
+            35036,
+            29660,
+            35036
+          ],
+          "wall_ns": [
+            19252632,
+            19557389,
+            21216599,
+            20901554,
+            21481093,
+            21206765,
+            24863974,
+            23758758,
+            19928376,
+            20490643,
+            19660745
+          ]
+        }
+      },
+      "workload": "direct_call"
+    },
+    {
+      "artifact_bytes": 46,
+      "baseline_deterministic_work_units": 5,
+      "demand_cache_misses": 1,
+      "demand_deterministic_work_units": 13,
+      "demand_selection_work_units": 8,
+      "emission_work_units": 5,
+      "exact_output_equivalence": true,
+      "function_cid": "be5a399922dafe21baa0a466e934c72a303a6408fd64d4a44c2ea43fc6522a9a",
+      "legalizations": [
+        [
+          "store:relaxed:native",
+          "load:seq_cst:bounded_sequence"
+        ]
+      ],
+      "optimization_events": 0,
+      "optimized_cid": "be5a399922dafe21baa0a466e934c72a303a6408fd64d4a44c2ea43fc6522a9a",
+      "search_candidates": 0,
+      "search_equivalent_candidates": 0,
+      "search_peak_bytes": 0,
+      "search_rejected_validation": 0,
+      "search_steps": 0,
+      "semantic_vectors_match": true,
+      "target": "x86_64",
+      "timing": {
+        "baseline": {
+          "median_peak_bytes": 20670,
+          "median_wall_ns": 10444857,
+          "peak_bytes": [
+            20726,
+            20670,
+            20670,
+            20670,
+            20670,
+            20670,
+            20670,
+            19150,
+            20670,
+            20670,
+            20670
+          ],
+          "wall_ns": [
+            10609031,
+            10778697,
+            10444857,
+            10561585,
+            10264657,
+            11222949,
+            10161445,
+            10404068,
+            11850415,
+            10352952,
+            10246119
+          ]
+        },
+        "demand": {
+          "median_peak_bytes": 22731,
+          "median_wall_ns": 12168681,
+          "peak_bytes": [
+            22787,
+            22731,
+            22731,
+            22731,
+            22731,
+            21211,
+            22731,
+            22731,
+            22731,
+            22731,
+            22731
+          ],
+          "wall_ns": [
+            11335285,
+            11489706,
+            14435513,
+            12168681,
+            12534133,
+            14178350,
+            19655962,
+            17809700,
+            11692014,
+            11821817,
+            11860641
+          ]
+        }
+      },
+      "workload": "seq_cst_atomic"
+    },
+    {
+      "artifact_bytes": 8,
+      "baseline_deterministic_work_units": 50,
+      "demand_cache_misses": 1,
+      "demand_deterministic_work_units": 53,
+      "demand_selection_work_units": 3,
+      "emission_work_units": 2,
+      "exact_output_equivalence": true,
+      "function_cid": "e07bd34c4be97bbbc8f63a4387e8642832802fe485aa6420be88e29b0e20d27f",
+      "legalizations": [
+        []
+      ],
+      "optimization_events": 3,
+      "optimized_cid": "949339b59e4a8283ca0b269155c0f7db1573663e44bcf5cde1cd182a11ae9a7b",
+      "search_candidates": 48,
+      "search_equivalent_candidates": 3,
+      "search_peak_bytes": 4992,
+      "search_rejected_validation": 45,
+      "search_steps": 48,
+      "semantic_vectors_match": true,
+      "target": "aarch64",
+      "timing": {
+        "baseline": {
+          "median_peak_bytes": 73670,
+          "median_wall_ns": 39628275,
+          "peak_bytes": [
+            54692,
+            73670,
+            56494,
+            73670,
+            67358,
+            73670,
+            73670,
+            54308,
+            73670,
+            56206,
+            73670
+          ],
+          "wall_ns": [
+            42529611,
+            43016616,
+            41877763,
+            41386144,
+            39327375,
+            39932580,
+            39112074,
+            39476899,
+            39628275,
+            39484007,
+            39457343
+          ]
+        },
+        "demand": {
+          "median_peak_bytes": 73670,
+          "median_wall_ns": 40611400,
+          "peak_bytes": [
+            67358,
+            73670,
+            73670,
+            54308,
+            73670,
+            56270,
+            73670,
+            67358,
+            73670,
+            73670,
+            54308
+          ],
+          "wall_ns": [
+            40611400,
+            40267386,
+            40166541,
+            40827513,
+            40181036,
+            40483725,
+            40316037,
+            40696207,
+            42762521,
+            42987141,
+            42478882
+          ]
+        }
+      },
+      "workload": "arithmetic"
+    },
+    {
+      "artifact_bytes": 172,
+      "baseline_deterministic_work_units": 5,
+      "demand_cache_misses": 3,
+      "demand_deterministic_work_units": 13,
+      "demand_selection_work_units": 8,
+      "emission_work_units": 5,
+      "exact_output_equivalence": true,
+      "function_cid": "988c572deb9d0d2744fabf7ba5cd33b592b23c01d75ced6de698d5812d70827c",
+      "legalizations": [
+        [],
+        [],
+        []
+      ],
+      "optimization_events": 0,
+      "optimized_cid": "988c572deb9d0d2744fabf7ba5cd33b592b23c01d75ced6de698d5812d70827c",
+      "search_candidates": 0,
+      "search_equivalent_candidates": 0,
+      "search_peak_bytes": 0,
+      "search_rejected_validation": 0,
+      "search_steps": 0,
+      "semantic_vectors_match": true,
+      "target": "aarch64",
+      "timing": {
+        "baseline": {
+          "median_peak_bytes": 20540,
+          "median_wall_ns": 10624800,
+          "peak_bytes": [
+            20596,
+            20540,
+            20540,
+            20540,
+            20540,
+            20540,
+            20540,
+            20540,
+            20540,
+            20540,
+            20540
+          ],
+          "wall_ns": [
+            11040011,
+            10575267,
+            10525601,
+            10535096,
+            10596623,
+            10789827,
+            10663623,
+            10652441,
+            10624800,
+            10563673,
+            14429006
+          ]
+        },
+        "demand": {
+          "median_peak_bytes": 22402,
+          "median_wall_ns": 13403471,
+          "peak_bytes": [
+            23418,
+            23362,
+            22722,
+            22402,
+            22402,
+            22402,
+            22402,
+            22402,
+            22402,
+            22402,
+            22402
+          ],
+          "wall_ns": [
+            12759287,
+            12979485,
+            12935550,
+            13343897,
+            13279800,
+            13512783,
+            13507084,
+            13408790,
+            13855274,
+            13403471,
+            14354522
+          ]
+        }
+      },
+      "workload": "branch_merge"
+    },
+    {
+      "artifact_bytes": 64,
+      "baseline_deterministic_work_units": 5,
+      "demand_cache_misses": 1,
+      "demand_deterministic_work_units": 11,
+      "demand_selection_work_units": 6,
+      "emission_work_units": 5,
+      "exact_output_equivalence": true,
+      "function_cid": "a73f64f3d1540cf8527a2a7f21fa87455b0a82f3937b4d96b0a1f4976b99313b",
+      "legalizations": [
+        []
+      ],
+      "optimization_events": 0,
+      "optimized_cid": "a73f64f3d1540cf8527a2a7f21fa87455b0a82f3937b4d96b0a1f4976b99313b",
+      "search_candidates": 0,
+      "search_equivalent_candidates": 0,
+      "search_peak_bytes": 0,
+      "search_rejected_validation": 0,
+      "search_steps": 0,
+      "semantic_vectors_match": true,
+      "target": "aarch64",
+      "timing": {
+        "baseline": {
+          "median_peak_bytes": 19812,
+          "median_wall_ns": 9489845,
+          "peak_bytes": [
+            19868,
+            19812,
+            19812,
+            19812,
+            19812,
+            19812,
+            19812,
+            19812,
+            19812,
+            19812,
+            19812
+          ],
+          "wall_ns": [
+            10135479,
+            9890728,
+            9489845,
+            9043022,
+            8897726,
+            9088758,
+            9456866,
+            10525292,
+            9866532,
+            9529143,
+            9417475
+          ]
+        },
+        "demand": {
+          "median_peak_bytes": 21542,
+          "median_wall_ns": 10789610,
+          "peak_bytes": [
+            21598,
+            21542,
+            21542,
+            21542,
+            21542,
+            21542,
+            21542,
+            21542,
+            21542,
+            21542,
+            21542
+          ],
+          "wall_ns": [
+            10784333,
+            10668952,
+            11443490,
+            10865314,
+            10743442,
+            10764047,
+            10806163,
+            10847470,
+            10789610,
+            10665743,
+            10927841
+          ]
+        }
+      },
+      "workload": "stack_memory"
+    },
+    {
+      "artifact_bytes": 16,
+      "baseline_deterministic_work_units": 52,
+      "demand_cache_misses": 1,
+      "demand_deterministic_work_units": 57,
+      "demand_selection_work_units": 5,
+      "emission_work_units": 4,
+      "exact_output_equivalence": true,
+      "function_cid": "26411ad5aab0f930e0fa891f2e1feffcf455fb694a4fde020a67320e86760774",
+      "legalizations": [
+        []
+      ],
+      "optimization_events": 1,
+      "optimized_cid": "afe9877384bb2dcc7634a8689da0ae5e4b78c90b29672cb7996671f355920932",
+      "search_candidates": 48,
+      "search_equivalent_candidates": 0,
+      "search_peak_bytes": 4992,
+      "search_rejected_validation": 48,
+      "search_steps": 48,
+      "semantic_vectors_match": true,
+      "target": "aarch64",
+      "timing": {
+        "baseline": {
+          "median_peak_bytes": 32675,
+          "median_wall_ns": 19012147,
+          "peak_bytes": [
+            32675,
+            32675,
+            32675,
+            32675,
+            29293,
+            32675,
+            32675,
+            32675,
+            32675,
+            32675,
+            29293
+          ],
+          "wall_ns": [
+            19165094,
+            19012147,
+            20157618,
+            19841543,
+            18145864,
+            18471124,
+            18625576,
+            20278983,
+            18498611,
+            18693801,
+            20682808
+          ]
+        },
+        "demand": {
+          "median_peak_bytes": 34253,
+          "median_wall_ns": 19353579,
+          "peak_bytes": [
+            34253,
+            34253,
+            34253,
+            34253,
+            34253,
+            34253,
+            34253,
+            34253,
+            34253,
+            34253,
+            29293
+          ],
+          "wall_ns": [
+            22211470,
+            18815302,
+            18307352,
+            18830619,
+            18915213,
+            22414398,
+            19482529,
+            18891859,
+            19532378,
+            20118760,
+            19353579
+          ]
+        }
+      },
+      "workload": "direct_call"
+    },
+    {
+      "artifact_bytes": 36,
+      "baseline_deterministic_work_units": 5,
+      "demand_cache_misses": 1,
+      "demand_deterministic_work_units": 13,
+      "demand_selection_work_units": 8,
+      "emission_work_units": 5,
+      "exact_output_equivalence": true,
+      "function_cid": "be5a399922dafe21baa0a466e934c72a303a6408fd64d4a44c2ea43fc6522a9a",
+      "legalizations": [
+        [
+          "store:relaxed:native",
+          "load:seq_cst:bounded_sequence"
+        ]
+      ],
+      "optimization_events": 0,
+      "optimized_cid": "be5a399922dafe21baa0a466e934c72a303a6408fd64d4a44c2ea43fc6522a9a",
+      "search_candidates": 0,
+      "search_equivalent_candidates": 0,
+      "search_peak_bytes": 0,
+      "search_rejected_validation": 0,
+      "search_steps": 0,
+      "semantic_vectors_match": true,
+      "target": "aarch64",
+      "timing": {
+        "baseline": {
+          "median_peak_bytes": 20398,
+          "median_wall_ns": 9933223,
+          "peak_bytes": [
+            20454,
+            20398,
+            20398,
+            20398,
+            20398,
+            20398,
+            20398,
+            20398,
+            20398,
+            20398,
+            20398
+          ],
+          "wall_ns": [
+            9602378,
+            9537074,
+            9992241,
+            10463499,
+            15275317,
+            15250473,
+            10455442,
+            9617654,
+            9549336,
+            9681671,
+            9933223
+          ]
+        },
+        "demand": {
+          "median_peak_bytes": 22715,
+          "median_wall_ns": 11194946,
+          "peak_bytes": [
+            22771,
+            22715,
+            22715,
+            22715,
+            22715,
+            22715,
+            22715,
+            22715,
+            22715,
+            22715,
+            22715
+          ],
+          "wall_ns": [
+            10865458,
+            10667605,
+            11384633,
+            11179197,
+            11415431,
+            11609747,
+            11787159,
+            11052634,
+            11147564,
+            11401380,
+            11194946
+          ]
+        }
+      },
+      "workload": "seq_cst_atomic"
+    }
+  ],
+  "schema": "xax-oi18-optimizer-organization-v1",
+  "unsupported_backend_rule": "WASM-OP-TARGET-SUPPORTED",
+  "unsupported_legalization_rule": "OI18-TARGET-OPERATION",
+  "verifier": {
+    "alternate_extra_legality_checks": 60,
+    "cold_store_objects": 21,
+    "optimizer_events": 8,
+    "search_candidates": 192,
+    "search_rejected_validation": 186
+  }
+}
