@@ -52,7 +52,7 @@ class RotateToolTests(unittest.TestCase):
     def test_the_committed_state_and_pins(self):
         status, text = self.run_tool("state", BOOTSTRAP)
         self.assertEqual(status, 0)
-        self.assertIn("validated 0042\ncandidate none\nprofile released\n", text)
+        self.assertIn("validated 0043\ncandidate none\nprofile released\n", text)
         for target, seed in (("x86_64-linux-elf-exec-v1", SEED), ("x86_64-windows-pe-v1", BOOTSTRAP / "windows" / "xaxc-windows-x86_64.exe")):
             data = seed.read_bytes()
             self.assertEqual(self.run_tool("pin", BOOTSTRAP, target), (0, f"{hashlib.sha256(data).hexdigest()}:{len(data)}\n"), target)
