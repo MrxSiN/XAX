@@ -1,9 +1,12 @@
 """Test driver outside BBC (BBC's AGENTS.md): compile Brainfuck programs with bbc.exe for both targets, run them and
 compare output bytes and exit status with an independent interpreter; then the compile error paths (exit statuses and
 no leftover files). On Linux bbc.exe and the Windows programs run under wine; on Windows they run natively. The Android
-programs run under the --aarch64 command (default qemu-aarch64; on Windows, for example, `wsl -- qemu-aarch64`).
+programs run under the --aarch64 command (default qemu-aarch64; on Windows, for example, `wsl -- qemu-aarch64`), or,
+with --device <adb serial>, on that Android device (pushed to /data/local/tmp/xax-bbc and run there, stdin and stdout
+through files there; --adb names adb).
 
-Usage: check.py <bbc.exe> <work directory> --bbc <BBC checkout> [--aarch64 <command>] [case name ...]
+Usage: check.py <bbc.exe> <work directory> --bbc <BBC checkout> [--aarch64 <command> | --device <serial> [--adb <adb>]]
+                [case name ...]
 
 It stays Python (the language rule's exception): it starts processes, which XAX's host interface does not offer.
 The cases follow the 2026-10-21 campaign (single_process_evidence.json): pilot programs, BBC's tests, both depth-512
@@ -22,6 +25,8 @@ from pathlib import Path
 WINDOWS = sys.platform == "win32"
 WINE = [] if WINDOWS else ["wine"]
 AARCH64 = ["qemu-aarch64"]
+DEVICE = {"serial": None, "adb": "adb"}  # --device runs the Android programs on that device instead
+REMOTE = "/data/local/tmp/xax-bbc"
 TAPE = 2_147_246_080
 IO_LIMIT = 65536
 OFF_TAPE, OUTPUT_FULL, INPUT_LENGTH = 1, 2, 3  # BBC's run statuses (docs/01_BRAINFUCK_PROFILE.md)
@@ -159,6 +164,24 @@ def _execute(work: Path, env, target: str, out: str, given: bytes):
     if target.startswith("windows"):
         return run([*WINE, str(work / out) if WINDOWS else out], given, cwd=work, env=env, timeout=600)
     (work / out).chmod(0o755)
+    if DEVICE["serial"]:
+        adb = [DEVICE["adb"], "-s", DEVICE["serial"]]
+        remote = f"{REMOTE}/{out}"
+        if not DEVICE.get(out):
+            pushed = run([*adb, "push", str(work / out), remote], timeout=600)
+            if pushed.returncode != 0:
+                raise SystemExit(f"adb push failed: {pushed.stderr[-400:]!r}")
+            DEVICE[out] = True
+        # stdin and stdout go through files on the device: `adb shell` on Windows turns LF into CRLF in its output
+        (work / "device.in").write_bytes(given)
+        if run([*adb, "push", str(work / "device.in"), f"{REMOTE}/in"], timeout=600).returncode != 0:
+            raise SystemExit("adb push of the input failed")
+        done = run([*adb, "shell", f"chmod 755 {remote}; {remote} < {REMOTE}/in > {REMOTE}/out; echo $?"], timeout=600)
+        status = int(done.stdout.split()[-1])
+        (work / "device.out").unlink(missing_ok=True)
+        if run([*adb, "pull", f"{REMOTE}/out", str(work / "device.out")], timeout=600).returncode != 0:
+            raise SystemExit("adb pull of the output failed")
+        return subprocess.CompletedProcess(done.args, status, (work / "device.out").read_bytes(), done.stderr)
     return run([*AARCH64, f"./{out}" if WINDOWS else str(work / out)], given, cwd=work, timeout=600)
 
 
@@ -188,6 +211,8 @@ def check_case(work: Path, env, name, source, inputs, level, target, expected=No
         ok = ok and good
     for suffix in ("", ".xax", ".provenance"):
         (work / (out + suffix)).unlink(missing_ok=True)
+    if DEVICE.pop(out, None):
+        subprocess.run([DEVICE["adb"], "-s", DEVICE["serial"], "shell", f"rm -f {REMOTE}/{out}"], capture_output=True, timeout=600)
     row["runs"], row["pass"] = runs, ok
     return row
 
@@ -213,14 +238,23 @@ def check_error_paths(work: Path, env):
 def main():
     arguments = sys.argv[1:]
     if "--bbc" not in arguments:
-        sys.exit("usage: check.py <bbc.exe> <work directory> --bbc <BBC checkout> [--aarch64 <command>] [case name ...]")
+        sys.exit("usage: check.py <bbc.exe> <work directory> --bbc <BBC checkout> [--aarch64 <command> | --device <serial> [--adb <adb>]] [case name ...]")
     k = arguments.index("--bbc")
     bbc_repo = Path(arguments[k + 1])
     del arguments[k:k + 2]
-    if "--aarch64" in arguments:
-        k = arguments.index("--aarch64")
-        AARCH64[:] = arguments[k + 1].split()
-        del arguments[k:k + 2]
+    for option in ("--aarch64", "--device", "--adb"):
+        if option in arguments:
+            k = arguments.index(option)
+            value = arguments[k + 1]
+            del arguments[k:k + 2]
+            if option == "--aarch64":
+                AARCH64[:] = value.split()
+            else:
+                DEVICE["serial" if option == "--device" else "adb"] = value
+    if DEVICE["serial"]:
+        made = run([DEVICE["adb"], "-s", DEVICE["serial"], "shell", f"mkdir -p {REMOTE}"], timeout=600)
+        if made.returncode != 0:
+            raise SystemExit(f"the device is not reachable: {made.stderr[-400:]!r}")
     bbc, work = Path(arguments[0]).resolve(), Path(arguments[1]).resolve()
     table = cases(bbc_repo)
     names = arguments[2:] or list(table)
@@ -242,7 +276,8 @@ def main():
     for row in errors:
         print(json.dumps(row), flush=True)
     passed = sum(row["pass"] for row in results)
-    summary = {"programs": len(names), "compiles": len(results), "passed": passed,
+    summary = {"android_runner": f"device {DEVICE['serial']}" if DEVICE["serial"] else " ".join(AARCH64),
+               "programs": len(names), "compiles": len(results), "passed": passed,
                "executions": sum(len(row.get("runs", ())) for row in results),
                "execution_mismatches": sum(not run["pass"] for row in results for run in row.get("runs", ())),
                "error_paths_passed": sum(row["pass"] for row in errors), "error_paths": len(errors)}
