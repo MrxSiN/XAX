@@ -3270,7 +3270,7 @@ The same staging as a native transaction on the x86-64 backend, driver and reque
 
 ## OI-60 — Host-portability gaps left after the 2026-11-13 audit
 
-**Status:** OPEN (2026-11-13)
+**Status:** OPEN (2026-11-25). The two developer paths are gone; the Windows-seed criteria are open.
 
 **Related Issues:** [OI-58](#oi-58--windows-x86-64-code-generation-on-the-chains-walk-r4-blocker-for-windows-x86_64-pe)
 
@@ -3288,13 +3288,24 @@ Left open, each needing either a native tool or new test glue that the language 
 - The ledger program (`evolve.sh apply/replay/check`) and `selfbuild.sh` run only where the Linux seed runs.
 - No test exercises the Windows seed (`compiler/bootstrap/windows`), and the seed tools pin the Linux seed only.
 - About 130 test modules gate on Linux x86-64 although several only call seed commands.
-- Benchmark harnesses read `/proc/cpuinfo` without a fallback, and two scripts carry a developer path (`bootstrap/evolution/native/0023/all.sh`, `integration/bfx/transactions/production_driver/native/tools/check.py`).
+- `benchmarks/linux_harness.py` reads `/proc/cpuinfo` without a fallback (the other three benchmark readers have one).
 - The reference emits per-page stack probes for PE frames over 4 KiB, the native backend does not (OI-58 note).
 
 ### Closure Criteria
 
 - [ ] A native ledger tool and seed check that run on the Windows seed.
 - [ ] One test that runs a Windows-seed command against its pin.
+
+<details>
+<summary>Historical Record</summary>
+
+#### 2026-11-25: the two developer paths removed
+
+`bootstrap/evolution/native/0023/all.sh` finds the seed beside its own directory (or `XAXC`), and BBC's
+`tools/check.py` requires `--bbc <BBC checkout>` instead of defaulting to a developer's home directory. The
+2026-11-13 list had also named "benchmark harnesses" for `/proc/cpuinfo`; only `linux_harness.py` lacks a fallback.
+
+</details>
 
 ## OI-61 — The JVM program does not check a catching call's throwable output type
 

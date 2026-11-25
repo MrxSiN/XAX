@@ -5413,7 +5413,8 @@ def _verify_memory_node(
             )
         return
 
-    pointer_fact = pointer(node.operands[0])
+    # A node with no operands reaches its operation's contract check below (MEMORY-OP-CONTRACT), not an IndexError.
+    pointer_fact = pointer(node.operands[0]) if node.operands else None
     if operation == Operation.ADDRESS_OFFSET:
         contract(1, 1, 1)
         offset = node.attributes[0]
