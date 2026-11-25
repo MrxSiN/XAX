@@ -3270,7 +3270,7 @@ The same staging as a native transaction on the x86-64 backend, driver and reque
 
 ## OI-60 — Host-portability gaps left after the 2026-11-13 audit
 
-**Status:** OPEN (2026-11-25). The two developer paths are gone; the Windows-seed criteria are open.
+**Status:** OPEN (2026-11-25). A test now runs Windows-seed commands against the seed's pin (the status tool); the native ledger tool and seed check on the Windows seed are open.
 
 **Related Issues:** [OI-58](#oi-58--windows-x86-64-code-generation-on-the-chains-walk-r4-blocker-for-windows-x86_64-pe)
 
@@ -3294,10 +3294,17 @@ Left open, each needing either a native tool or new test glue that the language 
 ### Closure Criteria
 
 - [ ] A native ledger tool and seed check that run on the Windows seed.
-- [ ] One test that runs a Windows-seed command against its pin.
+- [x] One test that runs a Windows-seed command against its pin (2026-11-25: `test_status_docs.py` on Windows).
 
 <details>
 <summary>Historical Record</summary>
+
+#### 2026-11-25: the status tool runs on the Windows seed
+
+The status tool's main is driver-shaped, so `windows/generator/generate.sh` hosts it (`xax_status_windows.xax`). On
+Windows 11, `test_status_docs.py` checks the Windows seed against the `RELEASES` pin and runs the levels, targets and
+rewrite cases with it (EXECUTED: 4 passed; the repository and bootstrap cases stay Linux-only). On Linux the file and
+`test_windows_generator.py` pass (9 passed, 1 skipped).
 
 #### 2026-11-25: the two developer paths removed
 
