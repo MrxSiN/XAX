@@ -2,7 +2,7 @@
 run them (wine / qemu-aarch64) and compare output bytes and exit status with an independent interpreter; then the
 compile error paths (exit statuses and no leftover files).
 
-Usage: check.py <bbc.exe> <work directory> [--bbc <BBC checkout>] [case name ...]
+Usage: check.py <bbc.exe> <work directory> --bbc <BBC checkout> [case name ...]
 The cases follow the 2026-10-21 campaign (single_process_evidence.json): pilot programs, BBC's tests, both depth-512
 programs, negative loops, 60 random programs and capacity cases.
 """
@@ -206,11 +206,11 @@ def check_error_paths(work: Path, env):
 
 def main():
     arguments = sys.argv[1:]
-    bbc_repo = Path("/home/user/BBC")
-    if "--bbc" in arguments:
-        k = arguments.index("--bbc")
-        bbc_repo = Path(arguments[k + 1])
-        del arguments[k:k + 2]
+    if "--bbc" not in arguments:
+        sys.exit("usage: check.py <bbc.exe> <work directory> --bbc <BBC checkout> [case name ...]")
+    k = arguments.index("--bbc")
+    bbc_repo = Path(arguments[k + 1])
+    del arguments[k:k + 2]
     bbc, work = Path(arguments[0]).resolve(), Path(arguments[1]).resolve()
     table = cases(bbc_repo)
     names = arguments[2:] or list(table)
