@@ -89,6 +89,7 @@ requirement or a target, except the rules marked normative in §15.0 and §15.0a
     - [15.39 Linux `chains` after ledger 0033 (OI-58 slot rule; MEASURED, 2026-11-16)](#1539-linux-chains-after-ledger-0033-oi-58-slot-rule-measured-2026-11-16)
     - [15.40 Linux `filestat` after release 0033 (MEASURED, 2026-11-16)](#1540-linux-filestat-after-release-0033-measured-2026-11-16)
     - [15.43 Android counter cold start and AArch64 `jsonmin` on two phones; the DEX-only XAX counter (ADR-430 evidence; MEASURED, 2026-11-26/27)](#1543-android-counter-cold-start-and-aarch64-jsonmin-on-two-phones-the-dex-only-xax-counter-adr-430-evidence-measured-2026-11-2627)
+    - [15.44 Android counter cold-start parity on the Pixel, with the null arm (ADR-430; MEASURED, 2026-11-27)](#1544-android-counter-cold-start-parity-on-the-pixel-with-the-null-arm-adr-430-measured-2026-11-27)
 - [Part III — Host setup](#part-iii--host-setup)
   - [Host setup for the full test and benchmark suite](#host-setup-for-the-full-test-and-benchmark-suite)
 
@@ -1333,3 +1334,22 @@ XAX is 1.0117x Kotlin (p = 0.97 that XAX is faster); removing the library load d
 medians of one arm move by about ±8 ms between installs. An exploratory run of 60 starts per arm (in the same file)
 had looked like a lead over Java (p = 0.03); the larger run does not confirm it. The APK is not committed; the file
 gives its SHA-256 and how it was built.
+
+#### 15.44 Android counter cold-start parity on the Pixel, with the null arm (ADR-430; MEASURED, 2026-11-27)
+
+The first run of §15.0c's declared protocol, on the Pixel (sailfish) only; the Pixel 8 Pro is BLOCKED (in use,
+unplugged and hot). `android_counter_parity_pixel1_2026-11-27.json`: six blocks of 15 rounds, 90 starts per arm, no
+block retried, phone on AC at 41.7 to 43.7 °C.
+
+| Arm | Median `TotalTime` (ms) | p that it is faster than XAX |
+|---|---:|---:|
+| XAX (`android_counter_activity.apk`) | 306.0 | — |
+| Java + NDK | 308.0 | 0.70 |
+| Java (d8) | 304.5 | 0.35 |
+| Kotlin (R8) | 304.0 | 0.59 |
+| null | 304.5 | — |
+
+Role, derived from the baselines and the null arm (ADR-430 (2)): the fastest baseline, Kotlin, is not slower than the
+null arm (its own time is −0.2% of its median; p = 0.15), so the role is parity, as declared. Parity verdict
+(ADR-430 (3)): no baseline is significantly faster than XAX (smallest p = 0.35); XAX is 1.0066x Kotlin. The validator
+does not read this file yet (ADR-430 is not implemented), so ADR-207 still decides and no level changes.
