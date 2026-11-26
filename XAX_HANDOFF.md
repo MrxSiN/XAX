@@ -90,6 +90,7 @@ Dated sections (historical records; a later section supersedes an earlier one):
 - [Release 0042 on `main`: carrier replace by CID, Wasm offset check, container sizing — 2026-11-24](#release-0042-on-main-carrier-replace-by-cid-wasm-offset-check-container-sizing--2026-11-24)
 - [Release 0043 open on `release/0043`: one driver sub-batch in — 2026-11-25](#release-0043-open-on-release0043-one-driver-sub-batch-in--2026-11-25)
 - [Release 0043 on `main`; release 0044 needs an owner decision — 2026-11-26](#release-0043-on-main-release-0044-needs-an-owner-decision--2026-11-26)
+- [Release 0044 open: 8 GiB workspace, offsets and clamps in; arena move waits — 2026-11-26](#release-0044-open-8-gib-workspace-offsets-and-clamps-in-arena-move-waits--2026-11-26)
 
 ## Invariants that must not drift
 
@@ -3366,3 +3367,23 @@ questions, so the calls below were made without asking.
 - **Next:**
   1. The owner picks an option in ADR-423 amendment 4; then cut `release/0044` from `main` and follow it.
   2. Part C after 0044 merges.
+## Release 0044 open: 8 GiB workspace, offsets and clamps in; arena move waits — 2026-11-26
+
+`release/0044` = `9e14c77`, not rotated; the pinned seed is still 0043. Supersedes the "Next" of "Release 0043 on
+`main`" above. The owner chose ADR-423 amendment 4's option 1 and asked for (b) and the rest in 0044.
+
+- **On `release/0044`** (all EXECUTED on WSL 2):
+  - #198 (ADR-430): `replace <CID>` accepts a type; 4,096 mutations; 2^26 preimage words. C1 = C2; C1 replays 226 of 226.
+  - #199 (ADR-430): a supplied object names rebuilt objects by their new CIDs; unreached rebuilt objects are dropped.
+    C1 = C2; C1 replays 228 of 228; the driver's (b) batch applies in 554 s and verifies.
+  - #200: `0044-workspace-8gib`, applied with `XAXC` = the 0044 candidate (the 0043 seed cannot). C1 = C2; corpus
+    differential against the 0043 seed 197 of 197 the same.
+  - #201: `0044-workspace-offsets-01..25` (1,011 functions, 161,802 clamps). C1 = C2 (`161ed4be…`), C2 runs; corpus
+    198 of 198 the same.
+- **Not in 0044** (ADR-423 amendment 5): (c) the x86-64 arena move and (d) the capacity. With them C2 crashes; F86
+  variants isolate the arena move. hanoi -O0 still declines.
+- **Before the rotation**, `evolve.sh replay` and `test_store_regeneration` need `XAXC` set to a 0044 candidate
+  (WSL `/root/work/c48/xaxc1`). Scratch generators are in WSL `/root/work/r44-tools/` (never commit them).
+- **Not run:** rotation, V2 record, BBC rebuild and native check, status blocks, the full suite, Part C.
+- **Next:** rotate release 0044 (the chain as for 0043, with `XAXC` for the pre-rotation replay), merge it into
+  `main`, pin BBC; then find the arena dependency (amendment 5's lead) and land (c) and (d); then Part C.
