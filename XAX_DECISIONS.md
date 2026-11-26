@@ -4306,6 +4306,14 @@ Superseded by [ADR-369](#adr-369--n03-growable-views-as-limit-bounded-checked-ac
 | Also found | (c) The x86-64 arena is [125,829,120, 209,715,200) words, set by F86's prologue at words 268,435,404 and 268,435,405 (and the end once more in a record at +210), with fixed regions above it up to the top (42,545 constants of the driver lie between the arena's end and 2^28 − 1); F8 and F38 set the same bounds for other pipelines. Moving the arena to [2^28, 2^30) inside the enlarged workspace, instead of moving its end and the layout above it, would leave those regions and constants where they are. |
 
 
+## ADR-423 amendment 5 — release 0044 holds (a) and (b); the arena move (c) and the capacity (d) wait (2026-11-26)
+
+| Field | Record |
+|---|---|
+| Decision | Agent call, recorded for the owner. Release 0044 lands amendment 3's (a) and (b) in full, applied by the release's candidate compiler (ADR-430): the workspace view is 8 GiB (`0044-workspace-8gib`), and in every function each workspace offset is `bits<64>` and each clamp is at 2^30 words (`0044-workspace-offsets-*`, 1,011 functions plus main; 9 offsets that are 32-bit constants stay). (c) and (d) are left out: F86 keeps its arena at [125,829,120, 209,715,200) and the value capacity 262,144, so hanoi -O0 still declines. |
+| Finding | EXECUTED (WSL 2). With (c) and (d) in F86 (arena at [2^28, 2^30), capacity 1,048,576), C1 differs from C2 and C2 crashes (`resolve` segfaults); 16 of the 197 corpus cases (Windows, PE, external-input and signed image builds) give other bytes than the 0043 seed. Bisected with F86 variants on that store: old capacity with the moved arena still fails; old arena with the new capacity declines (the tables do not fit 80M words); both old gives C1 = C2 and a working C2. So the arena move itself breaks something. Not found yet: inside F86's call tree no function names the old end, and the 364 uses of the old start there are `VIEW_END` bound checks. Lead: three functions outside it (F279, F616, F653 in the 0044 driver's numbering) do arithmetic on the old end 209,715,200 (a second allocator above the arena, read from word 264,241,163). |
+| Next | Find what depends on the arena's place (start with those three, and with the image writer, since only image-building cases differ), then land (c) and (d) together in the next release, checked by C1 = C2, a working C2, the corpus differential and hanoi -O0. |
+
 ## ADR-424 — Native cross-function workspace queries (proposal, 2026-11-25)
 
 | Field | Record |
