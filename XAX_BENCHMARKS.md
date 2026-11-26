@@ -51,6 +51,7 @@ requirement or a target, except the rules marked normative in §15.0 and §15.0a
   - [15. Universal-replacement benchmarks](#15-universal-replacement-benchmarks)
     - [15.0 Multi-language runtime rule (normative, ADR-147, ADR-207)](#150-multi-language-runtime-rule-normative-adr-147-adr-207)
     - [15.0a JVM runtime rule (normative, ADR-157)](#150a-jvm-runtime-rule-normative-adr-157)
+    - [15.0b Android application leadership workload: `jsonmin` in an APK (declared 2026-11-27, ADR-430, ADR-431)](#150b-android-application-leadership-workload-jsonmin-in-an-apk-declared-2026-11-27-adr-430-adr-431)
     - [15.1 U1.3 Linux `filestat` (MEASURED, 2026-10-02)](#151-u13-linux-filestat-measured-2026-10-02)
     - [15.2 OI-37 `chains`: arena + index versus pointer links (MEASURED, 2026-10-02)](#152-oi-37-chains-arena--index-versus-pointer-links-measured-2026-10-02)
     - [15.3 After ADR-091 (OI-38 step 1): `filestat` and `chains` re-measured (MEASURED, 2026-10-02)](#153-after-adr-091-oi-38-step-1-filestat-and-chains-re-measured-measured-2026-10-02)
@@ -565,6 +566,39 @@ Each implementation may choose its own data representation for the same observab
 #### 15.0a JVM runtime rule (normative, ADR-157)
 
 A JVM performance comparison applies §15.0 with the platform's own compilers as the baselines: a Java twin built by `javac` and a Kotlin twin built by `kotlinc`, each written the way a programmer of that language would write it, and run the same way as the XAX artifact (`java -jar`, the same HotSpot, flags, input, interleaving, warmup, and repetitions). R4 needs XAX's median ≤ 0.9999× the faster of the `javac` and `kotlinc` medians with a significant advantage, as in §15.0 (ADR-207). Each arm deploys as its toolchain builds it, so the Kotlin JAR carries the Kotlin runtime (`-include-runtime`). Program class bytes, JAR bytes, and peak RSS are recorded for every arm, and a code-size or memory gap is stated in the row's blockers. Evidence JSON has a `results` map with `javac*` and `kotlinc*` arms; `xax_replacement.py` rejects a competitive JVM verdict without both.
+
+#### 15.0b Android application leadership workload: `jsonmin` in an APK (declared 2026-11-27, ADR-430, ADR-431)
+
+Declared before any cited run (ADR-430 (5)); the role is derived again from the cited samples.
+
+- **Workload.** `jsonmin` (`benchmarks/jsonmin.py`'s contract) over `benchmark_document(8 MiB, seed=125)`
+  (8,390,986 bytes), stored uncompressed as `assets/input.json` in every arm's APK. A run counts only when its output
+  is the reference (4,308,036 bytes, SHA-256 `7705cd8a…`). Declared role: leadership.
+- **Shell (measurement apparatus, the same for every arm).** One Activity, built by `javac` and `d8`, reads the asset
+  before the timer. For a managed arm it redirects `System.in` and `System.out` to memory; for a native arm it writes
+  the asset to a cache file and `dup2`s it onto fd 0 and an output file onto fd 1. It then reads `System.nanoTime`,
+  calls the arm's program body on the UI thread, and stops the timer in a shutdown hook that `System.exit` runs; the
+  hook logs the time and the output's digest.
+- **Arms.**
+  - `xax`, the one cited XAX arm: XAX's AArch64 code as the APK's JNI library (`Java_xax_bench_Native_run`, bionic
+    `read`, `write`, `mmap`, `munmap`), built by the production compiler of release 0045 or later (ADR-431 (3));
+  - `clang_ndk`: `jsonmin_c/jsonmin.c` with `-Dmain=jsonmin_main`, NDK `aarch64-linux-android28-clang -O2 -fPIC -shared`,
+    called through a two-line JNI wrapper;
+  - `java_d8`: the §15.0a Java twin in package `xax.bench`, `javac --release 11`, `d8 --release --min-api 28`;
+  - `kotlin_r8`: the §15.0a Kotlin twin in package `xax.bench`, `kotlinc`, then R8 `--release` over the program and
+    `kotlin-stdlib`;
+  - `null`: the shell whose body is `System.exit(0)`.
+- **Protocol.** Every arm installed side by side and compiled with `cmd package compile -f -m speed`, three warm-up
+  launches per arm. Six blocks, each a fresh install of every arm (install order rotating), of 50 rounds; each round
+  launches every arm once, the order rotating by one: force-stop, start, wait 2.5 s, take the first log line,
+  force-stop (Android relaunches an Activity whose process exited). 300 samples per arm per device.
+- **Devices.** Pixel 8 Pro (husky, Android 17) and Pixel (sailfish, LineageOS 15), each run its own evidence file and
+  verdict, never pooled. The phone is charging with the screen held on, idle apart from the run; governor, battery and
+  temperatures are recorded before and after each block.
+- **Host logic.** The on-device loop is POSIX `sh` and the shell is Java: an XAX host program cannot start processes
+  (its host functions are open, read, write, close and exit), and both are apparatus shared by every arm, not arms.
+
+Exploratory runs (2026-11-27, not cited): `compiler/benchmarks/android_jsonmin_app_exploratory_pixel1_2026-11-27.json`.
 
 #### 15.1 U1.3 Linux `filestat` (MEASURED, 2026-10-02)
 
