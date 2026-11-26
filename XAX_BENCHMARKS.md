@@ -86,6 +86,7 @@ requirement or a target, except the rules marked normative in §15.0 and §15.0a
     - [15.38 BBC's Android ARM64 executables on a Pixel 8 Pro, before and after ledger 0025 (ADR-394; MEASURED, 2026-11-11)](#1538-bbcs-android-arm64-executables-on-a-pixel-8-pro-before-and-after-ledger-0025-adr-394-measured-2026-11-11)
     - [15.39 Linux `chains` after ledger 0033 (OI-58 slot rule; MEASURED, 2026-11-16)](#1539-linux-chains-after-ledger-0033-oi-58-slot-rule-measured-2026-11-16)
     - [15.40 Linux `filestat` after release 0033 (MEASURED, 2026-11-16)](#1540-linux-filestat-after-release-0033-measured-2026-11-16)
+    - [15.43 Android counter cold start and AArch64 `jsonmin` on two phones; the DEX-only XAX counter (ADR-430 evidence; MEASURED, 2026-11-26/27)](#1543-android-counter-cold-start-and-aarch64-jsonmin-on-two-phones-the-dex-only-xax-counter-adr-430-evidence-measured-2026-11-2627)
 - [Part III — Host setup](#part-iii--host-setup)
   - [Host setup for the full test and benchmark suite](#host-setup-for-the-full-test-and-benchmark-suite)
 
@@ -1233,3 +1234,51 @@ mask and no check and keeps the ADR-211 prefetch.
 | 2 (`v4_run2.txt`) | `gcc-O3-soa` 97.1 ms | 1.182 | 1.216 | 1.0 |
 
 R4 stays withheld. All arms ran 5 to 15% slower than in 15.41.
+
+#### 15.43 Android counter cold start and AArch64 `jsonmin` on two phones; the DEX-only XAX counter (ADR-430 evidence; MEASURED, 2026-11-26/27)
+
+Does not supersede §15.34 or §15.35: their cited files are unchanged, and none of these files is cited by the matrix
+(ADR-430 needs a declared null arm and a leadership workload). The devices are kept apart and never pooled: Pixel 8 Pro
+(Android 17, `sched_pixel`) and the original Pixel (sailfish, LineageOS 15 / API 35, `interactive`; a second user runs
+in the background). Both were charging with the screen held on (`svc power stayon true`); each file records the
+phone's battery, governor and temperatures before and after. Harnesses ran unchanged from Windows 11 over wireless
+`adb`, one `ANDROID_SERIAL` per phone, both phones at once; toolchains as §15.34 (`javac 25.0.3`, Kotlin 2.3.10, NDK
+`28.2.13676358`, build-tools 36.0.0), `rustc 1.99.1`. The twin APKs and the XAX APK are byte-identical to §15.34's.
+
+Counter cold start, 6 fresh-install blocks × 15 rounds, 90 starts per arm (median `TotalTime`, ms):
+
+| Device | XAX | Java + NDK | Java (d8) | Kotlin (R8) | XAX vs fastest | Smallest p, baseline faster |
+|---|---:|---:|---:|---:|---:|---:|
+| Pixel 8 Pro (`android_counter_twin_pixel8pro_2026-11-26.json`) | 198.0 | 198.0 | 194.0 | 196.0 | 1.0206 | 0.10 (Java) |
+| Pixel (`android_counter_twin_pixel1_2026-11-26.json`) | 316.5 | 314.5 | 313.5 | 312.0 | 1.0144 | 0.15 (Kotlin) |
+
+A tie on both phones, as in §15.34. AArch64 `jsonmin`, 101 rounds, pinned to one big core (median, ms; p < 1e-6):
+
+| Device | XAX | `clang -O2 -static` | `clang -O2` | `rustc -O3` | XAX vs fastest |
+|---|---:|---:|---:|---:|---:|
+| Pixel 8 Pro, cpu8 (`android_jsonmin_pixel8pro_2026-11-26.json`; thermal status 1) | 58.90 | 62.09 | 68.69 | 75.94 | 0.949 |
+| Pixel, cpu3 (`android_jsonmin_pixel1_cpu8_2026-11-26.json`) | 79.71 | 89.87 | 100.88 | 121.15 | 0.887 |
+
+The XAX image is §15.35's (`049cf5ee…`). Under ADR-430 this is Linux AArch64 evidence, not an Android-application workload.
+
+Start-up phases (`android_counter_startup_phases_2026-11-26.json`): atrace of 12 cold starts per arm per phone. XAX's
+only work of its own is its JNI library load: `dlopen` of `libxaxcounter.so` takes 0.42 ms on the Pixel 8 Pro and
+1.02 ms on the Pixel (the Java + NDK twin's library: 0.42 and 1.04 ms). No other phase differs beyond the noise of
+12 launches; the rest is framework work (`bindApplication`, the default theme's decor, the first frame).
+
+The DEX-only XAX counter (`android_counter_dex_pixel1_2026-11-27.json`): `xax_android_counter.counter_dex` (the
+JVM class-file backend lowered to DEX, file I/O through `android.system.Os`, one `classes.dex`, no native library),
+installed as `xax.counter.dex`, against the three twins on the Pixel. Six single-block harness runs of 100 rounds
+(600 starts per arm), install order rotated by block:
+
+| Arm | Median `TotalTime` (ms) | Stdev (ms) |
+|---|---:|---:|
+| XAX DEX-only | 303.0 | 39.9 |
+| Java + NDK | 304.5 | 39.2 |
+| Java (d8) | 300.5 | 37.7 |
+| Kotlin (R8) | 299.5 | 40.7 |
+
+XAX is 1.0117x Kotlin (p = 0.97 that XAX is faster); removing the library load does not move cold start. Block
+medians of one arm move by about ±8 ms between installs. An exploratory run of 60 starts per arm (in the same file)
+had looked like a lead over Java (p = 0.03); the larger run does not confirm it. The APK is not committed; the file
+gives its SHA-256 and how it was built.

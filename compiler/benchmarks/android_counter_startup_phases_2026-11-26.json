@@ -1,0 +1,1196 @@
+{
+  "decision": "ADR-430 (evidence row)",
+  "devices": {
+    "Pixel (sailfish, LineageOS 15)": {
+      "clang_ndk_java": {
+        "launches": 12,
+        "median_ms": {
+          "OpenDexFilesFromOat (sum)": 3.981,
+          "TotalTime (am, traced)": 531.0,
+          "activityResume": 65.941,
+          "activityStart": 95.782,
+          "app lib dlopen": 1.044,
+          "bindApplication": 62.136,
+          "first doFrame": 109.514,
+          "performCreate": 55.536,
+          "process (first slice to bindApplication)": 75.974
+        },
+        "per_launch_ms": [
+          {
+            "OpenDexFilesFromOat (sum)": 8.466999977827072,
+            "TotalTime (am, traced)": 586.0,
+            "activityResume": 79.94999992661178,
+            "activityStart": 108.38999995030463,
+            "app lib dlopen": 1.032999949529767,
+            "bindApplication": 62.1259999461472,
+            "first doFrame": 138.96899996325374,
+            "performCreate": 60.87899999693036,
+            "process (first slice to bindApplication)": 76.75500004552305
+          },
+          {
+            "OpenDexFilesFromOat (sum)": 3.642000025138259,
+            "TotalTime (am, traced)": 602.0,
+            "activityResume": 76.09399990178645,
+            "activityStart": 107.11199999786913,
+            "app lib dlopen": 4.398999968543649,
+            "bindApplication": 56.62399996072054,
+            "first doFrame": 168.65499992854893,
+            "performCreate": 64.35799994505942,
+            "process (first slice to bindApplication)": 91.72600018791854
+          },
+          {
+            "OpenDexFilesFromOat (sum)": 3.4580000210553408,
+            "TotalTime (am, traced)": 560.0,
+            "activityResume": 62.94500012882054,
+            "activityStart": 114.97500003315508,
+            "app lib dlopen": 1.0480000637471676,
+            "bindApplication": 65.79500017687678,
+            "first doFrame": 104.7740001231432,
+            "performCreate": 63.58000007458031,
+            "process (first slice to bindApplication)": 72.97799992375076
+          },
+          {
+            "OpenDexFilesFromOat (sum)": 3.8449999410659075,
+            "TotalTime (am, traced)": 475.0,
+            "activityResume": 57.71500011906028,
+            "activityStart": 88.65900011733174,
+            "app lib dlopen": 1.1160001158714294,
+            "bindApplication": 59.80299995280802,
+            "first doFrame": 108.45199995674193,
+            "performCreate": 51.53500009328127,
+            "process (first slice to bindApplication)": 76.5980000142008
+          },
+          {
+            "OpenDexFilesFromOat (sum)": 4.166000057011843,
+            "TotalTime (am, traced)": 533.0,
+            "activityResume": 71.27099996432662,
+            "activityStart": 109.93399983271956,
+            "app lib dlopen": 1.0389999952167273,
+            "bindApplication": 65.14200009405613,
+            "first doFrame": 109.92499999701977,
+            "performCreate": 68.85999999940395,
+            "process (first slice to bindApplication)": 77.94700004160404
+          },
+          {
+            "OpenDexFilesFromOat (sum)": 4.339999984949827,
+            "TotalTime (am, traced)": 534.0,
+            "activityResume": 48.303000163286924,
+            "activityStart": 102.90500009432435,
+            "app lib dlopen": 1.0480000637471676,
+            "bindApplication": 65.73699996806681,
+            "first doFrame": 108.0350000411272,
+            "performCreate": 55.17899990081787,
+            "process (first slice to bindApplication)": 101.13599989563227
+          },
+          {
+            "OpenDexFilesFromOat (sum)": 4.745000042021275,
+            "TotalTime (am, traced)": 529.0,
+            "activityResume": 68.60999995842576,
+            "activityStart": 86.13000018522143,
+            "app lib dlopen": 3.3209999091923237,
+            "bindApplication": 59.54400007613003,
+            "first doFrame": 119.17200009338558,
+            "performCreate": 55.041999788954854,
+            "process (first slice to bindApplication)": 71.14199991337955
+          },
+          {
+            "OpenDexFilesFromOat (sum)": 3.819000208750367,
+            "TotalTime (am, traced)": 501.0,
+            "activityResume": 63.27200005762279,
+            "activityStart": 81.11199992708862,
+            "app lib dlopen": 2.429000101983547,
+            "bindApplication": 90.01400019042194,
+            "first doFrame": 105.68800009787083,
+            "performCreate": 49.16099994443357,
+            "process (first slice to bindApplication)": 71.08499994501472
+          },
+          {
+            "OpenDexFilesFromOat (sum)": 4.116999916732311,
+            "TotalTime (am, traced)": 517.0,
+            "activityResume": 62.225000001490116,
+            "activityStart": 75.42699994519353,
+            "app lib dlopen": 0.8939998224377632,
+            "bindApplication": 61.21099996380508,
+            "first doFrame": 107.37500013783574,
+            "performCreate": 50.03899987787008,
+            "process (first slice to bindApplication)": 72.99300003796816
+          },
+          {
+            "OpenDexFilesFromOat (sum)": 4.153000190854073,
+            "TotalTime (am, traced)": 511.0,
+            "activityResume": 60.686999931931496,
+            "activityStart": 81.66899997740984,
+            "app lib dlopen": 0.997000141069293,
+            "bindApplication": 62.14500009082258,
+            "first doFrame": 115.3939999639988,
+            "performCreate": 55.892000207677484,
+            "process (first slice to bindApplication)": 79.14300006814301
+          },
+          {
+            "OpenDexFilesFromOat (sum)": 3.7140001077204943,
+            "TotalTime (am, traced)": 822.0,
+            "activityResume": 148.88900006189942,
+            "activityStart": 184.62900002487004,
+            "app lib dlopen": 1.0059999767690897,
+            "bindApplication": 67.47099990025163,
+            "first doFrame": 192.9490000475198,
+            "performCreate": 146.6120001859963,
+            "process (first slice to bindApplication)": 75.35000005736947
+          },
+          {
+            "OpenDexFilesFromOat (sum)": 2.991999965161085,
+            "TotalTime (am, traced)": 461.0,
+            "activityResume": 72.50900007784367,
+            "activityStart": 81.25399984419346,
+            "app lib dlopen": 0.8060000836849213,
+            "bindApplication": 47.922000056132674,
+            "first doFrame": 109.1030000243336,
+            "performCreate": 54.087000200524926,
+            "process (first slice to bindApplication)": 53.54700004681945
+          }
+        ]
+      },
+      "java_d8": {
+        "launches": 12,
+        "median_ms": {
+          "OpenDexFilesFromOat (sum)": 3.614,
+          "TotalTime (am, traced)": 593.5,
+          "activityResume": 66.93,
+          "activityStart": 96.18,
+          "app lib dlopen": 0.0,
+          "bindApplication": 58.452,
+          "first doFrame": 132.03,
+          "performCreate": 60.668,
+          "process (first slice to bindApplication)": 74.665
+        },
+        "per_launch_ms": [
+          {
+            "OpenDexFilesFromOat (sum)": 15.116999857127666,
+            "TotalTime (am, traced)": 621.0,
+            "activityResume": 84.29999998770654,
+            "activityStart": 98.09200000017881,
+            "app lib dlopen": 0,
+            "bindApplication": 87.77500013820827,
+            "first doFrame": 150.1539999153465,
+            "performCreate": 65.85799995809793,
+            "process (first slice to bindApplication)": 93.92499993555248
+          },
+          {
+            "OpenDexFilesFromOat (sum)": 3.593999892473221,
+            "TotalTime (am, traced)": 627.0,
+            "activityResume": 62.474000034853816,
+            "activityStart": 94.26799998618662,
+            "app lib dlopen": 0,
+            "bindApplication": 58.85199992917478,
+            "first doFrame": 128.74300009571016,
+            "performCreate": 55.478000082075596,
+            "process (first slice to bindApplication)": 144.89499991759658
+          },
+          {
+            "OpenDexFilesFromOat (sum)": 5.5500001180917025,
+            "TotalTime (am, traced)": 596.0,
+            "activityResume": 66.48700009100139,
+            "activityStart": 114.96799997985363,
+            "app lib dlopen": 0,
+            "bindApplication": 83.66900007240474,
+            "first doFrame": 134.1099999845028,
+            "performCreate": 73.0400001630187,
+            "process (first slice to bindApplication)": 78.33799999207258
+          },
+          {
+            "OpenDexFilesFromOat (sum)": 3.415000159293413,
+            "TotalTime (am, traced)": 618.0,
+            "activityResume": 84.8119999282062,
+            "activityStart": 123.19499999284744,
+            "app lib dlopen": 0,
+            "bindApplication": 51.57400015741587,
+            "first doFrame": 169.09699980169535,
+            "performCreate": 88.66399992257357,
+            "process (first slice to bindApplication)": 73.06499988771975
+          },
+          {
+            "OpenDexFilesFromOat (sum)": 4.150999942794442,
+            "TotalTime (am, traced)": 689.0,
+            "activityResume": 104.70300004817545,
+            "activityStart": 197.61799997650087,
+            "app lib dlopen": 0,
+            "bindApplication": 68.94099991768599,
+            "first doFrame": 143.42900016345084,
+            "performCreate": 153.38199981488287,
+            "process (first slice to bindApplication)": 74.96900018304586
+          },
+          {
+            "OpenDexFilesFromOat (sum)": 8.305000141263008,
+            "TotalTime (am, traced)": 591.0,
+            "activityResume": 67.67000001855195,
+            "activityStart": 87.48700004070997,
+            "app lib dlopen": 0,
+            "bindApplication": 98.20799995213747,
+            "first doFrame": 129.9509999807924,
+            "performCreate": 52.127999952062964,
+            "process (first slice to bindApplication)": 74.36099997721612
+          },
+          {
+            "OpenDexFilesFromOat (sum)": 2.836999949067831,
+            "TotalTime (am, traced)": 565.0,
+            "activityResume": 91.5310001000762,
+            "activityStart": 68.50099982693791,
+            "app lib dlopen": 0,
+            "bindApplication": 41.62000003270805,
+            "first doFrame": 199.66399995610118,
+            "performCreate": 44.67599978670478,
+            "process (first slice to bindApplication)": 53.85200004093349
+          },
+          {
+            "OpenDexFilesFromOat (sum)": 3.533000126481056,
+            "TotalTime (am, traced)": 478.0,
+            "activityResume": 57.55500006489456,
+            "activityStart": 82.42799993604422,
+            "app lib dlopen": 0,
+            "bindApplication": 58.05200012400746,
+            "first doFrame": 106.37799999676645,
+            "performCreate": 52.23400006070733,
+            "process (first slice to bindApplication)": 78.3829998690635
+          },
+          {
+            "OpenDexFilesFromOat (sum)": 12.116000056266785,
+            "TotalTime (am, traced)": 632.0,
+            "activityResume": 63.934999983757734,
+            "activityStart": 111.00699985399842,
+            "app lib dlopen": 0,
+            "bindApplication": 130.64999994821846,
+            "first doFrame": 115.08799996227026,
+            "performCreate": 69.23400005325675,
+            "process (first slice to bindApplication)": 98.14899996854365
+          },
+          {
+            "OpenDexFilesFromOat (sum)": 3.6349999718368053,
+            "TotalTime (am, traced)": 480.0,
+            "activityResume": 67.20699998550117,
+            "activityStart": 72.94299989007413,
+            "app lib dlopen": 0,
+            "bindApplication": 55.66399986855686,
+            "first doFrame": 102.07500006072223,
+            "performCreate": 48.309999983757734,
+            "process (first slice to bindApplication)": 68.41100007295609
+          },
+          {
+            "OpenDexFilesFromOat (sum)": 3.011999884620309,
+            "TotalTime (am, traced)": 552.0,
+            "activityResume": 66.65300019085407,
+            "activityStart": 106.19099996984005,
+            "app lib dlopen": 0,
+            "bindApplication": 46.282999916002154,
+            "first doFrame": 161.29299998283386,
+            "performCreate": 77.10600015707314,
+            "process (first slice to bindApplication)": 66.09200011007488
+          },
+          {
+            "OpenDexFilesFromOat (sum)": 3.229999914765358,
+            "TotalTime (am, traced)": 441.0,
+            "activityResume": 52.8549998998642,
+            "activityStart": 82.22600002773106,
+            "app lib dlopen": 0,
+            "bindApplication": 46.648999908939004,
+            "first doFrame": 96.11499984748662,
+            "performCreate": 52.00699996203184,
+            "process (first slice to bindApplication)": 70.20199997350574
+          }
+        ]
+      },
+      "kotlin_r8": {
+        "launches": 12,
+        "median_ms": {
+          "OpenDexFilesFromOat (sum)": 3.822,
+          "TotalTime (am, traced)": 558.5,
+          "activityResume": 72.185,
+          "activityStart": 102.328,
+          "app lib dlopen": 0.0,
+          "bindApplication": 53.781,
+          "first doFrame": 116.368,
+          "performCreate": 67.665,
+          "process (first slice to bindApplication)": 67.946
+        },
+        "per_launch_ms": [
+          {
+            "OpenDexFilesFromOat (sum)": 12.30500009842217,
+            "TotalTime (am, traced)": 563.0,
+            "activityResume": 83.060999866575,
+            "activityStart": 114.99299993738532,
+            "app lib dlopen": 0,
+            "bindApplication": 86.90400002524257,
+            "first doFrame": 111.73500004224479,
+            "performCreate": 85.44700010679662,
+            "process (first slice to bindApplication)": 66.47399999201298
+          },
+          {
+            "OpenDexFilesFromOat (sum)": 3.8049998693168163,
+            "TotalTime (am, traced)": 614.0,
+            "activityResume": 78.15499999560416,
+            "activityStart": 94.57700001075864,
+            "app lib dlopen": 0,
+            "bindApplication": 60.261999955400825,
+            "first doFrame": 161.04299994185567,
+            "performCreate": 66.94000004790723,
+            "process (first slice to bindApplication)": 76.98799995705485
+          },
+          {
+            "OpenDexFilesFromOat (sum)": 3.047000151127577,
+            "TotalTime (am, traced)": 554.0,
+            "activityResume": 56.389000033959746,
+            "activityStart": 80.28100011870265,
+            "app lib dlopen": 0,
+            "bindApplication": 43.30000001937151,
+            "first doFrame": 163.30899996683002,
+            "performCreate": 56.55000009573996,
+            "process (first slice to bindApplication)": 67.44799995794892
+          },
+          {
+            "OpenDexFilesFromOat (sum)": 3.8399999029934406,
+            "TotalTime (am, traced)": 552.0,
+            "activityResume": 75.03700000233948,
+            "activityStart": 109.10700005479157,
+            "app lib dlopen": 0,
+            "bindApplication": 50.9939999319613,
+            "first doFrame": 106.5960000269115,
+            "performCreate": 64.91099996492267,
+            "process (first slice to bindApplication)": 73.8269998691976
+          },
+          {
+            "OpenDexFilesFromOat (sum)": 4.393999930471182,
+            "TotalTime (am, traced)": 675.0,
+            "activityResume": 85.33699996769428,
+            "activityStart": 193.55299999006093,
+            "app lib dlopen": 0,
+            "bindApplication": 59.96700003743172,
+            "first doFrame": 121.00100005045533,
+            "performCreate": 146.75999991595745,
+            "process (first slice to bindApplication)": 76.69499982148409
+          },
+          {
+            "OpenDexFilesFromOat (sum)": 5.808999994769692,
+            "TotalTime (am, traced)": 471.0,
+            "activityResume": 59.03399991802871,
+            "activityStart": 71.13599986769259,
+            "app lib dlopen": 0,
+            "bindApplication": 67.88400001823902,
+            "first doFrame": 106.59900004975498,
+            "performCreate": 46.76199983805418,
+            "process (first slice to bindApplication)": 79.72300006076694
+          },
+          {
+            "OpenDexFilesFromOat (sum)": 4.129000008106232,
+            "TotalTime (am, traced)": 527.0,
+            "activityResume": 67.8729999344796,
+            "activityStart": 110.78200000338256,
+            "app lib dlopen": 0,
+            "bindApplication": 55.72200007736683,
+            "first doFrame": 110.9019999857992,
+            "performCreate": 74.75599995814264,
+            "process (first slice to bindApplication)": 68.42099991627038
+          },
+          {
+            "OpenDexFilesFromOat (sum)": 2.5939999613910913,
+            "TotalTime (am, traced)": 586.0,
+            "activityResume": 84.97900003567338,
+            "activityStart": 147.78100000694394,
+            "app lib dlopen": 0,
+            "bindApplication": 35.9519999474287,
+            "first doFrame": 172.80400008894503,
+            "performCreate": 106.10600002110004,
+            "process (first slice to bindApplication)": 48.177999909967184
+          },
+          {
+            "OpenDexFilesFromOat (sum)": 23.378999903798103,
+            "TotalTime (am, traced)": 589.0,
+            "activityResume": 69.33299987576902,
+            "activityStart": 95.5479999538511,
+            "app lib dlopen": 0,
+            "bindApplication": 74.87799995578825,
+            "first doFrame": 140.23100002668798,
+            "performCreate": 68.39099992066622,
+            "process (first slice to bindApplication)": 87.23599999211729
+          },
+          {
+            "OpenDexFilesFromOat (sum)": 3.0529999639838934,
+            "TotalTime (am, traced)": 480.0,
+            "activityResume": 66.65599998086691,
+            "activityStart": 70.26099995709956,
+            "app lib dlopen": 0,
+            "bindApplication": 51.83999985456467,
+            "first doFrame": 99.16600002907217,
+            "performCreate": 47.362999990582466,
+            "process (first slice to bindApplication)": 67.47100013308227
+          },
+          {
+            "OpenDexFilesFromOat (sum)": 2.7360001113265753,
+            "TotalTime (am, traced)": 422.0,
+            "activityResume": 65.43600000441074,
+            "activityStart": 68.3699999935925,
+            "app lib dlopen": 0,
+            "bindApplication": 41.86799982562661,
+            "first doFrame": 105.70399998687208,
+            "performCreate": 45.85800017230213,
+            "process (first slice to bindApplication)": 53.70800010859966
+          },
+          {
+            "OpenDexFilesFromOat (sum)": 2.3590000346302986,
+            "TotalTime (am, traced)": 616.0,
+            "activityResume": 113.69900009594858,
+            "activityStart": 163.77300000749528,
+            "app lib dlopen": 0,
+            "bindApplication": 41.91399994306266,
+            "first doFrame": 129.04500006698072,
+            "performCreate": 112.84999991767108,
+            "process (first slice to bindApplication)": 60.652999905869365
+          }
+        ]
+      },
+      "xax": {
+        "launches": 12,
+        "median_ms": {
+          "OpenDexFilesFromOat (sum)": 3.758,
+          "TotalTime (am, traced)": 508.5,
+          "activityResume": 68.685,
+          "activityStart": 89.659,
+          "app lib dlopen": 1.024,
+          "bindApplication": 59.927,
+          "first doFrame": 113.883,
+          "performCreate": 56.606,
+          "process (first slice to bindApplication)": 68.461
+        },
+        "per_launch_ms": [
+          {
+            "OpenDexFilesFromOat (sum)": 11.484999908134341,
+            "TotalTime (am, traced)": 881.0,
+            "activityResume": 102.14299988001585,
+            "activityStart": 164.0519998036325,
+            "app lib dlopen": 10.945999994874,
+            "bindApplication": 101.30099998787045,
+            "first doFrame": 168.73200004920363,
+            "performCreate": 108.4569999948144,
+            "process (first slice to bindApplication)": 94.86400010064244
+          },
+          {
+            "OpenDexFilesFromOat (sum)": 3.4179999493062496,
+            "TotalTime (am, traced)": 442.0,
+            "activityResume": 52.46499995701015,
+            "activityStart": 81.27199998125434,
+            "app lib dlopen": 0.8769999258220196,
+            "bindApplication": 50.51800003275275,
+            "first doFrame": 110.8999999705702,
+            "performCreate": 50.72699999436736,
+            "process (first slice to bindApplication)": 71.36399997398257
+          },
+          {
+            "OpenDexFilesFromOat (sum)": 3.603000193834305,
+            "TotalTime (am, traced)": 473.0,
+            "activityResume": 47.70699981600046,
+            "activityStart": 72.77500000782311,
+            "app lib dlopen": 0.8380000945180655,
+            "bindApplication": 62.61399993672967,
+            "first doFrame": 105.9410001616925,
+            "performCreate": 48.045000061392784,
+            "process (first slice to bindApplication)": 65.9400001168251
+          },
+          {
+            "OpenDexFilesFromOat (sum)": 5.645999917760491,
+            "TotalTime (am, traced)": 527.0,
+            "activityResume": 58.357000118121505,
+            "activityStart": 91.98800008744001,
+            "app lib dlopen": 1.146000111475587,
+            "bindApplication": 80.20299999043345,
+            "first doFrame": 115.86600006558001,
+            "performCreate": 52.29000002145767,
+            "process (first slice to bindApplication)": 74.08900000154972
+          },
+          {
+            "OpenDexFilesFromOat (sum)": 3.55999986641109,
+            "TotalTime (am, traced)": 478.0,
+            "activityResume": 44.778000097721815,
+            "activityStart": 78.87599989771843,
+            "app lib dlopen": 0.9979999158531427,
+            "bindApplication": 57.36600002273917,
+            "first doFrame": 118.26200014911592,
+            "performCreate": 51.020999904721975,
+            "process (first slice to bindApplication)": 66.78800005465746
+          },
+          {
+            "OpenDexFilesFromOat (sum)": 4.225000040605664,
+            "TotalTime (am, traced)": 574.0,
+            "activityResume": 68.12599999830127,
+            "activityStart": 108.80100005306304,
+            "app lib dlopen": 1.0500000789761543,
+            "bindApplication": 92.71400002762675,
+            "first doFrame": 122.78699991293252,
+            "performCreate": 72.1379998140037,
+            "process (first slice to bindApplication)": 70.4330001026392
+          },
+          {
+            "OpenDexFilesFromOat (sum)": 2.9169998597353697,
+            "TotalTime (am, traced)": 438.0,
+            "activityResume": 58.858999982476234,
+            "activityStart": 78.87699990533292,
+            "app lib dlopen": 0.7790001109242439,
+            "bindApplication": 46.81000020354986,
+            "first doFrame": 111.08399997465312,
+            "performCreate": 46.522000106051564,
+            "process (first slice to bindApplication)": 63.83299990557134
+          },
+          {
+            "OpenDexFilesFromOat (sum)": 5.122999893501401,
+            "TotalTime (am, traced)": 653.0,
+            "activityResume": 107.44399996474385,
+            "activityStart": 146.93600009195507,
+            "app lib dlopen": 2.0389999262988567,
+            "bindApplication": 66.84900005348027,
+            "first doFrame": 117.02600005082786,
+            "performCreate": 112.20799991860986,
+            "process (first slice to bindApplication)": 74.42399999126792
+          },
+          {
+            "OpenDexFilesFromOat (sum)": 3.9129999931901693,
+            "TotalTime (am, traced)": 501.0,
+            "activityResume": 69.72700008191168,
+            "activityStart": 87.33000000938773,
+            "app lib dlopen": 0.8199999574571848,
+            "bindApplication": 61.98300002142787,
+            "first doFrame": 103.71299996040761,
+            "performCreate": 61.76199996843934,
+            "process (first slice to bindApplication)": 69.5469998754561
+          },
+          {
+            "OpenDexFilesFromOat (sum)": 3.9450000040233135,
+            "TotalTime (am, traced)": 552.0,
+            "activityResume": 98.0080000590533,
+            "activityStart": 99.25800003111362,
+            "app lib dlopen": 0.9469999931752682,
+            "bindApplication": 57.871000142768025,
+            "first doFrame": 111.90099990926683,
+            "performCreate": 68.2610000949353,
+            "process (first slice to bindApplication)": 67.37599987536669
+          },
+          {
+            "OpenDexFilesFromOat (sum)": 3.2049999572336674,
+            "TotalTime (am, traced)": 516.0,
+            "activityResume": 71.56600011512637,
+            "activityStart": 101.69299994595349,
+            "app lib dlopen": 2.361999824643135,
+            "bindApplication": 51.481999922543764,
+            "first doFrame": 143.10300000943244,
+            "performCreate": 60.92100008390844,
+            "process (first slice to bindApplication)": 54.863000055775046
+          },
+          {
+            "OpenDexFilesFromOat (sum)": 3.020999953150749,
+            "TotalTime (am, traced)": 452.0,
+            "activityResume": 69.24399989657104,
+            "activityStart": 77.10399990901351,
+            "app lib dlopen": 2.481000032275915,
+            "bindApplication": 43.858999852091074,
+            "first doFrame": 106.96400003507733,
+            "performCreate": 48.980999970808625,
+            "process (first slice to bindApplication)": 60.886000050231814
+          }
+        ]
+      }
+    },
+    "Pixel 8 Pro (Android 17)": {
+      "clang_ndk_java": {
+        "launches": 12,
+        "median_ms": {
+          "OpenDexFilesFromOat (sum)": 1.024,
+          "TotalTime (am, traced)": 179.0,
+          "activityResume": 19.432,
+          "activityStart": 20.255,
+          "app lib dlopen": 0.421,
+          "bindApplication": 15.652,
+          "first doFrame": 23.003,
+          "performCreate": 13.196,
+          "process (first slice to bindApplication)": 41.088
+        },
+        "per_launch_ms": [
+          {
+            "OpenDexFilesFromOat (sum)": 0.9079999872483313,
+            "TotalTime (am, traced)": 183.0,
+            "activityResume": 17.29499999783002,
+            "activityStart": 20.518999983323738,
+            "app lib dlopen": 0.4720000142697245,
+            "bindApplication": 15.864000015426427,
+            "first doFrame": 30.65000000060536,
+            "performCreate": 13.821000000461936,
+            "process (first slice to bindApplication)": 39.0999999945052
+          },
+          {
+            "OpenDexFilesFromOat (sum)": 1.3420000032056123,
+            "TotalTime (am, traced)": 186.0,
+            "activityResume": 21.905000001424924,
+            "activityStart": 19.991000008303672,
+            "app lib dlopen": 0.3699999942909926,
+            "bindApplication": 18.433000019285828,
+            "first doFrame": 25.200000003678724,
+            "performCreate": 12.570999999297783,
+            "process (first slice to bindApplication)": 51.81199999060482
+          },
+          {
+            "OpenDexFilesFromOat (sum)": 0.8570000063627958,
+            "TotalTime (am, traced)": 175.0,
+            "activityResume": 16.48300001397729,
+            "activityStart": 17.69899998907931,
+            "app lib dlopen": 0.3110000106971711,
+            "bindApplication": 11.418999987654388,
+            "first doFrame": 18.838999996660277,
+            "performCreate": 11.30299997748807,
+            "process (first slice to bindApplication)": 44.277000008150935
+          },
+          {
+            "OpenDexFilesFromOat (sum)": 0.9770000178832561,
+            "TotalTime (am, traced)": 151.0,
+            "activityResume": 14.793999987887219,
+            "activityStart": 16.740999999456108,
+            "app lib dlopen": 0.29600001289509237,
+            "bindApplication": 11.06600000639446,
+            "first doFrame": 21.163999976124614,
+            "performCreate": 10.935999976936728,
+            "process (first slice to bindApplication)": 32.9630000051111
+          },
+          {
+            "OpenDexFilesFromOat (sum)": 3.412999998545274,
+            "TotalTime (am, traced)": 220.0,
+            "activityResume": 25.08200000738725,
+            "activityStart": 30.15799997956492,
+            "app lib dlopen": 2.2059999755583704,
+            "bindApplication": 22.04199999687262,
+            "first doFrame": 27.443999977549538,
+            "performCreate": 18.33200000692159,
+            "process (first slice to bindApplication)": 59.33200000436045
+          },
+          {
+            "OpenDexFilesFromOat (sum)": 1.5270000149030238,
+            "TotalTime (am, traced)": 267.0,
+            "activityResume": 23.91000001807697,
+            "activityStart": 27.788000006694347,
+            "app lib dlopen": 0.47199998516589403,
+            "bindApplication": 21.41499999561347,
+            "first doFrame": 28.40399998240173,
+            "performCreate": 19.778999994741753,
+            "process (first slice to bindApplication)": 52.23000000114553
+          },
+          {
+            "OpenDexFilesFromOat (sum)": 1.3890000118408352,
+            "TotalTime (am, traced)": 198.0,
+            "activityResume": 24.972999992314726,
+            "activityStart": 24.67600000090897,
+            "app lib dlopen": 0.6040000007487833,
+            "bindApplication": 19.552000012481585,
+            "first doFrame": 27.498999988893047,
+            "performCreate": 16.231999994488433,
+            "process (first slice to bindApplication)": 43.07600000174716
+          },
+          {
+            "OpenDexFilesFromOat (sum)": 0.8780000207480043,
+            "TotalTime (am, traced)": 135.0,
+            "activityResume": 13.661000004503876,
+            "activityStart": 16.123999987030402,
+            "app lib dlopen": 0.5520000122487545,
+            "bindApplication": 11.729999998351559,
+            "first doFrame": 17.075999989174306,
+            "performCreate": 9.809999988647178,
+            "process (first slice to bindApplication)": 37.780000013299286
+          },
+          {
+            "OpenDexFilesFromOat (sum)": 1.070999976946041,
+            "TotalTime (am, traced)": 173.0,
+            "activityResume": 21.56900000409223,
+            "activityStart": 22.09799998672679,
+            "app lib dlopen": 0.4989999870304018,
+            "bindApplication": 20.026000012876466,
+            "first doFrame": 24.843000021064654,
+            "performCreate": 15.833000012207776,
+            "process (first slice to bindApplication)": 37.87699999520555
+          },
+          {
+            "OpenDexFilesFromOat (sum)": 0.8410000009462237,
+            "TotalTime (am, traced)": 158.0,
+            "activityResume": 16.875999979674816,
+            "activityStart": 18.036000023130327,
+            "app lib dlopen": 0.3370000049471855,
+            "bindApplication": 13.069999986328185,
+            "first doFrame": 19.564999995054677,
+            "performCreate": 12.057000014465302,
+            "process (first slice to bindApplication)": 38.78000000258908
+          },
+          {
+            "OpenDexFilesFromOat (sum)": 2.406999992672354,
+            "TotalTime (am, traced)": 145.0,
+            "activityResume": 16.908999998122454,
+            "activityStart": 16.304000018863007,
+            "app lib dlopen": 0.3069999802391976,
+            "bindApplication": 14.144999993732199,
+            "first doFrame": 18.03999999538064,
+            "performCreate": 10.367999988375232,
+            "process (first slice to bindApplication)": 36.43000000738539
+          },
+          {
+            "OpenDexFilesFromOat (sum)": 0.8669999951962382,
+            "TotalTime (am, traced)": 192.0,
+            "activityResume": 23.650000017369166,
+            "activityStart": 21.891999989748,
+            "app lib dlopen": 0.3209999995306134,
+            "bindApplication": 15.439999988302588,
+            "first doFrame": 19.716000009793788,
+            "performCreate": 15.02200000686571,
+            "process (first slice to bindApplication)": 45.13600000063889
+          }
+        ]
+      },
+      "java_d8": {
+        "launches": 12,
+        "median_ms": {
+          "OpenDexFilesFromOat (sum)": 0.907,
+          "TotalTime (am, traced)": 165.5,
+          "activityResume": 16.977,
+          "activityStart": 20.649,
+          "app lib dlopen": 0.0,
+          "bindApplication": 13.355,
+          "first doFrame": 22.157,
+          "performCreate": 13.493,
+          "process (first slice to bindApplication)": 37.685
+        },
+        "per_launch_ms": [
+          {
+            "OpenDexFilesFromOat (sum)": 0.8600000001024455,
+            "TotalTime (am, traced)": 177.0,
+            "activityResume": 16.635000007227063,
+            "activityStart": 21.72199997585267,
+            "app lib dlopen": 0,
+            "bindApplication": 14.475000003585592,
+            "first doFrame": 22.939999995287508,
+            "performCreate": 14.691000018501654,
+            "process (first slice to bindApplication)": 32.16000000247732
+          },
+          {
+            "OpenDexFilesFromOat (sum)": 0.9300000092480332,
+            "TotalTime (am, traced)": 157.0,
+            "activityResume": 18.195000011473894,
+            "activityStart": 19.576999999117106,
+            "app lib dlopen": 0,
+            "bindApplication": 12.092000019038096,
+            "first doFrame": 20.991999976104125,
+            "performCreate": 12.294999993173406,
+            "process (first slice to bindApplication)": 45.85699999006465
+          },
+          {
+            "OpenDexFilesFromOat (sum)": 0.8740000193938613,
+            "TotalTime (am, traced)": 147.0,
+            "activityResume": 13.138000009348616,
+            "activityStart": 16.227000014623627,
+            "app lib dlopen": 0,
+            "bindApplication": 11.070000007748604,
+            "first doFrame": 19.44899998488836,
+            "performCreate": 11.915999988559633,
+            "process (first slice to bindApplication)": 30.850999988615513
+          },
+          {
+            "OpenDexFilesFromOat (sum)": 0.8489999745506793,
+            "TotalTime (am, traced)": 164.0,
+            "activityResume": 13.153000007150695,
+            "activityStart": 17.183000018121675,
+            "app lib dlopen": 0,
+            "bindApplication": 11.593999981414527,
+            "first doFrame": 22.678000008454546,
+            "performCreate": 12.0009999955073,
+            "process (first slice to bindApplication)": 30.034000024897978
+          },
+          {
+            "OpenDexFilesFromOat (sum)": 1.9730000058189034,
+            "TotalTime (am, traced)": 212.0,
+            "activityResume": 24.575999996159226,
+            "activityStart": 26.123999996343628,
+            "app lib dlopen": 0,
+            "bindApplication": 26.140999980270863,
+            "first doFrame": 31.54199998243712,
+            "performCreate": 18.81199999479577,
+            "process (first slice to bindApplication)": 51.648000022396445
+          },
+          {
+            "OpenDexFilesFromOat (sum)": 2.9240000003483146,
+            "TotalTime (am, traced)": 211.0,
+            "activityResume": 24.074999993899837,
+            "activityStart": 23.693000024650246,
+            "app lib dlopen": 0,
+            "bindApplication": 19.35400001821108,
+            "first doFrame": 27.941999986069277,
+            "performCreate": 16.36000000871718,
+            "process (first slice to bindApplication)": 53.91699998290278
+          },
+          {
+            "OpenDexFilesFromOat (sum)": 1.3209999888204038,
+            "TotalTime (am, traced)": 206.0,
+            "activityResume": 23.958000005222857,
+            "activityStart": 22.81500000390224,
+            "app lib dlopen": 0,
+            "bindApplication": 20.37499999278225,
+            "first doFrame": 27.208999992581084,
+            "performCreate": 15.792999998666346,
+            "process (first slice to bindApplication)": 53.811000019777566
+          },
+          {
+            "OpenDexFilesFromOat (sum)": 3.376000007847324,
+            "TotalTime (am, traced)": 205.0,
+            "activityResume": 24.216000019805506,
+            "activityStart": 24.85699998214841,
+            "app lib dlopen": 0,
+            "bindApplication": 19.417000003159046,
+            "first doFrame": 29.264999990118667,
+            "performCreate": 17.705999984173104,
+            "process (first slice to bindApplication)": 51.380000018980354
+          },
+          {
+            "OpenDexFilesFromOat (sum)": 0.9259999787900597,
+            "TotalTime (am, traced)": 158.0,
+            "activityResume": 15.794999984791502,
+            "activityStart": 16.560999996727332,
+            "app lib dlopen": 0,
+            "bindApplication": 13.121000025421381,
+            "first doFrame": 21.635000011883676,
+            "performCreate": 10.86900001973845,
+            "process (first slice to bindApplication)": 36.087999993469566
+          },
+          {
+            "OpenDexFilesFromOat (sum)": 0.8450000023003668,
+            "TotalTime (am, traced)": 167.0,
+            "activityResume": 16.394999984186143,
+            "activityStart": 15.778000000864267,
+            "app lib dlopen": 0,
+            "bindApplication": 13.588999980129302,
+            "first doFrame": 18.70399998733774,
+            "performCreate": 11.40399998985231,
+            "process (first slice to bindApplication)": 37.19600001932122
+          },
+          {
+            "OpenDexFilesFromOat (sum)": 0.8579999848734587,
+            "TotalTime (am, traced)": 150.0,
+            "activityResume": 17.31999998446554,
+            "activityStart": 28.7769999995362,
+            "app lib dlopen": 0,
+            "bindApplication": 11.509999982081354,
+            "first doFrame": 21.131000015884638,
+            "performCreate": 15.895000018645078,
+            "process (first slice to bindApplication)": 34.386000013910234
+          },
+          {
+            "OpenDexFilesFromOat (sum)": 0.8879999804776162,
+            "TotalTime (am, traced)": 153.0,
+            "activityResume": 13.92999998643063,
+            "activityStart": 15.753000014228746,
+            "app lib dlopen": 0,
+            "bindApplication": 12.386999995214865,
+            "first doFrame": 20.768000016687438,
+            "performCreate": 11.498000007122755,
+            "process (first slice to bindApplication)": 38.173000008100644
+          }
+        ]
+      },
+      "kotlin_r8": {
+        "launches": 12,
+        "median_ms": {
+          "OpenDexFilesFromOat (sum)": 0.911,
+          "TotalTime (am, traced)": 159.0,
+          "activityResume": 17.336,
+          "activityStart": 17.471,
+          "app lib dlopen": 0.0,
+          "bindApplication": 15.218,
+          "first doFrame": 21.58,
+          "performCreate": 12.171,
+          "process (first slice to bindApplication)": 38.11
+        },
+        "per_launch_ms": [
+          {
+            "OpenDexFilesFromOat (sum)": 0.9429999918211251,
+            "TotalTime (am, traced)": 158.0,
+            "activityResume": 17.718999995850027,
+            "activityStart": 16.998999984934926,
+            "app lib dlopen": 0,
+            "bindApplication": 17.88600001600571,
+            "first doFrame": 22.84200000576675,
+            "performCreate": 11.792999983299524,
+            "process (first slice to bindApplication)": 34.4489999988582
+          },
+          {
+            "OpenDexFilesFromOat (sum)": 0.9310000168625265,
+            "TotalTime (am, traced)": 177.0,
+            "activityResume": 21.400999976322055,
+            "activityStart": 23.788999998942018,
+            "app lib dlopen": 0,
+            "bindApplication": 13.852000003680587,
+            "first doFrame": 24.29399997345172,
+            "performCreate": 16.73599999048747,
+            "process (first slice to bindApplication)": 37.826000014320016
+          },
+          {
+            "OpenDexFilesFromOat (sum)": 0.818000000435859,
+            "TotalTime (am, traced)": 155.0,
+            "activityResume": 14.725999993970618,
+            "activityStart": 16.675999999279156,
+            "app lib dlopen": 0,
+            "bindApplication": 12.180999998236075,
+            "first doFrame": 18.757999991066754,
+            "performCreate": 12.393000011797994,
+            "process (first slice to bindApplication)": 35.96199999446981
+          },
+          {
+            "OpenDexFilesFromOat (sum)": 0.8849999867379665,
+            "TotalTime (am, traced)": 148.0,
+            "activityResume": 12.847999983932823,
+            "activityStart": 16.55400000163354,
+            "app lib dlopen": 0,
+            "bindApplication": 13.563000014983118,
+            "first doFrame": 21.00300000165589,
+            "performCreate": 11.297999997623265,
+            "process (first slice to bindApplication)": 30.660999997053295
+          },
+          {
+            "OpenDexFilesFromOat (sum)": 1.9050000119023025,
+            "TotalTime (am, traced)": 237.0,
+            "activityResume": 49.9089999939315,
+            "activityStart": 36.40399998403154,
+            "app lib dlopen": 0,
+            "bindApplication": 23.782000003848225,
+            "first doFrame": 30.558999977074564,
+            "performCreate": 29.031000012764707,
+            "process (first slice to bindApplication)": 50.23999998229556
+          },
+          {
+            "OpenDexFilesFromOat (sum)": 1.3479999906849116,
+            "TotalTime (am, traced)": 226.0,
+            "activityResume": 22.297000017715618,
+            "activityStart": 28.539000020828098,
+            "app lib dlopen": 0,
+            "bindApplication": 22.80499998596497,
+            "first doFrame": 29.44700000807643,
+            "performCreate": 19.702999998116866,
+            "process (first slice to bindApplication)": 48.510000022361055
+          },
+          {
+            "OpenDexFilesFromOat (sum)": 3.1550000130664557,
+            "TotalTime (am, traced)": 208.0,
+            "activityResume": 22.729000018443912,
+            "activityStart": 27.289999998174608,
+            "app lib dlopen": 0,
+            "bindApplication": 22.590999986277893,
+            "first doFrame": 27.345000009518117,
+            "performCreate": 18.423000001348555,
+            "process (first slice to bindApplication)": 45.23499999777414
+          },
+          {
+            "OpenDexFilesFromOat (sum)": 0.8899999957066029,
+            "TotalTime (am, traced)": 160.0,
+            "activityResume": 16.164000000571832,
+            "activityStart": 18.232000002171844,
+            "app lib dlopen": 0,
+            "bindApplication": 16.827000014018267,
+            "first doFrame": 19.31000000331551,
+            "performCreate": 12.455999996745959,
+            "process (first slice to bindApplication)": 39.99200000544079
+          },
+          {
+            "OpenDexFilesFromOat (sum)": 0.822000001790002,
+            "TotalTime (am, traced)": 144.0,
+            "activityResume": 16.182999999728054,
+            "activityStart": 16.524000006029382,
+            "app lib dlopen": 0,
+            "bindApplication": 11.857000004965812,
+            "first doFrame": 18.520999990869313,
+            "performCreate": 9.55200000316836,
+            "process (first slice to bindApplication)": 38.434999994933605
+          },
+          {
+            "OpenDexFilesFromOat (sum)": 3.364999982295558,
+            "TotalTime (am, traced)": 152.0,
+            "activityResume": 16.953000013018027,
+            "activityStart": 16.075000021373853,
+            "app lib dlopen": 0,
+            "bindApplication": 16.058000008342788,
+            "first doFrame": 21.154000016395003,
+            "performCreate": 11.60100000561215,
+            "process (first slice to bindApplication)": 36.88500000862405
+          },
+          {
+            "OpenDexFilesFromOat (sum)": 0.8910000033210963,
+            "TotalTime (am, traced)": 155.0,
+            "activityResume": 14.303999982075766,
+            "activityStart": 17.943000013474375,
+            "app lib dlopen": 0,
+            "bindApplication": 14.377999992575496,
+            "first doFrame": 20.860000018728897,
+            "performCreate": 11.949000007007271,
+            "process (first slice to bindApplication)": 33.33599999314174
+          },
+          {
+            "OpenDexFilesFromOat (sum)": 0.8919999818317592,
+            "TotalTime (am, traced)": 165.0,
+            "activityResume": 17.986999999266118,
+            "activityStart": 16.371999983675778,
+            "app lib dlopen": 0,
+            "bindApplication": 12.24699997692369,
+            "first doFrame": 22.00599998468533,
+            "performCreate": 11.479000007966533,
+            "process (first slice to bindApplication)": 38.39299999526702
+          }
+        ]
+      },
+      "xax": {
+        "launches": 12,
+        "median_ms": {
+          "OpenDexFilesFromOat (sum)": 0.939,
+          "TotalTime (am, traced)": 169.5,
+          "activityResume": 17.199,
+          "activityStart": 19.046,
+          "app lib dlopen": 0.424,
+          "bindApplication": 17.634,
+          "first doFrame": 22.166,
+          "performCreate": 12.47,
+          "process (first slice to bindApplication)": 39.349
+        },
+        "per_launch_ms": [
+          {
+            "OpenDexFilesFromOat (sum)": 0.9579999896232039,
+            "TotalTime (am, traced)": 188.0,
+            "activityResume": 19.012999982805923,
+            "activityStart": 18.834999995306134,
+            "app lib dlopen": 0.42100000428035855,
+            "bindApplication": 17.332999996142462,
+            "first doFrame": 21.95600001141429,
+            "performCreate": 13.666999991983175,
+            "process (first slice to bindApplication)": 41.93999999552034
+          },
+          {
+            "OpenDexFilesFromOat (sum)": 43.27200000989251,
+            "TotalTime (am, traced)": 236.0,
+            "activityResume": 23.77100000740029,
+            "activityStart": 21.607000002404675,
+            "app lib dlopen": 0.5459999956656247,
+            "bindApplication": 60.018999996827915,
+            "first doFrame": 26.335000002291054,
+            "performCreate": 13.464000017847866,
+            "process (first slice to bindApplication)": 44.11000001709908
+          },
+          {
+            "OpenDexFilesFromOat (sum)": 0.881000014487654,
+            "TotalTime (am, traced)": 162.0,
+            "activityResume": 15.367999993031844,
+            "activityStart": 16.6120000067167,
+            "app lib dlopen": 0.31400000443682075,
+            "bindApplication": 17.93500001076609,
+            "first doFrame": 21.03999999235384,
+            "performCreate": 11.220999993383884,
+            "process (first slice to bindApplication)": 33.84600000572391
+          },
+          {
+            "OpenDexFilesFromOat (sum)": 0.8559999987483025,
+            "TotalTime (am, traced)": 146.0,
+            "activityResume": 14.189999987138435,
+            "activityStart": 16.204999992623925,
+            "app lib dlopen": 0.36600002204068005,
+            "bindApplication": 13.359999982640147,
+            "first doFrame": 20.52299998467788,
+            "performCreate": 11.42900000559166,
+            "process (first slice to bindApplication)": 39.35900001670234
+          },
+          {
+            "OpenDexFilesFromOat (sum)": 1.4139999984763563,
+            "TotalTime (am, traced)": 197.0,
+            "activityResume": 20.755000005010515,
+            "activityStart": 26.030999986687675,
+            "app lib dlopen": 0.4519999783951789,
+            "bindApplication": 23.225000011734664,
+            "first doFrame": 27.213000023039058,
+            "performCreate": 17.629000009037554,
+            "process (first slice to bindApplication)": 45.83799999090843
+          },
+          {
+            "OpenDexFilesFromOat (sum)": 1.3909999979659915,
+            "TotalTime (am, traced)": 231.0,
+            "activityResume": 25.517999980365857,
+            "activityStart": 33.4900000016205,
+            "app lib dlopen": 0.8169999928213656,
+            "bindApplication": 24.210000003222376,
+            "first doFrame": 26.546999986749142,
+            "performCreate": 24.17399999103509,
+            "process (first slice to bindApplication)": 52.00399999739602
+          },
+          {
+            "OpenDexFilesFromOat (sum)": 1.4150000060908496,
+            "TotalTime (am, traced)": 214.0,
+            "activityResume": 24.317999981576577,
+            "activityStart": 25.46299999812618,
+            "app lib dlopen": 0.42600001324899495,
+            "bindApplication": 18.352999992202967,
+            "first doFrame": 27.650000003632158,
+            "performCreate": 16.38200000161305,
+            "process (first slice to bindApplication)": 47.51899998518638
+          },
+          {
+            "OpenDexFilesFromOat (sum)": 0.8740000193938613,
+            "TotalTime (am, traced)": 157.0,
+            "activityResume": 14.360999979544431,
+            "activityStart": 19.25799998571165,
+            "app lib dlopen": 1.3780000153928995,
+            "bindApplication": 13.458000001264736,
+            "first doFrame": 19.841000001179054,
+            "performCreate": 11.475999985123053,
+            "process (first slice to bindApplication)": 33.71099999640137
+          },
+          {
+            "OpenDexFilesFromOat (sum)": 2.6270000089425594,
+            "TotalTime (am, traced)": 175.0,
+            "activityResume": 17.567999981110916,
+            "activityStart": 16.773000010289252,
+            "app lib dlopen": 0.32500000088475645,
+            "bindApplication": 15.860999992582947,
+            "first doFrame": 19.918000005418435,
+            "performCreate": 11.254000011831522,
+            "process (first slice to bindApplication)": 39.33800000231713
+          },
+          {
+            "OpenDexFilesFromOat (sum)": 0.8999999845400453,
+            "TotalTime (am, traced)": 160.0,
+            "activityResume": 16.83099998626858,
+            "activityStart": 14.49899998260662,
+            "app lib dlopen": 0.295000005280599,
+            "bindApplication": 15.54500000202097,
+            "first doFrame": 24.348000006284565,
+            "performCreate": 8.441999991191551,
+            "process (first slice to bindApplication)": 30.108000006293878
+          },
+          {
+            "OpenDexFilesFromOat (sum)": 0.9209999989252537,
+            "TotalTime (am, traced)": 164.0,
+            "activityResume": 15.51100000506267,
+            "activityStart": 18.291000014869496,
+            "app lib dlopen": 0.32300001475960016,
+            "bindApplication": 12.6929999969434,
+            "first doFrame": 20.655999978771433,
+            "performCreate": 11.287000001175329,
+            "process (first slice to bindApplication)": 32.87699999054894
+          },
+          {
+            "OpenDexFilesFromOat (sum)": 0.8680000028107315,
+            "TotalTime (am, traced)": 164.0,
+            "activityResume": 15.312000003177673,
+            "activityStart": 19.418999989284202,
+            "app lib dlopen": 0.5579999997280538,
+            "bindApplication": 18.226000014692545,
+            "first doFrame": 22.37500000046566,
+            "performCreate": 13.47799997893162,
+            "process (first slice to bindApplication)": 33.026999997673556
+          }
+        ]
+      }
+    }
+  },
+  "format": "xax-android-counter-startup-phases-v1",
+  "label": "MEASURED",
+  "method": "atrace (am wm view dalvik res bionic ss, app tracing for every package) around each `am start -W`; 3 warm-up starts after a speed compile, then 12 rounds cold-starting every arm once in rotating order. Phases are slices of the app process (the one that runs bindApplication), summed per launch; TotalTime is under tracing, so slower than untraced. Raw traces (about 4 MB each) are not committed; the parser was a scratch script."
+}
