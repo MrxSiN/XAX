@@ -52,6 +52,7 @@ requirement or a target, except the rules marked normative in §15.0 and §15.0a
     - [15.0 Multi-language runtime rule (normative, ADR-147, ADR-207)](#150-multi-language-runtime-rule-normative-adr-147-adr-207)
     - [15.0a JVM runtime rule (normative, ADR-157)](#150a-jvm-runtime-rule-normative-adr-157)
     - [15.0b Android application leadership workload: `jsonmin` in an APK (declared 2026-11-27, ADR-430, ADR-431)](#150b-android-application-leadership-workload-jsonmin-in-an-apk-declared-2026-11-27-adr-430-adr-431)
+    - [15.0c Android parity workload: counter cold start with a null arm (declared 2026-11-27, ADR-430)](#150c-android-parity-workload-counter-cold-start-with-a-null-arm-declared-2026-11-27-adr-430)
     - [15.1 U1.3 Linux `filestat` (MEASURED, 2026-10-02)](#151-u13-linux-filestat-measured-2026-10-02)
     - [15.2 OI-37 `chains`: arena + index versus pointer links (MEASURED, 2026-10-02)](#152-oi-37-chains-arena--index-versus-pointer-links-measured-2026-10-02)
     - [15.3 After ADR-091 (OI-38 step 1): `filestat` and `chains` re-measured (MEASURED, 2026-10-02)](#153-after-adr-091-oi-38-step-1-filestat-and-chains-re-measured-measured-2026-10-02)
@@ -599,6 +600,22 @@ Declared before any cited run (ADR-430 (5)); the role is derived again from the 
   (its host functions are open, read, write, close and exit), and both are apparatus shared by every arm, not arms.
 
 Exploratory runs (2026-11-27, not cited): `compiler/benchmarks/android_jsonmin_app_exploratory_pixel1_2026-11-27.json`.
+
+#### 15.0c Android parity workload: counter cold start with a null arm (declared 2026-11-27, ADR-430)
+
+Declared before the cited runs (ADR-430 (5)).
+
+- **Workload and arms.** §15.34's counter cold start (median `TotalTime` of `am start -W`): `xax`, the one cited XAX
+  arm (`compiler/benchmarks/android_counter_activity.apk`, unchanged), `clang_ndk_java`, `java_d8` and `kotlin_r8`
+  (§15.34's twins), and `null` (`compiler/benchmarks/android_counter_null_twin/`: the same Activity showing a fixed
+  `0`, no state file, no listener; `javac` and `d8` like the Java twin, installed as `xax.counter.null`). Declared
+  role: parity.
+- **Protocol.** `bench_android_counter_twin.measure_device` unchanged, one block per process (a failed
+  `dumpsys meminfo` loses only that block, which is rerun); six blocks of 15 rounds, a fresh install of every arm
+  per block with the install order rotated by one per block; 90 samples per arm per device.
+- **Devices.** Pixel 8 Pro and Pixel (sailfish), one evidence file and verdict each; phone state as §15.0b.
+- **Evidence fields read by the ADR-430 verdict** (this workload and §15.0b): `results.<arm>.wall_seconds_samples`
+  (seconds), an arm named `null`, `role` (`leadership` or `parity`), `r4_device` (the device's name), and `host`.
 
 #### 15.1 U1.3 Linux `filestat` (MEASURED, 2026-10-02)
 
