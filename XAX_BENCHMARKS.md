@@ -1218,3 +1218,17 @@ The placement runs add two arms:
 
 The second arm runs 3 fewer instructions per lookup, yet it is slower: 1.216x and 1.173x. Every arm ran faster
 than on 2026-11-12, by about 20%; the background load was lower.
+
+#### 15.42 Windows `chains`, the v4 program form (MEASURED, 2026-11-27)
+
+`windows_chains_v4_evidence_20261127.json`, same host and harness as 15.41. `xax-v4`
+(`windows_chains/chains_v4_request.batch`, OI-58 2026-11-27) reads keys and links from views wide enough that
+every 32-bit link is in bounds. The views are reserved and committed on touch (ADR-400), so the walk carries no
+mask and no check and keeps the ADR-211 prefetch.
+
+| Run | Fastest non-XAX arm | `xax-v4` | committed batch | p (v4 faster) |
+| --- | --- | ---: | ---: | ---: |
+| 1 | `gcc-O3-soa` 103.5 ms | 1.128 | 1.138 | 0.995 |
+| 2 (`v4_run2.txt`) | `gcc-O3-soa` 97.1 ms | 1.182 | 1.216 | 1.0 |
+
+R4 stays withheld. All arms ran 5 to 15% slower than in 15.41.

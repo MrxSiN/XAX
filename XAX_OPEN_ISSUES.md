@@ -3328,6 +3328,42 @@ workaround, which has fewer instructions and no frame slot, is slower (1.17x, 1.
 build by under 7%. Item 4 now has XAX-built evidence: the XAX code is placement-sensitive in a way gcc's is not. An
 instruction-count fix alone (sub-batches A and B) may not show up until the cause of that sensitivity is known.
 
+#### Where the walk loses, by diagnostic (2026-11-27)
+
+This is a C program hosting XAX's exact lookup instructions (inline assembly) beside gcc's. The two alternate in
+one process, so each pair gives a ratio and machine drift cancels out. The sweep covers 8 placements and 48 pairs.
+It is a diagnostic, not evidence. The values are median ratios, XAX's copy over gcc's lookup phase:
+
+| XAX variant | Ratio |
+| --- | ---: |
+| as built | 1.25 |
+| no mask on the link | 1.07 |
+| bounds compare instead of the mask (the Linux form) | 1.20 |
+| gcc's walk order (close on the key compare, found exit inline) | 1.13 |
+| gcc's order, no mask | 0.99 to 1.01 |
+| gcc's order, no mask, no prefetch | 1.10 |
+| gcc's order, no mask, prefetch 2, 3, 4 nodes deep into the next lookup | 0.96, 0.90, 0.87 to 0.89 |
+| the same at depth 4, key load masked (off the chain) | 0.915 |
+
+Any extra operation on a hop costs about 15 to 20%, a predicted branch included. The 2026-11-26 estimate of 2%
+for the mask was wrong. Placement moves the as-built copy by about 10%.
+
+Program-side form (`compiler/benchmarks/windows_chains/chains_v4_request.batch`). Links hold byte offsets
+(slot × 4). Keys are read at `cur × 2` from a 2^34-byte view and links at `cur × 1` from a 2^33-byte view, both
+reserved with `PAGE_NOACCESS` and committed on touch by the hosting layer's handler (ADR-400). Every 32-bit link
+is then in bounds: no mask and no check, and the ADR-211 prefetch still matches. Measured (XAX_BENCHMARKS.md
+15.42): 1.13x and 1.18x the fastest arm, against 1.14x and 1.22x for the committed batch. That is not a lead.
+
+What the lead needs (compiler, release 0045):
+- (a) the ADR-211 prefetch followed 3 or 4 links into the next lookup's chain. The added loads are in bounds by
+  the view widths above.
+- (b) a walk layout that closes on the key compare and keeps the found exit inline (the rotation rule).
+- (c) `mul.wrap(x, 1)` emitted as `shl r, 0` on the link chain (a missing peephole).
+
+Found on the way (native, 0043 seed). A batch that supplies a heap-view type equal to one the store already holds
+(instances 2^25, 2^30, 2^31 in `bbc_request.xax`), or one of instance 2^35, makes `resolve` and `verify` decline
+with no record, or reject with `XAX.CANON.TRUNCATED`. The reference verifier accepts the same store.
+
 #### Measurements with workarounds
 
 With items 1 and 2 worked around in the program, the XAX arm went from about 134-155 ms to about 121-136 ms (two runs).

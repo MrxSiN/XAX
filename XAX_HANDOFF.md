@@ -3435,3 +3435,27 @@ Continues "Windows R4 (`windows-x86_64-pe`): gap and causes, no timing" above; p
 - **Next:** find what makes XAX code placement-sensitive before writing sub-batches A and B, for example by
   hand-padding copies of `chains.exe` as a diagnostic (never as evidence). After 0044 merges, the sub-batches go
   to `release/0045`.
+
+## Windows R4: where the walk loses, and the v4 form — 2026-11-27
+
+Continues "Windows R4: baseline re-measured, placement test" above. Release 0044 is still open, so no compiler
+change was made.
+
+- **Diagnosis** (C-hosted copies of XAX's lookup, paired with gcc's; a diagnostic, not evidence): OI-58 "Where the
+  walk loses". The link mask costs about 15%; a predicted bounds compare costs as much. A prefetch 3 or 4 links
+  deep with gcc's loop order gives 0.87 to 0.92 of gcc's lookup.
+- **MEASURED** (XAX_BENCHMARKS.md 15.42): the v4 batch (wide views committed on touch, no mask, prefetch kept)
+  is 1.13x and 1.18x the fastest arm. R4 stays withheld, and the matrix is unchanged.
+- **Native fault found:** heap-view types equal to existing store objects, or of instance 2^35, make `resolve`
+  decline silently (OI-58).
+- **Next, on `release/0045` after 0044 merges** (one sub-batch each, C1 and C2):
+  - (a) the ADR-211 prefetch, deepened 3 to 4 links;
+  - (b) a walk layout that closes on the key compare;
+  - (c) `mul.wrap(x, 1)` without `shl r, 0`.
+  
+  Then rebuild `chains_v4_request.batch` and measure. Authoring (a) needs the native prefetch function's view
+  from the driver (`xaxc edit <driver> F<n>`) and a scratch application to test. The owner has not yet said
+  whether a scratch-copy application is allowed before 0044 merges.
+- **Continuation prompt:** "Windows R4: read the last XAX_HANDOFF.md section and OI-58 2026-11-27. Once release
+  0044 is on main, cut or join release/0045 and do sub-batches (a) to (c) for the x86-64 general backend. Then
+  rebuild chains_v4_request.batch and measure with xbench until the validator accepts R4."
