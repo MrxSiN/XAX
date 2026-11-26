@@ -54,3 +54,6 @@ own data layout (1.19x to 1.26x of the faster `chains_soa.c` build). That is not
 
 `samples_run1.txt` to `samples_run4.txt` are the earlier four-arm runs of the first batch
 (`../windows_chains_evidence.json`): parity with `rustc -O3` (0.96x to 1.03x).
+
+`samples_run9.txt`, `samples_run10.txt` and `placement_run1.txt`, `placement_run2.txt` are the 2026-11-26 runs with
+the 0043 seed (XAX_BENCHMARKS.md 15.41).

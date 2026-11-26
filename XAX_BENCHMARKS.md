@@ -1195,3 +1195,26 @@ curl --proto '=https' -sSf https://sh.rustup.rs | sh -s -- -y   # rustc twins fo
 `..` must be on `PYTHONPATH` because some tests import `compiler.benchmarks.*`. What still cannot run on such a host: the Windows-host PE execution test (Wine covers the rest). The Android device oracles in [`compiler/integration/android/`](compiler/integration/android/README.md) need `adb` and a device or an x86_64 Android emulator image with ARM translation. Emulator runs are correctness evidence only.
 
 With an arm64 Android device on `adb` (ADR-253, ADR-254): `XAX_AARCH64_ADB=1` runs the Linux AArch64 runtime tests on the device's kernel (static images only; needs `ANDROID_NDK_HOME` for the exit-status helper); `python -m benchmarks.android_jsonmin --write` needs the NDK and `rustc` with the `aarch64-linux-android` target (`RUSTC` names it); `python -m benchmarks.bench_android_counter_twin --device` also needs `KOTLIN_HOME` (a kotlinc distribution: `lib/kotlin-compiler.jar`, `lib/kotlin-stdlib.jar`) and a JDK with `javac` and `keytool`. On Windows, Git Bash rewrites `/data/...` arguments unless `MSYS_NO_PATHCONV=1` is set.
+
+#### 15.41 Windows `chains` re-measured with the 0043 seed, and a placement test (MEASURED, 2026-11-26)
+
+This is Windows 11 on a Ryzen 9 5900HS on AC power with the Balanced plan, using `xbench.exe` (34 rounds, the arms
+interleaved, 3 warm-up rounds, 31 samples per arm). The XAX binary is the one measured on 2026-11-12: the 0043 seed
+builds it byte for byte.
+
+| File | Fastest non-XAX arm | XAX ratio | p (XAX faster) |
+| --- | --- | ---: | ---: |
+| `windows_chains_soa_evidence_20261126.json` (run 9) | `gcc-O2-soa` 92.0 ms | 1.167 | 1.0 |
+| run 10 (`samples_run10.txt`) | `gcc-O3-soa` 91.0 ms | 1.149 | 1.0 |
+| `windows_chains_placement_evidence_20261126.json` (run 1) | `gcc-O2-soa` 93.1 ms | 1.122 | 1.0 |
+| placement run 2 (`placement_run2.txt`) | `gcc-O2-soa` 90.2 ms | 1.140 | 1.0 |
+
+XAX leads `rustc -O3` (0.93x to 0.94x). R4 stays withheld.
+
+The placement runs add two arms:
+
+- `gcc -falign-loops=32/64`, which moves the C twin by 2 to 7%;
+- the XAX batch without the `bit.or` workaround (OI-58 item 1, no longer needed since ledger 0033).
+
+The second arm runs 3 fewer instructions per lookup, yet it is slower: 1.216x and 1.173x. Every arm ran faster
+than on 2026-11-12, by about 20%; the background load was lower.

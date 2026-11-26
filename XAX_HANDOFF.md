@@ -3422,3 +3422,16 @@ or `release/0044`. The PC and WSL were busy, so no timing ran.
 - **Continuation prompt:** "Windows R4: read the last section of XAX_HANDOFF.md and OI-58's 2026-11-26 findings.
   When the owner says the PC is free, run plan step 1. Once release 0044 is on `main`, cut or join `release/0045`
   and do steps 3 to 5 as separate sub-batches, never editing another session's sub-batches."
+
+## Windows R4: baseline re-measured, placement test — 2026-11-26
+
+Continues "Windows R4 (`windows-x86_64-pe`): gap and causes, no timing" above; plan step 1 is done.
+
+- **MEASURED** (XAX_BENCHMARKS.md 15.41): the XAX arm is 1.12x to 1.17x the C twin over four runs (p = 1.0). It
+  leads rustc (0.93x to 0.94x). R4 stays withheld, and the matrix is unchanged.
+- **Placement:** without the `bit.or` workaround the XAX arm is slower (1.17x, 1.22x), although it has fewer
+  instructions. gcc's loop alignment moves its arm by under 7%. Plan step 2 is therefore not taken: the batch keeps
+  the workaround until a layout fix makes the shorter form faster.
+- **Next:** find what makes XAX code placement-sensitive before writing sub-batches A and B, for example by
+  hand-padding copies of `chains.exe` as a diagnostic (never as evidence). After 0044 merges, the sub-batches go
+  to `release/0045`.
