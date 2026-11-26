@@ -3387,3 +3387,38 @@ questions, so the calls below were made without asking.
 - **Not run:** rotation, V2 record, BBC rebuild and native check, status blocks, the full suite, Part C.
 - **Next:** rotate release 0044 (the chain as for 0043, with `XAXC` for the pre-rotation replay), merge it into
   `main`, pin BBC; then find the arena dependency (amendment 5's lead) and land (c) and (d); then Part C.
+
+## Windows R4 (`windows-x86_64-pe`): gap and causes, no timing — 2026-11-26
+
+`main` = `1cc383a`. Release 0044 is open in another session; nothing here touches the driver, the request, `LEDGER`
+or `release/0044`. The PC and WSL were busy, so no timing ran.
+
+- **Gap** (validator `recompute_runtime_verdict`, EXECUTED): one workload, `windows_chains_soa_evidence.json`.
+  The XAX arm's median is 0.13166 s against 0.10625 s for `gcc-O2-soa`, a ratio of 1.239. The one-sided p that XAX
+  is faster is 0.999. It leads `rustc-O3` (0.866x).
+- **Causes**: `XAX_OPEN_ISSUES.md` OI-58, "Static comparison with the 0043 seed". The 0043 seed builds the measured
+  binary unchanged. The `steps` workaround is no longer needed. The per-lookup exit code explains only a small part
+  of the gap.
+- **Discrepancy, reported and not changed:** the `linux-x86_64` row's `competitive` entry cites
+  `oi37_chains_evidence.json`, which recomputes as a lead. The newer `oi37_chains_evidence_0033.json` recomputes as
+  1.0205x `rustc-O3`, which is not a lead.
+- **Plan, in order** (each step changes one thing and needs a measurement before the next):
+  1. When the PC is free: rerun the baseline with `xbench.exe` (six arms, 34 rounds). Also run 3 placements of each
+     arm (XAX: the committed batch and the `bit.or`-free batch; C: `-falign-loops=16/32/64`). This tests OI-58
+     item 4.
+  2. Program side: drop the `bit.or` workaround (delete `N71`, pass `P67`, renumber `N72..` down by one). It needs
+     no compiler change.
+  3. Sub-batch A (release 0045, x86-64 general backend and driver, C1 + C2): bind a loop-header parameter to the
+     pinned register when every incoming edge passes a value pinned there (or that value plus a constant). This
+     removes the `r8`/`r14` copies and the exit stub. It is not drafted. The native twin of the positional binding
+     in `lower_block` (reference `xax_x86_64_regalloc.py`, `allocatable[index]`) must be located with `xaxc edit`
+     views first.
+  4. Sub-batch B: let a stub's or a rotated copy's jump to a rotatable header run the header's test (rotation),
+     with the nesting bounded to one level. It is not drafted.
+  5. Sub-batch C: match a masked or bounds-checked head in the prefetch pass (OI-58 item 2), so the workload can
+     use the Linux bounds-check form. Only if step 1 shows that the mask matters.
+- **Not done:** native batch text for A to C. It is authored only after `xaxc edit` views of the driver functions,
+  and it is applied only after 0044 merges. No sub-batch was applied anywhere.
+- **Continuation prompt:** "Windows R4: read the last section of XAX_HANDOFF.md and OI-58's 2026-11-26 findings.
+  When the owner says the PC is free, run plan step 1. Once release 0044 is on `main`, cut or join `release/0045`
+  and do steps 3 to 5 as separate sub-batches, never editing another session's sub-batches."

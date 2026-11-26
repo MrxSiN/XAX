@@ -3301,6 +3301,26 @@ Found while looking for the cause, all measured with `xbench.exe` on that host:
 
 A related divergence, recorded so it is not lost: for PE frames over 4 KiB the reference still emits per-page stack probes (`xax_x86_64.py`, `_reserve_stack`), while the native backend relies on the committed 1 MiB reserve (ADR-396). A DLL export runs on its host's thread stack, which that header does not cover.
 
+#### Static comparison with the 0043 seed (2026-11-26)
+
+No timing; Windows 11, `llvm-objdump` of `chains.exe` beside `gcc -O2 chains_soa.c`.
+
+- The 0043 Windows seed (`f95af786…`) builds the committed batch to the measured binary byte for byte (`90e48100…`),
+  so `windows_chains_soa_evidence.json` still describes current code generation (EXECUTED).
+- Item 1 is fixed by ledger 0033: without the `bit.or` workaround the walk has no frame slot and each lookup runs
+  3 fewer instructions (EXECUTED: built, output `1048576 9437420`, disassembled; not measured).
+- Per lookup the XAX code runs about 20 more instructions than gcc and 2 more taken branches:
+  - `found` is a positional block parameter of the outer header (`r8`) and is pinned to `r14` in the body, so
+    every lookup copies it in and out. The found exit (every lookup succeeds) leaves through an out-of-line stub:
+    the mispredicted `je` goes to another cache line, then `jmp` to the header.
+  - The outer header is not rotated (the test is at the top and the latch is a `jmp`): stubs and rotated copies
+    never duplicate a header.
+  - The mask puts an `and` on the dependent link chain; the Linux form uses a predicted compare instead.
+  - The prefetch computes the next key a second time.
+- These account for perhaps 10 to 20 cycles of the about 100 cycles per lookup that the 24% gap means. The hops are
+  L3-latency bound in both arms, and the XAX arm has the prefetch that brought a C twin to 93-103 ms. The disassembly
+  does not explain the gap; item 4 (placement) stays the leading hypothesis. Settling it needs measurement.
+
 #### Measurements with workarounds
 
 With items 1 and 2 worked around in the program, the XAX arm went from about 134-155 ms to about 121-136 ms (two runs).
