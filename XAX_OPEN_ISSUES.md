@@ -3321,6 +3321,13 @@ No timing; Windows 11, `llvm-objdump` of `chains.exe` beside `gcc -O2 chains_soa
   L3-latency bound in both arms, and the XAX arm has the prefetch that brought a C twin to 93-103 ms. The disassembly
   does not explain the gap; item 4 (placement) stays the leading hypothesis. Settling it needs measurement.
 
+#### Re-measured with the 0043 seed (2026-11-26)
+
+XAX_BENCHMARKS.md 15.41. The XAX arm is 1.12x to 1.17x the C twin over four runs. The batch without the `bit.or`
+workaround, which has fewer instructions and no frame slot, is slower (1.17x, 1.22x). Loop alignment moves gcc's
+build by under 7%. Item 4 now has XAX-built evidence: the XAX code is placement-sensitive in a way gcc's is not. An
+instruction-count fix alone (sub-batches A and B) may not show up until the cause of that sensitivity is known.
+
 #### Measurements with workarounds
 
 With items 1 and 2 worked around in the program, the XAX arm went from about 134-155 ms to about 121-136 ms (two runs).
