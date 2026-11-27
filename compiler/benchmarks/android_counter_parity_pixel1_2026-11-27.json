@@ -15,7 +15,19 @@
   "cited": false,
   "decision": "ADR-430 (parity workload, XAX_BENCHMARKS.md 15.0c)",
   "format": "xax-android-counter-parity-evidence-v1",
-  "host": true,
+  "host": {
+    "kernel": "Linux localhost 4.4.302+ #1 SMP PREEMPT Mon Sep 21 22:11:05 EDT 2026 aarch64 Toybox",
+    "ro.boot.qemu": "",
+    "ro.build.fingerprint": "google/sailfish/sailfish:10/QP1A.191005.007.A3/5972272:user/release-keys",
+    "ro.build.version.release": "15",
+    "ro.build.version.security_patch": "2026-10-01",
+    "ro.kernel.qemu": "",
+    "ro.product.cpu.abilist": "arm64-v8a,armeabi-v7a,armeabi",
+    "ro.product.model": "Pixel",
+    "ro.soc.manufacturer": "Qualcomm",
+    "ro.soc.model": "MSM8996"
+  },
+  "host_note": "The harness's block results carry only hardware=true. These device properties are the same phone's (serial FA6CG0300231), as recorded by the DEX-only counter run earlier on 2026-11-27 (android_counter_dex_pixel1_2026-11-27.json); the phone was not reachable to read them again.",
   "label": "MEASURED",
   "note": "Not yet read by the validator: ADR-430 (2)-(4) are not implemented, so ADR-207 still decides every verdict and no level changes. The xax arm is compiler/benchmarks/android_counter_activity.apk (same SHA-256).",
   "phone_state_per_block": [
