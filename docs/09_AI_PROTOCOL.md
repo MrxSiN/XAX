@@ -892,14 +892,16 @@ ret N2
 T0 bits32
 end
 replace F<n> @name       every object of the store that refers to F<n> refers to @name's function instead
-replace <CID> @name      the same for a TARGET object (kind 6) the store holds, @name an `object 6` definition
+replace <CID> @name      the same for a TARGET (kind 6) or type (kind 4) object the store holds, @name its definition
 ```
 
 The second `replace` form (issue #135, ledger 0042, ADR-416) swaps a carrier natively, for example a libxposed module's
 v1 carrier for a v3 one: `define @c` / `object 6 0x<new body>` / `end`, then `replace <old carrier's CID> @c`; the
 engine rebuilds the module and its ancestors as for a function. A 64-character operand is always read as a CID. One that
 is not a TARGET the store holds rejects `WORKSPACE-BATCH-REPLACE`. The new object's kind is not checked: `verify`
-decides whether the edited store holds.
+decides whether the edited store holds. Since ledger 0044 (ADR-432) a type object is replaced the same way, so one
+batch can change a type in every signature and graph that names it: `define @t` / `object 4 0x<body>` / `end`, then
+`replace <old type's CID> @t`.
 
 A definition whose body is the single line `object <kind> 0x<body>` (ledger 0012) supplies a canonical object with no
 references, of that kind and body, instead of a function; `@name` then names it as an entity, for example a foreign
@@ -919,7 +921,10 @@ ledger 0041 the CIDs of `entity=`, type and `R` lines may be too, except that `e
 so a CID that starts with `f` is written in lowercase there.
 Every constant, any `bits` type the store lacks, the graph and the function become objects the record supplies; a
 reference to another of them is its supplied index, which the engine resolves, and a graph's or function's references
-are put in canonical order by the engine. A signature change redefines the callers in the same batch. Functions inside a
+are put in canonical order by the engine. A supplied object that names a store object the same batch rebuilds (a
+defined function calling a function whose type a `replace <CID>` changes) names its new version (ledger 0044,
+ADR-432); a rebuilt object nothing reaches any more is left out. A batch holds at most 4,096 mutations (one per
+replaced reference). A signature change redefines the callers in the same batch. Functions inside a
 recursion group are not rebuilt yet (`WORKSPACE-RECURSION-REBUILD`). Any function's view given back this way makes the
 same store.
 

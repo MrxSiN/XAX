@@ -117,3 +117,21 @@ Its inputs are portable: they name driver functions by CID, not by store handle,
 
 **First run** on the production driver after ledger 0016: BBC's driver root `b032947f…`, 72.4 MB; `verify` accepts
 it.
+
+## Release 0044: two transactions that name the production entry (2026-11-27)
+
+Thirty of release 0044's 32 driver transactions follow with `rebuild.sh`. The other two redefine the production entry,
+which BBC holds only as its five Windows entry variants (the functions that reserve the workspace view), so each got
+BBC's own native batches, applied by the 0044 candidate's `xaxc edit` and accepted by `xaxc verify`:
+
+- `0044-edit-engine-limits-4` changes two constants of main (82,575,360 to 132,907,008). In BBC that is one batch per
+  variant with two `const` mutations, at the same nodes as in main (`N27252`, `N27280` in each variant's view).
+- `0044-workspace-8gib` gives main the 8 GiB workspace and replaces the 2 GiB view type by CID. BBC's form of it does
+  the same to all five variants: their workspace offsets and clamps as in the production main, the two 8 GiB
+  reservations, and their `VirtualFree` declaration for the workspace view supplied again with the 8 GiB type. As one
+  batch it is 30 MB (`DRIVER-FILE-CAPACITY`, 16 MiB), and the type replace alone already passes the engine's preimage
+  limit on BBC's 72 MB store (`DRIVER-EDIT-CAPACITY`, 2^26). It is split into six batches:
+  1. four variants become stubs that return their parameters (each with its own constant, so their CIDs differ);
+  2. the type replace and the fifth variant's 8 GiB form, as the production batch does for main;
+  3. each other variant's 8 GiB form in place of its stub, its callees named by the CIDs the second batch gave them
+     (read from the fifth variant's new view, call by call).
