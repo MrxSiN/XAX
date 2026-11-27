@@ -92,6 +92,7 @@ Dated sections (historical records; a later section supersedes an earlier one):
 - [Release 0043 on `main`; release 0044 needs an owner decision — 2026-11-26](#release-0043-on-main-release-0044-needs-an-owner-decision--2026-11-26)
 - [Release 0044 open: 8 GiB workspace, offsets and clamps in; arena move waits — 2026-11-26](#release-0044-open-8-gib-workspace-offsets-and-clamps-in-arena-move-waits--2026-11-26)
 - [Release 0044 on `main`; Android items; the arena move narrowed — 2026-11-27](#release-0044-on-main-android-items-the-arena-move-narrowed--2026-11-27)
+- [Release 0045 open: x86-64 arena above 2 GiB (hanoi -O0 builds), Android leaf inlining; rotation running — 2026-11-28](#release-0045-open-x86-64-arena-above-2-gib-hanoi--o0-builds-android-leaf-inlining-rotation-running--2026-11-28)
 
 ## Invariants that must not drift
 
@@ -3533,3 +3534,46 @@ the calls below were made without asking.
      (d) with C1 = C2, a working C2, the corpus differential and hanoi -O0.
   2. ADR-431 (3) inlining sub-batch and the Windows R4 sub-batches on `release/0045`; #213, #216.
   3. Part C.
+
+## Release 0045 open: x86-64 arena above 2 GiB (hanoi -O0 builds), Android leaf inlining; rotation running — 2026-11-28
+
+`main` = `d0c5184` (release 0044 merged in #218; #219 handoff; #220). `release/0045` = `cff6dfd`, cut from `main`
+`b632940`, with main merged in (#222). Supersedes the "Next" of "Release 0044 on `main`; Android items; the arena move
+narrowed" above. The owner asked for an unattended night with no questions; every call below was made without asking.
+
+- **Release 0044 landed:** main merged into `release/0044` (#217: main's ADR-430/431 keep their numbers, the
+  edit-engine ADR is ADR-432, also in ADR-423 amendment 5 and docs/09), release PR #218, BBC pinned to 0044
+  ([BBC#14](https://github.com/MrxSiN/BBC/pull/14)), handoff #219.
+- **#216 closed** (#220): not an engine change. `request.batch` alone has always made the 80,195-byte store (the one
+  committed in `d382e00`); the committed store is that plus `driver.batch` (since `fdafb1f`). The test now applies both.
+- **ADR-423 amendment 6** (#221, ledger `0045-x86-64-arena-above-2gib`): only F467 (the x86-64 entry) moves its arena,
+  to [2^28, 2^30 − 2^27) words, with a value capacity of 2^20; the other 11 initialisers stay. EXECUTED: C1 = C2,
+  corpus 197 of 197 the same; hanoi -O0 for Windows x86-64 builds with BBC's driver (318 s) and matches the expected
+  output (Windows 11). Moving all 12 made six APK/libxposed builds decline; why, and what breaks above 2^30 − 2^27, is
+  still not found (recorded as open in the amendment; F228's 2^28 clamp is dead code, F19/F43's clamp fixed globals).
+- **ADR-431 (3)** (#223, ledger `0045-aarch64-android-leaf-inlining`): F778's `G_A64ANDROID` gate (globals slot 189,
+  word 29,360,317; `GLOBALS` is 28 << 20) removed with one `operand` mutation; the reference inlines for every ABI.
+  C1 = C2, corpus unchanged, reference counter library byte-identical. Not observable natively yet (the APK path takes
+  only the v3 target; a v4/v5 native image is #213).
+- **#213:** the reference raises `ValueError` (no lowering identity for the Android image format), so a native
+  Android shared image is a design decision: a new lowering identity or a defined rejection. Findings in the issue;
+  not started.
+- **Part C:** not started. ADR-427 requires its baseline first; the frozen corpus (#188) still lacks its held-out
+  fixture stores and answer keys, and the measured runs are at least 30 fresh agent sessions of up to 4 hours each,
+  which need the owner's go-ahead for that scale.
+- **Rotation 0045 running** (started 05:36, Terminal tab "release 0045 chain"): WSL `/root/work/chain45.sh` runs
+  `rel45.sh` (check, replay with the 0045 candidate `/root/work/a6/c1`, rotate build/confirm, SNAPSHOTS, evidence,
+  validate, status blocks, test_rotate_tool) then `rel45b.sh` (BBC's two `rebuild.sh` transactions, `bbc.exe` into
+  `D:\GitHub\XAX-work-bbc45r`, pin run, V1 benches, full suite), committing on branch `rotation-0045` in
+  `/root/work/r45r`. Logs: `/root/work/logs/rel0045{,b}.log`, `.term`, `.suite`. About 10 h.
+- **Next:**
+  1. When `rel0045b.log` says POST-DONE: read the suite failures against 0044's known list, fix what the release
+     caused, fetch `rotation-0045` to Windows (`git fetch //wsl.localhost/Ubuntu-24.04-D/root/work/r45r
+     rotation-0045:rotation-0045`), open the rotation PR into `release/0045`, then the release PR into `main`.
+  2. BBC: native check (`xax_bbc_check.exe`) on both Pixels with the new `bbc.exe`, hanoi -O0 for Windows again, then
+     pin BBC to 0045.
+  3. #213 and ADR-431 (1)/(2) need the owner; Part C needs the owner's go-ahead for the ADR-427 runs.
+- **Continuation prompt:** "Continue the XAX campaign: read the last XAX_HANDOFF.md section. Release 0045's rotation
+  chain ran in WSL (`/root/work/logs/rel0045b.log`). If it reached POST-DONE, check the suite, open the rotation PR
+  into release/0045 and the release PR into main, merge them once their gates pass, then BBC's native check on both
+  Pixels and the BBC pin. If it stopped, read the log, fix and rerun from the failed step."
