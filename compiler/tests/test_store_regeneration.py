@@ -110,7 +110,12 @@ def test_kept_helper_generators_make_the_frozen_functions(module):
 # 0012: ``define``'s ``object`` form reached ``ws_translate`` and ``ws_command`` through ``ws_tr_define``;
 # 0028: snapshot ancestry and body rebuilding changed ``edit_begin`` and ``edit_next``; 0039, OI-54 step 1: the 8M-word
 # body region changed ``edit_batch``, ``edit_place``, ``ws_explain`` and ``ws_view``, and the moved block section
-# changed the semantic index's ``graph_marshal``).
+# changed the semantic index's ``graph_marshal``; 0044, ADR-423 (a) and (b): every workspace offset 64-bit and every
+# clamp at 2^30 changed every function of the three generators, and ADR-432 added ``edit_reach``).
 NATIVELY_EVOLVED = {"xax_selfhost_edit": {"ws_translate", "ws_command", "edit_begin", "edit_next", "edit_batch", "edit_place",
-                                          "ws_explain", "ws_view"},
-                    "xax_selfhost_semantic": {"graph_marshal"}}
+                                          "ws_explain", "ws_view", "edit_reach"},
+                    "xax_selfhost_semantic": {"graph_marshal", "cfg_input", "index_objects", "object_marshal", "objects_marshal",
+                                              "parse_graph", "rc_decide", "trim", "type_index"},
+                    "xax_selfhost_ed25519": {"add", "copy", "cswap", "inv", "modl", "mul", "neq", "pack", "par", "point_add",
+                                             "point_pack", "pow2523", "scalarbase", "scalarmult", "sel", "sha512", "sub", "unpack",
+                                             "unpackneg", "verify"}}
