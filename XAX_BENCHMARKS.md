@@ -90,6 +90,7 @@ requirement or a target, except the rules marked normative in §15.0 and §15.0a
     - [15.40 Linux `filestat` after release 0033 (MEASURED, 2026-11-16)](#1540-linux-filestat-after-release-0033-measured-2026-11-16)
     - [15.43 Android counter cold start and AArch64 `jsonmin` on two phones; the DEX-only XAX counter (ADR-430 evidence; MEASURED, 2026-11-26/27)](#1543-android-counter-cold-start-and-aarch64-jsonmin-on-two-phones-the-dex-only-xax-counter-adr-430-evidence-measured-2026-11-2627)
     - [15.44 Android counter cold-start parity on the Pixel, with the null arm (ADR-430; MEASURED, 2026-11-27)](#1544-android-counter-cold-start-parity-on-the-pixel-with-the-null-arm-adr-430-measured-2026-11-27)
+    - [15.45 Android counter cold-start parity on the Pixel 8 Pro: parity fails (ADR-430; MEASURED, 2026-11-27)](#1545-android-counter-cold-start-parity-on-the-pixel-8-pro-parity-fails-adr-430-measured-2026-11-27)
 - [Part III — Host setup](#part-iii--host-setup)
   - [Host setup for the full test and benchmark suite](#host-setup-for-the-full-test-and-benchmark-suite)
 
@@ -1353,3 +1354,22 @@ Role, derived from the baselines and the null arm (ADR-430 (2)): the fastest bas
 null arm (its own time is −0.2% of its median; p = 0.15), so the role is parity, as declared. Parity verdict
 (ADR-430 (3)): no baseline is significantly faster than XAX (smallest p = 0.35); XAX is 1.0066x Kotlin. The validator
 does not read this file yet (ADR-430 is not implemented), so ADR-207 still decides and no level changes.
+
+#### 15.45 Android counter cold-start parity on the Pixel 8 Pro: parity fails (ADR-430; MEASURED, 2026-11-27)
+
+§15.0c's declared protocol on the Pixel 8 Pro (husky, Android 17): `android_counter_parity_pixel8pro_2026-11-27.json`,
+six blocks of 15 rounds, 90 starts per arm, phone on AC, thermal status 1 (light) before the first and the last block.
+Block 5 was rerun: in its first attempt the phone dozed and locked, and starts returned no `TotalTime`.
+
+| Arm | Median `TotalTime` (ms) | p that it is faster than XAX |
+|---|---:|---:|
+| XAX (`android_counter_activity.apk`) | 189.0 | — |
+| Java + NDK | 188.0 | 0.28 |
+| Java (d8) | 185.5 | 0.0086 |
+| Kotlin (R8) | 186.0 | 0.059 |
+| null | 186.0 | — |
+
+The derived role is parity (Java's own time over the null arm is −0.3% of its median). The parity verdict fails:
+Java (d8) is significantly faster than XAX (XAX 1.0189x). `compiler/bootstrap/verdict-tool` and the Python reference
+give the same verdict. Block 0 was about 30 ms faster for every arm than blocks 1 to 5. With the Pixel's pass (§15.44),
+the counter workload passes on one device and fails on the other (ADR-430 (6)).
