@@ -91,6 +91,7 @@ Dated sections (historical records; a later section supersedes an earlier one):
 - [Release 0043 open on `release/0043`: one driver sub-batch in — 2026-11-25](#release-0043-open-on-release0043-one-driver-sub-batch-in--2026-11-25)
 - [Release 0043 on `main`; release 0044 needs an owner decision — 2026-11-26](#release-0043-on-main-release-0044-needs-an-owner-decision--2026-11-26)
 - [Release 0044 open: 8 GiB workspace, offsets and clamps in; arena move waits — 2026-11-26](#release-0044-open-8-gib-workspace-offsets-and-clamps-in-arena-move-waits--2026-11-26)
+- [Release 0044 on `main`; Android items; the arena move narrowed — 2026-11-27](#release-0044-on-main-android-items-the-arena-move-narrowed--2026-11-27)
 
 ## Invariants that must not drift
 
@@ -3459,3 +3460,76 @@ change was made.
 - **Continuation prompt:** "Windows R4: read the last XAX_HANDOFF.md section and OI-58 2026-11-27. Once release
   0044 is on main, cut or join release/0045 and do sub-batches (a) to (c) for the x86-64 general backend. Then
   rebuild chains_v4_request.batch and measure with xbench until the validator accepts R4."
+
+## Release 0044 on `main`; Android items; the arena move narrowed — 2026-11-27
+
+`main` = `72bea86`, the merge of the release 0044 PR [#218](https://github.com/MrxSiN/XAX/pull/218). `rotate.sh state`: `validated 0044`. Seeds: Linux `161ed4be…`
+(34,020,447 bytes), Windows `0f58d119…` (34,075,136). Supersedes the "Next" of "Release 0044 open: 8 GiB workspace,
+offsets and clamps in; arena move waits" above. The owner asked for the work to run overnight without questions, so
+the calls below were made without asking.
+
+- **Release 0044** (32 driver transactions: edit-engine limits, supplied objects after rebuilds, the 8 GiB workspace,
+  64-bit workspace offsets and clamps at 2^30). Rotation #214, main merged into the release in #217, release PR #218. EXECUTED on WSL 2 unless noted:
+  - `evolve.sh check` and `replay` with `XAXC` = the 0044 candidate: 254 of 254 (2 h 36 min). Evidence run's replay
+    with the candidate seed: 254 of 254.
+  - `rotate.sh build`, `confirm` on both targets, SNAPSHOTS line, `validated 0044 evidence=5900aaa6…`; B0-B6 hold.
+  - BBC: 30 transactions through `rebuild.sh`. `limits-4` (two constants of main) and `workspace-8gib` name the
+    production entry, which BBC holds as five Windows variants: `limits-4` as `const` batches per variant;
+    `workspace-8gib` split in six batches (one batch is 30 MB, over the 16 MiB batch limit; the type replace alone
+    passes the 2^26 preimage limit on BBC's 72 MB store): stub four variants, type + the fifth, then each variant
+    with its callees mapped to their rebuilt CIDs and the two functions the stubs made unreachable supplied again.
+    Recorded in `transactions/production_driver/native/README.md`. Scratch tools: WSL `/root/work/r44-tools/`
+    (README.txt), `/root/work/bbc44*.sh`, `/root/work/bbc8split.sh`.
+  - `bbc.exe` `3e85c76b…` (38,410,752 bytes, 243 s). Pin check (capacity fixtures, six ThreadsHideAds programs) equals
+    0039-0043. hanoi on Windows 11: -O1 builds (23 s) and runs (exit 0, expected output); -O0 declines (exit 5).
+  - BBC's native check (`xax_bbc_check.exe`, Windows 11): Pixel 8 Pro 372 of 372, 488 runs, 0 mismatches, 5 of 5
+    (194 s); Pixel (sailfish) the same (345 s). BBC pinned to 0044 in [BBC#14](https://github.com/MrxSiN/BBC/pull/14)
+    (the WSL `check.py` run: NOT RUN, the native check replaces it).
+  - V1: python-free seed 432 s; full self-host 18,211 s, three generations `161ed4be…`. Full suite (3 h 54 min):
+    1,673 passed, 13 failed, 340 skipped, 337 failed subtests: the nine known, 336 x86_64_views fork subtests, three
+    kept-generator pins and one frozen-driver subtest (fixed in #214, 4 passed alone), and
+    `test_request_tool::test_the_store_is_its_batch` (#216, open).
+  - Merge of main (#217): `status.sh check` on an LF clone exit 0; rotation, status, evidence and full-self-host
+    status tests 18 passed, 2 skipped (Windows-only).
+  - ADR numbering: main's ADR-430/431 (R4 workload roles, Android leadership workload) kept their numbers; the
+    release's ADR-430 (the edit engine changes a type in one batch) is ADR-432 since #217, as is ADR-423's reference
+    to it. Commit messages and dated sections from before the merge that say "ADR-430" for the edit engine mean ADR-432.
+- **Android items** (the owner's list of 2026-11-27):
+  1. Pixel parity evidence committed (#210, host fixed in #211): parity derived and passed (XAX 1.0066x Kotlin).
+  2. Native ADR-430 validator (#212): `compiler/bootstrap/verdict-tool/`. Not yet called by the matrix check.
+  3. XAX `jsonmin` JNI library built natively: BLOCKED (#213). The production compiler declines (exit 2, no
+     record) every native-image request for an Android shared target, even a one-function JNI export. The same
+     AArch64 store builds natively for Linux to the cited image (`049cf5ee…`).
+  4. Driver inlining sub-batch (ADR-431 (3)): not started; it goes on `release/0045`.
+  5. Cited counter-parity runs: Pixel passes (#210); Pixel 8 Pro fails, Java (d8) faster at p = 0.0086, XAX 1.0189x
+     (#215; block 5 rerun after the phone locked). The jsonmin APK leadership run needs item 3. The Pixel 8 Pro's
+     screen-off timeout was set to 30 min during the run (old value not recorded).
+- **ADR-423 amendment 5, narrowed** (all EXECUTED on WSL 2 on scratch copies of the final 0044 driver, `const`
+  batches applied by the 0044 candidate; never committed). Census (`/root/work/a5/arena_census.txt`): 12 functions
+  initialise the arena (cursor word 268,435,404 ← 125,829,120, limit word 268,435,405 ← 209,715,200), F467 (the
+  x86-64 entry, amendment 5's "F86") among them; 4 more store the old end into word 264,241,155 and 3 add or
+  subtract it (F279, F617, F654): a second allocator that starts there, which stays. Results:
+  | arena [start, end) words, capacity | C1 = C2 | C2 runs |
+  |---|---|---|
+  | [2^28, 2^30), 2^20 (amendment 3 as written) | no | segfault |
+  | [2^28, 2^28 + 84M), 262,144 | yes | yes |
+  | [2^28, 2^30), 262,144 | no | segfault |
+  | [2^28, 2^29), 262,144 | yes | yes |
+  | [2^28, 2^30 − 2^20), 262,144 | no | illegal instruction |
+  | [2^28, 2^28 + 2^29 + 2^20), 262,144 | yes | yes |
+  | [2^28, 2^30 − 2^27), 262,144 | yes | yes |
+  | [2^28, 2^30 − 2^27), 2^20 | yes | yes |
+
+  So the place is fine and the capacity is fine; arena objects in the top 2^27 words of the view break C1. With the
+  arena at [2^28, 2^30 − 2^27) the corpus differential against the 0044 seed gives 192 of 198 (G) and 191 of 197 (H)
+  the same: the six APK and libxposed builds decline. Leads: those paths reach arena data through something still
+  bounded at 2^28 words (17 functions keep a clamp at 2^28 − 1 in arithmetic that (b) did not convert, for example
+  F228, which clamps an index there and truncates it to 32 bits: F19, F179, F216, F228, F264, F389, F391, F415, F43,
+  F477, F564, F584, F658, F672, F702, F774, F928); and something reads or writes up to 2^27 words past an object.
+- **Part C (ADR-424 to ADR-429)**: not started (it waited for release 0044 on `main`, as agreed).
+- **Open issues touched:** OI-54 (step 2) narrowed as above. New issue #213 (Android shared native-image builds).
+- **Next:**
+  1. Cut `release/0045` from `main`. Find the APK/libxposed 2^28 bound and the top-2^27 dependency, then land (c) and
+     (d) with C1 = C2, a working C2, the corpus differential and hanoi -O0.
+  2. ADR-431 (3) inlining sub-batch and the Windows R4 sub-batches on `release/0045`; #213, #216.
+  3. Part C.
