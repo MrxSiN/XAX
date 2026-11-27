@@ -899,7 +899,7 @@ The second `replace` form (issue #135, ledger 0042, ADR-416) swaps a carrier nat
 v1 carrier for a v3 one: `define @c` / `object 6 0x<new body>` / `end`, then `replace <old carrier's CID> @c`; the
 engine rebuilds the module and its ancestors as for a function. A 64-character operand is always read as a CID. One that
 is not a TARGET the store holds rejects `WORKSPACE-BATCH-REPLACE`. The new object's kind is not checked: `verify`
-decides whether the edited store holds. Since ledger 0044 (ADR-430) a type object is replaced the same way, so one
+decides whether the edited store holds. Since ledger 0044 (ADR-432) a type object is replaced the same way, so one
 batch can change a type in every signature and graph that names it: `define @t` / `object 4 0x<body>` / `end`, then
 `replace <old type's CID> @t`.
 
@@ -923,7 +923,7 @@ Every constant, any `bits` type the store lacks, the graph and the function beco
 reference to another of them is its supplied index, which the engine resolves, and a graph's or function's references
 are put in canonical order by the engine. A supplied object that names a store object the same batch rebuilds (a
 defined function calling a function whose type a `replace <CID>` changes) names its new version (ledger 0044,
-ADR-430); a rebuilt object nothing reaches any more is left out. A batch holds at most 4,096 mutations (one per
+ADR-432); a rebuilt object nothing reaches any more is left out. A batch holds at most 4,096 mutations (one per
 replaced reference). A signature change redefines the callers in the same batch. Functions inside a
 recursion group are not rebuilt yet (`WORKSPACE-RECURSION-REBUILD`). Any function's view given back this way makes the
 same store.
