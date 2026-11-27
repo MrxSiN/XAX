@@ -51,6 +51,8 @@ requirement or a target, except the rules marked normative in §15.0 and §15.0a
   - [15. Universal-replacement benchmarks](#15-universal-replacement-benchmarks)
     - [15.0 Multi-language runtime rule (normative, ADR-147, ADR-207)](#150-multi-language-runtime-rule-normative-adr-147-adr-207)
     - [15.0a JVM runtime rule (normative, ADR-157)](#150a-jvm-runtime-rule-normative-adr-157)
+    - [15.0b Android application leadership workload: `jsonmin` in an APK (declared 2026-11-27, ADR-430, ADR-431)](#150b-android-application-leadership-workload-jsonmin-in-an-apk-declared-2026-11-27-adr-430-adr-431)
+    - [15.0c Android parity workload: counter cold start with a null arm (declared 2026-11-27, ADR-430)](#150c-android-parity-workload-counter-cold-start-with-a-null-arm-declared-2026-11-27-adr-430)
     - [15.1 U1.3 Linux `filestat` (MEASURED, 2026-10-02)](#151-u13-linux-filestat-measured-2026-10-02)
     - [15.2 OI-37 `chains`: arena + index versus pointer links (MEASURED, 2026-10-02)](#152-oi-37-chains-arena--index-versus-pointer-links-measured-2026-10-02)
     - [15.3 After ADR-091 (OI-38 step 1): `filestat` and `chains` re-measured (MEASURED, 2026-10-02)](#153-after-adr-091-oi-38-step-1-filestat-and-chains-re-measured-measured-2026-10-02)
@@ -86,6 +88,9 @@ requirement or a target, except the rules marked normative in §15.0 and §15.0a
     - [15.38 BBC's Android ARM64 executables on a Pixel 8 Pro, before and after ledger 0025 (ADR-394; MEASURED, 2026-11-11)](#1538-bbcs-android-arm64-executables-on-a-pixel-8-pro-before-and-after-ledger-0025-adr-394-measured-2026-11-11)
     - [15.39 Linux `chains` after ledger 0033 (OI-58 slot rule; MEASURED, 2026-11-16)](#1539-linux-chains-after-ledger-0033-oi-58-slot-rule-measured-2026-11-16)
     - [15.40 Linux `filestat` after release 0033 (MEASURED, 2026-11-16)](#1540-linux-filestat-after-release-0033-measured-2026-11-16)
+    - [15.43 Android counter cold start and AArch64 `jsonmin` on two phones; the DEX-only XAX counter (ADR-430 evidence; MEASURED, 2026-11-26/27)](#1543-android-counter-cold-start-and-aarch64-jsonmin-on-two-phones-the-dex-only-xax-counter-adr-430-evidence-measured-2026-11-2627)
+    - [15.44 Android counter cold-start parity on the Pixel, with the null arm (ADR-430; MEASURED, 2026-11-27)](#1544-android-counter-cold-start-parity-on-the-pixel-with-the-null-arm-adr-430-measured-2026-11-27)
+    - [15.45 Android counter cold-start parity on the Pixel 8 Pro: parity fails (ADR-430; MEASURED, 2026-11-27)](#1545-android-counter-cold-start-parity-on-the-pixel-8-pro-parity-fails-adr-430-measured-2026-11-27)
 - [Part III — Host setup](#part-iii--host-setup)
   - [Host setup for the full test and benchmark suite](#host-setup-for-the-full-test-and-benchmark-suite)
 
@@ -546,6 +551,7 @@ For each CPU/native runtime benchmark used to judge performance:
 - benchmark XAX, an optimized C or C++ baseline, and at least one additional relevant language/toolchain outside C/C++ (Rust, Zig, Fortran, or another established implementation of the workload);
 - run all implementations with identical observable semantics, inputs, hardware, OS conditions, measurement harness, warmup policy, and repetition policy; the Linux harness (`compiler/benchmarks/linux_harness.py`) interleaves repetitions, each round running every arm once with the order rotating by one;
 - the reference is the fastest valid **non-XAX** implementation by median execution time; the XAX ratio is XAX's median divided by that competitor's median (XAX is never in the denominator). R4 needs a ratio ≤ 0.9999× (strictly below preferred), compared unrounded, and a one-sided Mann–Whitney test on the raw samples of XAX and that competitor with p < 0.05, so a margin inside measurement noise withholds R4. Above 0.9999× the target is unmet: profile, optimize, and rerun the full comparison; never weaken the workload or remove a faster valid competitor. The former 1.05×/1.10× bands (ADR-147) confer no level (ADR-207);
+- workload roles (ADR-430, accepted, not yet in the validator): each cited workload has a null arm (the shell without the workload's work) and a role derived from the baselines alone: *leadership* when the fastest competitor's own time over the null arm is at least 50% of its median and significant, else *parity*. Leadership takes the R4 verdict above; parity needs only that no competitor is significantly faster than XAX. A row's R4 needs one leadership workload and every cited workload passing. Workloads, arms, samples and the one cited XAX arm are declared here before the cited run; verdicts hold per device and samples are never pooled across devices;
 - record memory footprint and binary size for every arm and disclose tradeoffs; neither is claimed superior without evidence;
 - after performance-relevant compiler or backend changes, rerun the multi-language comparison instead of relying on earlier, published, or cross-machine results.
 
@@ -563,6 +569,55 @@ Each implementation may choose its own data representation for the same observab
 #### 15.0a JVM runtime rule (normative, ADR-157)
 
 A JVM performance comparison applies §15.0 with the platform's own compilers as the baselines: a Java twin built by `javac` and a Kotlin twin built by `kotlinc`, each written the way a programmer of that language would write it, and run the same way as the XAX artifact (`java -jar`, the same HotSpot, flags, input, interleaving, warmup, and repetitions). R4 needs XAX's median ≤ 0.9999× the faster of the `javac` and `kotlinc` medians with a significant advantage, as in §15.0 (ADR-207). Each arm deploys as its toolchain builds it, so the Kotlin JAR carries the Kotlin runtime (`-include-runtime`). Program class bytes, JAR bytes, and peak RSS are recorded for every arm, and a code-size or memory gap is stated in the row's blockers. Evidence JSON has a `results` map with `javac*` and `kotlinc*` arms; `xax_replacement.py` rejects a competitive JVM verdict without both.
+
+#### 15.0b Android application leadership workload: `jsonmin` in an APK (declared 2026-11-27, ADR-430, ADR-431)
+
+Declared before any cited run (ADR-430 (5)); the role is derived again from the cited samples.
+
+- **Workload.** `jsonmin` (`benchmarks/jsonmin.py`'s contract) over `benchmark_document(8 MiB, seed=125)`
+  (8,390,986 bytes), stored uncompressed as `assets/input.json` in every arm's APK. A run counts only when its output
+  is the reference (4,308,036 bytes, SHA-256 `7705cd8a…`). Declared role: leadership.
+- **Shell (measurement apparatus, the same for every arm).** One Activity, built by `javac` and `d8`, reads the asset
+  before the timer. For a managed arm it redirects `System.in` and `System.out` to memory; for a native arm it writes
+  the asset to a cache file and `dup2`s it onto fd 0 and an output file onto fd 1. It then reads `System.nanoTime`,
+  calls the arm's program body on the UI thread, and stops the timer in a shutdown hook that `System.exit` runs; the
+  hook logs the time and the output's digest.
+- **Arms.**
+  - `xax`, the one cited XAX arm: XAX's AArch64 code as the APK's JNI library (`Java_xax_bench_Native_run`, bionic
+    `read`, `write`, `mmap`, `munmap`), built by the production compiler of release 0045 or later (ADR-431 (3));
+  - `clang_ndk`: `jsonmin_c/jsonmin.c` with `-Dmain=jsonmin_main`, NDK `aarch64-linux-android28-clang -O2 -fPIC -shared`,
+    called through a two-line JNI wrapper;
+  - `java_d8`: the §15.0a Java twin in package `xax.bench`, `javac --release 11`, `d8 --release --min-api 28`;
+  - `kotlin_r8`: the §15.0a Kotlin twin in package `xax.bench`, `kotlinc`, then R8 `--release` over the program and
+    `kotlin-stdlib`;
+  - `null`: the shell whose body is `System.exit(0)`.
+- **Protocol.** Every arm installed side by side and compiled with `cmd package compile -f -m speed`, three warm-up
+  launches per arm. Six blocks, each a fresh install of every arm (install order rotating), of 50 rounds; each round
+  launches every arm once, the order rotating by one: force-stop, start, wait 2.5 s, take the first log line,
+  force-stop (Android relaunches an Activity whose process exited). 300 samples per arm per device.
+- **Devices.** Pixel 8 Pro (husky, Android 17) and Pixel (sailfish, LineageOS 15), each run its own evidence file and
+  verdict, never pooled. The phone is charging with the screen held on, idle apart from the run; governor, battery and
+  temperatures are recorded before and after each block.
+- **Host logic.** The on-device loop is POSIX `sh` and the shell is Java: an XAX host program cannot start processes
+  (its host functions are open, read, write, close and exit), and both are apparatus shared by every arm, not arms.
+
+Exploratory runs (2026-11-27, not cited): `compiler/benchmarks/android_jsonmin_app_exploratory_pixel1_2026-11-27.json`.
+
+#### 15.0c Android parity workload: counter cold start with a null arm (declared 2026-11-27, ADR-430)
+
+Declared before the cited runs (ADR-430 (5)).
+
+- **Workload and arms.** §15.34's counter cold start (median `TotalTime` of `am start -W`): `xax`, the one cited XAX
+  arm (`compiler/benchmarks/android_counter_activity.apk`, unchanged), `clang_ndk_java`, `java_d8` and `kotlin_r8`
+  (§15.34's twins), and `null` (`compiler/benchmarks/android_counter_null_twin/`: the same Activity showing a fixed
+  `0`, no state file, no listener; `javac` and `d8` like the Java twin, installed as `xax.counter.null`). Declared
+  role: parity.
+- **Protocol.** `bench_android_counter_twin.measure_device` unchanged, one block per process (a failed
+  `dumpsys meminfo` loses only that block, which is rerun); six blocks of 15 rounds, a fresh install of every arm
+  per block with the install order rotated by one per block; 90 samples per arm per device.
+- **Devices.** Pixel 8 Pro and Pixel (sailfish), one evidence file and verdict each; phone state as §15.0b.
+- **Evidence fields read by the ADR-430 verdict** (this workload and §15.0b): `results.<arm>.wall_seconds_samples`
+  (seconds), an arm named `null`, `role` (`leadership` or `parity`), `r4_device` (the device's name), and `host`.
 
 #### 15.1 U1.3 Linux `filestat` (MEASURED, 2026-10-02)
 
@@ -1195,3 +1250,126 @@ curl --proto '=https' -sSf https://sh.rustup.rs | sh -s -- -y   # rustc twins fo
 `..` must be on `PYTHONPATH` because some tests import `compiler.benchmarks.*`. What still cannot run on such a host: the Windows-host PE execution test (Wine covers the rest). The Android device oracles in [`compiler/integration/android/`](compiler/integration/android/README.md) need `adb` and a device or an x86_64 Android emulator image with ARM translation. Emulator runs are correctness evidence only.
 
 With an arm64 Android device on `adb` (ADR-253, ADR-254): `XAX_AARCH64_ADB=1` runs the Linux AArch64 runtime tests on the device's kernel (static images only; needs `ANDROID_NDK_HOME` for the exit-status helper); `python -m benchmarks.android_jsonmin --write` needs the NDK and `rustc` with the `aarch64-linux-android` target (`RUSTC` names it); `python -m benchmarks.bench_android_counter_twin --device` also needs `KOTLIN_HOME` (a kotlinc distribution: `lib/kotlin-compiler.jar`, `lib/kotlin-stdlib.jar`) and a JDK with `javac` and `keytool`. On Windows, Git Bash rewrites `/data/...` arguments unless `MSYS_NO_PATHCONV=1` is set.
+
+#### 15.41 Windows `chains` re-measured with the 0043 seed, and a placement test (MEASURED, 2026-11-26)
+
+This is Windows 11 on a Ryzen 9 5900HS on AC power with the Balanced plan, using `xbench.exe` (34 rounds, the arms
+interleaved, 3 warm-up rounds, 31 samples per arm). The XAX binary is the one measured on 2026-11-12: the 0043 seed
+builds it byte for byte.
+
+| File | Fastest non-XAX arm | XAX ratio | p (XAX faster) |
+| --- | --- | ---: | ---: |
+| `windows_chains_soa_evidence_20261126.json` (run 9) | `gcc-O2-soa` 92.0 ms | 1.167 | 1.0 |
+| run 10 (`samples_run10.txt`) | `gcc-O3-soa` 91.0 ms | 1.149 | 1.0 |
+| `windows_chains_placement_evidence_20261126.json` (run 1) | `gcc-O2-soa` 93.1 ms | 1.122 | 1.0 |
+| placement run 2 (`placement_run2.txt`) | `gcc-O2-soa` 90.2 ms | 1.140 | 1.0 |
+
+XAX leads `rustc -O3` (0.93x to 0.94x). R4 stays withheld.
+
+The placement runs add two arms:
+
+- `gcc -falign-loops=32/64`, which moves the C twin by 2 to 7%;
+- the XAX batch without the `bit.or` workaround (OI-58 item 1, no longer needed since ledger 0033).
+
+The second arm runs 3 fewer instructions per lookup, yet it is slower: 1.216x and 1.173x. Every arm ran faster
+than on 2026-11-12, by about 20%; the background load was lower.
+
+#### 15.42 Windows `chains`, the v4 program form (MEASURED, 2026-11-27)
+
+`windows_chains_v4_evidence_20261127.json`, same host and harness as 15.41. `xax-v4`
+(`windows_chains/chains_v4_request.batch`, OI-58 2026-11-27) reads keys and links from views wide enough that
+every 32-bit link is in bounds. The views are reserved and committed on touch (ADR-400), so the walk carries no
+mask and no check and keeps the ADR-211 prefetch.
+
+| Run | Fastest non-XAX arm | `xax-v4` | committed batch | p (v4 faster) |
+| --- | --- | ---: | ---: | ---: |
+| 1 | `gcc-O3-soa` 103.5 ms | 1.128 | 1.138 | 0.995 |
+| 2 (`v4_run2.txt`) | `gcc-O3-soa` 97.1 ms | 1.182 | 1.216 | 1.0 |
+
+R4 stays withheld. All arms ran 5 to 15% slower than in 15.41.
+
+#### 15.43 Android counter cold start and AArch64 `jsonmin` on two phones; the DEX-only XAX counter (ADR-430 evidence; MEASURED, 2026-11-26/27)
+
+Does not supersede §15.34 or §15.35: their cited files are unchanged, and none of these files is cited by the matrix
+(ADR-430 needs a declared null arm and a leadership workload). The devices are kept apart and never pooled: Pixel 8 Pro
+(Android 17, `sched_pixel`) and the original Pixel (sailfish, LineageOS 15 / API 35, `interactive`; a second user runs
+in the background). Both were charging with the screen held on (`svc power stayon true`); each file records the
+phone's battery, governor and temperatures before and after. Harnesses ran unchanged from Windows 11 over wireless
+`adb`, one `ANDROID_SERIAL` per phone, both phones at once; toolchains as §15.34 (`javac 25.0.3`, Kotlin 2.3.10, NDK
+`28.2.13676358`, build-tools 36.0.0), `rustc 1.99.1`. The twin APKs and the XAX APK are byte-identical to §15.34's.
+
+Counter cold start, 6 fresh-install blocks × 15 rounds, 90 starts per arm (median `TotalTime`, ms):
+
+| Device | XAX | Java + NDK | Java (d8) | Kotlin (R8) | XAX vs fastest | Smallest p, baseline faster |
+|---|---:|---:|---:|---:|---:|---:|
+| Pixel 8 Pro (`android_counter_twin_pixel8pro_2026-11-26.json`) | 198.0 | 198.0 | 194.0 | 196.0 | 1.0206 | 0.10 (Java) |
+| Pixel (`android_counter_twin_pixel1_2026-11-26.json`) | 316.5 | 314.5 | 313.5 | 312.0 | 1.0144 | 0.15 (Kotlin) |
+
+A tie on both phones, as in §15.34. AArch64 `jsonmin`, 101 rounds, pinned to one big core (median, ms; p < 1e-6):
+
+| Device | XAX | `clang -O2 -static` | `clang -O2` | `rustc -O3` | XAX vs fastest |
+|---|---:|---:|---:|---:|---:|
+| Pixel 8 Pro, cpu8 (`android_jsonmin_pixel8pro_2026-11-26.json`; thermal status 1) | 58.90 | 62.09 | 68.69 | 75.94 | 0.949 |
+| Pixel, cpu3 (`android_jsonmin_pixel1_cpu8_2026-11-26.json`) | 79.71 | 89.87 | 100.88 | 121.15 | 0.887 |
+
+The XAX image is §15.35's (`049cf5ee…`). Under ADR-430 this is Linux AArch64 evidence, not an Android-application workload.
+
+Start-up phases (`android_counter_startup_phases_2026-11-26.json`): atrace of 12 cold starts per arm per phone. XAX's
+only work of its own is its JNI library load: `dlopen` of `libxaxcounter.so` takes 0.42 ms on the Pixel 8 Pro and
+1.02 ms on the Pixel (the Java + NDK twin's library: 0.42 and 1.04 ms). No other phase differs beyond the noise of
+12 launches; the rest is framework work (`bindApplication`, the default theme's decor, the first frame).
+
+The DEX-only XAX counter (`android_counter_dex_pixel1_2026-11-27.json`): `xax_android_counter.counter_dex` (the
+JVM class-file backend lowered to DEX, file I/O through `android.system.Os`, one `classes.dex`, no native library),
+installed as `xax.counter.dex`, against the three twins on the Pixel. Six single-block harness runs of 100 rounds
+(600 starts per arm), install order rotated by block:
+
+| Arm | Median `TotalTime` (ms) | Stdev (ms) |
+|---|---:|---:|
+| XAX DEX-only | 303.0 | 39.9 |
+| Java + NDK | 304.5 | 39.2 |
+| Java (d8) | 300.5 | 37.7 |
+| Kotlin (R8) | 299.5 | 40.7 |
+
+XAX is 1.0117x Kotlin (p = 0.97 that XAX is faster); removing the library load does not move cold start. Block
+medians of one arm move by about ±8 ms between installs. An exploratory run of 60 starts per arm (in the same file)
+had looked like a lead over Java (p = 0.03); the larger run does not confirm it. The APK is not committed; the file
+gives its SHA-256 and how it was built.
+
+#### 15.44 Android counter cold-start parity on the Pixel, with the null arm (ADR-430; MEASURED, 2026-11-27)
+
+The first run of §15.0c's declared protocol, on the Pixel (sailfish) only; the Pixel 8 Pro is BLOCKED (in use,
+unplugged and hot). `android_counter_parity_pixel1_2026-11-27.json`: six blocks of 15 rounds, 90 starts per arm, no
+block retried, phone on AC at 41.7 to 43.7 °C.
+
+| Arm | Median `TotalTime` (ms) | p that it is faster than XAX |
+|---|---:|---:|
+| XAX (`android_counter_activity.apk`) | 306.0 | — |
+| Java + NDK | 308.0 | 0.70 |
+| Java (d8) | 304.5 | 0.35 |
+| Kotlin (R8) | 304.0 | 0.59 |
+| null | 304.5 | — |
+
+Role, derived from the baselines and the null arm (ADR-430 (2)): the fastest baseline, Kotlin, is not slower than the
+null arm (its own time is −0.2% of its median; p = 0.15), so the role is parity, as declared. Parity verdict
+(ADR-430 (3)): no baseline is significantly faster than XAX (smallest p = 0.35); XAX is 1.0066x Kotlin. The validator
+does not read this file yet (ADR-430 is not implemented), so ADR-207 still decides and no level changes.
+
+#### 15.45 Android counter cold-start parity on the Pixel 8 Pro: parity fails (ADR-430; MEASURED, 2026-11-27)
+
+§15.0c's declared protocol on the Pixel 8 Pro (husky, Android 17): `android_counter_parity_pixel8pro_2026-11-27.json`,
+six blocks of 15 rounds, 90 starts per arm, phone on AC, thermal status 1 (light) before the first and the last block.
+Block 5 was rerun: in its first attempt the phone dozed and locked, and starts returned no `TotalTime`.
+
+| Arm | Median `TotalTime` (ms) | p that it is faster than XAX |
+|---|---:|---:|
+| XAX (`android_counter_activity.apk`) | 189.0 | — |
+| Java + NDK | 188.0 | 0.28 |
+| Java (d8) | 185.5 | 0.0086 |
+| Kotlin (R8) | 186.0 | 0.059 |
+| null | 186.0 | — |
+
+The derived role is parity (Java's own time over the null arm is −0.3% of its median). The parity verdict fails:
+Java (d8) is significantly faster than XAX (XAX 1.0189x). `compiler/bootstrap/verdict-tool` and the Python reference
+give the same verdict. Block 0 was about 30 ms faster for every arm than blocks 1 to 5. With the Pixel's pass (§15.44),
+the counter workload passes on one device and fails on the other (ADR-430 (6)).

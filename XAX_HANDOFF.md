@@ -90,6 +90,7 @@ Dated sections (historical records; a later section supersedes an earlier one):
 - [Release 0042 on `main`: carrier replace by CID, Wasm offset check, container sizing — 2026-11-24](#release-0042-on-main-carrier-replace-by-cid-wasm-offset-check-container-sizing--2026-11-24)
 - [Release 0043 open on `release/0043`: one driver sub-batch in — 2026-11-25](#release-0043-open-on-release0043-one-driver-sub-batch-in--2026-11-25)
 - [Release 0043 on `main`; release 0044 needs an owner decision — 2026-11-26](#release-0043-on-main-release-0044-needs-an-owner-decision--2026-11-26)
+- [Release 0044 open: 8 GiB workspace, offsets and clamps in; arena move waits — 2026-11-26](#release-0044-open-8-gib-workspace-offsets-and-clamps-in-arena-move-waits--2026-11-26)
 
 ## Invariants that must not drift
 
@@ -3366,3 +3367,95 @@ questions, so the calls below were made without asking.
 - **Next:**
   1. The owner picks an option in ADR-423 amendment 4; then cut `release/0044` from `main` and follow it.
   2. Part C after 0044 merges.
+## Release 0044 open: 8 GiB workspace, offsets and clamps in; arena move waits — 2026-11-26
+
+`release/0044` = `9e14c77`, not rotated; the pinned seed is still 0043. Supersedes the "Next" of "Release 0043 on
+`main`" above. The owner chose ADR-423 amendment 4's option 1 and asked for (b) and the rest in 0044.
+
+- **On `release/0044`** (all EXECUTED on WSL 2):
+  - #198 (ADR-430): `replace <CID>` accepts a type; 4,096 mutations; 2^26 preimage words. C1 = C2; C1 replays 226 of 226.
+  - #199 (ADR-430): a supplied object names rebuilt objects by their new CIDs; unreached rebuilt objects are dropped.
+    C1 = C2; C1 replays 228 of 228; the driver's (b) batch applies in 554 s and verifies.
+  - #200: `0044-workspace-8gib`, applied with `XAXC` = the 0044 candidate (the 0043 seed cannot). C1 = C2; corpus
+    differential against the 0043 seed 197 of 197 the same.
+  - #201: `0044-workspace-offsets-01..25` (1,011 functions, 161,802 clamps). C1 = C2 (`161ed4be…`), C2 runs; corpus
+    198 of 198 the same.
+- **Not in 0044** (ADR-423 amendment 5): (c) the x86-64 arena move and (d) the capacity. With them C2 crashes; F86
+  variants isolate the arena move. hanoi -O0 still declines.
+- **Before the rotation**, `evolve.sh replay` and `test_store_regeneration` need `XAXC` set to a 0044 candidate
+  (WSL `/root/work/c48/xaxc1`). Scratch generators are in WSL `/root/work/r44-tools/` (never commit them).
+- **Not run:** rotation, V2 record, BBC rebuild and native check, status blocks, the full suite, Part C.
+- **Next:** rotate release 0044 (the chain as for 0043, with `XAXC` for the pre-rotation replay), merge it into
+  `main`, pin BBC; then find the arena dependency (amendment 5's lead) and land (c) and (d); then Part C.
+
+## Windows R4 (`windows-x86_64-pe`): gap and causes, no timing — 2026-11-26
+
+`main` = `1cc383a`. Release 0044 is open in another session; nothing here touches the driver, the request, `LEDGER`
+or `release/0044`. The PC and WSL were busy, so no timing ran.
+
+- **Gap** (validator `recompute_runtime_verdict`, EXECUTED): one workload, `windows_chains_soa_evidence.json`.
+  The XAX arm's median is 0.13166 s against 0.10625 s for `gcc-O2-soa`, a ratio of 1.239. The one-sided p that XAX
+  is faster is 0.999. It leads `rustc-O3` (0.866x).
+- **Causes**: `XAX_OPEN_ISSUES.md` OI-58, "Static comparison with the 0043 seed". The 0043 seed builds the measured
+  binary unchanged. The `steps` workaround is no longer needed. The per-lookup exit code explains only a small part
+  of the gap.
+- **Discrepancy, reported and not changed:** the `linux-x86_64` row's `competitive` entry cites
+  `oi37_chains_evidence.json`, which recomputes as a lead. The newer `oi37_chains_evidence_0033.json` recomputes as
+  1.0205x `rustc-O3`, which is not a lead.
+- **Plan, in order** (each step changes one thing and needs a measurement before the next):
+  1. When the PC is free: rerun the baseline with `xbench.exe` (six arms, 34 rounds). Also run 3 placements of each
+     arm (XAX: the committed batch and the `bit.or`-free batch; C: `-falign-loops=16/32/64`). This tests OI-58
+     item 4.
+  2. Program side: drop the `bit.or` workaround (delete `N71`, pass `P67`, renumber `N72..` down by one). It needs
+     no compiler change.
+  3. Sub-batch A (release 0045, x86-64 general backend and driver, C1 + C2): bind a loop-header parameter to the
+     pinned register when every incoming edge passes a value pinned there (or that value plus a constant). This
+     removes the `r8`/`r14` copies and the exit stub. It is not drafted. The native twin of the positional binding
+     in `lower_block` (reference `xax_x86_64_regalloc.py`, `allocatable[index]`) must be located with `xaxc edit`
+     views first.
+  4. Sub-batch B: let a stub's or a rotated copy's jump to a rotatable header run the header's test (rotation),
+     with the nesting bounded to one level. It is not drafted.
+  5. Sub-batch C: match a masked or bounds-checked head in the prefetch pass (OI-58 item 2), so the workload can
+     use the Linux bounds-check form. Only if step 1 shows that the mask matters.
+- **Not done:** native batch text for A to C. It is authored only after `xaxc edit` views of the driver functions,
+  and it is applied only after 0044 merges. No sub-batch was applied anywhere.
+- **Continuation prompt:** "Windows R4: read the last section of XAX_HANDOFF.md and OI-58's 2026-11-26 findings.
+  When the owner says the PC is free, run plan step 1. Once release 0044 is on `main`, cut or join `release/0045`
+  and do steps 3 to 5 as separate sub-batches, never editing another session's sub-batches."
+
+## Windows R4: baseline re-measured, placement test — 2026-11-26
+
+Continues "Windows R4 (`windows-x86_64-pe`): gap and causes, no timing" above; plan step 1 is done.
+
+- **MEASURED** (XAX_BENCHMARKS.md 15.41): the XAX arm is 1.12x to 1.17x the C twin over four runs (p = 1.0). It
+  leads rustc (0.93x to 0.94x). R4 stays withheld, and the matrix is unchanged.
+- **Placement:** without the `bit.or` workaround the XAX arm is slower (1.17x, 1.22x), although it has fewer
+  instructions. gcc's loop alignment moves its arm by under 7%. Plan step 2 is therefore not taken: the batch keeps
+  the workaround until a layout fix makes the shorter form faster.
+- **Next:** find what makes XAX code placement-sensitive before writing sub-batches A and B, for example by
+  hand-padding copies of `chains.exe` as a diagnostic (never as evidence). After 0044 merges, the sub-batches go
+  to `release/0045`.
+
+## Windows R4: where the walk loses, and the v4 form — 2026-11-27
+
+Continues "Windows R4: baseline re-measured, placement test" above. Release 0044 is still open, so no compiler
+change was made.
+
+- **Diagnosis** (C-hosted copies of XAX's lookup, paired with gcc's; a diagnostic, not evidence): OI-58 "Where the
+  walk loses". The link mask costs about 15%; a predicted bounds compare costs as much. A prefetch 3 or 4 links
+  deep with gcc's loop order gives 0.87 to 0.92 of gcc's lookup.
+- **MEASURED** (XAX_BENCHMARKS.md 15.42): the v4 batch (wide views committed on touch, no mask, prefetch kept)
+  is 1.13x and 1.18x the fastest arm. R4 stays withheld, and the matrix is unchanged.
+- **Native fault found:** heap-view types equal to existing store objects, or of instance 2^35, make `resolve`
+  decline silently (OI-58).
+- **Next, on `release/0045` after 0044 merges** (one sub-batch each, C1 and C2):
+  - (a) the ADR-211 prefetch, deepened 3 to 4 links;
+  - (b) a walk layout that closes on the key compare;
+  - (c) `mul.wrap(x, 1)` without `shl r, 0`.
+  
+  Then rebuild `chains_v4_request.batch` and measure. Authoring (a) needs the native prefetch function's view
+  from the driver (`xaxc edit <driver> F<n>`) and a scratch application to test. The owner has not yet said
+  whether a scratch-copy application is allowed before 0044 merges.
+- **Continuation prompt:** "Windows R4: read the last XAX_HANDOFF.md section and OI-58 2026-11-27. Once release
+  0044 is on main, cut or join release/0045 and do sub-batches (a) to (c) for the x86-64 general backend. Then
+  rebuild chains_v4_request.batch and measure with xbench until the validator accepts R4."

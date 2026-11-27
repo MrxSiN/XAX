@@ -3301,6 +3301,69 @@ Found while looking for the cause, all measured with `xbench.exe` on that host:
 
 A related divergence, recorded so it is not lost: for PE frames over 4 KiB the reference still emits per-page stack probes (`xax_x86_64.py`, `_reserve_stack`), while the native backend relies on the committed 1 MiB reserve (ADR-396). A DLL export runs on its host's thread stack, which that header does not cover.
 
+#### Static comparison with the 0043 seed (2026-11-26)
+
+No timing; Windows 11, `llvm-objdump` of `chains.exe` beside `gcc -O2 chains_soa.c`.
+
+- The 0043 Windows seed (`f95af786…`) builds the committed batch to the measured binary byte for byte (`90e48100…`),
+  so `windows_chains_soa_evidence.json` still describes current code generation (EXECUTED).
+- Item 1 is fixed by ledger 0033: without the `bit.or` workaround the walk has no frame slot and each lookup runs
+  3 fewer instructions (EXECUTED: built, output `1048576 9437420`, disassembled; not measured).
+- Per lookup the XAX code runs about 20 more instructions than gcc and 2 more taken branches:
+  - `found` is a positional block parameter of the outer header (`r8`) and is pinned to `r14` in the body, so
+    every lookup copies it in and out. The found exit (every lookup succeeds) leaves through an out-of-line stub:
+    the mispredicted `je` goes to another cache line, then `jmp` to the header.
+  - The outer header is not rotated (the test is at the top and the latch is a `jmp`): stubs and rotated copies
+    never duplicate a header.
+  - The mask puts an `and` on the dependent link chain; the Linux form uses a predicted compare instead.
+  - The prefetch computes the next key a second time.
+- These account for perhaps 10 to 20 cycles of the about 100 cycles per lookup that the 24% gap means. The hops are
+  L3-latency bound in both arms, and the XAX arm has the prefetch that brought a C twin to 93-103 ms. The disassembly
+  does not explain the gap; item 4 (placement) stays the leading hypothesis. Settling it needs measurement.
+
+#### Re-measured with the 0043 seed (2026-11-26)
+
+XAX_BENCHMARKS.md 15.41. The XAX arm is 1.12x to 1.17x the C twin over four runs. The batch without the `bit.or`
+workaround, which has fewer instructions and no frame slot, is slower (1.17x, 1.22x). Loop alignment moves gcc's
+build by under 7%. Item 4 now has XAX-built evidence: the XAX code is placement-sensitive in a way gcc's is not. An
+instruction-count fix alone (sub-batches A and B) may not show up until the cause of that sensitivity is known.
+
+#### Where the walk loses, by diagnostic (2026-11-27)
+
+This is a C program hosting XAX's exact lookup instructions (inline assembly) beside gcc's. The two alternate in
+one process, so each pair gives a ratio and machine drift cancels out. The sweep covers 8 placements and 48 pairs.
+It is a diagnostic, not evidence. The values are median ratios, XAX's copy over gcc's lookup phase:
+
+| XAX variant | Ratio |
+| --- | ---: |
+| as built | 1.25 |
+| no mask on the link | 1.07 |
+| bounds compare instead of the mask (the Linux form) | 1.20 |
+| gcc's walk order (close on the key compare, found exit inline) | 1.13 |
+| gcc's order, no mask | 0.99 to 1.01 |
+| gcc's order, no mask, no prefetch | 1.10 |
+| gcc's order, no mask, prefetch 2, 3, 4 nodes deep into the next lookup | 0.96, 0.90, 0.87 to 0.89 |
+| the same at depth 4, key load masked (off the chain) | 0.915 |
+
+Any extra operation on a hop costs about 15 to 20%, a predicted branch included. The 2026-11-26 estimate of 2%
+for the mask was wrong. Placement moves the as-built copy by about 10%.
+
+Program-side form (`compiler/benchmarks/windows_chains/chains_v4_request.batch`). Links hold byte offsets
+(slot × 4). Keys are read at `cur × 2` from a 2^34-byte view and links at `cur × 1` from a 2^33-byte view, both
+reserved with `PAGE_NOACCESS` and committed on touch by the hosting layer's handler (ADR-400). Every 32-bit link
+is then in bounds: no mask and no check, and the ADR-211 prefetch still matches. Measured (XAX_BENCHMARKS.md
+15.42): 1.13x and 1.18x the fastest arm, against 1.14x and 1.22x for the committed batch. That is not a lead.
+
+What the lead needs (compiler, release 0045):
+- (a) the ADR-211 prefetch followed 3 or 4 links into the next lookup's chain. The added loads are in bounds by
+  the view widths above.
+- (b) a walk layout that closes on the key compare and keeps the found exit inline (the rotation rule).
+- (c) `mul.wrap(x, 1)` emitted as `shl r, 0` on the link chain (a missing peephole).
+
+Found on the way (native, 0043 seed). A batch that supplies a heap-view type equal to one the store already holds
+(instances 2^25, 2^30, 2^31 in `bbc_request.xax`), or one of instance 2^35, makes `resolve` and `verify` decline
+with no record, or reject with `XAX.CANON.TRUNCATED`. The reference verifier accepts the same store.
+
 #### Measurements with workarounds
 
 With items 1 and 2 worked around in the program, the XAX arm went from about 134-155 ms to about 121-136 ms (two runs).
