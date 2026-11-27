@@ -23,8 +23,10 @@ LINUX_X86_64 = sys.platform.startswith("linux") and platform.machine().lower() i
 class RequestToolTests(unittest.TestCase):
     def test_the_store_is_its_batch(self):
         with tempfile.TemporaryDirectory() as directory:
-            out = Path(directory) / "tool.xax"
-            subprocess.run([str(SEED), "edit", str(BOOTSTRAP / "evolution" / "ledger-tool" / "seed.xax"), str(TOOL / "request.batch"), str(out)], check=True)
+            first, out = Path(directory) / "first.xax", Path(directory) / "tool.xax"
+            # request.batch makes the tool; driver.batch (2026-11-25) then gives its main the driver's entry
+            subprocess.run([str(SEED), "edit", str(BOOTSTRAP / "evolution" / "ledger-tool" / "seed.xax"), str(TOOL / "request.batch"), str(first)], check=True)
+            subprocess.run([str(SEED), "edit", str(first), str(TOOL / "driver.batch"), str(out)], check=True)
             self.assertEqual(out.read_bytes(), (TOOL / "xax_request.xax").read_bytes())
 
     def test_the_request_equals_the_committed_one_and_the_reference(self):
