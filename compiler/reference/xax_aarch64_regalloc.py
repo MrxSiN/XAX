@@ -56,7 +56,6 @@ from xax_compiler import (
     parse_function_graph,
     pointer_extent_from_graph,
 )
-from xax_compiler import AARCH64_LINUX_ABI
 from xax_ranges import TABLE_OPERATIONS, predicate_table, upper_bounds
 
 _CALLER = tuple(range(0, 14))  # x0-x13
@@ -284,11 +283,10 @@ def _machine_width(resolve, cid: bytes) -> int | None | bool:
 def compile_linux_function(function: SemanticObject, resolve: Callable[[bytes], SemanticObject], target: NativeTargetDescription):
     """``(code, calls, foreign_calls, addresses, node_ranges)``, or ``None`` when the function is ineligible."""
     graph_object, parameter_types, return_types = _decode_function_interface(function, resolve)
-    graph = parse_function_graph(function, resolve)
-    if target.abi == AARCH64_LINUX_ABI:  # small leaf callees inline into the lowering view (as on x86-64; ADR-254)
-        from xax_inline import inline_leaf_calls
+    # small leaf callees inline into the lowering view (as on x86-64; ADR-254), on Linux and Android (ADR-431 (3))
+    from xax_inline import inline_leaf_calls
 
-        graph = inline_leaf_calls(graph, resolve)
+    graph = inline_leaf_calls(parse_function_graph(function, resolve), resolve)
     lowering = _Lowering(function, graph_object, graph, parameter_types, return_types, resolve, target)
     return lowering.run() if lowering.eligible() else None
 
