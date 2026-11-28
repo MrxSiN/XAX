@@ -94,6 +94,7 @@ Dated sections (historical records; a later section supersedes an earlier one):
 - [Release 0044 on `main`; Android items; the arena move narrowed — 2026-11-27](#release-0044-on-main-android-items-the-arena-move-narrowed--2026-11-27)
 - [Release 0045 open: x86-64 arena above 2 GiB (hanoi -O0 builds), Android leaf inlining; rotation running — 2026-11-28](#release-0045-open-x86-64-arena-above-2-gib-hanoi--o0-builds-android-leaf-inlining-rotation-running--2026-11-28)
 - [Release process speed and size: measurements, cleanup, ADR-433 — 2026-11-28](#release-process-speed-and-size-measurements-cleanup-adr-433--2026-11-28)
+- [Release 0045 on `main`; BBC pinned; WSL memory and disk settings applied — 2026-11-28](#release-0045-on-main-bbc-pinned-wsl-memory-and-disk-settings-applied--2026-11-28)
 
 ## Invariants that must not drift
 
@@ -3716,3 +3717,40 @@ chose the design doc's slice 4 (aggregates, sums, floats).
 - **Next:** the Python retirement's ports after 0045 is on `main` (the section above); the next oracle area is the one
   `docs/proposals/native-oracle.md` §4 lists after slice 4 (none: foreign calls, target and meta operations stay
   declined), so the remaining `reference/` executor users are the tests that need those.
+
+## Release 0045 on `main`; BBC pinned; WSL memory and disk settings applied — 2026-11-28
+
+`main` = `8a2cf32` (release PR #247). `rotate.sh state`: `validated 0045`. Seeds: Linux `2707127d…` (34,020,447
+bytes), Windows `c6ea725a…` (34,075,136). Supersedes the "Next" items 1 of the two sections above.
+
+- **Release 0045 chain** (EXECUTED, WSL 2, 05:36–20:35, unattended): check, replay 256 of 256 (2 h 26 min), build,
+  confirm on both targets, SNAPSHOTS, V2 evidence (2 h 43 min, `validated 0045 evidence=103843b7…`), status blocks,
+  BBC's two `rebuild.sh` transactions (819 s), `bbc.exe` `12b9566b…` (396 s), pin check equal to 0039-0044,
+  python-free seed 469 s, full self-host 18,355 s (three generations `2707127d…`), full suite 3 h 44 min at `-n 2`:
+  1,676 passed, 346 failed, 342 skipped. Failures: the nine known, the 336 `test_xax_x86_64_views` fork subtests, and
+  `test_xax_selfhost_android_bundle::test_frame_path_and_register_allocator_builds`.
+- **That new failure:** the frozen self-host stores `xax_aarch64_general.xax` (its F127 is the driver's F778 graph) and
+  `xax_android.xax` keep ADR-431's Android inlining gate, so their output no longer equalled the changed reference. The
+  ledger was already validated, so the rotation PR #245 took the reference change back (test passes, EXECUTED) and
+  ADR-431's Implementation row says (3) is finished in release 0046: `R aa3cf100…` / `F127` / `operand N415 0 N414`
+  on `xax_aarch64_general.xax`, the same on `xax_android.xax` once its twin is found (render its 488 views with
+  `xaxc edit` and look for the function with two loads of word 29,360,317 and one of 29,360,319; the search in WSL
+  `/root/work/g431` stopped at F73 for the WSL restart), then the reference change again.
+- **PRs:** rotation #245 into `release/0045`; main merged in #246 (38 commits, no conflicts; status, rotation, evidence,
+  evolution tests pass on the merged tree); release #247.
+- **BBC:** pinned to 0045 ([BBC#16](https://github.com/MrxSiN/BBC/pull/16)). Native check on the Pixel 8 Pro: 372 of
+  372, 488 runs, 0 mismatches, 5 of 5 (190 s). Pixel (sailfish): NOT RUN, not connected. hanoi with the release
+  `bbc.exe` on Windows 11: -O0 builds (590 s, the machine busy) and matches the expected 19,090 bytes; -O1 builds
+  (33 s) and matches. A first -O1 attempt exited 3 (`input, output or native XAX driver failure`) and the rerun
+  passed: not explained. A run of `hanoiO0.exe` without its stdin redirected waited for input; redirect it.
+- **WSL** (EXECUTED after POST-DONE): `wsl --shutdown`; `wsl --manage Ubuntu-24.04-D --set-sparse true`; `fstrim -v /`;
+  the new settings are live (`vm.overcommit_memory` 1, swap 16 GB). The VHDX file is still 64.9 GB nominal (62.8 GB
+  allocated per `du`); D: free went from 78.5 to 82.3 GB. A full compaction (`Optimize-VHD` or `diskpart compact vdisk`)
+  needs an elevated shell: NOT RUN. `test_xax_x86_64_views.py -n 2` alone passes (336 subtests, 0 ENOMEM), as it did
+  before; whether the fork failures are gone shows only in the next full suite.
+- **Next:** the "Next" list of "Release process speed and size…" above, items 2 to 4, then release 0046 with ADR-431
+  (3)'s two store batches and the reference change, and the driver sub-batches listed there.
+- **Continuation prompt:** "Continue the XAX release-speed work: read the last three XAX_HANDOFF.md sections. Release
+  0045 is on main. Do the speed section's Next items 2-4 (suite scheduling and a -n 4 measurement, the ledger `after`
+  command and checkpointed/parallel replay, the V1 bench change, evolve.sh docs), then cut release/0046 with ADR-431
+  (3)'s store batches and the driver sub-batches."
