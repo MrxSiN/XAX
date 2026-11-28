@@ -68,6 +68,14 @@ class EvolutionTests(unittest.TestCase):
         cls.directory = Path(tempfile.mkdtemp())
 
     def test_the_compiler_replays_the_ledger(self):
+        # ADR-433 (1): the release's V2 evidence run replays the ledger once; a record whose replay line names the
+        # committed LEDGER blob, with every transaction replayed, is that proof. Replay only when none does.
+        blob = ledger("blob", BOOTSTRAP / "evolution" / "LEDGER")
+        for record in sorted((BOOTSTRAP / "evidence" / "records").glob("*.record")):
+            for line in record.read_text(encoding="ascii", errors="replace").splitlines():
+                words = line.split()
+                if words[:3] == ["replay", "0", "replayed"] and f"LEDGER={blob}" in words and words[3] == words[5]:
+                    return
         replay = subprocess.run(["sh", str(EVOLVE), "replay"], capture_output=True, text=True)
         self.assertEqual(replay.returncode, 0, replay.stderr)
         self.assertNotIn("FAIL", replay.stdout + replay.stderr)
