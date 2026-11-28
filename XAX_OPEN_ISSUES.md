@@ -3055,7 +3055,7 @@ Before the fix, the production compiler's `verify` answered `MEMORY-CHECKED-STOR
 
 ## OI-54 — Function views past 2^18 values (BBC's hanoi -O0)
 
-**Status:** OPEN (2026-11-25). Step 2 part 2's design is chosen (growable views; ADR-423, proposed); revised to enlarging the workspace view to 8 GiB (ADR-423 amendment 3), planned as release 0044's five sub-batches; not started. Step 3 (AArch64 liveness) stays open. Step 1 done (release 0039, ADR-413); step 2 part 1 in release 0042 (ADR-419).
+**Status:** OPEN (2026-11-28). Step 2 part 2 for Windows x86-64: the 8 GiB workspace (release 0044) and the x86-64 arena above it with a value capacity of 2^20 (release 0045, ADR-423 amendment 6); hanoi -O0 for Windows x86-64 builds and matches with that release's `bbc.exe`. The capacity is still a fixed value, not sized per function. Step 3 (AArch64 liveness) stays open. Step 1 done (release 0039, ADR-413); step 2 part 1 in release 0042 (ADR-419).
 
 **Related ADRs:** ADR-386, ADR-387, ADR-390, ADR-391, ADR-413, ADR-419
 
@@ -3083,6 +3083,10 @@ A census of the workspace (gdb at the first `munmap`, nonzero bytes per 2^20-wor
 #### Release 0043 check (2026-11-25)
 
 With the release 0043 `bbc.exe` (`4521cc64…`) on Windows 11, EXECUTED: hanoi -O1 for Windows x86-64 builds (33 s, 359,424 bytes, byte-identical to 0042's) and runs (19,090 bytes of output, equal to the independent interpreter's); -O0 for both targets and -O1 for Android ARM64 decline (exit 5), as with 0042.
+
+#### Release 0045 arena (2026-11-28)
+
+Ledger `0045-x86-64-arena-above-2gib` (ADR-423 amendment 6) puts the x86-64 entry's arena at [2^28, 2^30 − 2^27) words with a capacity of 2^20; the other pipelines' arenas stay. EXECUTED on Windows 11 with a `bbc.exe` built from BBC's driver with the same batch: hanoi -O0 for Windows x86-64 builds (318 s) and its output equals the expected 19,090 bytes. Not yet run: Android ARM64 -O0 (step 3).
 
 #### Remaining steps
 
