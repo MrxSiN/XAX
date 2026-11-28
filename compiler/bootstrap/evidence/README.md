@@ -117,9 +117,12 @@ from the record as a claim. With E = the record has `end`, and C1 = generation 1
 - **python** (the seed requires Python): not (the record's seed is the pinned seed file, has no interpreter, and
   both empty-environment runs resolved and built the last generation's artifact).
 
-The reference evaluator `compiler/reference/xax_selfhost.py` evaluates V1 records as before. `tests/test_evidence_v2.py`
-writes the committed V1 record and mutated copies of it as V2 records and requires `levels` to give the reference's
-levels on each.
+The reference evaluator `compiler/reference/xax_selfhost.py` computes the same levels from a V2 record and the V1
+record. Since ADR-433 (3) the V1 record (`bench_full_selfhost`) holds only the pinned seed's corpus outcomes against the
+live reference, so the evaluator reads the generations, the fixed point, the contexts, the replay and the probe from
+the V2 record. `tests/test_evidence_v2.py` writes V2 records from the committed V1 record and the latest validated
+release's generation, fixed point and replay lines, mutates facts of either, and requires `levels` to give the
+reference's levels on each.
 
 Checked on Linux x86-64 (WSL 2, the pinned seed `36e2b756…`), EXECUTED, 2026-11-16:
 

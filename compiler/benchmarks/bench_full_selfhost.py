@@ -1,17 +1,14 @@
-"""S14b (ADR-285): full-compiler generations of the Linux x86-64 production compiler, and their evidence.
+"""S14b (ADR-285), ADR-433 (3): the Linux x86-64 production compiler's corpus against the reference (the V1 record).
 
-The production compiler on Linux x86-64 is the general driver (``xax_compiler_driver_general.xax``).  Its canonical
-build request (``xax_selfhost_compiler.compiler_request``) is resolved and built by the compiler itself:
-
-    C0 (the pinned seed, bootstrap/seed/xaxc-linux-x86_64: the compiler the driver store built itself into; ADR-382)
-    C_n resolve <request store> -> snapshot store;  C_n build <snapshot> -> C_n+1, provenance P_n+1     (n = 0, 1, 2)
-
-Every step is a process with no Python inside.  Recorded, raw: every executable's and snapshot's digest and size,
-which executable produced which, the provenance envelopes, the bootstrap references (the Python resolver's snapshot,
-the bootstrap's own compile of the compiler), a positive and negative corpus run by every generation (C0 to C3, with
-the bootstrap's outcome where one is defined), a run of C1 with an empty environment, timings and peak RSS.  B levels
-are not written here: ``xax_selfhost.bootstrap_status`` derives them from this record.  Runs with
-``XAX_REQUIRE_NATIVE=1``.  Run: ``PYTHONPATH=src:reference:tests:.:.. python benchmarks/bench_full_selfhost.py [--write]``.
+The production compiler on Linux x86-64 is the general driver (``xax_compiler_driver_general.xax``).  C0, the pinned
+seed (``bootstrap/seed/xaxc-linux-x86_64``, the compiler the driver store built itself into; ADR-382), runs the
+positive and negative corpus, and each outcome is recorded raw beside the reference's (and the bootstrap's diagnostic
+where one is defined), with the reference resolver's snapshot of the compiler request, C0's digest and whether it has
+an ELF interpreter.  ADR-433 (3): the self-build generations, the fixed point, the ledger replay and the structural probe
+are not repeated here; the release's V2 evidence run (``bootstrap/evidence/run.sh``) records them, and
+``rotate.sh confirm`` rebuilds each candidate twice.  B levels are not written here: ``xax_selfhost.linux_x86_64_status``
+derives them from this record and the latest validated release's V2 record.  Runs with ``XAX_REQUIRE_NATIVE=1``.
+Run: ``PYTHONPATH=src:reference:tests:.:.. python benchmarks/bench_full_selfhost.py [--write]``.
 """
 
 from __future__ import annotations
@@ -31,26 +28,6 @@ HERE = Path(__file__).resolve().parent
 BOOTSTRAP = HERE.parent / "bootstrap"
 
 
-def blob_id(data: bytes) -> str:
-    """The git object id of ``data`` as a blob."""
-    return hashlib.sha1(b"blob %d\0" % len(data) + data).hexdigest()
-
-
-def probe_record(reader) -> bytes:
-    """A structural transaction on a driver store that the ledger does not record: one constant (the type and value of
-    the function's first constant) inserted before the first node of the driver function's first block that has
-    nodes.  C1 applies it to the committed store, so ordinary evolution (B6) is shown on the frozen store even while
-    the ledger holds no structural transaction."""
-    import xax_compiler as X
-    from xax_selfhost_edit import INSERT_NODE, edit_record
-
-    module = next(item for item in reader.objects() if item.kind == X.Kind.MODULE)
-    main = next(reader.get(cid) for cid in module.references if reader.get(cid).kind == X.Kind.FUNCTION)
-    graph = X._parse_graph(reader.get(main.references[X.Cursor(main.body, "").uleb()]), reader.get)
-    constant = next(node for block in graph.blocks for node in block.nodes if node.operation == X.Operation.CONSTANT)
-    block = next(index for index, item in enumerate(graph.blocks) if item.nodes)
-    value = int.from_bytes(constant.entity.body[2:], "little")
-    return edit_record([(INSERT_NODE, main.cid, block, 0, 0, X.Operation.CONSTANT, (), constant.results[0], value, ())])
 EVIDENCE = HERE / "full_selfhost_evidence.json"
 sys.path.insert(0, str(HERE.parent / "tests"))
 sys.path.insert(0, str(HERE.parent))
@@ -584,8 +561,7 @@ def measure() -> dict:
     import xax_compiler as X
     import xax_native
     from xax_artifact import XAX_GENERAL_DRIVER_COMPILER_IDENTITY_V1
-    from xax_build import build, decode_provenance, resolve_packages, snapshot_store
-    from xax_linux import compile_linux_executable
+    from xax_build import resolve_packages, snapshot_store
     from xax_selfhost_compiler import compiler_request
     from xax_selfhost_driver import GENERAL_STORE_PATH, NativeGeneralDriver, decode_inspection
     from xax_selfhost_resolve import POLICY, RESOLVER_IDENTITY
@@ -593,153 +569,38 @@ def measure() -> dict:
     directory = Path(tempfile.mkdtemp(prefix="xax-full-selfhost-"))
     driver = X.StoreReader(GENERAL_STORE_PATH.read_bytes())
     request_store, request = compiler_request(driver)
-    request_path = directory / "compiler-request.xax"
-    request_path.write_bytes(request_store.data)
 
-    # The bootstrap references.
+    # The reference resolver's snapshot of the compiler request (B2 compares the V2 record's generations with it).
     start = time.perf_counter()
     candidates = (*request_store.objects(), POLICY)
     reference_snapshot = snapshot_store(resolve_packages(request, candidates, POLICY, RESOLVER_IDENTITY), candidates).data
     python_resolve_s = time.perf_counter() - start
-    module = next(item for item in driver.objects() if item.kind == X.Kind.MODULE)
-    entry = next(driver.get(cid) for cid in module.references if driver.get(cid).kind == X.Kind.FUNCTION)
-    start = time.perf_counter()
-    try:
-        python_compile = compile_linux_executable(driver, entry.cid, X.x86_64_linux_exec_target().cid, frontend="python").data
-        python_compile_outcome = ["image", sha(python_compile)]
-    except X.XaxError as error:  # ADR-382: the Python reference does not lower operation 77 (ledger 0009)
-        python_compile, python_compile_outcome = None, ["rejected", error.diagnostic.code, error.diagnostic.rule]
-    python_compile_s = time.perf_counter() - start
 
     # C0: the pinned seed (ADR-382).
     start = time.perf_counter()
     seed = NativeGeneralDriver()
     seed_s = time.perf_counter() - start
-    # The bootstrap's own compile of the compiler: the Python reference's where it lowers the driver, else the pinned
-    # seed, the bootstrap since ADR-286, which is the compiler the driver store built itself into (ADR-382).
-    reference_compiler = python_compile if python_compile is not None else seed.executable
-    executables = [Path(seed.path)]
-    generations = []
-    for n in range(3):
-        producer = executables[-1]
-        snapshot_path, artifact, provenance = directory / f"snapshot{n}.xax", directory / f"C{n + 1}", directory / f"P{n + 1}.bin"
-        resolved = run(producer, ["resolve", request_path, snapshot_path], [snapshot_path])
-        built = run(producer, ["build", snapshot_path, artifact, provenance], [artifact, provenance])
-        snapshot_bytes, (artifact_bytes, provenance_bytes) = resolved["_data"][0], built["_data"]
-        record = {
-            "generation": n + 1, "producer": f"C{n}", "producer_sha256": sha(producer.read_bytes()),
-            "resolve": {key: value for key, value in resolved.items() if key != "_data"},
-            "build": {key: value for key, value in built.items() if key != "_data"},
-            "snapshot_sha256": sha(snapshot_bytes), "snapshot_equals_python_resolver": snapshot_bytes == reference_snapshot,
-            "artifact_sha256": sha(artifact_bytes), "artifact_bytes": None if artifact_bytes is None else len(artifact_bytes),
-            "provenance_sha256": sha(provenance_bytes),
-        }
-        if snapshot_bytes is not None and provenance_bytes is not None:
-            snapshot = X.StoreReader(snapshot_bytes)
-            view = decode_provenance(X.decode_object(provenance_bytes, "provenance"), X.store_resolver(snapshot))
-            record["provenance"] = {"cid": X.decode_object(provenance_bytes, "provenance").cid.hex(), "snapshot_root": view.snapshot_root.hex(),
-                                    "request_root": view.request_root.hex(), "target_root": view.target_root.hex(), "profile_root": view.profile_root.hex(),
-                                    "artifact_digest_blake3": view.artifact_digest.hex(), "compiler_identity": view.compiler_identity.hex(),
-                                    "lowering_identity": view.lowering_identity.hex()}
-            if n == 0 and python_compile is not None:
-                python_build = build(snapshot, view.request_root, compiler_identity=XAX_GENERAL_DRIVER_COMPILER_IDENTITY_V1)
-                record["equals_python_build"] = python_build.artifact == artifact_bytes and python_build.provenance.envelope() == provenance_bytes
-        generations.append(record)
-        if built["status"] != "image":
-            break
-        os.chmod(artifact, 0o755)
-        executables.append(artifact)
+    executable = Path(seed.path)
 
-    # A run of C1 with an empty environment: no PATH, no PYTHONPATH, nothing inherited.
-    empty = {}
-    if len(executables) > 1:
-        bare = run(executables[1], ["resolve", request_path, directory / "bare-snapshot.xax"], [directory / "bare-snapshot.xax"], environment=empty)
-        empty_run = {"environment": "empty (no PATH, no PYTHONPATH)", "status": bare["status"], "snapshot_sha256": bare["outputs"][0]}
-    else:
-        empty_run = None
-
-    # The corpus, run by every generation.
+    # The corpus, run by C0 against the reference (ADR-433 (3): the generations are the V2 record's).
     cases = corpus(directory)
     rows = []
     for case in cases:
         name, kind, command, _inputs, _outputs, reference, *_extra = case
-        outcomes = {}
-        for index, executable in enumerate(executables):
-            result = run_case(executable, directory, case)
-            outcome = _outcome(result)
-            if result["status"] == "rejected" and result["_data"][0] is not None:
-                from xax_selfhost_diagnostics import decode_record
+        result = run_case(executable, directory, case)
+        outcome = _outcome(result)
+        if result["status"] == "rejected" and result["_data"][0] is not None:
+            from xax_selfhost_diagnostics import decode_record
 
-                data = result["_data"][0]
-                diagnostic = decode_record([int.from_bytes(data[k:k + 8], "little") for k in range(0, len(data), 8)])
-                outcome = ["rejected", *(_diagnostic_key(diagnostic) if command == "verify" else (diagnostic.code, diagnostic.rule))]
-            if command == "inspect" and result["status"] == "image":
-                outcome = ["image", sha(json.dumps(decode_inspection(result["_data"][0]), sort_keys=True).encode())]
-            outcomes[f"C{index}"] = outcome
-        row = {"case": name, "kind": kind, "command": command, "outcomes": outcomes, "reference": reference}
+            data = result["_data"][0]
+            diagnostic = decode_record([int.from_bytes(data[k:k + 8], "little") for k in range(0, len(data), 8)])
+            outcome = ["rejected", *(_diagnostic_key(diagnostic) if command == "verify" else (diagnostic.code, diagnostic.rule))]
+        if command == "inspect" and result["status"] == "image":
+            outcome = ["image", sha(json.dumps(decode_inspection(result["_data"][0]), sort_keys=True).encode())]
+        row = {"case": name, "kind": kind, "command": command, "outcomes": {"C0": outcome}, "reference": reference}
         if name in BOOTSTRAP_DIAGNOSTICS:
             row["bootstrap_diagnostic"] = BOOTSTRAP_DIAGNOSTICS[name]
         rows.append(row)
-
-    # W2 (ADR-361): ordinary evolution on the frozen stores.  C1, the first self-built compiler, replays every ledger
-    # transaction with its own ``edit`` from the store it started at (the committed file, or git's copy of an earlier
-    # one) and must make the store the ledger records, which its ``verify`` accepts.  No builder baseline exists.
-    evolution = None
-    if len(executables) > 1:
-        from xax_selfhost_edit import STRUCTURAL, apply_reference, parse_record
-
-        evolve = BOOTSTRAP / "evolution" / "evolve.sh"
-        listed = subprocess.run(["sh", str(evolve), "ledger", "transactions", str(BOOTSTRAP)], capture_output=True, text=True, check=True)
-        ledger = [(BOOTSTRAP / "evolution" / name, store, before, after) for name, store, before, after in (line.split() for line in listed.stdout.splitlines())]
-
-        names = {1: "SetOperation", 2: "SetConstant", 3: "ReplaceReference", 4: "ReplaceUse", 5: "DeleteNode", 6: "InsertPureNode",
-                 7: "SetResultType", 8: "DisconnectEdgeArgument", 9: "ConnectEdgeArgument"}
-        transactions = []
-        made = {}  # store -> (blob, bytes) of C1's last replayed result: the start of a chained transaction git lacks
-        for index, (record, store, before, after) in enumerate(ledger):
-            data = (BOOTSTRAP / store).read_bytes()
-            if blob_id(data) != before:  # git's copy of an earlier store
-                fetched = subprocess.run(["git", "cat-file", "blob", before], cwd=BOOTSTRAP, capture_output=True, check=False)
-                data = fetched.stdout if fetched.returncode == 0 and blob_id(fetched.stdout) == before else None
-            if data is None and made.get(store, (None,))[0] == before:
-                data = made[store][1]
-            row = {"record": record.name, "store": store, "before": before, "after": after, "record_sha256": sha(record.read_bytes())}
-            if record.read_bytes()[:2] == b"R ":  # N0.4 (ADR-372): native batch text; xaxc edit parses it
-                lines = record.read_text().splitlines()
-                row["mutations"] = sum(line.split(" ", 1)[0] in ("define", "replace") for line in lines)
-                row["kinds"] = ["NativeBatch"]
-            else:
-                row["mutations"] = len(parse_record(record.read_bytes())[1])
-                row["kinds"] = sorted({names[kind] for kind, *_fields in parse_record(record.read_bytes())[1]})
-            if data is None:
-                row["edit"] = "unavailable: git does not hold the earlier store"
-                transactions.append(row)
-                continue
-            path, output, verified = directory / f"evolve-{index}.xax", directory / f"evolve-{index}-next.xax", directory / f"evolve-{index}.bin"
-            path.write_bytes(data)
-            result = run(executables[1], ["edit", path, record, output], [output])
-            row["edit"] = {key: value for key, value in result.items() if key != "_data"}
-            row["equals_ledger"] = result["status"] == "image" and blob_id(output.read_bytes()) == after
-            if result["status"] == "image":
-                made[store] = (blob_id(output.read_bytes()), output.read_bytes())
-                row["verify"] = run(executables[1], ["verify", output, verified], [verified])["status"]
-            transactions.append(row)
-        # A structural transaction the ledger does not record, applied by C1 to the committed driver store: its store
-        # must equal the Python reference engine's and verify (``probe_record``).
-        committed = X.StoreReader(GENERAL_STORE_PATH.read_bytes())
-        probe = directory / "evolve-probe.edit"
-        probe.write_bytes(probe_record(committed))
-        output, verified = directory / "evolve-probe.xax", directory / "evolve-probe.bin"
-        result = run(executables[1], ["edit", GENERAL_STORE_PATH, probe, output], [output])
-        probed = {"record_sha256": sha(probe.read_bytes()), "kinds": sorted({names[kind] for kind, *_fields in parse_record(probe.read_bytes())[1]}),
-                  "edit": {key: value for key, value in result.items() if key != "_data"}}
-        probed["equals_reference"] = result["status"] == "image" and output.read_bytes() == apply_reference(committed, probe.read_bytes()).data
-        probed["verify"] = run(executables[1], ["verify", output, verified], [verified])["status"] if result["status"] == "image" else None
-        replayed = [*transactions, probed]
-        evolution = {"format": "xax-evolution-replay-v2", "replayed_by": "C1",
-                     "baseline": "the frozen stores (bootstrap/evolution/LEDGER baselines, ADR-361)",
-                     "ledger_heads_equal_committed": subprocess.run(["sh", str(evolve), "check"], capture_output=True).returncode == 0, "transactions": transactions, "probe": probed,
-                     "structural": any(set(item["kinds"]) & {names[kind] for kind in STRUCTURAL} for item in replayed)}
 
     def elf_interpreter(path: Path) -> bool:
         data = path.read_bytes()
@@ -749,7 +610,7 @@ def measure() -> dict:
     return {
         "format": "xax-full-selfhost-evidence-v1",
         "label": "EXECUTED",
-        "adr": "ADR-285",
+        "adr": "ADR-285, ADR-433 (3)",
         "host_nonsemantic": f"{platform.system()} {platform.machine()} Python {platform.python_version()}",
         "scope": {
             "name": "linux_x86_64_production_compiler",
@@ -765,26 +626,20 @@ def measure() -> dict:
             "outside_scope": None,
         },
         "spec_revision": "XAX_SPEC.md §16",
+        # ADR-433 (3): the generations, the fixed point, the replay and the probe are the latest validated release's
+        # V2 record (bootstrap/evidence/records); ``xax_selfhost.linux_x86_64_status`` reads both records.
+        "generations": "the V2 record of the latest validated release",
         "compiler": {"store": GENERAL_STORE_PATH.name, "store_sha256": sha(driver.data), "semantic_root": driver.root_cid.hex(),
                      "request_store_sha256": sha(request_store.data), "request_root": request.cid.hex(),
                      "target_root": X.x86_64_linux_exec_target().cid.hex(), "resolver_identity": RESOLVER_IDENTITY.decode(),
                      "policy_root": POLICY.cid.hex(), "compiler_identity": XAX_GENERAL_DRIVER_COMPILER_IDENTITY_V1.hex()},
-        # ADR-382: C0 is the pinned seed.  The views backend's lowering of the driver (the earlier C0) is rejected since
-        # ledger 0009 (operation 77); the seed's own Python-free rebuild is python_free_seed_evidence.json.
         "seed": {"kind": "the pinned seed bootstrap/seed/xaxc-linux-x86_64 (ADR-286), checked against SEED_SHA256 (ADR-382)",
                  "sha256": sha(seed.executable), "bytes": len(seed.executable), "requires_python": False,
                  "host_s_nonsemantic": round(seed_s, 1)},
-        "references": {"python_resolver_snapshot_sha256": sha(reference_snapshot), "python_resolve_s_nonsemantic": round(python_resolve_s, 1),
-                       "python_reference_compile": python_compile_outcome,
-                       "bootstrap_compile_kind": "the Python reference compile" if python_compile is not None else "the pinned seed (ADR-382)",
-                       "bootstrap_compile_sha256": sha(reference_compiler), "bootstrap_compile_bytes": len(reference_compiler),
-                       "bootstrap_compile_s_nonsemantic": round(python_compile_s, 1)},
-        "generations": generations,
-        "fixed_point": {"comparison": "raw executable bytes (SHA-256)", "artifacts": [item["artifact_sha256"] for item in generations]},
-        "empty_environment_run": empty_run,
-        "executables_have_interpreter": {f"C{index}": elf_interpreter(path) for index, path in enumerate(executables)},
+        "references": {"python_resolver_snapshot_sha256": sha(reference_snapshot), "python_resolve_s_nonsemantic": round(python_resolve_s, 1)},
+        "executables_have_interpreter": {"C0": elf_interpreter(executable)},
         "corpus": rows,
-        # Recorded gaps (each one keeps a B level from holding; see ``xax_selfhost.bootstrap_status``).
+        # Recorded gaps (each one keeps a B level from holding; see ``xax_selfhost.linux_x86_64_status``).
         # S15b.3d (ADR-313): a decoded declaration's and a stack-owner entry's rejections are rendered, and a resource
         # callee's graph comes before its caller's later checks; S15b.3e (ADR-318): every resource callee in turn, so a
         # graph calling several different ones before its own decision is decided too.  None is left.
@@ -794,9 +649,7 @@ def measure() -> dict:
         # S15c.5 (ADR-309): resolution under a given trust policy with signatures (``resolve-trusted``) closed the last.
         "required_paths_outside_xax": [],
         # S15d.1-S15d.4 (ADR-304 to ADR-306, ADR-312, ADR-314): the compiler changes its own store through ``edit``
-        # (operations, constants, references with supplied objects, and the workspace's structural mutations) and the
-        # evolution ledger, which C1 replays above; what remains:
-        "evolution": evolution,
+        # and the evolution ledger, which the V2 evidence run replays (ADR-433 (1)); what remains:
         "ordinary_evolution": None,
         "python_dependency": {"production": False, "bootstrap_seed": False, "reference": True, "test_only": True},
         "authority": xax_native.AUTHORITY,

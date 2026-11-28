@@ -1,14 +1,11 @@
 """RFC section 4, phase 3: the native evidence program (``bootstrap/evidence``) against the reference evaluator.
 
 On Linux x86-64 with the pinned seed: the committed program is the seed's ``xaxc edit`` of its batch; ``sha`` equals
-hashlib; and ``levels`` agrees with the reference evaluator ``xax_selfhost.linux_x86_64_status`` on the committed V1
-record and on mutated copies of it. Each V1 record is written as the V2 record, corpus and snapshot list that hold the
-same facts (``_v2``): C1's outcomes are the context's, and C0's, C2's and C3's are its repeats.
-
-V2 defines the levels for records the runner writes (``bootstrap/evidence/README.md``), so the mutations change facts
-both forms hold: statuses, digests, interpreters, outcomes, the replay and the probe. Two definitions differ on
-purpose and are not mutated here: B0 reads the first generation's resolve too, and B4 holds for a fixed point that is
-not the seed (RFC section 4).
+hashlib; and ``levels`` agrees with the reference evaluator ``xax_selfhost.linux_x86_64_status`` on the committed
+records and on mutated copies of them. ADR-433 (3): the V1 record holds only C0's corpus outcomes, so each case is
+written as a V2 record, corpus and snapshot list (``_v2``) whose generation, fixed point and replay lines are the latest
+validated release's and whose context C0 (with its ten repeats) is the V1 record's C0. A mutation changes a fact of
+the V1 record, of the seed record, or of the written V2 record; both evaluators read the same files.
 """
 
 from __future__ import annotations
@@ -32,20 +29,16 @@ STATUS = {"image": 0, "rejected": 1, "declined": 2, "failed": 3}
 PROBE = "ab" * 32
 
 
-def _v2(full: dict, seed: dict) -> tuple[str, str, str, bool]:
-    """The V2 record, corpus and snapshot list holding ``full``'s and ``seed``'s facts, and whether the seed record
-    names the pinned seed."""
+def _v2(full: dict, seed: dict, release: str) -> tuple[str, str, str, bool]:
+    """The V2 record, corpus and snapshot list holding ``full``'s and ``seed``'s facts, with the generation, fixed point
+    and replay lines of the V2 record ``release`` (ADR-433 (3): V1 no longer runs generations), and whether the seed
+    record names the pinned seed."""
     from xax_selfhost_seed import pin
 
-    interpreters = full["executables_have_interpreter"]
-    lines = ["xax-full-selfhost-evidence-v2", "ledger -", "corpus -", f"seed {full['seed']['sha256']} {int(interpreters['C0'])}",
-             f"request {full['compiler']['request_store_sha256']}"]
-    for n, item in enumerate(full["generations"], 1):
-        snapshot = item["snapshot_sha256"] if item["snapshot_equals_python_resolver"] else "-"
-        lines.append(f"generation {n} {item['producer_sha256']} {STATUS.get(item['resolve']['status'], 9)} {snapshot} "
-                     f"{STATUS.get(item['build']['status'], 9)} {item['artifact_sha256'] or '-'} {item['provenance_sha256'] or '-'} "
-                     f"{int(interpreters[f'C{n}'])}")
-    lines.append("fixedpoint -")
+    kept = [line for line in release.splitlines() if line.split(" ", 1)[0] in ("generation", "fixedpoint")]
+    replay = next(line for line in release.splitlines() if line.startswith("replay "))
+    lines = ["xax-full-selfhost-evidence-v2", "ledger -", "corpus -", f"seed {full['seed']['sha256']} {int(full['executables_have_interpreter']['C0'])}",
+             f"request {full['compiler']['request_store_sha256']}", *kept]
     built = (seed["selfbuild_status"] == 0 and not seed["seed"]["has_interpreter"] and seed["environment"]["variables"] == ["PATH"]
              and seed["environment"]["python_on_path"] is None and seed["request_store_sha256"] == full["compiler"]["request_store_sha256"])
     for k, item in enumerate(seed["generations"][:2], 1):
@@ -57,13 +50,10 @@ def _v2(full: dict, seed: dict) -> tuple[str, str, str, bool]:
         expect = (f"diag:{diagnostic[0]}:{diagnostic[1]}:{diagnostic[2]}" if diagnostic else "-" if reference is None
                   else "image:" + ":".join(reference[1:]) if reference[0] == "image" else f"rejected:{reference[1]}:{reference[2]}")
         corpus.append(f"{row['kind']} {row['command']} {expect} 0 0 0 {row['case']}")
-    corpus.append(f"positive edit image:{PROBE} 0 0 0 the probe")
-    evolution = full["evolution"] or {}
-    probe = evolution.get("probe") or {}
-    probed = probe.get("edit", {}).get("status") == "image" and probe.get("equals_reference") is True and probe.get("verify") == "image"
+    corpus.append(f"positive edit image:{PROBE} 0 0 0 edit: a structural probe (B6)")
 
-    def fields(row, generation):
-        outcome = row["outcomes"].get(generation)
+    def fields(row):
+        outcome = row["outcomes"].get("C0")
         if outcome is None:
             return "- - - - -"
         if outcome[0] == "rejected":
@@ -71,47 +61,55 @@ def _v2(full: dict, seed: dict) -> tuple[str, str, str, bool]:
         digests = [item or "-" for item in outcome[1:3]] + ["-"] * (3 - len(outcome))
         return f"{STATUS.get(outcome[0], 9)} {digests[0]} {digests[1]} - -"
 
-    lines.append(f"context C1 {full['generations'][0]['artifact_sha256'] if full['generations'] else '-'}")
-    lines += [f"outcome C1 {i} {fields(row, 'C1')}" for i, row in enumerate(rows)]
-    lines.append(f"outcome C1 {len(rows)} {'0 ' + PROBE if probed else '- -'} - - -")
-    for generation in (f"C{n}" for n in range(len(full["generations"]) + 1)):
-        if generation != "C1":
-            lines += [f"repeat C1-r {i} {fields(row, generation)}" for i, row in enumerate(rows)]
-    transactions = evolution.get("transactions", ())
-    replayed = (evolution.get("format") == "xax-evolution-replay-v2" and evolution.get("structural") is True
-                and evolution.get("ledger_heads_equal_committed") is True and not full["ordinary_evolution"]
-                and all(item.get("edit", {}).get("status") == "image" and item.get("equals_ledger") is True and item.get("verify") == "image"
-                        for item in transactions))
-    lines += [f"replay {0 if replayed else 1} replayed {len(transactions) if replayed else 0} of {len(transactions)}", "end"]
+    lines.append(f"context C0 {full['seed']['sha256']}")
+    lines += [f"outcome C0 {i} {fields(row)}" for i, row in enumerate(rows) if row["outcomes"].get("C0") is not None]
+    lines.append(f"outcome C0 {len(rows)} 0 {PROBE} - - -")
+    lines += [f"repeat C0-r {i} {fields(row)}" for i, row in enumerate(rows[:10]) if row["outcomes"].get("C0") is not None]
+    lines += [replay, "end"]
     snapshots = f"{full['compiler']['request_store_sha256']} {full['references']['python_resolver_snapshot_sha256']}\n"
     return "\n".join(lines) + "\n", "\n".join(corpus) + "\n", snapshots, seed["seed"]["sha256"] == pin()[0]
 
 
+def _swap(record: str, prefix: str, replace) -> str:
+    """``record`` with ``replace(words)`` (a list of words) in place of the one line starting with ``prefix``."""
+    lines = record.splitlines()
+    (index,) = [k for k, line in enumerate(lines) if line.startswith(prefix)]
+    lines[index] = " ".join(replace(lines[index].split()))
+    return "\n".join(lines) + "\n"
+
+
 def _mutations(full: dict, seed: dict):
-    """``(name, full, seed)``: the committed records, then one changed fact each."""
-    yield "committed", full, seed
+    """``(name, full, seed, record edit)``: the committed records, then one changed fact each, in the V1 record, the
+    seed record or the V2 record written from them."""
+    yield "committed", full, seed, None
 
     def changed(name, edit, which="full"):
         records = {"full": copy.deepcopy(full), "seed": copy.deepcopy(seed)}
+        if which == "record":
+            return name, records["full"], records["seed"], edit
         edit(records[which])
-        return name, records["full"], records["seed"]
+        return name, records["full"], records["seed"], None
+
+    def word(prefix, k, value):
+        return lambda record: _swap(record, prefix, lambda words: [*words[:k], value, *words[k + 1:]])
 
     rows = full["corpus"]
     image = next(i for i, row in enumerate(rows) if row["reference"] and row["reference"][0] == "image")
     diagnostic = next(i for i, row in enumerate(rows) if row.get("bootstrap_diagnostic"))
     rejected = next(i for i, row in enumerate(rows) if row["reference"] and row["reference"][0] == "rejected")
-    yield changed("generation 2 resolve failed", lambda r: r["generations"][1]["resolve"].update(status="failed"))
-    yield changed("generation 3 artifact differs", lambda r: r["generations"][2].update(artifact_sha256="cd" * 32))
-    yield changed("generation 1 snapshot differs", lambda r: r["generations"][0].update(snapshot_equals_python_resolver=False))
-    yield changed("C1 image outcome differs", lambda r: r["corpus"][image]["outcomes"]["C1"].__setitem__(1, "ef" * 32))
-    yield changed("C2 image outcome differs", lambda r: r["corpus"][image]["outcomes"]["C2"].__setitem__(1, "ef" * 32))
-    yield changed("C1 diagnostic differs", lambda r: r["corpus"][diagnostic]["outcomes"]["C1"].__setitem__(3, "ef" * 32))
-    yield changed("C1 rejection rule differs", lambda r: r["corpus"][rejected]["outcomes"]["C1"].__setitem__(2, "OTHER-RULE"))
-    yield changed("C3 outcome missing", lambda r: r["corpus"][image]["outcomes"].pop("C3"))
+    yield changed("generation 1 resolve failed", word("generation 1 ", 3, "3"), "record")
+    yield changed("generation 1 artifact differs", word("generation 1 ", 6, "cd" * 32), "record")
+    yield changed("generation 1 snapshot differs", word("generation 1 ", 4, "-"), "record")
+    yield changed("generation 1 has an interpreter", word("generation 1 ", 8, "1"), "record")
+    yield changed("a repeat differs", word("repeat C0-r 0 ", 3, "3"), "record")
+    yield changed("the replay failed", word("replay ", 1, "1"), "record")
+    yield changed("the probe differs", word(f"outcome C0 {len(rows)} ", 4, "ef" * 32), "record")
+    yield changed("C0 image outcome differs", lambda r: r["corpus"][image]["outcomes"]["C0"].__setitem__(1, "ef" * 32))
+    yield changed("C0 diagnostic differs", lambda r: r["corpus"][diagnostic]["outcomes"]["C0"].__setitem__(3, "ef" * 32))
+    yield changed("C0 rejection rule differs", lambda r: r["corpus"][rejected]["outcomes"]["C0"].__setitem__(2, "OTHER-RULE"))
+    yield changed("C0 outcome missing", lambda r: r["corpus"][image]["outcomes"].pop("C0"))
     yield changed("no negative case", lambda r: [row.update(kind="positive") for row in r["corpus"]])
-    yield changed("C2 has an interpreter", lambda r: r["executables_have_interpreter"].update(C2=True))
-    yield changed("a replayed transaction differs", lambda r: r["evolution"]["transactions"][0].update(equals_ledger=False))
-    yield changed("the probe differs", lambda r: r["evolution"]["probe"].update(equals_reference=False))
+    yield changed("C0 has an interpreter", lambda r: r["executables_have_interpreter"].update(C0=True))
     yield changed("the seed rebuild failed", lambda r: r.update(selfbuild_status=1), "seed")
     yield changed("the seed has an interpreter", lambda r: r["seed"].update(has_interpreter=True), "seed")
     yield changed("the seed is not the pin", lambda r: r["seed"].update(sha256="12" * 32), "seed")
@@ -163,22 +161,24 @@ class EvidenceProgramTests(unittest.TestCase):
             self.assertEqual(hashlib.sha256(path.read_bytes()).hexdigest(), path.name)
 
     def test_levels_agree_with_the_reference(self):
-        from xax_selfhost import linux_x86_64_status
+        from xax_selfhost import linux_x86_64_status, released_record
 
         full = json.loads((BENCHMARKS / "full_selfhost_evidence.json").read_text(encoding="utf-8"))
         seed = json.loads((BENCHMARKS / "python_free_seed_evidence.json").read_text(encoding="utf-8"))
+        release = released_record()
         with tempfile.TemporaryDirectory() as directory:
             work = Path(directory)
             other = work / "other-seed"
             other.write_bytes(b"not the pinned seed")
-            for name, mutated_full, mutated_seed in _mutations(full, seed):
+            for name, mutated_full, mutated_seed, edit in _mutations(full, seed):
                 with self.subTest(name):
-                    record, corpus, snapshots, pinned = _v2(mutated_full, mutated_seed)
+                    record, corpus, snapshots, pinned = _v2(mutated_full, mutated_seed, release)
+                    record = record if edit is None else edit(record)
                     for file, text in (("record", record), ("CORPUS", corpus), ("SNAPSHOTS", snapshots)):
                         (work / file).write_text(text, encoding="ascii")
                     made = self.run_tool("levels", work / "record", work / "CORPUS", work / "SNAPSHOTS", SEED if pinned else other).decode()
                     native = dict(line.split(" ") for line in made.splitlines())
-                    reference = linux_x86_64_status(mutated_full, mutated_seed)
+                    reference = linux_x86_64_status(mutated_full, mutated_seed, record, corpus)
                     self.assertEqual({level: native[level] == "1" for level in (f"B{n}" for n in range(7))},
                                      {level: reference[level] for level in (f"B{n}" for n in range(7))})
                     self.assertEqual(native["python"] == "1", reference["seed_requires_python"])
