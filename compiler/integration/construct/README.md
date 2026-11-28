@@ -193,9 +193,9 @@ caller's memory as two views, and a program that owns its memory cannot do that:
 one live effect token and a second `heap_view` consumes the first view's token
 (`XAX.MEMORY.EFFECT_LINEAR`). The span variant takes one view triple, hashes
 `input[base : base + length]`, and addresses the chaining-value stack and digest at a fixed distance
-past the view base, sharing that one token. `probe_hash.py` builds a program that hashes six inputs
-(empty, 3 B, one block, two blocks, two chunks, ten chunks) and compares every digest word with the
-Python reference: exit 0, 6 of 6 match.
+past the view base, sharing that one token. `probe_hash.py` (deleted on 2026-11-28, in git history) built a program that hashed six inputs
+(empty, 3 B, one block, two blocks, two chunks, ten chunks) and compared every digest word with the
+Python reference: exit 0, 6 of 6 matched.
 
 The resolver stages each object's canonical content -- `blake3("XAX-SEM-1", uleb(kind), uleb(schema),
 uleb(refcount), refs, uleb(bodylen), body)` -- at `CANON = 0xEB0000`, points the hash at
