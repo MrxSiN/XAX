@@ -6,7 +6,7 @@
 
 `m11_bootstrap_bundle.xax` is the fixed hermetic build snapshot that binds that program module to the WebAssembly bootstrap target, package entry, build profile, trust policy, and resolver identity.
 
-`generate_m11.py` and `xax_bootstrap.m11_definition()` are transitional Python seed material. They exist only to reproduce and validate the committed canonical artifacts byte-for-byte. They are not XAX source and do not define XAX meaning.
+`xax_bootstrap.m11_definition()` is transitional Python seed material (its generator `generate_m11.py` was deleted on 2026-11-28: nothing ran it). It exists only to reproduce and validate the committed canonical artifacts byte-for-byte. It is not XAX source and does not define XAX meaning.
 
 M11 claims B0/B1 only. It does not claim recursive self-compilation, semantic generation equivalence, a fixed point, toolchain closure, or bootstrap independence.
 

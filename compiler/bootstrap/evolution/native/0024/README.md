@@ -61,8 +61,8 @@ arithmetic (`(zext(x) xor top) - top`), and exits 1 when any pair disagrees: a c
 constant on either side, a compare fused into its branch, each of these in a five-parameter function (the frame
 path), and a compare in the process entry. `xaxc build narrow_signed_compare.xax check provenance`, then `./check`:
 status 0 with the compiler after this ledger entry, 1 with the seed before it (`a35fd59f…`). Its oracle is the same
-compiler's 64-bit compare, not the reference executor; `probe.py` below has that comparison.
+compiler's 64-bit compare, not the reference executor; `probe.py` below had that comparison.
 
-`probe.py <xaxc>|reference [widths]` (run from `compiler` with `PYTHONPATH=src:reference:.`) builds the programs the change was
+`probe.py <xaxc>|reference [widths]` (deleted on 2026-11-28, in git history; it ran from `compiler` with `PYTHONPATH=src:reference:.`) builds the programs the change was
 checked with and compares their output with the reference executor: 128 of 240 differ with the seed before this
 ledger entry, none with the compiler built from the changed stores.
