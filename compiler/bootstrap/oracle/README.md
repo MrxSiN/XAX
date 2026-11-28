@@ -1,8 +1,10 @@
 # The native reference executor (ADR-405)
 
-`xax_oracle.xax` is a Linux x86-64 process, an XAX build request store: an interpreter of canonical graph semantics,
-independent of the compiler (design: `docs/proposals/native-oracle.md`). `sh oracle.sh <arguments>` builds it with
-the pinned seed and runs it.
+`xax_oracle.xax` is an XAX build request store: an interpreter of canonical graph semantics, independent of the
+compiler (design: `docs/proposals/native-oracle.md`). Its main has the general driver's entry and reaches files only
+through the driver's host functions, so it runs as a Linux x86-64 process and, hosted by
+`../windows/generator/generate.sh`, as a Windows x86-64 one (`xax_oracle_windows.xax`). `sh oracle.sh <arguments>`
+builds the host's store with that host's pinned seed and runs it.
 
 ```text
 xax_oracle run <store> <function CID> <argument>...
@@ -74,8 +76,8 @@ Limits:
 - Slice 1 also covers two more corpora. Narrow and signed `int.compare` (3,840 cases of
   `test_x86_64_narrow_signed_compare`) and compares reused after their branch (6 cases of
   `test_native_branch_fusion`) agree in both executors (`../../benchmarks/oracle_x86_64_compare_evidence.json`).
-  Both tests now take their expected values from `oracle_execute`: the native oracle on Linux x86-64, and the Python
-  executor on Windows, where this Linux program cannot run.
+  Both tests now take their expected values from `oracle_execute`: the native oracle on Linux x86-64 and, since
+  2026-11-28, on Windows x86-64 (see "The Windows build" below); the Python executor elsewhere.
 - Slice 2: recursion groups agree in both executors (10 cases of `test_xax_recursion`, among them mutual recursion
   200 calls deep; `../../benchmarks/oracle_recursion_evidence.json`), and the register-lowering corpus still agrees
   160 of 160. `test_xax_recursion`'s execution check uses `oracle_execute`. Frames take about 0.5 KiB each, so about
@@ -84,3 +86,32 @@ Limits:
   0 to 33, 646 cases) both executors give the same results and traps (`../../benchmarks/oracle_memory_evidence.json`).
   The earlier areas still agree. That test's execution check now takes its expected values from the native oracle on
   Linux x86-64, and `tests/test_native_oracle.py` keeps checking that both oracles agree.
+
+## The Windows build (2026-11-28)
+
+`driver.batch` gives `@main` the general driver's entry (the file system, the process and 22 memory tokens), as the
+request tool's `driver.batch` did for that tool. The rest of the program is unchanged.
+
+- Views come from the driver's `xax-host-v1` declarations: a committed 64 KiB view A (reads, the current argument's
+  text), a committed 64 KiB argument stash S, a committed 4 KiB view Q, the committed 1 MiB frame view and a reserved
+  256 MiB store view.
+- `argc` is read once and one `arg_copy` site copies every argument, from the last down to 2, into Q and then into S
+  (offset and length at `16k`, text from 16 KiB on). Argument 2, the store path, is still in Q, the view
+  `host_open` takes. Each later use of an argument copies it from S into A, where the unchanged code reads it.
+- The store is read with `host_read` in 64 KiB pieces through A, because Windows `ReadFile` into a reserved page
+  fails. The output goes from the frame view through A in 64 KiB pieces to `host_write` on standard output.
+- New limits: 4 to 1,024 arguments, each under 4 KiB, at most 48 KiB of argument text in all. Anything else exits 3
+  with `error`. On Windows the host layer's `_write` writes text mode, so each output line ends with CR LF.
+- `xax_oracle.xax` is `oracle.batch` and then `driver.batch` on `../evolution/ledger-tool/seed.xax`
+  (`tests/test_native_oracle.py`), and `xax_oracle_windows.xax` is `generate.sh`'s output for it
+  (`tests/test_windows_generator.py`). Change the program by a further batch on `xax_oracle.xax`, then regenerate the
+  Windows store.
+
+**Checked (EXECUTED, 2026-11-28):** `tests/test_native_oracle.py` on Windows 11 with the Windows store built by the
+pinned Windows seed: 8 passed (the Linux-only store check skipped), 4,111 subtests. Both oracles agree on the
+register-lowering (160), narrow-compare (3,840), branch-fusion (6), recursion (10), stack-memory (60) and trap (7)
+corpora (`../../benchmarks/oracle_windows_evidence.json`). The same file on Linux x86-64 (WSL 2, the pinned Linux
+seed, `XAX_REQUIRE_NATIVE=1`): 9 passed, 4,111 subtests. Both seeds make the same two stores byte for byte. The tests
+that take their expected values from `oracle_execute` (narrow compare, recursion, branch fusion, sign-extend
+composition, byte-view widening) pass on Windows with the native oracle (23 passed, 3,875 subtests). They take
+148 s instead of 42 s, because each case starts a process.

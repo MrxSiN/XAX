@@ -1,6 +1,6 @@
 """ADR-405, slice 1 (docs/proposals/native-oracle.md): the native reference executor against the Python one.
 
-On Linux x86-64 with the pinned seed: the committed program is the seed's ``xaxc edit`` of its batch, both executors
+On Linux x86-64 and on Windows x86-64, built by the pinned seed of the host (``xax_oracle_windows.xax`` on Windows): both executors
 give the same results on the whole x86-64 register-lowering corpus (``test_xax_regalloc_differential``), and they
 agree on traps, signed comparisons, rotations, several results and declined operations. ``native_execute`` is what
 the area's comparison tests call instead of ``execute``.
@@ -21,24 +21,31 @@ BOOTSTRAP = Path(__file__).resolve().parents[1] / "bootstrap"
 ORACLE = BOOTSTRAP / "oracle"
 SEED = BOOTSTRAP / "seed" / "xaxc-linux-x86_64"
 LINUX_X86_64 = sys.platform.startswith("linux") and platform.machine().lower() in ("x86_64", "amd64")
+WINDOWS_X86_64 = sys.platform == "win32" and platform.machine().lower() in ("x86_64", "amd64")
+NATIVE = LINUX_X86_64 or WINDOWS_X86_64  # the hosts the native oracle runs on
 
 
 @functools.lru_cache(maxsize=1)
 def _program() -> Path:
+    if WINDOWS_X86_64:
+        seed, store, program = BOOTSTRAP / "windows" / "xaxc-windows-x86_64.exe", "xax_oracle_windows.xax", "xax_oracle.exe"
+    else:
+        seed, store, program = SEED, "xax_oracle.xax", "xax_oracle"
     work = Path(tempfile.mkdtemp(prefix="xax-oracle-"))
-    subprocess.run([str(SEED), "resolve", str(ORACLE / "xax_oracle.xax"), str(work / "oracle.xax")], check=True)
-    subprocess.run([str(SEED), "build", str(work / "oracle.xax"), str(work / "xax_oracle"), str(work / "provenance")], check=True)
-    (work / "xax_oracle").chmod(0o755)
-    return work / "xax_oracle"
+    subprocess.run([str(seed), "resolve", str(ORACLE / store), str(work / "oracle.xax")], check=True)
+    subprocess.run([str(seed), "build", str(work / "oracle.xax"), str(work / program), str(work / "provenance")], check=True)
+    (work / program).chmod(0o755)
+    return work / program
 
 
 def native_run(store: bytes, function_cid: bytes, arguments) -> tuple[int, str]:
     """The native oracle's exit status and output for one call (README.md)."""
-    with tempfile.NamedTemporaryFile(suffix=".xax") as file:
-        file.write(store)
-        file.flush()
-        done = subprocess.run([str(_program()), "run", file.name, function_cid.hex(), *map(str, arguments)], capture_output=True, timeout=60)
-    return done.returncode, done.stdout.decode()
+    with tempfile.TemporaryDirectory() as directory:  # a closed file: Windows cannot open one that is still open
+        file = Path(directory) / "store.xax"
+        file.write_bytes(store)
+        done = subprocess.run([str(_program()), "run", str(file), function_cid.hex(), *map(str, arguments)], capture_output=True, timeout=60)
+    # On Windows the host layer writes through msvcrt _write, whose text-mode standard output ends lines with CR LF.
+    return done.returncode, done.stdout.decode().replace("\r\n", "\n")
 
 
 def native_execute(reader, function_cid: bytes, arguments) -> tuple[int, ...]:
@@ -50,8 +57,8 @@ def native_execute(reader, function_cid: bytes, arguments) -> tuple[int, ...]:
 
 
 def oracle_execute(reader, function_cid: bytes, arguments) -> tuple[int, ...]:
-    """The area's oracle: the native one where it runs (Linux x86-64), else the Python executor (ADR-405 (3))."""
-    if LINUX_X86_64:
+    """The area's oracle: the native one where it runs (Linux and Windows x86-64), else the Python executor (ADR-405 (3))."""
+    if NATIVE:
         return native_execute(reader, function_cid, arguments)
     from xax_compiler import execute
 
@@ -69,13 +76,26 @@ def _reference(reader, function_cid, arguments) -> tuple[int, str]:
         return 3, error.diagnostic.rule
 
 
-@unittest.skipUnless(LINUX_X86_64, "the pinned seed runs on Linux x86-64")
+@unittest.skipUnless(NATIVE, "the native oracle runs on Linux and Windows x86-64")
 class NativeOracleTests(unittest.TestCase):
-    def test_the_store_is_its_batch(self):
+    @unittest.skipUnless(LINUX_X86_64, "the pinned Linux seed")
+    def test_the_store_is_its_batches(self):
+        """oracle.batch on the ledger seed, then driver.batch (2026-11-28: the general driver's entry, so that
+        ``windows/generator/generate.sh`` hosts it as ``xax_oracle_windows.xax``; test_windows_generator checks that)."""
         with tempfile.TemporaryDirectory() as directory:
-            out = Path(directory) / "oracle.xax"
-            subprocess.run([str(SEED), "edit", str(BOOTSTRAP / "evolution" / "ledger-tool" / "seed.xax"), str(ORACLE / "oracle.batch"), str(out)], check=True)
+            first, out = Path(directory) / "first.xax", Path(directory) / "oracle.xax"
+            subprocess.run([str(SEED), "edit", str(BOOTSTRAP / "evolution" / "ledger-tool" / "seed.xax"), str(ORACLE / "oracle.batch"), str(first)], check=True)
+            subprocess.run([str(SEED), "edit", str(first), str(ORACLE / "driver.batch"), str(out)], check=True)
             self.assertEqual(out.read_bytes(), (ORACLE / "xax_oracle.xax").read_bytes())
+
+    def test_arguments(self):
+        """driver.batch's argument handling: too few arguments, and an argument of 4 KiB or more, exit 3."""
+        done = subprocess.run([str(_program()), "run"], capture_output=True)
+        self.assertEqual((done.returncode, done.stdout.replace(b"\r\n", b"\n")), (3, b"error\n"))
+        with tempfile.TemporaryDirectory() as directory:
+            long = "x" * 4096
+            done = subprocess.run([str(_program()), "run", str(Path(directory) / "missing.xax"), long], capture_output=True)
+            self.assertEqual((done.returncode, done.stdout.replace(b"\r\n", b"\n")), (3, b"error\n"))
 
     def test_both_oracles_agree_on_stack_memory(self):
         """Slice 3: stack allocations, offsets, plain and checked loads and stores, memory-check traps."""
