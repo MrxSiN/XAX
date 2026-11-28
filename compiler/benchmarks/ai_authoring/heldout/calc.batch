@@ -1,0 +1,109 @@
+R 1eb80498556828e265319520c54d3bbde680aa67d9646bbfada31ea7045d69cf
+F0
+define @crc_step
+(T0,T0)->(T0)
+B0(P0:T0,P1:T0)
+N0 bit.xor P0 P1 -> T0
+N1 constant 1 -> T0
+N2 bit.and N0 N1 -> T0
+N3 constant 0 -> T0
+N4 sub.wrap N3 N2 -> T0
+N5 constant 2 -> T0
+N6 udiv P0 N5 -> T0
+N7 constant 3988292384 -> T0
+N8 bit.and N7 N4 -> T0
+N9 bit.xor N6 N8 -> T0
+ret N9
+T0 bits64
+end
+define @crc_byte
+(T0,T0)->(T0)
+B0(P0:T0,P1:T0)
+N0 constant 0 -> T0
+br B1(P0,P1,N0)
+B1(P2:T0,P3:T0,P4:T0)
+N1 constant 8 -> T0
+N2 int.compare P4 N1 -> T1 [3]
+cbr N2 B2(P2,P3,P4) B3(P2)
+B2(P5:T0,P6:T0,P7:T0)
+N3 call.direct entity=@crc_step P5 P6 -> T0
+N4 constant 2 -> T0
+N5 udiv P6 N4 -> T0
+N6 constant 1 -> T0
+N7 add.wrap P7 N6 -> T0
+br B1(N3,N5,N7)
+B3(P8:T0)
+ret P8
+T0 bits64
+T1 bits1
+end
+define @crc_mix
+(T0,T0)->(T0)
+B0(P0:T0,P1:T0)
+N0 constant 4294967295 -> T0
+N1 constant 255 -> T0
+N2 bit.and P0 N1 -> T0
+N3 call.direct entity=@crc_byte N0 N2 -> T0
+N4 bit.and P1 N1 -> T0
+N5 call.direct entity=@crc_byte N3 N4 -> T0
+ret N5
+T0 bits64
+end
+define @bound
+(T0)->(T0)
+B0(P0:T0)
+N0 constant 1 -> T0
+N1 add.wrap P0 N0 -> T0
+ret N1
+T0 bits64
+end
+define @sum_below
+(T0)->(T0)
+B0(P0:T0)
+N0 call.direct entity=@bound P0 -> T0
+N1 constant 0 -> T0
+br B1(N0,N1,N1)
+B1(P1:T0,P2:T0,P3:T0)
+N2 int.compare P2 P1 -> T1 [3]
+cbr N2 B2(P1,P2,P3) B3(P3)
+B2(P4:T0,P5:T0,P6:T0)
+N3 add.wrap P6 P5 -> T0
+N4 constant 1 -> T0
+N5 add.wrap P5 N4 -> T0
+br B1(P4,N5,N3)
+B3(P7:T0)
+ret P7
+T0 bits64
+T1 bits1
+end
+define @scale
+(T0)->(T0)
+B0(P0:T0)
+N0 constant 3 -> T0
+N1 mul.wrap P0 N0 -> T0
+ret N1
+T0 bits64
+end
+define @calc
+(T0,T0,T0)->(T0)
+B0(P0:T0,P1:T0,P2:T0)
+N0 constant 0 -> T0
+N1 int.compare P0 N0 -> T1 [1]
+cbr N1 B1(P1) B2(P0,P1,P2)
+B1(P3:T0)
+N2 call.direct entity=@sum_below P3 -> T0
+ret N2
+B2(P4:T0,P5:T0,P6:T0)
+N3 constant 1 -> T0
+N4 int.compare P4 N3 -> T1 [1]
+cbr N4 B3(P5,P6) B4(P5)
+B3(P7:T0,P8:T0)
+N5 call.direct entity=@crc_mix P7 P8 -> T0
+ret N5
+B4(P9:T0)
+N6 call.direct entity=@scale P9 -> T0
+ret N6
+T0 bits64
+T1 bits1
+end
+replace F0 @calc
