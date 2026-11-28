@@ -1,18 +1,10 @@
 # Diagnostic and test tools for the native BBC build (tooling only, never compiler logic)
 
-Run from `compiler/` with `PYTHONPATH=src:reference:.`. All run the XAX general program (Python-hosted native image of
-`bootstrap/xax_x86_64_general.xax`) or the seed; none of them decides anything the compiler decides.
+None of them decides anything the compiler decides. The Python probes (`audit.py`, `probe_state.py`, `probe_order.py`,
+`call_one.py`) and benchmark drivers (`bench.py`, `device_bench.py`) were deleted on 2026-11-28: nothing ran them; the
+evidence records that name them keep their hashes.
 
 - The build request is the committed `integration/bfx/bbc_request.xax` (`../README.md`); `request.py` is removed.
-- `audit.py <store with a module>`: per function, in closure (CID) order, the analysis status (analysed/ineligible) and
-  the emission status (`code`, or `None` = the frame path declined). Works even when the whole run declines; the line
-  after the last record is where the run stopped.
-- `probe_state.py <store>`: the stop state: status words, `E_F` (the function last in emit/frame), `R_*`, and the image
-  slots (index 1 of the printed list is `I_LEN`, the image bytes so far; `IMAGE_CAP` is 2^25).
-- `probe_order.py <store>`: the CIDs at chosen closure positions and `G_VCOUNT`/`G_BCOUNT` at the stop (`VCAP` = 2^18).
-- `call_one.py <CID prefix> <out store> [source store]`: a PE entry that calls one function of a store with constant
-  bits arguments and freshly VirtualAlloc'd views for each pointer/view/memory triple, to reproduce a per-function
-  failure in isolation (then `audit.py` on the output).
 - `xax_bbc_check.exe <bbc.exe> <integration dir> CASES <adb> <serial> <out>`, run in an empty work directory on
   Windows: BBC's checks outside BBC, in XAX (it replaced `check.py` on 2026-11-26). See "The check tool" below.
 
@@ -43,9 +35,6 @@ cannot run (arguments, a file, adb).
 - Limits: a child's output of at most 983,039 bytes, read with one `ReadFile`, and no timeout on a child.
 - Change it by a further batch on `xax_bbc_check.xax`, then regenerate the Windows store.
   `tests/test_windows_generator.py` checks both stores against the batch and the generator.
-- `bench.py <arm>[,<arm>...] <work dir> <out.json> <trials> <baseline record> <program.b> ...`: build and run times per
-  trial for one or more `bbc.exe` arms (`<name>=<path>`), all arms' trials in one shuffled order so they alternate, every
-  output checked against the hash BBC's baseline benchmark record holds for that source.
 
 Profiling a slow native run: `gdb -p <pid> -batch -ex "info registers rip"` a few times, find the mapping in
 `/proc/<pid>/maps`, subtract the mapping base and the SysV→Win64 thunk (16-byte aligned), and map the offset with

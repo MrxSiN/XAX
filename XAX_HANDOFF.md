@@ -92,6 +92,8 @@ Dated sections (historical records; a later section supersedes an earlier one):
 - [Release 0043 on `main`; release 0044 needs an owner decision — 2026-11-26](#release-0043-on-main-release-0044-needs-an-owner-decision--2026-11-26)
 - [Release 0044 open: 8 GiB workspace, offsets and clamps in; arena move waits — 2026-11-26](#release-0044-open-8-gib-workspace-offsets-and-clamps-in-arena-move-waits--2026-11-26)
 - [Release 0044 on `main`; Android items; the arena move narrowed — 2026-11-27](#release-0044-on-main-android-items-the-arena-move-narrowed--2026-11-27)
+- [Release 0045 open: x86-64 arena above 2 GiB (hanoi -O0 builds), Android leaf inlining; rotation running — 2026-11-28](#release-0045-open-x86-64-arena-above-2-gib-hanoi--o0-builds-android-leaf-inlining-rotation-running--2026-11-28)
+- [Release process speed and size: measurements, cleanup, ADR-433 — 2026-11-28](#release-process-speed-and-size-measurements-cleanup-adr-433--2026-11-28)
 
 ## Invariants that must not drift
 
@@ -3533,3 +3535,184 @@ the calls below were made without asking.
      (d) with C1 = C2, a working C2, the corpus differential and hanoi -O0.
   2. ADR-431 (3) inlining sub-batch and the Windows R4 sub-batches on `release/0045`; #213, #216.
   3. Part C.
+
+## Release 0045 open: x86-64 arena above 2 GiB (hanoi -O0 builds), Android leaf inlining; rotation running — 2026-11-28
+
+`main` = `d0c5184` (release 0044 merged in #218; #219 handoff; #220). `release/0045` = `cff6dfd`, cut from `main`
+`b632940`, with main merged in (#222). Supersedes the "Next" of "Release 0044 on `main`; Android items; the arena move
+narrowed" above. The owner asked for an unattended night with no questions; every call below was made without asking.
+
+- **Release 0044 landed:** main merged into `release/0044` (#217: main's ADR-430/431 keep their numbers, the
+  edit-engine ADR is ADR-432, also in ADR-423 amendment 5 and docs/09), release PR #218, BBC pinned to 0044
+  ([BBC#14](https://github.com/MrxSiN/BBC/pull/14)), handoff #219.
+- **#216 closed** (#220): not an engine change. `request.batch` alone has always made the 80,195-byte store (the one
+  committed in `d382e00`); the committed store is that plus `driver.batch` (since `fdafb1f`). The test now applies both.
+- **ADR-423 amendment 6** (#221, ledger `0045-x86-64-arena-above-2gib`): only F467 (the x86-64 entry) moves its arena,
+  to [2^28, 2^30 − 2^27) words, with a value capacity of 2^20; the other 11 initialisers stay. EXECUTED: C1 = C2,
+  corpus 197 of 197 the same; hanoi -O0 for Windows x86-64 builds with BBC's driver (318 s) and matches the expected
+  output (Windows 11). Moving all 12 made six APK/libxposed builds decline; why, and what breaks above 2^30 − 2^27, is
+  still not found (recorded as open in the amendment; F228's 2^28 clamp is dead code, F19/F43's clamp fixed globals).
+- **ADR-431 (3)** (#223, ledger `0045-aarch64-android-leaf-inlining`): F778's `G_A64ANDROID` gate (globals slot 189,
+  word 29,360,317; `GLOBALS` is 28 << 20) removed with one `operand` mutation; the reference inlines for every ABI.
+  C1 = C2, corpus unchanged, reference counter library byte-identical. Not observable natively yet (the APK path takes
+  only the v3 target; a v4/v5 native image is #213).
+- **#213:** the reference raises `ValueError` (no lowering identity for the Android image format), so a native
+  Android shared image is a design decision: a new lowering identity or a defined rejection. Findings in the issue;
+  not started.
+- **Part C:** not started. ADR-427 requires its baseline first; the frozen corpus (#188) still lacks its held-out
+  fixture stores and answer keys, and the measured runs are at least 30 fresh agent sessions of up to 4 hours each,
+  which need the owner's go-ahead for that scale.
+- **Rotation 0045 running** (started 05:36, Terminal tab "release 0045 chain"): WSL `/root/work/chain45.sh` runs
+  `rel45.sh` (check, replay with the 0045 candidate `/root/work/a6/c1`, rotate build/confirm, SNAPSHOTS, evidence,
+  validate, status blocks, test_rotate_tool) then `rel45b.sh` (BBC's two `rebuild.sh` transactions, `bbc.exe` into
+  `D:\GitHub\XAX-work-bbc45r`, pin run, V1 benches, full suite), committing on branch `rotation-0045` in
+  `/root/work/r45r`. Logs: `/root/work/logs/rel0045{,b}.log`, `.term`, `.suite`. About 10 h.
+- **Next:**
+  1. When `rel0045b.log` says POST-DONE: read the suite failures against 0044's known list, fix what the release
+     caused, fetch `rotation-0045` to Windows (`git fetch //wsl.localhost/Ubuntu-24.04-D/root/work/r45r
+     rotation-0045:rotation-0045`), open the rotation PR into `release/0045`, then the release PR into `main`.
+  2. BBC: native check (`xax_bbc_check.exe`) on both Pixels with the new `bbc.exe`, hanoi -O0 for Windows again, then
+     pin BBC to 0045.
+  3. #213 and ADR-431 (1)/(2) need the owner; Part C needs the owner's go-ahead for the ADR-427 runs.
+- **Continuation prompt:** "Continue the XAX campaign: read the last XAX_HANDOFF.md section. Release 0045's rotation
+  chain ran in WSL (`/root/work/logs/rel0045b.log`). If it reached POST-DONE, check the suite, open the rotation PR
+  into release/0045 and the release PR into main, merge them once their gates pass, then BBC's native check on both
+  Pixels and the BBC pin. If it stopped, read the log, fix and rerun from the failed step."
+
+## Release process speed and size: measurements, cleanup, ADR-433 — 2026-11-28
+
+Supersedes nothing; the "Next" of "Release 0045 open…" above still applies to release 0045 itself. Release 0045's
+chain validated `0045` at 11:21 (`evidence=103843b7…`, branch `rotation-0045` in WSL `/root/work/r45r`) and was in
+its post-validate half (`rel45b.sh`) during this work, which therefore ran only light jobs.
+
+- **ADR-433** (#225) records the owner's decisions: one replay per release (in the V2 evidence run), checkpointed
+  replay, V1 without its repeated generations, the suite once per release, derived stores stay committed for now
+  (13 readers), seeds stay in git. The same PR makes `test_xax_selfhost_evolution`'s replay test read the evidence
+  records (0.5 s instead of about 1 h 50 min when a record names the committed LEDGER blob; EXECUTED, WSL 2).
+- **Measured** (EXECUTED):
+
+  | What | Value |
+  |---|---|
+  | `D:\GitHub\XAX\.git` (`git count-objects -vH`) | 3.65 GiB in 3,349 loose objects, 437 MiB in 3 packs (4.1 GB on disk) |
+  | `git gc --aggressive` on a `--mirror --no-hardlinks` clone | 2,865 s (12.9 GB peak RSS on Windows): 4.1 GB on disk becomes 694 MB, no loose objects, 14,671 objects in 2 packs (692.85 MiB); the clone was deleted afterwards |
+  | Store history (blobs, raw) | request 109 (5.5 GB), driver 118 (5.7 GB), `bbc.xax` 31 (2.0 GB), `bbc_request.xax` 17 (1.2 GB), Linux seed 65 (1.8 GB), Windows seed 18 (0.6 GB) |
+  | WSL VHDX `D:\WSL\Ubuntu-24.04\ext4.vhdx` | 64.9 GB file; 55 GB used inside before cleanup, 26 GB after |
+  | WSL `/root/work` | 13 GB after cleanup (r45r 5.1 GB, a5 2.9 GB, rel0045 1.3 GB) |
+  | Release 0045 chain steps | check 2 s; scratch replay 2 h 26 min; build 15 min; confirm 7 + 11 min; reference snapshot 4 min; V2 evidence 2 h 43 min (its own full replay included) |
+
+- **Cleanup** (EXECUTED): WSL `/root/XAX` (its leftovers were ledger 0026, whose three batches equal main's byte for
+  byte; a text patch is kept at `/root/work/keep/root-XAX-ledger0026-leftovers.patch`), `r43`, `r44`, `r44b`, `r44r`,
+  `campaign`, `m44`, `i216`, `r45`, `a5/arena*`, `c48`, `rel0044` and older per-release scratch (`sb0034`, `sb0035`,
+  `win0033`, `c37`, `c58`, `bbc41`, …). Their unpushed commits were checked first: all on `origin` except superseded
+  tries (`rotation-0039-try1`, an old `r44-supplied` tip, a scratch `tmp`). Windows: worktrees `XAX-r4`, `XAX-r44`,
+  `XAX-m44` and three scratchpad `wt-*` (all merged, clean), `XAX-work-bbc44`, and 45 merged local branches.
+  NOT RUN: VHDX compaction (needs a WSL shutdown; after POST-DONE).
+- **WSL memory** (written, not applied): `C:\Users\SiN\.wslconfig` (16 GB swap on `D:\WSL\swap.vhdx`,
+  `autoMemoryReclaim=gradual`, `sparseVhd=true`) and `/etc/sysctl.d/90-xax-overcommit.conf` (`vm.overcommit_memory = 1`).
+  Both take effect at the next WSL start. NOT RUN: the `test_xax_x86_64_views -n 2` rerun.
+- **V1 bench:** BLOCKED on design, not started. `bench_full_selfhost` holds three generations, a corpus run by four
+  executables and a fourth full ledger replay (its W2 `evolution` section, replayed by C1); the reference B-level
+  derivation (`xax_selfhost.linux_x86_64_status`) requires exactly three generations and the C1 replay, and
+  `test_evidence_v2` builds its V2 mutation cases from the V1 record. So dropping the generations changes
+  `linux_x86_64_status`, `test_full_selfhost_status` and `test_evidence_v2` together; since the V2 record already holds
+  the generations, the fixed point and the replay, the plan is: V1 records only C0's corpus outcomes against the
+  reference, and the reference status reads generations and replay from the V2 record.
+- **Release 0046 scripts** (scratch): `/root/work/rel46.sh` (from `rel45.sh`: no scratch replay, a `--shared` clone,
+  `XAXC46` names the candidate). `rel46b.sh` is to be written once 0046's transactions are known.
+- **Estimate for the next release** (from the measured parts): genesis replay once: build 15 + confirm 18 + snapshot 4
+  + evidence 163 + BBC and `bbc.exe` about 15 + pin 10 + V1 corpus-only about 40 + suite about 120 (3 h 54 min minus
+  the evolution replay) ≈ 6.5 h, against about 13.5 h for 0045 (two extra replays and V1's 5 h). A checkpointed
+  release (evidence about 20 min plus the new transactions) ≈ 4 h.
+- **Next:**
+  1. After `rel0045b.log` says POST-DONE: the rotation and release PRs for 0045 (see the section above); then
+     `wsl --shutdown`, `Optimize-VHD` or `diskpart compact vdisk` on the VHDX, start WSL and check that
+     `vm.overcommit_memory` is 1 and swap is 16 GB; rerun `test_xax_x86_64_views.py -n 2`.
+  2. Suite: one xdist group for the driver-sized reference tests, StoreReader caches cleared between tests; measure
+     the full suite at `-n 4`.
+  3. Tooling PRs on `main`: `xax_ledger after <bootstrap> <prefix ledger> <out>` (native batch on
+     `xax_ledger.xax`: exit 1 unless the file is a byte prefix of the LEDGER, else the transaction lines after it) and
+     `evolve.sh replay --from <LEDGER blob>` using it; a worker count for replay (transactions grouped so a chained
+     transaction stays with its predecessor); the V1 change above; evolve.sh docs (one driver blob per PR). Show a
+     checkpointed and a parallel replay give the full serial replay's `replayed` line.
+  4. Release 0046 driver sub-batches once 0045 is on `main`: MAP_NORESERVE on the two workspace reservations, arena
+     pages returned after each function, skip verifying a replay input that is a committed verified store, then a
+     design note for ADR-423 amendment 4 option 3.
+- **Continuation prompt:** "Continue the XAX release-speed work: read the last two XAX_HANDOFF.md sections. If
+  `/root/work/logs/rel0045b.log` says POST-DONE, land release 0045 first, then do the Next list of the speed section
+  in order."
+
+## Python retirement, first pass: inventory, 61 files deleted, the oracle on Windows — 2026-11-28
+
+`main` = `5936f76`. Supersedes nothing; ran beside release 0045's chain (`rel0045b.log` was at `pfs 469 s`, in
+`bench_full_selfhost`, throughout), so only Windows jobs and small WSL stores ran. Calls made without asking, as
+the owner asked.
+
+- **Inventory** (#233): `compiler/migration/python_authority_inventory.json` now lists every Python file outside
+  `reference/` (`files`: 108 entries with `class`, `run_by`, `release`; one `tests` entry; `release_roots`; a `release`
+  flag on each `src/` module), from an `ast` import walk plus the non-import callers. Everything in `src/` and 101 of
+  the 108 other files are reachable from the release's roots (the suite, `bench_full_selfhost.py`,
+  `bench_python_free_seed.py`); `tests/test_python_authority_inventory.py` keeps the list complete.
+- **Deleted, no caller** (EXECUTED: `pytest --collect-only` collects the same 2025 tests): six BBC probes and bench
+  drivers in `production_driver/native/tools` (#227), 42 benchmark evidence drivers (#228), four store builders in
+  `src/` (#230), the N0, S8, M11 and ledger-0024 tools (#231), two JVM bench drivers, `construct/probe_hash.py` and the
+  MCP example client (#232). No `reference/` module lost its last importer.
+- **Native oracle on Windows** (#234): `oracle/driver.batch` gives main the general driver's entry; `generate.sh`
+  hosts it as `xax_oracle_windows.xax`; `oracle_execute` is native on Windows too. EXECUTED: both oracles agree on
+  4,111 cases on Windows 11 and on Linux (WSL 2) (`benchmarks/oracle_windows_evidence.json`); both seeds make the
+  same stores. The oracle-backed tests take 148 s on Windows instead of 42 s (a process per case). New limits: 4 to
+  1,024 arguments, each under 4 KiB.
+- **Slice 4: BLOCKED on design.** The prompt's slice 4 (heap views and pointers, then floats and foreign calls)
+  differs from `docs/proposals/native-oracle.md` §4 (aggregates, sums, floats; foreign calls declined for good). The
+  Python executor has no `heap.view` or `call.foreign` semantics; its only heap memory is borrowed-view parameters,
+  and no test passes those to `execute`, so there is no corpus for both oracles to agree on. The owner decides: either
+  the doc's slice 4 (corpus `test_xax_general_language`), or a heap-pointer argument form for both executors with a
+  new corpus. Floats natively would use XAX float operations, whose lowering is what the oracle checks (an
+  independence question for ADR-405).
+- **Ports: NOT RUN.** Every remaining file outside `reference/` except seven is release-needed, and the prompt holds
+  those until 0045 is on `main`. The seven: `bench_selfhost_x86_64.py` (re-records evidence a test checks),
+  `make_android_root.py`, `construct/host.py` and `probe_seed.py` (README commands), `mcp/chain.py`, `bench.py`,
+  `fingerprint.py` ("port pending"; `fingerprint` needs SHA-256 and a file list, no directory listing exists in the
+  host functions).
+- **Note:** #234 changed four test files on `main` (`test_native_oracle`, `test_windows_generator`,
+  `test_xax_byte_view_widening`, and #233's inventory test) while the release's suite runs from its own clone
+  (`/root/work/r45r`); its result is unaffected, but the release PR's merge into `main` meets them.
+- **Plan: every tool runs natively on Windows** (the owner approved it in a side session, 2026-11-28: most work ran
+  in WSL as if it depended on it). Every tool and script runs on Windows from the same store: host functions only,
+  the Windows store made by `windows/generator/generate.sh`, no hand-kept duplicate. WSL stays only for running
+  Linux target output (the Linux self-build fixed point, `rotate.sh confirm` for Linux, Linux corpus runs). Order:
+  1. Done (#234): the oracle on the driver's host functions, `xax_oracle_windows.xax`.
+  2. After 0045 is on `main` (the release-script rule): seed selection by host in `evolve.sh`, `rotate.sh`,
+     `selfbuild.sh` and `evidence/run.sh`, as `status.sh` and now `oracle.sh` do (`uname` picks the Linux seed or
+     `xaxc-windows-x86_64.exe`).
+  3. Checked 2026-11-28: `status.sh` no longer refuses the bootstrap block on Windows; it builds
+     `xax_evidence_windows.xax` and `xax_rotate_windows.xax` there. Only `status-tool/README.md` lines 15-16 still
+     say it does. NOT RUN: `status.sh check` on Windows; fix the README once that run agrees with Linux.
+  4. Optional: a test that every tool store has a generated Windows twin. Today every one does
+     (evidence, ledger, request, oracle, rotate, status, verdict, hosting); `evolution/native/0024/narrow_signed_compare.xax`
+     is a one-off Linux check program and `ledger-tool/seed.xax` the base store, so neither is a tool.
+- **Next:**
+  1. After 0045 is on `main`: port the release-needed tools one by one, smallest first, each proven by a byte diff
+     against the Python on the real repository and fixtures, deleting the Python and its callers in the same PR.
+  2. The owner's slice 4 decision, then that slice with an evidence JSON and the tests moved.
+  3. The Windows-native plan above, items 2 to 4.
+- **Continuation prompt:** "Continue the XAX Python retirement: read the last XAX_HANDOFF.md section. Once release
+  0045 is on main, port the release-needed Python tools natively one PR each, smallest first; ask the owner for the
+  oracle slice 4 decision."
+
+## Native oracle slice 4 done: aggregates, sums, floats — 2026-11-28
+
+`main` after #241. Supersedes the "Slice 4: BLOCKED on design" item of "Python retirement, first pass…" above: the owner
+chose the design doc's slice 4 (aggregates, sums, floats).
+
+- **Aggregates and sums** (#239, README #240): `slice4-types.batch` and `slice4-aggregates.batch` on `xax_oracle.xax`
+  (`@op4`, an arena in the frame view, the `sum-variant` trap). EXECUTED: 10 cases agree on Windows and Linux.
+- **Floats** (#241): `slice4-floats-types.batch` and `slice4-floats.batch` (`@op5`, integer soft-float, round to nearest
+  even). XAX cannot reinterpret bits as a float (`pointer.cast` between element types is rejected, a checked load is
+  always `bits`), so the float semantics are written in integers. EXECUTED: 2,038 float cases agree on Windows and Linux
+  (NaNs compared as a class), 104 of them `float-conversion` traps.
+- `test_xax_general_language` takes all eight of its checks from `oracle_execute` (floats as their bits).
+- **Limits:** a 57,344-byte arena for aggregates and sums, never freed (past it, `decline 0`); aggregate and sum entry
+  parameters and results are not checked.
+- **Next:** the Python retirement's ports after 0045 is on `main` (the section above); the next oracle area is the one
+  `docs/proposals/native-oracle.md` §4 lists after slice 4 (none: foreign calls, target and meta operations stay
+  declined), so the remaining `reference/` executor users are the tests that need those.

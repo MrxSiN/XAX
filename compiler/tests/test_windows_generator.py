@@ -73,6 +73,15 @@ class WindowsGeneratorTests(unittest.TestCase):
             subprocess.run(["sh", str(GENERATOR / "generate.sh"), str(tool / "xax_request.xax"), str(hosted)], check=True, capture_output=True, timeout=1800)
             self.assertEqual(hosted.read_bytes(), (tool / "xax_request_windows.xax").read_bytes())
 
+    def test_the_oracle_is_hosted(self):
+        """The native reference executor's Windows store is generate.sh's output for xax_oracle.xax (ADR-405; its
+        batches are checked by test_native_oracle)."""
+        oracle = BOOTSTRAP / "oracle"
+        with tempfile.TemporaryDirectory() as directory:
+            out = Path(directory) / "xax_oracle_windows.xax"
+            subprocess.run(["sh", str(GENERATOR / "generate.sh"), str(oracle / "xax_oracle.xax"), str(out)], check=True, capture_output=True, timeout=1800)
+            self.assertEqual(out.read_bytes(), (oracle / "xax_oracle_windows.xax").read_bytes())
+
     def test_the_bbc_check_tool_is_hosted_and_its_batch(self):
         """xax_bbc_check.xax (BBC's check tool, which replaced check.py) is check.batch on the ledger seed, and its
         Windows store is generate.sh's output."""

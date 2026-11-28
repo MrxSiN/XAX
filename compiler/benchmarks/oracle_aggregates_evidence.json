@@ -1,0 +1,26 @@
+{
+ "format": "xax-native-oracle-agreement-v1",
+ "label": "EXECUTED",
+ "adr": "ADR-405",
+ "design": "docs/proposals/native-oracle.md, slice 4 (aggregates and sums; floats follow)",
+ "date": "2026-11-28",
+ "areas": [
+  {"area": "tuples and arrays (aggregate.make, aggregate.get)", "corpus": "test_xax_general_language's tuple/array program at (7, 11), (0, 0), (2^32-1, 5)", "cases": 3, "agree": 3, "disagree": 0},
+  {"area": "sums across a block edge (sum.make, sum.tag, sum.get)", "corpus": "test_xax_general_language's sum program at 99, 0, 2^32-1", "cases": 3, "agree": 3, "disagree": 0},
+  {"area": "the wrong variant (trap sum-variant), a tag and a 64-bit value", "corpus": "tests/test_native_oracle.py test_both_oracles_agree_on_aggregates_and_sums", "cases": 2, "agree": 2, "disagree": 0},
+  {"area": "nested aggregates, an aggregate a callee returns", "corpus": "tests/test_native_oracle.py test_both_oracles_agree_on_aggregates_and_sums", "cases": 2, "agree": 2, "disagree": 0}
+ ],
+ "also": "the earlier corpora still agree on both hosts (test_native_oracle: 4,121 subtests); a float operation still declines with its number",
+ "oracles": {
+  "python": "reference/xax_compiler.py execute (verify_store first)",
+  "native": {
+   "store": "compiler/bootstrap/oracle/xax_oracle.xax (oracle, driver, slice4-types, slice4-aggregates batches)",
+   "store_sha256": "67f2338a367f7894000152aed70deea416667751929bf77876546b027817375a",
+   "windows_store_sha256": "4662adb266b109107ebe98912e7e3fdbd96fd93c2a6965d5ba0542457edfe263",
+   "windows_executable_sha256": "5d6879752fb673ef15d90985847c8e29f5345d55a8850d1e74f3a4a1fc24dbeb",
+   "windows_executable_bytes": 30208,
+   "built_by": "the pinned Windows seed (Windows 11) and the pinned Linux seed (WSL 2, XAX_REQUIRE_NATIVE=1); both make the same stores"
+  }
+ },
+ "host_nonsemantic": "Windows 11 Pro 10.0.26300 x86-64, Python 3.12.10; WSL 2 Linux x86-64, Python 3.12.3"
+}

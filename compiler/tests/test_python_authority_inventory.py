@@ -23,6 +23,22 @@ class PythonAuthorityInventoryTests(unittest.TestCase):
             with self.subTest(module=name):
                 self.assertIn(entry["class"], self.inventory["classes"])
 
+    def test_every_python_file_outside_reference_is_listed(self):
+        """The retirement inventory: each Python file outside ``reference/`` and ``src/`` (tests aside) names who runs it
+        and whether the release needs it; each ``src/`` module says whether the release needs it."""
+        found = {path.relative_to(COMPILER).as_posix() for path in COMPILER.rglob("*.py")
+                 if path.relative_to(COMPILER).parts[0] not in ("src", "reference", "build")
+                 and "__pycache__" not in path.parts and not path.name.startswith("test_") and path.name != "conftest.py"}
+        self.assertEqual(set(self.inventory["files"]), found)
+        for name, entry in self.inventory["files"].items():
+            with self.subTest(file=name):
+                self.assertIn(entry["class"], self.inventory["classes"])
+                self.assertTrue(entry["run_by"])
+                self.assertIsInstance(entry["release"], bool)
+        for name in (path.name for path in (COMPILER / "src").glob("*.py")):
+            with self.subTest(module=name):
+                self.assertIsInstance(self.inventory["modules"][name]["release"], bool)
+
     def test_the_python_compiler_is_in_reference(self):
         """W4 (ADR-363): the Python compiler (classes A, B and C, and the M11 Python seed) is in ``reference/``; ``src/``
         holds the native compiler's runners, generated-store modules and tooling (classes D, E, G, and the native seed's)."""
