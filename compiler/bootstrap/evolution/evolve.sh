@@ -18,6 +18,11 @@
 # result differs, fails it; it ends with `replayed <n> of <total> LEDGER=<blob> xaxc=<blob>` (git object ids) for the
 # evidence and tests to read. XAXC names the compiler (default: the pinned seed).
 #
+# One driver blob per pull request: each driver store committed to git is about 64 MB of history, so a pull request
+# commits the driver (and its derived request) once, after all of its transactions are applied. Several transactions
+# on the driver in one pull request are applied one after the other and committed together; git then holds only the
+# chain's end, and `replay` takes the intermediate stores from its own earlier results.
+#
 # A derived store (a `derived <store> <final blob> <tool root>` line, RFC step 6) is no longer changed by transactions:
 # seed/xax_compiler_request.xax is request-tool/request.sh of the driver, so `apply` rewrites it after a driver
 # transaction and `check` requires the committed request to be that derivation. Its historical transactions replay.
