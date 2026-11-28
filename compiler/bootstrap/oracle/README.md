@@ -35,6 +35,14 @@ as `execute` does. The bound `offset + size <= extent` is evaluated without a 64
 2^64 traps (ADR-412 (4)). Pointers into the target's address space (`pointer.address`, `pointer.rebase`), heap views and growable
 accesses stay declined.
 
+**Slice 4** (aggregates and sums so far; floats follow) adds `aggregate.make`, `aggregate.get`, `sum.make`, `sum.tag`
+and `sum.get`, with tuple, array and sum types as values. An aggregate or sum value is the frame view's address of its
+words in an arena from byte 983,040 to 1,040,384, whose cursor is control slot 1000: an aggregate is its operands'
+words, a sum its tag and its value. The arena is never freed, so a value outlives the frame that made it; past
+57,344 bytes a call declines (`decline 0`). The wrong variant traps with the payload `sum-variant`, written to the
+store view's last 32 bytes (after the 32-byte function CID). An aggregate or sum entry parameter or result is outside
+the command line and is not checked: give the oracle bits entries.
+
 How it works:
 
 - The store is read into one view. Objects are found by CID through a walk of the records.
@@ -102,7 +110,9 @@ request tool's `driver.batch` did for that tool. The rest of the program is unch
   fails. The output goes from the frame view through A in 64 KiB pieces to `host_write` on standard output.
 - New limits: 4 to 1,024 arguments, each under 4 KiB, at most 48 KiB of argument text in all. Anything else exits 3
   with `error`. On Windows the host layer's `_write` writes text mode, so each output line ends with CR LF.
-- `xax_oracle.xax` is `oracle.batch` and then `driver.batch` on `../evolution/ledger-tool/seed.xax`
+- `xax_oracle.xax` is `oracle.batch`, `driver.batch`, then slice 4's `slice4-types.batch` (`@tmask`: tuple, array
+  and sum types get a mask) and `slice4-aggregates.batch` (`@snode` knows operations 51-55, `@opx` sends them to the new
+  `@op4`) on `../evolution/ledger-tool/seed.xax`
   (`tests/test_native_oracle.py`), and `xax_oracle_windows.xax` is `generate.sh`'s output for it
   (`tests/test_windows_generator.py`). Change the program by a further batch on `xax_oracle.xax`, then regenerate the
   Windows store.
@@ -115,3 +125,9 @@ seed, `XAX_REQUIRE_NATIVE=1`): 9 passed, 4,111 subtests. Both seeds make the sam
 that take their expected values from `oracle_execute` (narrow compare, recursion, branch fusion, sign-extend
 composition, byte-view widening) pass on Windows with the native oracle (23 passed, 3,875 subtests). They take
 148 s instead of 42 s, because each case starts a process.
+
+**Slice 4, aggregates and sums (EXECUTED, 2026-11-28):** both oracles agree on 10 cases on Windows 11 and on Linux
+x86-64 (WSL 2): test_xax_general_language's tuple/array and sum programs at three inputs each, the sum-variant trap, a
+tag with a 64-bit value, nested aggregates and an aggregate returned by a callee
+(`../../benchmarks/oracle_aggregates_evidence.json`). The earlier corpora still agree (4,121 subtests on each host), and
+test_xax_general_language's two checks now take their values from `oracle_execute`.
