@@ -3641,7 +3641,7 @@ its post-validate half (`rel45b.sh`) during this work, which therefore ran only 
   `/root/work/logs/rel0045b.log` says POST-DONE, land release 0045 first, then do the Next list of the speed section
   in order."
 
-## Python retirement, first pass: inventory, 59 files deleted, the oracle on Windows — 2026-11-28
+## Python retirement, first pass: inventory, 61 files deleted, the oracle on Windows — 2026-11-28
 
 `main` = `5936f76`. Supersedes nothing; ran beside release 0045's chain (`rel0045b.log` was at `pfs 469 s`, in
 `bench_full_selfhost`, throughout), so only Windows jobs and small WSL stores ran. Calls made without asking, as
