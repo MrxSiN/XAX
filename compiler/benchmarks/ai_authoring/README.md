@@ -99,6 +99,6 @@ method, and `adjusted_tokens` is `gross_tokens - overhead_tokens`. Both are repo
 | Item | Status |
 |---|---|
 | Tasks and checks | frozen (`v1`, 2026-11-25) |
-| Held-out fixture stores | NOT RUN: not yet committed |
-| B9 and H4 answer keys | NOT RUN: computed when the fixtures are committed |
+| Held-out fixture stores | committed 2026-11-28 ([`heldout/`](heldout/README.md): roots `d17067a2…` H1, `9e3feb7c…` H2, `8fa2a94e…` H3-H5) |
+| B9 and H4 answer keys | committed 2026-11-28 (`heldout/keys/`, hidden from measured runs) |
 | Measured runs | NOT RUN |

@@ -75,3 +75,5 @@ compiler/bootstrap/oracle/*.sh text eol=lf
 compiler/integration/bfx/transactions/production_driver/native/tools/CASES binary
 compiler/integration/bfx/transactions/production_driver/native/tools/*.xax -text
 compiler/integration/bfx/transactions/production_driver/native/tools/*.batch text eol=lf
+compiler/benchmarks/ai_authoring/heldout/*.xax -text
+compiler/benchmarks/ai_authoring/heldout/*.rejection -text

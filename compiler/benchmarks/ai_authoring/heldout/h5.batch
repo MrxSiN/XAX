@@ -1,0 +1,20 @@
+R 8fa2a94ec45efa980d31b23ae3e0b0fe3b38896f2fd3febd09378f0e5fa41c11
+F2
+define @crc_step
+(T0,T0)->(T0)
+B0(P0:T0,P1:T0)
+N0 bit.xor P0 P1 -> T0
+N1 constant 1 -> T0
+N2 bit.and N0 N1 -> T1
+N3 constant 0 -> T0
+N4 sub.wrap N3 N2 -> T0
+N5 constant 2 -> T0
+N6 udiv P0 N5 -> T0
+N7 constant 3988292384 -> T0
+N8 bit.and N7 N4 -> T0
+N9 bit.xor N6 N8 -> T0
+ret N9
+T0 bits64
+T1 bits32
+end
+replace F2 @crc_step
