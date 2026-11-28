@@ -3594,7 +3594,7 @@ its post-validate half (`rel45b.sh`) during this work, which therefore ran only 
   | What | Value |
   |---|---|
   | `D:\GitHub\XAX\.git` (`git count-objects -vH`) | 3.65 GiB in 3,349 loose objects, 437 MiB in 3 packs (4.1 GB on disk) |
-  | `git gc --aggressive` on a `--mirror --no-hardlinks` clone | NOT finished when this was written (over 40 min of CPU, 12.9 GB RSS on Windows); rerun `git count-objects -vH` in `D:GitHubscratch-gcx.git` afterwards |
+  | `git gc --aggressive` on a `--mirror --no-hardlinks` clone | 2,865 s (12.9 GB peak RSS on Windows): 4.1 GB on disk becomes 694 MB, no loose objects, 14,671 objects in 2 packs (692.85 MiB); the clone was deleted afterwards |
   | Store history (blobs, raw) | request 109 (5.5 GB), driver 118 (5.7 GB), `bbc.xax` 31 (2.0 GB), `bbc_request.xax` 17 (1.2 GB), Linux seed 65 (1.8 GB), Windows seed 18 (0.6 GB) |
   | WSL VHDX `D:\WSL\Ubuntu-24.04\ext4.vhdx` | 64.9 GB file; 55 GB used inside before cleanup, 26 GB after |
   | WSL `/root/work` | 13 GB after cleanup (r45r 5.1 GB, a5 2.9 GB, rel0045 1.3 GB) |
