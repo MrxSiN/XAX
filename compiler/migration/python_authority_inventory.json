@@ -302,10 +302,6 @@
       "class": "G",
       "note": "Builder of the store verifier's rendering phase (its rejections as the bootstrap's diagnostics, verify_store's order) and the host's reference rendering for tests (S15b.1, ADR-288)."
     },
-    "xax_selfhost_general_rejects.py": {
-      "class": "G",
-      "note": "Builder of the general x86-64 program's code generation rejections with the bootstrap's diagnostics (S15b.4, ADR-294)."
-    },
     "xax_selfhost_render_graph.py": {
       "class": "G",
       "note": "Builder of the typing program's graph outcome function (_parse_graph's order, the deciding record) and its host decoder (S15b.3a, ADR-292)."
@@ -511,10 +507,6 @@
       "class": "G",
       "note": "Builder of the canonical S15e.2 AArch64 program store; its front end and bare-metal images (ADR-315, ADR-325)."
     },
-    "xax_selfhost_aarch64_image.py": {
-      "class": "G",
-      "note": "Builder of the S15e.2 AArch64 program store: the bundle and the ELF image (ADR-315)."
-    },
     "xax_selfhost_aarch64_lower.py": {
       "class": "G",
       "note": "Builder of the S15e.2 AArch64 lowering views in the AArch64 program store (ADR-315)."
@@ -522,10 +514,6 @@
     "xax_selfhost_general_accel.py": {
       "class": "G",
       "note": "Builder of the S15e.7a accelerator deployments in the general x86-64 backend store (ADR-321)."
-    },
-    "xax_selfhost_general_dll.py": {
-      "class": "G",
-      "note": "Builder of the S15e.3b Windows DLL plan and image in the general x86-64 backend store (ADR-320)."
     },
     "xax_selfhost_general_spirv.py": {
       "class": "G",
@@ -550,10 +538,6 @@
     "xax_selfhost_jvm_emit.py": {
       "class": "G",
       "note": "Builder of the S15e.5 edge copies, layout and blocks in the JVM program store (ADR-327)."
-    },
-    "xax_selfhost_jvm_method.py": {
-      "class": "G",
-      "note": "Builder of the S15e.5 method analyses in the JVM program store (ADR-327)."
     },
     "xax_android_bfc.py": {
       "class": "A",
