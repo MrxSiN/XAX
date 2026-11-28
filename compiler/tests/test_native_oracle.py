@@ -23,7 +23,7 @@ SEED = BOOTSTRAP / "seed" / "xaxc-linux-x86_64"
 LINUX_X86_64 = sys.platform.startswith("linux") and platform.machine().lower() in ("x86_64", "amd64")
 WINDOWS_X86_64 = sys.platform == "win32" and platform.machine().lower() in ("x86_64", "amd64")
 NATIVE = LINUX_X86_64 or WINDOWS_X86_64  # the hosts the native oracle runs on
-BATCHES = ("oracle.batch", "driver.batch", "slice4-types.batch", "slice4-aggregates.batch")  # xax_oracle.xax, in order
+BATCHES = ("oracle.batch", "driver.batch", "slice4-types.batch", "slice4-aggregates.batch", "slice4-floats-types.batch", "slice4-floats.batch")  # xax_oracle.xax, in order
 
 
 @functools.lru_cache(maxsize=1)
@@ -50,11 +50,29 @@ def native_run(store: bytes, function_cid: bytes, arguments) -> tuple[int, str]:
 
 
 def native_execute(reader, function_cid: bytes, arguments) -> tuple[int, ...]:
-    """``execute``'s results from the native oracle; anything but results fails the caller's test."""
-    status, text = native_run(reader.data, function_cid, arguments)
+    """``execute``'s results from the native oracle; anything but results fails the caller's test. A float parameter
+    or result is a Python float here and its IEEE bits on the oracle's command line (slice 4)."""
+    import struct
+    from xax_compiler import _decode_function_interface
+
+    _graph, parameters, returns = _decode_function_interface(reader.get(function_cid), reader.get)
+
+    def width(cid):  # 32 or 64 for a float type, else None
+        body = reader.get(cid).body
+        return {b"\x07\x01": 32, b"\x07\x02": 64}.get(bytes(body))
+
+    def to_bits(value, w):
+        return struct.unpack("<I", struct.pack("<f", value))[0] if w == 32 else struct.unpack("<Q", struct.pack("<d", value))[0]
+
+    def from_bits(word, w):
+        return struct.unpack("<f", struct.pack("<I", word))[0] if w == 32 else struct.unpack("<d", struct.pack("<Q", word))[0]
+
+    words = [value if width(cid) is None else to_bits(float(value), width(cid)) for value, cid in zip(arguments, parameters)]
+    status, text = native_run(reader.data, function_cid, words)
     if status != 0:
         raise AssertionError(f"native oracle exit {status}: {text.strip()}")
-    return tuple(int(line) for line in text.splitlines())
+    results = [int(line) for line in text.splitlines()]
+    return tuple(word if width(cid) is None else from_bits(word, width(cid)) for word, cid in zip(results, returns))
 
 
 def oracle_execute(reader, function_cid: bytes, arguments) -> tuple[int, ...]:
@@ -313,13 +331,115 @@ class NativeOracleTests(unittest.TestCase):
             with self.subTest(function=function.cid.hex()[:8], arguments=arguments):
                 self.assertEqual(native_run(reader.data, function.cid, arguments), _reference(reader, function.cid, arguments))
 
-        graph = GraphBuilder()
-        f64 = float_type(FloatFormat.BINARY64)
-        block = graph.block(f64, f64)
-        block.ret(block.op1(Operation.FLOAT_ADD, block.params, f64))
-        function = graph.function((f64, f64), (f64,))
-        reader = program_store(function, target, tuple(graph.objects.values()))
-        self.assertEqual(native_run(reader.data, function.cid, (0, 0)), (2, f"decline {int(Operation.FLOAT_ADD)}\n"))
+        # an operation outside every slice declines with its number (the store is not verified: the oracle decides
+        # the decline at the operation before it reads anything else)
+        from test_xax_general_language import reader_for
+        from xax_compiler import Block, Node, Terminator, ValueRef, function as make_function, graph_fragment
+
+        graph = graph_fragment([Block((b64,), (Node(Operation.POINTER_ADDRESS, (ValueRef.parameter(0, 0),), (b64,)),),
+                                      Terminator.return_((ValueRef.node_result(0, 0),)))])
+        entry = make_function(graph, (b64,), (b64,))
+        reader = reader_for(entry, [b64, graph, entry], target)
+        self.assertEqual(native_run(reader.data, entry.cid, (0,)), (2, f"decline {int(Operation.POINTER_ADDRESS)}\n"))
+
+    def test_both_oracles_agree_on_floats(self):
+        """Slice 4: float arithmetic, compares and conversions in binary32 and binary64, against the Python executor.
+        Values are IEEE bits on the oracle's command line; any two NaNs agree (the oracle returns the canonical quiet
+        NaN, Python the host's)."""
+        import random
+        import struct
+        from test_xax_general_language import reader_for
+        from xax_compiler import (Block, FloatCompare, FloatFormat, Node, Operation, Terminator, ValueRef, XaxError,
+                                  XaxTrap, bits_type, execute, float_type, function, graph_fragment,
+                                  x86_64_windows_general_target)
+
+        P, R = ValueRef.parameter, ValueRef.node_result
+        f32, f64 = float_type(FloatFormat.BINARY32), float_type(FloatFormat.BINARY64)
+        widths = {f32: 32, f64: 64}
+        target = x86_64_windows_general_target()
+
+        def to_bits(value, kind):
+            return struct.unpack("<I", struct.pack("<f", value))[0] if widths.get(kind) == 32 else struct.unpack("<Q", struct.pack("<d", value))[0]
+
+        def from_bits(word, kind):
+            return struct.unpack("<f", struct.pack("<I", word))[0] if widths[kind] == 32 else struct.unpack("<d", struct.pack("<Q", word))[0]
+
+        def is_nan(word, kind):
+            w = widths.get(kind)
+            exponent, fraction = (word >> 23 & 0xFF, word & 0x7FFFFF) if w == 32 else (word >> 52 & 0x7FF, word & ((1 << 52) - 1))
+            return w is not None and exponent == (0xFF if w == 32 else 0x7FF) and fraction != 0
+
+        def outcome_native(reader, cid, words, result):
+            status, text = native_run(reader.data, cid, words)
+            if status != 0:
+                return status, text
+            word = int(text)
+            return 0, "nan" if is_nan(word, result) else str(word)
+
+        def outcome_python(reader, cid, arguments, result):
+            try:
+                value = execute(reader, cid, arguments)[0]
+            except XaxTrap as trap:
+                return 1, f"trap {bytes(trap.payload).hex()}\n"
+            except XaxError as error:
+                return 3, error.diagnostic.rule
+            if result in widths:
+                word = to_bits(value, result)
+                return 0, "nan" if is_nan(word, result) else str(word)
+            return 0, str(value)
+
+        def program(operation, operands, result, attributes=()):
+            nodes = (Node(operation, tuple(P(0, k) for k in range(len(operands))), (result,), attributes=attributes),)
+            graph = graph_fragment([Block(tuple(operands), nodes, Terminator.return_((R(0, 0),)))])
+            entry = function(graph, tuple(operands), (result,))
+            return reader_for(entry, [*{*operands, result}, graph, entry], target), entry.cid
+
+        def agree(reader, cid, operands, result, values):
+            words = tuple(to_bits(v, kind) if kind in widths else v for v, kind in zip(values, operands))
+            python = tuple(from_bits(w, kind) if kind in widths else w for w, kind in zip(words, operands))
+            with self.subTest(operands=[widths.get(k, "int") for k in operands], values=words):
+                self.assertEqual(outcome_native(reader, cid, words, result), outcome_python(reader, cid, python, result))
+
+        inf, nan = float("inf"), float("nan")
+        special = [0.0, -0.0, 1.0, -1.5, 0.1, 1 / 3, 2.5, 1e30, -7e-39, 5e-324, 2.2250738585072014e-308, 1.7976931348623157e308,
+                   3.4028234663852886e38, inf, -inf, nan]
+        rng = random.Random(405)
+        rand = [rng.choice((1, -1)) * rng.uniform(0, 2) * 2.0 ** rng.randint(-160, 160) for _ in range(12)]
+        def rounded(value, kind):  # the nearest value of the format (binary32 overflows to infinity)
+            try:
+                return from_bits(to_bits(value, kind), kind)
+            except OverflowError:
+                return value * inf
+
+        for kind in (f32, f64):
+            values = [rounded(v, kind) for v in special + rand]
+            for operation in (Operation.FLOAT_ADD, Operation.FLOAT_SUB, Operation.FLOAT_MUL, Operation.FLOAT_DIV):
+                reader, cid = program(operation, (kind, kind), kind)
+                for left in values[::2]:
+                    for right in values[1::2]:
+                        agree(reader, cid, (kind, kind), kind, (left, right))
+            for compare in FloatCompare:
+                reader, cid = program(Operation.FLOAT_COMPARE, (kind, kind), bits_type(1), (compare,))
+                for left, right in ((1.0, 2.0), (2.0, 1.0), (1.0, 1.0), (0.0, -0.0), (nan, 1.0), (-inf, inf), (-1.5, -2.5)):
+                    agree(reader, cid, (kind, kind), bits_type(1), (left, right))
+        for source, result in ((f64, f32), (f32, f64)):
+            reader, cid = program(Operation.FLOAT_CONVERT, (source,), result)
+            for value in special + rand + [1.0000000596046448, 1.401298464324817e-45, 3.4028235677973366e38]:
+                agree(reader, cid, (source,), result, (rounded(value, source),))
+        for width in (8, 32, 64):
+            bits = bits_type(width)
+            ints = sorted({0, 1, 5, 17, (1 << width) - 1, 1 << (width - 1), (1 << (width - 1)) - 1, ((1 << 53) + 1) & ((1 << width) - 1),
+                           ((1 << 24) + 1) & ((1 << width) - 1), 12345 & ((1 << width) - 1)})
+            for kind in (f32, f64):
+                for operation in (Operation.UINT_TO_FLOAT, Operation.SINT_TO_FLOAT):
+                    reader, cid = program(operation, (bits,), kind)
+                    for value in ints:
+                        agree(reader, cid, (bits,), kind, (value,))
+                for operation in (Operation.FLOAT_TO_UINT_TRUNC, Operation.FLOAT_TO_SINT_TRUNC):
+                    reader, cid = program(operation, (kind,), bits)
+                    for value in (0.0, -0.0, 17.75, -17.75, -0.5, 255.9, 256.0, 127.5, -128.9, -129.0, 2.0 ** 31, -(2.0 ** 31),
+                                  2.0 ** 63, 2.0 ** 64, 1e300, inf, nan, 5e-324):
+                        agree(reader, cid, (kind,), bits, (rounded(value, kind),))
 
 
 if __name__ == "__main__":

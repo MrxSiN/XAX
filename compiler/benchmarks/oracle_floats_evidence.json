@@ -1,0 +1,30 @@
+{
+ "format": "xax-native-oracle-agreement-v1",
+ "label": "EXECUTED",
+ "adr": "ADR-405",
+ "design": "docs/proposals/native-oracle.md, slice 4 (floats; aggregates and sums in oracle_aggregates_evidence.json)",
+ "date": "2026-11-28",
+ "areas": [
+  {"area": "float.add, float.sub, float.mul, float.div in binary32 and binary64", "corpus": "tests/test_native_oracle.py test_both_oracles_agree_on_floats: 14 x 14 values per operation and width (zeros, normals, subnormals, the largest finite values, infinities, NaN, 12 seeded random values)", "cases": 1568, "agree": 1568, "disagree": 0},
+  {"area": "float.compare, all six predicates, both widths", "corpus": "the same test: 7 pairs, NaN among them", "cases": 84, "agree": 84, "disagree": 0},
+  {"area": "float.convert between the widths", "corpus": "the same test: 31 values each way (rounding, overflow, subnormal results)", "cases": 62, "agree": 62, "disagree": 0},
+  {"area": "uint.to.float, sint.to.float from bits<8>, bits<32>, bits<64>", "corpus": "the same test: the edge integers of each width into both float widths", "cases": 108, "agree": 108, "disagree": 0},
+  {"area": "float.to.uint.trunc, float.to.sint.trunc to bits<8>, bits<32>, bits<64>, with the float-conversion trap", "corpus": "the same test: 18 values per width pair, 104 of all float cases trap", "cases": 216, "agree": 216, "disagree": 0},
+  {"area": "test_xax_general_language's float program, constant, compare and conversions", "corpus": "tests/test_xax_general_language.py, now through oracle_execute: the native oracle gives the test's literal expected values (not a comparison with the Python executor)", "cases": 6, "agree": 6, "disagree": 0}
+ ],
+ "agreement_rule": "results are compared as IEEE bits; any two NaNs agree (the oracle returns the canonical quiet NaN, the Python executor the host's NaN)",
+ "method": "integer arithmetic only, no XAX float operation: XAX has no bits-to-float reinterpretation (a pointer.cast between element types is rejected, XAX.MEMORY.POINTER_CAST, and a checked load is always bits); round to nearest, ties to even",
+ "also": "the earlier corpora still agree (test_native_oracle 6,159 subtests on Windows; 10,084 subtests with the oracle-backed tests on Linux)",
+ "oracles": {
+  "python": "reference/xax_compiler.py execute (verify_store first)",
+  "native": {
+   "store": "compiler/bootstrap/oracle/xax_oracle.xax (oracle, driver and the four slice-4 batches)",
+   "store_sha256": "45c81c5c6b2d0c72677575660bd6e54f075c6478bb18d25dc455bdd901a2c231",
+   "windows_store_sha256": "1ee0037ad40934ba2da3cafee2fe23bdee8953d8906172a358f355dc21c53478",
+   "windows_executable_sha256": "23c1359360afd15ec4af718d172d1837ee3ed68e1088e78553674c13beb7dac7",
+   "windows_executable_bytes": 39424,
+   "built_by": "the pinned Windows seed (Windows 11) and the pinned Linux seed (WSL 2, XAX_REQUIRE_NATIVE=1); both make the same stores"
+  }
+ },
+ "host_nonsemantic": "Windows 11 Pro 10.0.26300 x86-64, Python 3.12.10; WSL 2 Linux x86-64, Python 3.12.3"
+}

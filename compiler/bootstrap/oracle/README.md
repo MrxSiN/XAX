@@ -35,13 +35,24 @@ as `execute` does. The bound `offset + size <= extent` is evaluated without a 64
 2^64 traps (ADR-412 (4)). Pointers into the target's address space (`pointer.address`, `pointer.rebase`), heap views and growable
 accesses stay declined.
 
-**Slice 4** (aggregates and sums so far; floats follow) adds `aggregate.make`, `aggregate.get`, `sum.make`, `sum.tag`
+**Slice 4** adds `aggregate.make`, `aggregate.get`, `sum.make`, `sum.tag`
 and `sum.get`, with tuple, array and sum types as values. An aggregate or sum value is the frame view's address of its
 words in an arena from byte 983,040 to 1,040,384, whose cursor is control slot 1000: an aggregate is its operands'
 words, a sum its tag and its value. The arena is never freed, so a value outlives the frame that made it; past
 57,344 bytes a call declines (`decline 0`). The wrong variant traps with the payload `sum-variant`, written to the
 store view's last 32 bytes (after the 32-byte function CID). An aggregate or sum entry parameter or result is outside
-the command line and is not checked: give the oracle bits entries.
+the command line and is not checked: give the oracle bits and float entries.
+
+Slice 4 also adds the float operations `float.add`, `float.sub`, `float.mul`, `float.div`, `float.compare`,
+`uint.to.float`, `sint.to.float`, `float.convert`, `float.to.uint.trunc` and `float.to.sint.trunc` on `float<binary32>`
+and `float<binary64>` values. A float argument or result is its IEEE bits as an unsigned decimal. The arithmetic is
+integers only (`@op5` and the `@fadd`… helpers of `slice4-floats.batch`), because XAX cannot reinterpret bits as a
+float: a `pointer.cast` between element types is rejected (`XAX.MEMORY.POINTER_CAST`) and a checked load is always
+`bits`. So the oracle does not trust the compiler's float lowering either. Results are rounded to nearest, ties to
+even, like the Python executor (binary32 through binary64 and one narrowing, which gives the same result for these
+operations). A NaN result is the canonical quiet NaN (`0x7FF8000000000000`, `0x7FC00000`), so a comparison with
+another executor treats any two NaNs as equal. A float-to-integer truncation that is not defined traps with
+`float-conversion`: NaN, an infinity, a negative value for the unsigned form, or a value out of the result's range.
 
 How it works:
 
@@ -111,8 +122,9 @@ request tool's `driver.batch` did for that tool. The rest of the program is unch
 - New limits: 4 to 1,024 arguments, each under 4 KiB, at most 48 KiB of argument text in all. Anything else exits 3
   with `error`. On Windows the host layer's `_write` writes text mode, so each output line ends with CR LF.
 - `xax_oracle.xax` is `oracle.batch`, `driver.batch`, then slice 4's `slice4-types.batch` (`@tmask`: tuple, array
-  and sum types get a mask) and `slice4-aggregates.batch` (`@snode` knows operations 51-55, `@opx` sends them to the new
-  `@op4`) on `../evolution/ledger-tool/seed.xax`
+  and sum types get a mask), `slice4-aggregates.batch` (`@snode` knows operations 51-55, `@opx` sends them to the new
+  `@op4`), `slice4-floats-types.batch` (float masks) and `slice4-floats.batch` (operations 44-50 and 58-60, `@op5`)
+  on `../evolution/ledger-tool/seed.xax`
   (`tests/test_native_oracle.py`), and `xax_oracle_windows.xax` is `generate.sh`'s output for it
   (`tests/test_windows_generator.py`). Change the program by a further batch on `xax_oracle.xax`, then regenerate the
   Windows store.
@@ -131,3 +143,10 @@ x86-64 (WSL 2): test_xax_general_language's tuple/array and sum programs at thre
 tag with a 64-bit value, nested aggregates and an aggregate returned by a callee
 (`../../benchmarks/oracle_aggregates_evidence.json`). The earlier corpora still agree (4,121 subtests on each host), and
 test_xax_general_language's two checks now take their values from `oracle_execute`.
+
+**Slice 4, floats (EXECUTED, 2026-11-28):** both oracles agree on 2,038 float cases on Windows 11 and on Linux x86-64
+(WSL 2): the four arithmetic operations on 14 by 14 values per width (zeros, subnormals, the largest finite values,
+infinities, NaN, seeded random values), every compare predicate, both conversions between the widths, integer to float
+from three widths, and float to integer with 104 `float-conversion` traps (`../../benchmarks/oracle_floats_evidence.json`).
+test_xax_general_language's float checks now take their values from `oracle_execute`, which passes floats as their bits.
+Slice 4 is complete as `docs/proposals/native-oracle.md` §4 defines it.
