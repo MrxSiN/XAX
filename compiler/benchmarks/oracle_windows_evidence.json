@@ -1,0 +1,30 @@
+{
+ "format": "xax-native-oracle-agreement-v1",
+ "label": "EXECUTED",
+ "adr": "ADR-405",
+ "design": "docs/proposals/native-oracle.md; compiler/bootstrap/oracle/README.md, the Windows-hosted build",
+ "date": "2026-11-28",
+ "areas": [
+  {"area": "x86-64 register lowering", "corpus": "tests/test_xax_regalloc_differential.py corpus", "cases": 160, "agree": 160, "disagree": 0},
+  {"area": "narrow and signed int.compare", "corpus": "tests/test_x86_64_narrow_signed_compare.py corpus", "cases": 3840, "agree": 3840, "disagree": 0},
+  {"area": "compares reused after their branch", "corpus": "tests/test_native_branch_fusion.py REUSED and BRANCH_ONLY", "cases": 6, "agree": 6, "disagree": 0},
+  {"area": "recursion groups", "corpus": "tests/test_xax_recursion.py factorial_group and parity_group", "cases": 10, "agree": 10, "disagree": 0},
+  {"area": "stack memory (slice 3)", "corpus": "tests/test_native_oracle.py test_both_oracles_agree_on_stack_memory", "cases": 60, "agree": 60, "disagree": 0},
+  {"area": "traps, signed compares, rotation, two results", "corpus": "tests/test_native_oracle.py test_traps_compares_rotations_results_and_declines", "cases": 7, "agree": 7, "disagree": 0}
+ ],
+ "also": "a float operation declines (exit 2); 28 bits<64> offset cases give the area's expected values (ADR-412 (4)); too few arguments and a 4 KiB argument exit 3 with `error`",
+ "oracles": {
+  "python": "reference/xax_compiler.py execute (verify_store first)",
+  "native": {
+   "store": "compiler/bootstrap/oracle/xax_oracle_windows.xax (windows/generator/generate.sh of xax_oracle.xax)",
+   "store_sha256": "fce33717c9e558ae1b8e7382aaf5e9d40b5bdf9fc715e6a93a991a7ce5bc1065",
+   "linux_store_sha256": "95506b9a462260c5a04223c5e01e55a9bf0f6c4c92086eb8e5eb15be7d2ce06a",
+   "executable_sha256": "d73bd63fbfa2551d4e3c6b47fdeb63d7579332ef394d6b4e295243abc85e7238",
+   "executable_bytes": 28672,
+   "built_by": "the pinned Windows seed 0f58d11948b0e8880e69574c183b36c564f41d40be5d50acf709e45d07026fdf"
+  }
+ },
+ "linux": "the same tests/test_native_oracle.py with xax_oracle.xax built by the pinned Linux seed: 9 passed, 4111 subtests (WSL 2, XAX_REQUIRE_NATIVE=1)",
+ "notes": "the Windows host layer writes standard output through msvcrt _write in text mode, so lines end with CR LF; native_run compares without the CR",
+ "host_nonsemantic": "Windows 11 Pro 10.0.26300 x86-64, Python 3.12.10"
+}
