@@ -10,6 +10,8 @@ from xax_compiler import (
 )
 from xax_x86_64 import compile_native
 
+from test_native_oracle import oracle_execute  # the native oracle where it runs (ADR-405)
+
 
 def reader_for(entry, objects, target=None):
     members = [entry] + ([target] if target is not None else [])
@@ -40,7 +42,7 @@ class GeneralLanguageCompletionTests(unittest.TestCase):
         ])
         arithmetic = function(arithmetic_graph, (f64, f64, f64), (f64,))
         reader = reader_for(arithmetic, [f64, arithmetic_graph, arithmetic], target)
-        self.assertEqual(execute(reader, arithmetic.cid, (2.5, 4.0, 1.0)), (5.5,))
+        self.assertEqual(oracle_execute(reader, arithmetic.cid, (2.5, 4.0, 1.0)), (5.5,))
         self.assertGreater(len(compile_native(reader, arithmetic.cid, target.cid).code), 0)
 
         fconst = float_constant(f64, 1.5)
@@ -49,7 +51,7 @@ class GeneralLanguageCompletionTests(unittest.TestCase):
         ])
         const_fn = function(const_graph, (), (f64,))
         reader = reader_for(const_fn, [f64, fconst, const_graph, const_fn], target)
-        self.assertEqual(execute(reader, const_fn.cid, ()), (1.5,))
+        self.assertEqual(oracle_execute(reader, const_fn.cid, ()), (1.5,))
         compile_native(reader, const_fn.cid, target.cid)
 
         compare_graph = graph_fragment([
@@ -61,7 +63,7 @@ class GeneralLanguageCompletionTests(unittest.TestCase):
         ])
         compare = function(compare_graph, (f32, f32), (b1,))
         reader = reader_for(compare, [b1, f32, compare_graph, compare], target)
-        self.assertEqual(execute(reader, compare.cid, (1.0, 2.0)), (1,))
+        self.assertEqual(oracle_execute(reader, compare.cid, (1.0, 2.0)), (1,))
         compile_native(reader, compare.cid, target.cid)
 
         to_float_graph = graph_fragment([
@@ -69,7 +71,7 @@ class GeneralLanguageCompletionTests(unittest.TestCase):
         ])
         to_float = function(to_float_graph, (b32,), (f64,))
         reader = reader_for(to_float, [b32, f64, to_float_graph, to_float], target)
-        self.assertEqual(execute(reader, to_float.cid, (17,)), (17.0,))
+        self.assertEqual(oracle_execute(reader, to_float.cid, (17,)), (17.0,))
         compile_native(reader, to_float.cid, target.cid)
 
         to_int_graph = graph_fragment([
@@ -77,7 +79,7 @@ class GeneralLanguageCompletionTests(unittest.TestCase):
         ])
         to_int = function(to_int_graph, (f64,), (b32,))
         reader = reader_for(to_int, [b32, f64, to_int_graph, to_int], target)
-        self.assertEqual(execute(reader, to_int.cid, (17.75,)), (17,))
+        self.assertEqual(oracle_execute(reader, to_int.cid, (17.75,)), (17,))
         compile_native(reader, to_int.cid, target.cid)
 
         convert_graph = graph_fragment([
@@ -85,7 +87,7 @@ class GeneralLanguageCompletionTests(unittest.TestCase):
         ])
         convert = function(convert_graph, (f64,), (f32,))
         reader = reader_for(convert, [f32, f64, convert_graph, convert], target)
-        self.assertAlmostEqual(execute(reader, convert.cid, (1.1,))[0], 1.1, places=6)
+        self.assertAlmostEqual(oracle_execute(reader, convert.cid, (1.1,))[0], 1.1, places=6)
         compile_native(reader, convert.cid, target.cid)
 
     def test_tuple_struct_and_array_values(self):
@@ -105,7 +107,7 @@ class GeneralLanguageCompletionTests(unittest.TestCase):
         graph = graph_fragment([Block((b32, b32), nodes, Terminator.return_((ValueRef.node_result(0, 4),)))])
         entry = function(graph, (b32, b32), (b32,))
         reader = reader_for(entry, [b32, pair, array, graph, entry], target)
-        self.assertEqual(execute(reader, entry.cid, (7, 11)), (18,))
+        self.assertEqual(oracle_execute(reader, entry.cid, (7, 11)), (18,))  # ADR-405 (4): slice 4
         compile_native(reader, entry.cid, target.cid)
 
     def test_sum_tag_branch_and_extract(self):
@@ -128,7 +130,7 @@ class GeneralLanguageCompletionTests(unittest.TestCase):
         graph = graph_fragment(blocks)
         entry = function(graph, (b32,), (b32,))
         reader = reader_for(entry, [b1, b32, choice, zero, graph, entry], target)
-        self.assertEqual(execute(reader, entry.cid, (99,)), (99,))
+        self.assertEqual(oracle_execute(reader, entry.cid, (99,)), (99,))  # ADR-405 (4): slice 4
         compile_native(reader, entry.cid, target.cid)
 
     def test_function_value_and_indirect_call(self):

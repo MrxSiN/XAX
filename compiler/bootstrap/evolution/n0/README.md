@@ -18,4 +18,4 @@ current `compiler/reference/xax_compiler.py` and `compiler/src/xax_selfhost_edit
 
 Records authored from the worktree pair old and new generator output by function name and replace references at the
 changed functions' owners outside the generated set (ledger 0003, 0004), or pair the committed store with the
-worktree's regenerated one from the root down (`diff_record.py`, ledger 0005 on). After N0, no generator authors compiler logic.
+worktree's regenerated one from the root down (`diff_record.py`, ledger 0005 on; deleted on 2026-11-28, in git history). After N0, no generator authors compiler logic.

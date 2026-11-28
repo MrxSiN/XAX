@@ -11,9 +11,10 @@ written by hand (AGENTS.md, "Documents and status"):
 
 `sh status.sh check` lists stale documents (exit 1 when there is one); `sh status.sh write` rewrites them. On Linux
 x86-64 it builds `xax_status.xax`, `../evidence/xax_evidence.xax` and `../seed/rotate-tool/xax_rotate.xax` with the
-pinned Linux seed. On Windows (Git for Windows' `sh`) it builds `xax_status_windows.xax` with the pinned Windows seed
-and rewrites levels and targets blocks only: the bootstrap line needs the two Linux-only tools, so a document with a
-bootstrap block is refused there (exit 3).
+pinned Linux seed. On Windows (Git for Windows' `sh`) it builds the three tools' generated Windows stores
+(`xax_status_windows.xax`, `xax_evidence_windows.xax`, `xax_rotate_windows.xax`) with the pinned Windows seed and
+rewrites all three kinds of block. Checked 2026-11-28 (EXECUTED): on the same tree, Windows 11 and Linux x86-64 (WSL 2)
+derive byte-identical levels, targets and bootstrap text, and both `check` runs exit 0.
 
 ## The program
 

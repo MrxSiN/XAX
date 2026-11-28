@@ -170,8 +170,8 @@ class ByteViewVerifierTests(unittest.TestCase):
 
 class ByteViewExecutionTests(unittest.TestCase):
     def test_reference_executor(self):
-        """The area's oracle (ADR-405 (4)): the native one on Linux x86-64 (slice 3), else the Python executor."""
-        from test_native_oracle import LINUX_X86_64 as NATIVE, native_run
+        """The area's oracle (ADR-405 (4)): the native one on Linux and Windows x86-64 (slice 3), else the Python executor."""
+        from test_native_oracle import NATIVE, native_run
 
         for size in CHECKED_BYTE_VIEW_WIDTHS:
             for store in (False, True):
