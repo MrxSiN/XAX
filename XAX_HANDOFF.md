@@ -107,7 +107,7 @@ Dated sections (historical records; a later section supersedes an earlier one):
 
 <!-- xax-status:levels -->Replacement levels (generated from `XAX_REPLACEMENT_MATRIX.json`): R6: jvm, linux-aarch64, linux-x86_64; R3: aarch64-baremetal, android-arm64, browser-web, gpu-spirv-cuda-metal-dxil, wasm32-wasi, windows-x86_64-pe; R1: riscv64; no level yet: bsd-unix, dotnet-clr, macos-ios-apple, rtos-embedded-mcu.<!-- /xax-status:levels -->
 
-<!-- xax-status:bootstrap -->Bootstrap status (derived by `xax_selfhost_seed.bootstrap_status` from `compiler/bootstrap/evidence/records/0044.record`): whole production compiler: B0, B1, B2, B3, B4, B5, B6 established (release 0044's V2 record, by `xax_evidence levels`); S-step component fixed points are not B milestones (`XAX_SPEC.md` §16.5). Bootstrap seed: native-elf `compiler/bootstrap/seed/xaxc-linux-x86_64`, 34,020,447 bytes, requires Python: no.<!-- /xax-status:bootstrap -->
+<!-- xax-status:bootstrap -->Bootstrap status (derived by `xax_selfhost_seed.bootstrap_status` from `compiler/bootstrap/evidence/records/0045.record`): whole production compiler: B0, B1, B2, B3, B4, B5, B6 established (release 0045's V2 record, by `xax_evidence levels`); S-step component fixed points are not B milestones (`XAX_SPEC.md` §16.5). Bootstrap seed: native-elf `compiler/bootstrap/seed/xaxc-linux-x86_64`, 34,020,447 bytes, requires Python: no.<!-- /xax-status:bootstrap -->
 
 Sections below are dated; a later section supersedes an earlier figure. The current full-suite result is in the latest release section of this file that reports one.
 
