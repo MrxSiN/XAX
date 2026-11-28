@@ -1,6 +1,6 @@
 {
   "format": "xax-python-authority-inventory-v1",
-  "as_of": "2026-10-16",
+  "as_of": "2026-11-28",
   "adr": "ADR-180; updated by ADR-309",
   "classes": {
     "A": "authoritative production compiler logic",
@@ -49,7 +49,8 @@
     },
     "xax_android_counter.py": {
       "class": "D",
-      "note": "U1 application fixture."
+      "note": "U1 application fixture.",
+      "release": true
     },
     "xax_android_managed.py": {
       "class": "A",
@@ -212,7 +213,8 @@
     },
     "xax_native.py": {
       "class": "E",
-      "note": "Maps XAX-lowered images into the Python process (W^X, cache, authority record); decides no compiler question."
+      "note": "Maps XAX-lowered images into the Python process (W^X, cache, authority record); decides no compiler question.",
+      "release": true
     },
     "xax_native_blake3.py": {
       "class": "C",
@@ -220,7 +222,8 @@
     },
     "xax_native_blake3_store.py": {
       "class": "G",
-      "note": "Generated S0 store bytes."
+      "note": "Generated S0 store bytes.",
+      "release": true
     },
     "xax_optimizer.py": {
       "class": "C",
@@ -247,7 +250,8 @@
     },
     "xax_replacement.py": {
       "class": "D",
-      "note": "Replacement-matrix validator."
+      "note": "Replacement-matrix validator.",
+      "release": true
     },
     "xax_resources.py": {
       "class": "A",
@@ -268,122 +272,151 @@
     },
     "xax_selfhost_blake3.py": {
       "class": "G",
-      "note": "Builder of the canonical S2 store (the store is authoritative)."
+      "note": "Builder of the canonical S2 store (the store is authoritative).",
+      "release": true
     },
     "xax_selfhost_compiler.py": {
       "class": "G",
-      "note": "The production compiler's canonical build request, derived from the general driver store (S14b, ADR-285)."
+      "note": "The production compiler's canonical build request, derived from the general driver store (S14b, ADR-285).",
+      "release": true
     },
     "xax_selfhost_cfg.py": {
       "class": "G",
-      "note": "Builder of the canonical S3d store."
+      "note": "Builder of the canonical S3d store.",
+      "release": true
     },
     "xax_selfhost_driver.py": {
       "class": "G",
-      "note": "Builder of the canonical S10 driver store (ADR-265, ADR-266) and of the S12e.2 general driver store (ADR-276)."
+      "note": "Builder of the canonical S10 driver store (ADR-265, ADR-266) and of the S12e.2 general driver store (ADR-276).",
+      "release": true
     },
     "xax_selfhost_semantic.py": {
       "class": "G",
-      "note": "Builder of the S10e semantic-verification marshal functions inside the driver store (ADR-266)."
+      "note": "Builder of the S10e semantic-verification marshal functions inside the driver store (ADR-266).",
+      "release": true
     },
     "xax_selfhost_seed.py": {
       "class": "F",
-      "note": "Paths of the XAX-built compiler seed (bootstrap/seed/), and the pins and B levels as the native release and evidence tools read them from RELEASES and the validated V2 record; it builds and derives nothing itself (S15a, ADR-286, ADR-410)."
+      "note": "Paths of the XAX-built compiler seed (bootstrap/seed/), and the pins and B levels as the native release and evidence tools read them from RELEASES and the validated V2 record; it builds and derives nothing itself (S15a, ADR-286, ADR-410).",
+      "release": true
     },
     "xax_selfhost_request.py": {
       "class": "G",
-      "note": "Builder of the S13a build-request and provenance functions inside the general driver store (ADR-281)."
+      "note": "Builder of the S13a build-request and provenance functions inside the general driver store (ADR-281).",
+      "release": true
     },
     "xax_selfhost_resolve.py": {
       "class": "G",
-      "note": "Builder of the S13c package-resolution and snapshot functions inside the general driver store (ADR-283)."
+      "note": "Builder of the S13c package-resolution and snapshot functions inside the general driver store (ADR-283).",
+      "release": true
     },
     "xax_selfhost_render.py": {
       "class": "G",
-      "note": "Builder of the store verifier's rendering phase (its rejections as the bootstrap's diagnostics, verify_store's order) and the host's reference rendering for tests (S15b.1, ADR-288)."
+      "note": "Builder of the store verifier's rendering phase (its rejections as the bootstrap's diagnostics, verify_store's order) and the host's reference rendering for tests (S15b.1, ADR-288).",
+      "release": true
     },
     "xax_selfhost_render_graph.py": {
       "class": "G",
-      "note": "Builder of the typing program's graph outcome function (_parse_graph's order, the deciding record) and its host decoder (S15b.3a, ADR-292)."
+      "note": "Builder of the typing program's graph outcome function (_parse_graph's order, the deciding record) and its host decoder (S15b.3a, ADR-292).",
+      "release": true
     },
     "xax_selfhost_diagnostics.py": {
       "class": "G",
-      "note": "S7b record builders (emit XAX nodes) and the host renderer, which decides nothing."
+      "note": "S7b record builders (emit XAX nodes) and the host renderer, which decides nothing.",
+      "release": true
     },
     "xax_selfhost_facts.py": {
       "class": "G",
-      "note": "Builder of the facts engine inside the typing store."
+      "note": "Builder of the facts engine inside the typing store.",
+      "release": true
     },
     "xax_selfhost_graph.py": {
       "class": "G",
-      "note": "Builder of the canonical S3c store."
+      "note": "Builder of the canonical S3c store.",
+      "release": true
     },
     "xax_selfhost_riscv64.py": {
       "class": "G",
-      "note": "Builder of the canonical S1 store."
+      "note": "Builder of the canonical S1 store.",
+      "release": true
     },
     "xax_selfhost_riscv64_backend.py": {
       "class": "G",
-      "note": "Builder of the canonical S5 store."
+      "note": "Builder of the canonical S5 store.",
+      "release": true
     },
     "xax_selfhost_store.py": {
       "class": "G",
-      "note": "Builder of the canonical S3 store."
+      "note": "Builder of the canonical S3 store.",
+      "release": true
     },
     "xax_selfhost_target.py": {
       "class": "G",
-      "note": "Builder of the target.op engine inside the typing store."
+      "note": "Builder of the target.op engine inside the typing store.",
+      "release": true
     },
     "xax_selfhost_typing.py": {
       "class": "G",
-      "note": "Builder of the canonical S4 store."
+      "note": "Builder of the canonical S4 store.",
+      "release": true
     },
     "xax_selfhost_verify.py": {
       "class": "G",
-      "note": "Builder of the canonical S6 store."
+      "note": "Builder of the canonical S6 store.",
+      "release": true
     },
     "xax_selfhost_views_backend.py": {
       "class": "G",
-      "note": "Shared builder half of the S5/S7 stores, plus the in-process native runner."
+      "note": "Shared builder half of the S5/S7 stores, plus the in-process native runner.",
+      "release": true
     },
     "xax_selfhost_x86_64_backend.py": {
       "class": "G",
       "components": [
         "views-image-assembly"
       ],
-      "note": "Builder of the canonical S7 store; image_from_backend_output renders the program's image record (S7b.2)."
+      "note": "Builder of the canonical S7 store; image_from_backend_output renders the program's image record (S7b.2).",
+      "release": true
     },
     "xax_selfhost_x86_64_general.py": {
       "class": "G",
-      "note": "Builder of the canonical S12 general x86-64 backend store; S12a front end (ADR-268)."
+      "note": "Builder of the canonical S12 general x86-64 backend store; S12a front end (ADR-268).",
+      "release": true
     },
     "xax_selfhost_general_view.py": {
       "class": "G",
-      "note": "Builder of the S12b lowering view in the general x86-64 backend store (ADR-269)."
+      "note": "Builder of the S12b lowering view in the general x86-64 backend store (ADR-269).",
+      "release": true
     },
     "xax_selfhost_general_ranges.py": {
       "class": "G",
-      "note": "Builder of the S12c.1 value ranges and prefetch selection in the general x86-64 backend store (ADR-270)."
+      "note": "Builder of the S12c.1 value ranges and prefetch selection in the general x86-64 backend store (ADR-270).",
+      "release": true
     },
     "xax_selfhost_general_regalloc.py": {
       "class": "G",
-      "note": "Builder of the S12c.2 register-resident analyses in the general x86-64 backend store (ADR-271)."
+      "note": "Builder of the S12c.2 register-resident analyses in the general x86-64 backend store (ADR-271).",
+      "release": true
     },
     "xax_selfhost_general_emit.py": {
       "class": "G",
-      "note": "Builder of the S12d register-resident emission in the general x86-64 backend store (ADR-272)."
+      "note": "Builder of the S12d register-resident emission in the general x86-64 backend store (ADR-272).",
+      "release": true
     },
     "xax_selfhost_general_image.py": {
       "class": "G",
-      "note": "Builder of the S12e image assembly and Linux ELF64 container in the general x86-64 backend store (ADR-273)."
+      "note": "Builder of the S12e image assembly and Linux ELF64 container in the general x86-64 backend store (ADR-273).",
+      "release": true
     },
     "xax_selfhost_general_frame.py": {
       "class": "G",
-      "note": "Builder of the S12f frame lowering in the general x86-64 backend store (ADR-275)."
+      "note": "Builder of the S12f frame lowering in the general x86-64 backend store (ADR-275).",
+      "release": true
     },
     "xax_selfhost_writer.py": {
       "class": "G",
-      "note": "Builder of the canonical S9 store (ADR-262)."
+      "note": "Builder of the canonical S9 store (ADR-262).",
+      "release": true
     },
     "xax_spirv.py": {
       "class": "A",
@@ -411,7 +444,8 @@
     },
     "xax_vector.py": {
       "class": "D",
-      "note": "Static Vector/libxposed acceptance check."
+      "note": "Static Vector/libxposed acceptance check.",
+      "release": true
     },
     "xax_views_lowering.py": {
       "class": "C",
@@ -474,7 +508,8 @@
     },
     "xax_contract.py": {
       "class": "E",
-      "note": "xax-host-contract-v1 (ADR-225): names and format identities external integrations may depend on; no compiler logic."
+      "note": "xax-host-contract-v1 (ADR-225): names and format identities external integrations may depend on; no compiler logic.",
+      "release": true
     },
     "xax_prefetch.py": {
       "class": "A",
@@ -489,55 +524,68 @@
     },
     "xax_selfhost_ed25519.py": {
       "class": "G",
-      "note": "Builder of the XAX SHA-512 and Ed25519 verification functions inside the general driver store (S15c.3, ADR-301)."
+      "note": "Builder of the XAX SHA-512 and Ed25519 verification functions inside the general driver store (S15c.3, ADR-301).",
+      "release": true
     },
     "xax_selfhost_edit.py": {
       "class": "G",
-      "note": "Builder of the XAX transaction engine inside the general driver store (S15d.1, ADR-304); apply_reference is its Python reference."
+      "note": "Builder of the XAX transaction engine inside the general driver store (S15d.1, ADR-304); apply_reference is its Python reference.",
+      "release": true
     },
     "xax_selfhost_aarch64_emit.py": {
       "class": "G",
-      "note": "Builder of the S15e.2 AArch64 program store: the instruction encoders (ADR-315)."
+      "note": "Builder of the S15e.2 AArch64 program store: the instruction encoders (ADR-315).",
+      "release": true
     },
     "xax_selfhost_aarch64_frame.py": {
       "class": "G",
-      "note": "Builder of the S15e.2b AArch64 program store: the frame path (ADR-316, ADR-325)."
+      "note": "Builder of the S15e.2b AArch64 program store: the frame path (ADR-316, ADR-325).",
+      "release": true
     },
     "xax_selfhost_aarch64_general.py": {
       "class": "G",
-      "note": "Builder of the canonical S15e.2 AArch64 program store; its front end and bare-metal images (ADR-315, ADR-325)."
+      "note": "Builder of the canonical S15e.2 AArch64 program store; its front end and bare-metal images (ADR-315, ADR-325).",
+      "release": true
     },
     "xax_selfhost_aarch64_lower.py": {
       "class": "G",
-      "note": "Builder of the S15e.2 AArch64 lowering views in the AArch64 program store (ADR-315)."
+      "note": "Builder of the S15e.2 AArch64 lowering views in the AArch64 program store (ADR-315).",
+      "release": true
     },
     "xax_selfhost_general_accel.py": {
       "class": "G",
-      "note": "Builder of the S15e.7a accelerator deployments in the general x86-64 backend store (ADR-321)."
+      "note": "Builder of the S15e.7a accelerator deployments in the general x86-64 backend store (ADR-321).",
+      "release": true
     },
     "xax_selfhost_general_spirv.py": {
       "class": "G",
-      "note": "Builder of the S15e.7b SPIR-V modules in the general x86-64 backend store (ADR-321)."
+      "note": "Builder of the S15e.7b SPIR-V modules in the general x86-64 backend store (ADR-321).",
+      "release": true
     },
     "xax_selfhost_general_wasm.py": {
       "class": "G",
-      "note": "Builder of the S15e.4 and S15f.1 Wasm modules in the general x86-64 backend store (ADR-322, ADR-324)."
+      "note": "Builder of the S15e.4 and S15f.1 Wasm modules in the general x86-64 backend store (ADR-322, ADR-324).",
+      "release": true
     },
     "xax_selfhost_jvm.py": {
       "class": "G",
-      "note": "Builder of the canonical S15e.5 JVM program store; front end, class file and JAR (ADR-327-ADR-331)."
+      "note": "Builder of the canonical S15e.5 JVM program store; front end, class file and JAR (ADR-327-ADR-331).",
+      "release": true
     },
     "xax_selfhost_jvm_class.py": {
       "class": "G",
-      "note": "Builder of the S15e.5 class-file buffers and constant pool in the JVM program store (ADR-327)."
+      "note": "Builder of the S15e.5 class-file buffers and constant pool in the JVM program store (ADR-327).",
+      "release": true
     },
     "xax_selfhost_jvm_code.py": {
       "class": "G",
-      "note": "Builder of the S15e.5 code buffer in the JVM program store (ADR-327)."
+      "note": "Builder of the S15e.5 code buffer in the JVM program store (ADR-327).",
+      "release": true
     },
     "xax_selfhost_jvm_emit.py": {
       "class": "G",
-      "note": "Builder of the S15e.5 edge copies, layout and blocks in the JVM program store (ADR-327)."
+      "note": "Builder of the S15e.5 edge copies, layout and blocks in the JVM program store (ADR-327).",
+      "release": true
     },
     "xax_android_bfc.py": {
       "class": "A",
@@ -553,43 +601,53 @@
     },
     "xax_selfhost_android.py": {
       "class": "G",
-      "note": "Runner and Python references of the frozen S15e.6h Android program store (ADR-355, ADR-361); its builder was deleted at W2."
+      "note": "Runner and Python references of the frozen S15e.6h Android program store (ADR-355, ADR-361); its builder was deleted at W2.",
+      "release": true
     },
     "xax_selfhost_apk.py": {
       "class": "G",
-      "note": "Builder of the S15e.6a APK container program store (ADR-340)."
+      "note": "Builder of the S15e.6a APK container program store (ADR-340).",
+      "release": true
     },
     "xax_selfhost_apk_signing.py": {
       "class": "G",
-      "note": "Builder of the S15e.6b APK Signature Scheme v2 signer program store (ADR-341)."
+      "note": "Builder of the S15e.6b APK Signature Scheme v2 signer program store (ADR-341).",
+      "release": true
     },
     "xax_selfhost_android_resources.py": {
       "class": "G",
-      "note": "Builder of the S15e.6c binary manifest and resources.arsc program store (ADR-342)."
+      "note": "Builder of the S15e.6c binary manifest and resources.arsc program store (ADR-342).",
+      "release": true
     },
     "xax_selfhost_dex.py": {
       "class": "G",
-      "note": "Builder of the S15e.6d DEX 039 bridge program store (ADR-343, ADR-344, ADR-345)."
+      "note": "Builder of the S15e.6d DEX 039 bridge program store (ADR-343, ADR-344, ADR-345).",
+      "release": true
     },
     "xax_selfhost_android_elf.py": {
       "class": "G",
-      "note": "Builder of the S15e.6e Android AArch64 shared object container program store (ADR-346)."
+      "note": "Builder of the S15e.6e Android AArch64 shared object container program store (ADR-346).",
+      "release": true
     },
     "xax_selfhost_android_rules.py": {
       "class": "G",
-      "note": "Builder of the S15e.6f.1 unsigned Android carrier decisions program store (ADR-347); its host part extracts the carriers' decoded facts."
+      "note": "Builder of the S15e.6f.1 unsigned Android carrier decisions program store (ADR-347); its host part extracts the carriers' decoded facts.",
+      "release": true
     },
     "xax_selfhost_android_managed_rules.py": {
       "class": "G",
-      "note": "Builder of the S15e.6f.2 managed-class Android profile decisions program store (ADR-348); its host part extracts the classes, export interfaces and reachable platform uses."
+      "note": "Builder of the S15e.6f.2 managed-class Android profile decisions program store (ADR-348); its host part extracts the classes, export interfaces and reachable platform uses.",
+      "release": true
     },
     "xax_selfhost_dex_writer.py": {
       "class": "G",
-      "note": "Builder of the S15e.6g.1 JVM-to-DEX writer program store (ADR-349)."
+      "note": "Builder of the S15e.6g.1 JVM-to-DEX writer program store (ADR-349).",
+      "release": true
     },
     "xax_selfhost_dex_jvm.py": {
       "class": "G",
-      "note": "Builder of the S15e.6g.2 JVM class-file to DEX class lowering program store (ADR-350)."
+      "note": "Builder of the S15e.6g.2 JVM class-file to DEX class lowering program store (ADR-350).",
+      "release": true
     }
   },
   "components": {
@@ -853,5 +911,929 @@
       "runtime_relevance": "zero cost when unused",
       "recommended_step": "S13"
     }
-  }
+  },
+  "files": {
+    "benchmarks/aarch64_virt_board.py": {
+      "class": "D",
+      "run_by": [
+        "tests/test_xax_board.py"
+      ],
+      "release": true
+    },
+    "benchmarks/android_art_device.py": {
+      "class": "D",
+      "run_by": [
+        "benchmarks/bench_android_art_execute.py",
+        "benchmarks/bench_android_art_verify.py"
+      ],
+      "release": true
+    },
+    "benchmarks/android_counter_app.py": {
+      "class": "D",
+      "run_by": [
+        "benchmarks/bench_android_counter_twin.py",
+        "benchmarks/bench_r5_android_counter.py",
+        "tests/test_xax_android_counter.py"
+      ],
+      "release": true
+    },
+    "benchmarks/android_elf_emulator.py": {
+      "class": "D",
+      "run_by": [
+        "tests/test_xax_android_platform_emulated.py",
+        "tests/test_xax_byte_view_widening.py"
+      ],
+      "release": true
+    },
+    "benchmarks/android_jsonmin.py": {
+      "class": "D",
+      "run_by": [
+        "benchmarks/bench_r5_maintenance.py"
+      ],
+      "release": true
+    },
+    "benchmarks/android_thread_entry.py": {
+      "class": "D",
+      "run_by": [
+        "benchmarks/bench_android_bionic.py",
+        "tests/test_xax_android_bionic.py",
+        "tests/test_xax_android_c_entry.py"
+      ],
+      "release": true
+    },
+    "benchmarks/bench_android_apk.py": {
+      "class": "D",
+      "run_by": [
+        "benchmarks/android_counter_app.py",
+        "benchmarks/bench_android_libxposed_runtime_pair.py",
+        "benchmarks/bench_android_managed.py",
+        "benchmarks/bench_android_vector_profiles.py",
+        "benchmarks/bench_r5_android_counter.py",
+        "tests/test_xax_android_apk_evidence.py",
+        "tests/test_xax_android_packed.py"
+      ],
+      "release": true
+    },
+    "benchmarks/bench_android_arm64.py": {
+      "class": "D",
+      "run_by": [
+        "benchmarks/bench_android_bionic.py",
+        "benchmarks/bench_android_jni.py",
+        "benchmarks/bench_android_libxposed.py",
+        "benchmarks/bench_android_libxposed_argument_target.py",
+        "benchmarks/bench_android_libxposed_target.py",
+        "benchmarks/bench_android_managed_bridge.py",
+        "benchmarks/bench_oi20_abi_platform.py",
+        "tests/test_xax_aarch64_heap_register_path.py",
+        "tests/test_xax_aarch64_regalloc_differential.py",
+        "tests/test_xax_android.py",
+        "tests/test_xax_android_platform.py",
+        "tests/test_xax_android_platform_emulated.py",
+        "tests/test_xax_build.py",
+        "tests/test_xax_jni.py",
+        "tests/test_xax_jni_float.py"
+      ],
+      "release": true
+    },
+    "benchmarks/bench_android_art_execute.py": {
+      "class": "D",
+      "run_by": [
+        "tests/test_xax_android_art_execute.py"
+      ],
+      "release": true
+    },
+    "benchmarks/bench_android_art_verify.py": {
+      "class": "D",
+      "run_by": [
+        "benchmarks/android_counter_app.py",
+        "tests/test_xax_android_art_verify.py",
+        "tests/test_xax_android_counter.py"
+      ],
+      "release": true
+    },
+    "benchmarks/bench_android_bionic.py": {
+      "class": "D",
+      "run_by": [
+        "benchmarks/android_counter_app.py",
+        "tests/test_xax_aarch64_heap_register_path.py",
+        "tests/test_xax_aarch64_regalloc_differential.py",
+        "tests/test_xax_android_bionic.py",
+        "tests/test_xax_android_counter.py"
+      ],
+      "release": true
+    },
+    "benchmarks/bench_android_components.py": {
+      "class": "D",
+      "run_by": [
+        "tests/test_xax_android_components_evidence.py"
+      ],
+      "release": true
+    },
+    "benchmarks/bench_android_counter_twin.py": {
+      "class": "D",
+      "run_by": [
+        "benchmarks/bench_r5_android_counter.py",
+        "tests/test_xax_android_counter.py"
+      ],
+      "release": true
+    },
+    "benchmarks/bench_android_jni.py": {
+      "class": "D",
+      "run_by": [
+        "benchmarks/bench_android_bionic.py",
+        "tests/test_xax_jni.py",
+        "tests/test_xax_selfhost_android_bundle.py"
+      ],
+      "release": true
+    },
+    "benchmarks/bench_android_libxposed.py": {
+      "class": "D",
+      "run_by": [
+        "benchmarks/bench_android_vector_profiles.py",
+        "tests/test_xax_android_libxposed_evidence.py"
+      ],
+      "release": true
+    },
+    "benchmarks/bench_android_libxposed_argument.py": {
+      "class": "D",
+      "run_by": [
+        "benchmarks/bench_android_vector_profiles.py",
+        "tests/test_xax_android_libxposed_argument_evidence.py"
+      ],
+      "release": true
+    },
+    "benchmarks/bench_android_libxposed_argument_target.py": {
+      "class": "D",
+      "run_by": [
+        "benchmarks/bench_android_libxposed_argument.py",
+        "benchmarks/bench_android_libxposed_combined.py",
+        "benchmarks/bench_android_libxposed_runtime_pair.py",
+        "benchmarks/bench_android_vector_profiles.py",
+        "tests/test_xax_android_libxposed_argument_evidence.py"
+      ],
+      "release": true
+    },
+    "benchmarks/bench_android_libxposed_combined.py": {
+      "class": "D",
+      "run_by": [
+        "benchmarks/bench_android_libxposed_runtime_pair.py",
+        "benchmarks/bench_android_vector_profiles.py",
+        "tests/test_xax_android_libxposed_combined_evidence.py"
+      ],
+      "release": true
+    },
+    "benchmarks/bench_android_libxposed_deopt.py": {
+      "class": "D",
+      "run_by": [
+        "benchmarks/bench_android_vector_profiles.py",
+        "tests/test_xax_android_libxposed_deopt_evidence.py"
+      ],
+      "release": true
+    },
+    "benchmarks/bench_android_libxposed_hook.py": {
+      "class": "D",
+      "run_by": [
+        "benchmarks/bench_android_libxposed_deopt.py",
+        "benchmarks/bench_android_libxposed_hot_reload.py",
+        "benchmarks/bench_android_libxposed_result.py",
+        "benchmarks/bench_android_libxposed_unhook.py",
+        "benchmarks/bench_android_vector_profiles.py",
+        "tests/test_xax_android_libxposed_hook_evidence.py",
+        "tests/test_xax_libxposed.py",
+        "tests/test_xax_vector_contract.py"
+      ],
+      "release": true
+    },
+    "benchmarks/bench_android_libxposed_hot_reload.py": {
+      "class": "D",
+      "run_by": [
+        "tests/test_xax_android_libxposed_hot_reload_evidence.py"
+      ],
+      "release": true
+    },
+    "benchmarks/bench_android_libxposed_managed.py": {
+      "class": "D",
+      "run_by": [
+        "benchmarks/bench_android_libxposed.py",
+        "benchmarks/bench_android_libxposed_argument.py",
+        "benchmarks/bench_android_libxposed_argument_target.py",
+        "benchmarks/bench_android_libxposed_combined.py",
+        "benchmarks/bench_android_libxposed_deopt.py",
+        "benchmarks/bench_android_libxposed_hook.py",
+        "benchmarks/bench_android_libxposed_hot_reload.py",
+        "benchmarks/bench_android_libxposed_remote_files.py",
+        "benchmarks/bench_android_libxposed_remote_preferences.py",
+        "benchmarks/bench_android_libxposed_result.py",
+        "benchmarks/bench_android_libxposed_services.py",
+        "benchmarks/bench_android_libxposed_target.py",
+        "benchmarks/bench_android_libxposed_unhook.py",
+        "benchmarks/bench_android_vector_profiles.py",
+        "tests/test_xax_android_libxposed_managed_evidence.py",
+        "tests/test_xax_android_managed.py",
+        "tests/test_xax_build.py",
+        "tests/test_xax_libxposed.py",
+        "tests/test_xax_selfhost_android_rules.py",
+        "tests/test_xax_selfhost_general_build.py"
+      ],
+      "release": true
+    },
+    "benchmarks/bench_android_libxposed_remote_files.py": {
+      "class": "D",
+      "run_by": [
+        "benchmarks/bench_android_vector_profiles.py",
+        "tests/test_xax_android_libxposed_remote_files_evidence.py"
+      ],
+      "release": true
+    },
+    "benchmarks/bench_android_libxposed_remote_preferences.py": {
+      "class": "D",
+      "run_by": [
+        "benchmarks/bench_android_vector_profiles.py",
+        "tests/test_xax_android_libxposed_remote_preferences_evidence.py"
+      ],
+      "release": true
+    },
+    "benchmarks/bench_android_libxposed_result.py": {
+      "class": "D",
+      "run_by": [
+        "benchmarks/bench_android_vector_profiles.py",
+        "tests/test_xax_android_libxposed_result_evidence.py"
+      ],
+      "release": true
+    },
+    "benchmarks/bench_android_libxposed_runtime_pair.py": {
+      "class": "D",
+      "run_by": [
+        "tests/test_xax_android_libxposed_runtime_pair_evidence.py"
+      ],
+      "release": true
+    },
+    "benchmarks/bench_android_libxposed_services.py": {
+      "class": "D",
+      "run_by": [
+        "benchmarks/bench_android_vector_profiles.py",
+        "tests/test_xax_android_libxposed_services_evidence.py"
+      ],
+      "release": true
+    },
+    "benchmarks/bench_android_libxposed_target.py": {
+      "class": "D",
+      "run_by": [
+        "benchmarks/bench_android_libxposed_result.py",
+        "benchmarks/bench_android_vector_profiles.py",
+        "tests/test_xax_android_libxposed_target_evidence.py"
+      ],
+      "release": true
+    },
+    "benchmarks/bench_android_libxposed_unhook.py": {
+      "class": "D",
+      "run_by": [
+        "tests/test_xax_android_libxposed_unhook_evidence.py"
+      ],
+      "release": true
+    },
+    "benchmarks/bench_android_managed.py": {
+      "class": "D",
+      "run_by": [
+        "tests/test_xax_android_managed.py",
+        "tests/test_xax_android_platform.py",
+        "tests/test_xax_selfhost_android_managed_rules.py"
+      ],
+      "release": true
+    },
+    "benchmarks/bench_android_managed_bridge.py": {
+      "class": "D",
+      "run_by": [
+        "benchmarks/bench_android_apk.py",
+        "benchmarks/bench_android_components.py",
+        "benchmarks/bench_android_libxposed.py",
+        "benchmarks/bench_android_libxposed_argument.py",
+        "benchmarks/bench_android_libxposed_combined.py",
+        "benchmarks/bench_android_libxposed_deopt.py",
+        "benchmarks/bench_android_libxposed_hook.py",
+        "benchmarks/bench_android_libxposed_managed.py",
+        "benchmarks/bench_android_libxposed_remote_files.py",
+        "benchmarks/bench_android_libxposed_remote_preferences.py",
+        "benchmarks/bench_android_libxposed_result.py",
+        "benchmarks/bench_android_libxposed_services.py",
+        "benchmarks/bench_android_resources.py",
+        "benchmarks/bench_android_service.py",
+        "benchmarks/bench_full_selfhost.py",
+        "benchmarks/bench_oi30_build_manifest.py",
+        "tests/test_xax_build.py",
+        "tests/test_xax_dex.py",
+        "tests/test_xax_selfhost_android_rules.py",
+        "tests/test_xax_selfhost_general_build.py"
+      ],
+      "release": true
+    },
+    "benchmarks/bench_android_ndk_twin.py": {
+      "class": "D",
+      "run_by": [
+        "benchmarks/android_art_device.py",
+        "benchmarks/android_jsonmin.py",
+        "benchmarks/bench_android_art_execute.py",
+        "benchmarks/bench_android_counter_twin.py",
+        "benchmarks/bench_android_official_tools.py",
+        "benchmarks/bench_r5_android_counter.py",
+        "benchmarks/bench_r5_maintenance.py",
+        "tests/test_xax_android_packed.py"
+      ],
+      "release": true
+    },
+    "benchmarks/bench_android_official_tools.py": {
+      "class": "D",
+      "run_by": [
+        "benchmarks/android_counter_app.py",
+        "tests/test_xax_android_official_tools.py"
+      ],
+      "release": true
+    },
+    "benchmarks/bench_android_platform_runtime.py": {
+      "class": "D",
+      "run_by": [
+        "benchmarks/bench_android_bionic.py",
+        "tests/test_xax_android_packed.py",
+        "tests/test_xax_completion_parity.py"
+      ],
+      "release": true
+    },
+    "benchmarks/bench_android_resources.py": {
+      "class": "D",
+      "run_by": [
+        "tests/test_xax_android_resources_evidence.py"
+      ],
+      "release": true
+    },
+    "benchmarks/bench_android_sdk_import.py": {
+      "class": "D",
+      "run_by": [
+        "tests/test_xax_android_sdk_evidence.py"
+      ],
+      "release": true
+    },
+    "benchmarks/bench_android_service.py": {
+      "class": "D",
+      "run_by": [
+        "tests/test_xax_android_service_evidence.py"
+      ],
+      "release": true
+    },
+    "benchmarks/bench_android_vector_profiles.py": {
+      "class": "D",
+      "run_by": [
+        "integration/android/vector/vector_harness.py",
+        "tests/test_xax_vector_harness.py"
+      ],
+      "release": true
+    },
+    "benchmarks/bench_full_selfhost.py": {
+      "class": "D",
+      "run_by": [
+        "release V1 evidence step (--write)"
+      ],
+      "release": true
+    },
+    "benchmarks/bench_oi02_granularity.py": {
+      "class": "D",
+      "run_by": [
+        "tests/test_oi02_granularity.py"
+      ],
+      "release": true
+    },
+    "benchmarks/bench_oi03_recursion.py": {
+      "class": "D",
+      "run_by": [
+        "benchmarks/bench_oi04_type_vocabulary.py",
+        "tests/test_oi03_recursion.py"
+      ],
+      "release": true
+    },
+    "benchmarks/bench_oi04_type_vocabulary.py": {
+      "class": "D",
+      "run_by": [
+        "tests/test_oi04_type_vocabulary.py"
+      ],
+      "release": true
+    },
+    "benchmarks/bench_oi06_memory_surface.py": {
+      "class": "D",
+      "run_by": [
+        "tests/test_oi06_memory_surface.py"
+      ],
+      "release": true
+    },
+    "benchmarks/bench_oi07_dma.py": {
+      "class": "D",
+      "run_by": [
+        "tests/test_oi07_dma.py"
+      ],
+      "release": true
+    },
+    "benchmarks/bench_oi08_effect_edges.py": {
+      "class": "D",
+      "run_by": [
+        "tests/test_oi08_effect_edges.py"
+      ],
+      "release": true
+    },
+    "benchmarks/bench_oi09_call_contracts.py": {
+      "class": "D",
+      "run_by": [
+        "tests/test_oi09_call_contracts.py"
+      ],
+      "release": true
+    },
+    "benchmarks/bench_oi10_trap_payload.py": {
+      "class": "D",
+      "run_by": [
+        "tests/test_oi10_trap_payload.py"
+      ],
+      "release": true
+    },
+    "benchmarks/bench_oi11_atomic_policy.py": {
+      "class": "D",
+      "run_by": [
+        "tests/test_oi11_atomic_policy.py"
+      ],
+      "release": true
+    },
+    "benchmarks/bench_oi12_timing_proof.py": {
+      "class": "D",
+      "run_by": [
+        "tests/test_oi12_timing_proof.py"
+      ],
+      "release": true
+    },
+    "benchmarks/bench_oi13_scope_normalization.py": {
+      "class": "D",
+      "run_by": [
+        "tests/test_oi13_scope_normalization.py"
+      ],
+      "release": true
+    },
+    "benchmarks/bench_oi14_comptime_policy.py": {
+      "class": "D",
+      "run_by": [
+        "tests/test_oi14_comptime_policy.py"
+      ],
+      "release": true
+    },
+    "benchmarks/bench_oi15_specialization_boundaries.py": {
+      "class": "D",
+      "run_by": [
+        "tests/test_oi15_specialization_boundaries.py"
+      ],
+      "release": true
+    },
+    "benchmarks/bench_oi16_target_granularity.py": {
+      "class": "D",
+      "run_by": [
+        "tests/test_oi16_target_granularity.py"
+      ],
+      "release": true
+    },
+    "benchmarks/bench_oi17_cost_model.py": {
+      "class": "D",
+      "run_by": [
+        "tests/test_oi17_cost_model.py"
+      ],
+      "release": true
+    },
+    "benchmarks/bench_oi18_optimizer_organization.py": {
+      "class": "D",
+      "run_by": [
+        "tests/test_oi18_optimizer_organization.py"
+      ],
+      "release": true
+    },
+    "benchmarks/bench_oi19_transform_proofs.py": {
+      "class": "D",
+      "run_by": [
+        "tests/test_oi19_transform_proofs.py"
+      ],
+      "release": true
+    },
+    "benchmarks/bench_oi20_abi_platform.py": {
+      "class": "D",
+      "run_by": [
+        "tests/test_oi20_abi_platform.py"
+      ],
+      "release": true
+    },
+    "benchmarks/bench_oi21_dependency_index.py": {
+      "class": "D",
+      "run_by": [
+        "benchmarks/bench_oi22_hash_migration.py",
+        "tests/test_oi21_dependency_index.py",
+        "tests/test_oi22_hash_migration.py"
+      ],
+      "release": true
+    },
+    "benchmarks/bench_oi22_hash_migration.py": {
+      "class": "D",
+      "run_by": [
+        "tests/test_oi22_hash_migration.py"
+      ],
+      "release": true
+    },
+    "benchmarks/bench_oi23_package_resolver.py": {
+      "class": "D",
+      "run_by": [
+        "tests/test_oi23_package_resolver.py"
+      ],
+      "release": true
+    },
+    "benchmarks/bench_oi24_provenance_sandbox.py": {
+      "class": "D",
+      "run_by": [
+        "tests/test_oi24_provenance_sandbox.py"
+      ],
+      "release": true
+    },
+    "benchmarks/bench_oi27_bootstrap_diversity.py": {
+      "class": "D",
+      "run_by": [
+        "tests/test_oi27_bootstrap_diversity.py"
+      ],
+      "release": true
+    },
+    "benchmarks/bench_oi28_diagnostic_payload.py": {
+      "class": "D",
+      "run_by": [
+        "tests/test_oi28_diagnostic_payload.py"
+      ],
+      "release": true
+    },
+    "benchmarks/bench_oi29_atomic_litmus.py": {
+      "class": "D",
+      "run_by": [
+        "tests/test_oi29_atomic_litmus.py"
+      ],
+      "release": true
+    },
+    "benchmarks/bench_oi30_build_manifest.py": {
+      "class": "D",
+      "run_by": [
+        "tests/test_oi30_build_manifest.py"
+      ],
+      "release": true
+    },
+    "benchmarks/bench_python_free_seed.py": {
+      "class": "D",
+      "run_by": [
+        "release V1 evidence step (--write)"
+      ],
+      "release": true
+    },
+    "benchmarks/bench_r5_android_counter.py": {
+      "class": "D",
+      "run_by": [
+        "tests/test_xax_android_counter.py"
+      ],
+      "release": true
+    },
+    "benchmarks/bench_r5_maintenance.py": {
+      "class": "D",
+      "run_by": [
+        "tests/test_workspace_recursion_edit.py"
+      ],
+      "release": true
+    },
+    "benchmarks/bench_r6_xb64.py": {
+      "class": "D",
+      "run_by": [
+        "benchmarks/bench_r6_xcksum.py",
+        "tests/test_xax_construct.py"
+      ],
+      "release": true
+    },
+    "benchmarks/bench_r6_xcksum.py": {
+      "class": "D",
+      "run_by": [
+        "tests/test_xax_construct.py"
+      ],
+      "release": true
+    },
+    "benchmarks/bench_r6_xwc.py": {
+      "class": "D",
+      "run_by": [
+        "tests/test_xax_construct.py"
+      ],
+      "release": true
+    },
+    "benchmarks/bench_selfhost_closure.py": {
+      "class": "D",
+      "run_by": [
+        "benchmarks/bench_selfhost_x86_64.py",
+        "tests/test_xax_selfhost_closure.py"
+      ],
+      "release": true
+    },
+    "benchmarks/bench_selfhost_fixed_point.py": {
+      "class": "D",
+      "run_by": [
+        "benchmarks/bench_selfhost_closure.py"
+      ],
+      "release": true
+    },
+    "benchmarks/bench_selfhost_x86_64.py": {
+      "class": "D",
+      "run_by": [
+        "by hand: re-records selfhost_x86_64_evidence.json, which tests/test_audit_remediation.py checks"
+      ],
+      "release": false
+    },
+    "benchmarks/bench_windows_pe_c_wine.py": {
+      "class": "D",
+      "run_by": [
+        "tests/test_xax_pe.py"
+      ],
+      "release": true
+    },
+    "benchmarks/bench_windows_pe_wine.py": {
+      "class": "D",
+      "run_by": [
+        "benchmarks/bench_windows_pe_c_wine.py",
+        "tests/test_xax_pe.py",
+        "tests/test_xax_pe_links.py"
+      ],
+      "release": true
+    },
+    "benchmarks/board_linked_c.py": {
+      "class": "D",
+      "run_by": [
+        "tests/test_xax_elf_link.py"
+      ],
+      "release": true
+    },
+    "benchmarks/browser_fib.py": {
+      "class": "D",
+      "run_by": [
+        "tests/test_hosted_build_provenance.py",
+        "tests/test_xax_web.py",
+        "tests/wasm_corpus.py"
+      ],
+      "release": true
+    },
+    "benchmarks/jsonmin.py": {
+      "class": "D",
+      "run_by": [
+        "benchmarks/android_jsonmin.py",
+        "benchmarks/bench_full_selfhost.py",
+        "benchmarks/bench_r5_maintenance.py",
+        "tests/test_jsonmin.py",
+        "tests/test_workspace_recursion_edit.py",
+        "tests/test_x86_64_optimizations.py",
+        "tests/test_xax_jvm_bridge.py",
+        "tests/test_xax_selfhost_edit.py",
+        "tests/test_xax_selfhost_general.py",
+        "tests/test_xax_selfhost_general_build.py",
+        "tests/test_xax_selfhost_general_driver.py",
+        "tests/test_xax_selfhost_general_view.py",
+        "tests/test_xax_selfhost_jvm.py",
+        "tests/test_xax_selfhost_semantic.py"
+      ],
+      "release": true
+    },
+    "benchmarks/linux_c_interop.py": {
+      "class": "D",
+      "run_by": [
+        "tests/test_xax_c_interop.py"
+      ],
+      "release": true
+    },
+    "benchmarks/linux_chains.py": {
+      "class": "D",
+      "run_by": [
+        "benchmarks/bench_full_selfhost.py",
+        "tests/test_x86_64_optimizations.py",
+        "tests/test_xax_chains.py",
+        "tests/test_xax_selfhost_general_driver.py",
+        "tests/test_xax_selfhost_general_view.py"
+      ],
+      "release": true
+    },
+    "benchmarks/linux_filestat.py": {
+      "class": "D",
+      "run_by": [
+        "tests/test_xax_linux.py",
+        "tests/test_xax_linux_aarch64.py"
+      ],
+      "release": true
+    },
+    "benchmarks/linux_graph_kit.py": {
+      "class": "D",
+      "run_by": [
+        "benchmarks/linux_chains.py",
+        "benchmarks/linux_filestat.py",
+        "tests/test_xax_linux_startup.py"
+      ],
+      "release": true
+    },
+    "benchmarks/linux_harness.py": {
+      "class": "D",
+      "run_by": [
+        "benchmarks/jsonmin.py",
+        "benchmarks/linux_chains.py",
+        "benchmarks/linux_filestat.py"
+      ],
+      "release": true
+    },
+    "benchmarks/linux_qsort.py": {
+      "class": "D",
+      "run_by": [
+        "tests/test_xax_lend_entry.py"
+      ],
+      "release": true
+    },
+    "benchmarks/spirv_kernels.py": {
+      "class": "D",
+      "run_by": [
+        "tests/spirv_corpus.py",
+        "tests/test_xax_spirv.py"
+      ],
+      "release": true
+    },
+    "benchmarks/uniqcount.py": {
+      "class": "D",
+      "run_by": [
+        "tests/test_xax_stdlib.py"
+      ],
+      "release": true
+    },
+    "integration/android/make_android_root.py": {
+      "class": "E",
+      "run_by": [
+        "by hand: prepares the Android root the qemu ART tests skip without"
+      ],
+      "release": false
+    },
+    "integration/android/vector/hprof.py": {
+      "class": "E",
+      "run_by": [
+        "integration/android/vector/vector_harness.py"
+      ],
+      "release": true
+    },
+    "integration/android/vector/jdwp.py": {
+      "class": "E",
+      "run_by": [
+        "integration/android/vector/vector_harness.py",
+        "tests/test_xax_vector_harness.py"
+      ],
+      "release": true
+    },
+    "integration/android/vector/pin_libxposed_api.py": {
+      "class": "E",
+      "run_by": [
+        "tests/test_xax_vector_contract.py (loaded by path)"
+      ],
+      "release": true
+    },
+    "integration/android/vector/vector_harness.py": {
+      "class": "E",
+      "run_by": [
+        "integration/android/vector/validate_vector_runtime.sh",
+        "tests/test_xax_vector_harness.py (loaded by path)"
+      ],
+      "release": true
+    },
+    "integration/construct/host.py": {
+      "class": "E",
+      "run_by": [
+        "by hand (integration/construct/README.md)"
+      ],
+      "release": false
+    },
+    "integration/construct/probe_seed.py": {
+      "class": "E",
+      "run_by": [
+        "by hand (integration/construct/README.md)"
+      ],
+      "release": false
+    },
+    "integration/construct/reader.py": {
+      "class": "E",
+      "run_by": [
+        "integration/construct/resolve.py"
+      ],
+      "release": true
+    },
+    "integration/construct/resolve.py": {
+      "class": "E",
+      "run_by": [
+        "tests/test_oi23_package_resolver.py"
+      ],
+      "release": true
+    },
+    "integration/mcp/bench.py": {
+      "class": "E",
+      "run_by": [
+        "by hand; port pending (integration/mcp/README.md)"
+      ],
+      "release": false
+    },
+    "integration/mcp/chain.py": {
+      "class": "E",
+      "run_by": [
+        "by hand; port pending (integration/mcp/README.md)"
+      ],
+      "release": false
+    },
+    "integration/mcp/fingerprint.py": {
+      "class": "E",
+      "run_by": [
+        "by hand; port pending (integration/mcp/README.md)"
+      ],
+      "release": false
+    },
+    "setup.py": {
+      "class": "B",
+      "run_by": [
+        "pip wheel in tests/test_wheel_install.py"
+      ],
+      "release": true
+    },
+    "tests/_wheel_host.py": {
+      "class": "D",
+      "run_by": [
+        "tests/test_wheel_install.py",
+        "tests/test_xax_compiler.py"
+      ],
+      "release": true
+    },
+    "tests/aarch64_raw_corpus.py": {
+      "class": "D",
+      "run_by": [
+        "benchmarks/bench_full_selfhost.py",
+        "tests/test_xax_selfhost_aarch64_raw.py",
+        "tests/test_xax_selfhost_general_build.py"
+      ],
+      "release": true
+    },
+    "tests/accel_corpus.py": {
+      "class": "D",
+      "run_by": [
+        "benchmarks/bench_full_selfhost.py",
+        "tests/test_xax_selfhost_general_build.py"
+      ],
+      "release": true
+    },
+    "tests/dll_corpus.py": {
+      "class": "D",
+      "run_by": [
+        "benchmarks/bench_full_selfhost.py",
+        "tests/test_xax_selfhost_general_build.py"
+      ],
+      "release": true
+    },
+    "tests/pe_legacy_corpus.py": {
+      "class": "D",
+      "run_by": [
+        "benchmarks/bench_full_selfhost.py",
+        "tests/test_xax_selfhost_pe_legacy.py"
+      ],
+      "release": true
+    },
+    "tests/spirv_corpus.py": {
+      "class": "D",
+      "run_by": [
+        "benchmarks/bench_full_selfhost.py",
+        "tests/test_xax_selfhost_general_build.py"
+      ],
+      "release": true
+    },
+    "tests/wasm_corpus.py": {
+      "class": "D",
+      "run_by": [
+        "benchmarks/bench_full_selfhost.py",
+        "tests/test_xax_selfhost_general_build.py"
+      ],
+      "release": true
+    },
+    "tests/x86_raw_corpus.py": {
+      "class": "D",
+      "run_by": [
+        "benchmarks/bench_full_selfhost.py",
+        "tests/aarch64_raw_corpus.py",
+        "tests/test_xax_selfhost_general_build.py",
+        "tests/wasm_corpus.py"
+      ],
+      "release": true
+    }
+  },
+  "tests": {
+    "class": "D",
+    "run_by": [
+      "pytest (the release runs the full suite once, ADR-433)"
+    ],
+    "release": true,
+    "note": "every tests/test_*.py and conftest.py under compiler/, including integration/*/tests/"
+  },
+  "release_roots": [
+    "the pytest suite",
+    "benchmarks/bench_full_selfhost.py",
+    "benchmarks/bench_python_free_seed.py"
+  ]
 }
