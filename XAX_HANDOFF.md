@@ -3640,3 +3640,46 @@ its post-validate half (`rel45b.sh`) during this work, which therefore ran only 
 - **Continuation prompt:** "Continue the XAX release-speed work: read the last two XAX_HANDOFF.md sections. If
   `/root/work/logs/rel0045b.log` says POST-DONE, land release 0045 first, then do the Next list of the speed section
   in order."
+
+## Python retirement, first pass: inventory, 59 files deleted, the oracle on Windows — 2026-11-28
+
+`main` = `5936f76`. Supersedes nothing; ran beside release 0045's chain (`rel0045b.log` was at `pfs 469 s`, in
+`bench_full_selfhost`, throughout), so only Windows jobs and small WSL stores ran. Calls made without asking, as
+the owner asked.
+
+- **Inventory** (#233): `compiler/migration/python_authority_inventory.json` now lists every Python file outside
+  `reference/` (`files`: 108 entries with `class`, `run_by`, `release`; one `tests` entry; `release_roots`; a `release`
+  flag on each `src/` module), from an `ast` import walk plus the non-import callers. Everything in `src/` and 101 of
+  the 108 other files are reachable from the release's roots (the suite, `bench_full_selfhost.py`,
+  `bench_python_free_seed.py`); `tests/test_python_authority_inventory.py` keeps the list complete.
+- **Deleted, no caller** (EXECUTED: `pytest --collect-only` collects the same 2025 tests): six BBC probes and bench
+  drivers in `production_driver/native/tools` (#227), 42 benchmark evidence drivers (#228), four store builders in
+  `src/` (#230), the N0, S8, M11 and ledger-0024 tools (#231), two JVM bench drivers, `construct/probe_hash.py` and the
+  MCP example client (#232). No `reference/` module lost its last importer.
+- **Native oracle on Windows** (#234): `oracle/driver.batch` gives main the general driver's entry; `generate.sh`
+  hosts it as `xax_oracle_windows.xax`; `oracle_execute` is native on Windows too. EXECUTED: both oracles agree on
+  4,111 cases on Windows 11 and on Linux (WSL 2) (`benchmarks/oracle_windows_evidence.json`); both seeds make the
+  same stores. The oracle-backed tests take 148 s on Windows instead of 42 s (a process per case). New limits: 4 to
+  1,024 arguments, each under 4 KiB.
+- **Slice 4: BLOCKED on design.** The prompt's slice 4 (heap views and pointers, then floats and foreign calls)
+  differs from `docs/proposals/native-oracle.md` §4 (aggregates, sums, floats; foreign calls declined for good). The
+  Python executor has no `heap.view` or `call.foreign` semantics; its only heap memory is borrowed-view parameters,
+  and no test passes those to `execute`, so there is no corpus for both oracles to agree on. The owner decides: either
+  the doc's slice 4 (corpus `test_xax_general_language`), or a heap-pointer argument form for both executors with a
+  new corpus. Floats natively would use XAX float operations, whose lowering is what the oracle checks (an
+  independence question for ADR-405).
+- **Ports: NOT RUN.** Every remaining file outside `reference/` except seven is release-needed, and the prompt holds
+  those until 0045 is on `main`. The seven: `bench_selfhost_x86_64.py` (re-records evidence a test checks),
+  `make_android_root.py`, `construct/host.py` and `probe_seed.py` (README commands), `mcp/chain.py`, `bench.py`,
+  `fingerprint.py` ("port pending"; `fingerprint` needs SHA-256 and a file list, no directory listing exists in the
+  host functions).
+- **Note:** #234 changed four test files on `main` (`test_native_oracle`, `test_windows_generator`,
+  `test_xax_byte_view_widening`, and #233's inventory test) while the release's suite runs from its own clone
+  (`/root/work/r45r`); its result is unaffected, but the release PR's merge into `main` meets them.
+- **Next:**
+  1. After 0045 is on `main`: port the release-needed tools one by one, smallest first, each proven by a byte diff
+     against the Python on the real repository and fixtures, deleting the Python and its callers in the same PR.
+  2. The owner's slice 4 decision, then that slice with an evidence JSON and the tests moved.
+- **Continuation prompt:** "Continue the XAX Python retirement: read the last XAX_HANDOFF.md section. Once release
+  0045 is on main, port the release-needed Python tools natively one PR each, smallest first; ask the owner for the
+  oracle slice 4 decision."
