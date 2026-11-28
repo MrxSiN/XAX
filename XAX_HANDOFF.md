@@ -3676,10 +3676,25 @@ the owner asked.
 - **Note:** #234 changed four test files on `main` (`test_native_oracle`, `test_windows_generator`,
   `test_xax_byte_view_widening`, and #233's inventory test) while the release's suite runs from its own clone
   (`/root/work/r45r`); its result is unaffected, but the release PR's merge into `main` meets them.
+- **Plan: every tool runs natively on Windows** (the owner approved it in a side session, 2026-11-28: most work ran
+  in WSL as if it depended on it). Every tool and script runs on Windows from the same store: host functions only,
+  the Windows store made by `windows/generator/generate.sh`, no hand-kept duplicate. WSL stays only for running
+  Linux target output (the Linux self-build fixed point, `rotate.sh confirm` for Linux, Linux corpus runs). Order:
+  1. Done (#234): the oracle on the driver's host functions, `xax_oracle_windows.xax`.
+  2. After 0045 is on `main` (the release-script rule): seed selection by host in `evolve.sh`, `rotate.sh`,
+     `selfbuild.sh` and `evidence/run.sh`, as `status.sh` and now `oracle.sh` do (`uname` picks the Linux seed or
+     `xaxc-windows-x86_64.exe`).
+  3. Checked 2026-11-28: `status.sh` no longer refuses the bootstrap block on Windows; it builds
+     `xax_evidence_windows.xax` and `xax_rotate_windows.xax` there. Only `status-tool/README.md` lines 15-16 still
+     say it does. NOT RUN: `status.sh check` on Windows; fix the README once that run agrees with Linux.
+  4. Optional: a test that every tool store has a generated Windows twin. Today every one does
+     (evidence, ledger, request, oracle, rotate, status, verdict, hosting); `evolution/native/0024/narrow_signed_compare.xax`
+     is a one-off Linux check program and `ledger-tool/seed.xax` the base store, so neither is a tool.
 - **Next:**
   1. After 0045 is on `main`: port the release-needed tools one by one, smallest first, each proven by a byte diff
      against the Python on the real repository and fixtures, deleting the Python and its callers in the same PR.
   2. The owner's slice 4 decision, then that slice with an evidence JSON and the tests moved.
+  3. The Windows-native plan above, items 2 to 4.
 - **Continuation prompt:** "Continue the XAX Python retirement: read the last XAX_HANDOFF.md section. Once release
   0045 is on main, port the release-needed Python tools natively one PR each, smallest first; ask the owner for the
   oracle slice 4 decision."
