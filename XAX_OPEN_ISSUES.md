@@ -17,6 +17,7 @@ This register lists the issues that require implementation, target, ecosystem, o
 | --- | --- |
 | `OPEN` | The closure criteria of the record are not all met. Partial progress is stated in the record, for example "partially addressed". |
 | `CLOSED` | The record states that its resolution is decided and its closing evidence is recorded. A scope limit, where one exists, is stated next to the status (for example OI-35 closes for the JVM only). |
+| `MOVED` | The record's work is tracked by an issue in another first-party repository, linked in its status line; XAX keeps only what that line names. |
 
 - The date in a status line is the date the original record gives for that status. Statuses that the original gives in other words (for example `FIXED IN THE STORES`, `OPEN (partially addressed)`) are kept verbatim inside the Historical Record of the issue that used them.
 - Where an original record has no status line, the status shown is the one its own text states (for example "remains open" or "is closed"), and the record says so.
@@ -28,7 +29,7 @@ This register lists the issues that require implementation, target, ecosystem, o
 
 | Issue ID | Title | Status |
 | --- | --- | --- |
-| [OI-01](#oi-01--ai-token-vocabulary-fallback-framing-and-handle-namespace) | AI token vocabulary, fallback framing, and handle namespace | OPEN |
+| [OI-01](#oi-01--ai-token-vocabulary-fallback-framing-and-handle-namespace) | AI token vocabulary, fallback framing, and handle namespace | MOVED |
 | [OI-02](#oi-02--canonical-object-and-graph-fragment-granularity) | Canonical object and graph-fragment granularity | CLOSED |
 | [OI-03](#oi-03--recursion-group-compact-encoding) | Recursion-group compact encoding | CLOSED |
 | [OI-04](#oi-04--float-format-catalog-and-compact-type-vocabulary) | Float format catalog and compact type vocabulary | OPEN |
@@ -55,7 +56,7 @@ This register lists the issues that require implementation, target, ecosystem, o
 | [OI-25](#oi-25--bootstrap-fixed-point-comparison-level) | Bootstrap fixed-point comparison level | CLOSED |
 | [OI-26](#oi-26--minimum-practical-bootstrap-seed-subset) | Minimum practical bootstrap seed subset | CLOSED |
 | [OI-27](#oi-27--bootstrap-trust-diversity-threshold) | Bootstrap trust diversity threshold | CLOSED |
-| [OI-28](#oi-28--diagnostic-payload-and-repair-neighborhood-minimum) | Diagnostic payload and repair-neighborhood minimum | OPEN |
+| [OI-28](#oi-28--diagnostic-payload-and-repair-neighborhood-minimum) | Diagnostic payload and repair-neighborhood minimum | MOVED |
 | [OI-29](#oi-29--atomic-litmus-conformance-corpus-size) | Atomic litmus conformance corpus size | CLOSED |
 | [OI-30](#oi-30--deterministic-build-manifest-boundary--closed) | Deterministic-build manifest boundary | CLOSED |
 | [OI-31](#oi-31--run-the-tiny-c-vs-xax-experiment-in-codex-desktop) | Run the tiny C-vs-XAX experiment in Codex Desktop | CLOSED |
@@ -73,7 +74,7 @@ This register lists the issues that require implementation, target, ecosystem, o
 | [OI-43](#oi-43--browser-event-entries-host-invoked-xax-entry-points) | Browser event entries (host-invoked XAX entry points) | CLOSED |
 | [OI-44](#oi-44--hardware-versus-emulated-execution-as-replacement-evidence) | Hardware versus emulated execution as replacement evidence | OPEN |
 | [OI-45](#oi-45--re-executing-native-evidence-after-a-canonical-change) | Re-executing native evidence after a canonical change | CLOSED |
-| [OI-46](#oi-46--fixed-client-overhead-in-r5-token-measurement) | Fixed client overhead in R5 token measurement | OPEN |
+| [OI-46](#oi-46--fixed-client-overhead-in-r5-token-measurement) | Fixed client overhead in R5 token measurement | MOVED |
 | [OI-47](#oi-47--path-exact-ownership-for-android-platform-objects) | Path-exact ownership for Android platform objects | OPEN |
 | [OI-48](#oi-48--windows-host-process-capabilities-for-vramboost-dx12) | Windows host-process capabilities for VRAMBoost DX12 | OPEN |
 | [OI-49](#oi-49--android-arm64-large-composite-return-copy) | Android ARM64 large composite return copy | CLOSED |
@@ -95,6 +96,8 @@ This register lists the issues that require implementation, target, ecosystem, o
 | [OI-65](#oi-65--scheduling-resource-detail-in-target-packages) | Scheduling-resource detail in target packages | OPEN |
 
 ## OI-01 — AI token vocabulary, fallback framing, and handle namespace
+
+**Status:** MOVED (2026-11-28) to [MrxSiN/XAX-MCP#5](https://github.com/MrxSiN/XAX-MCP/issues/5): the measurement and its client side are XAX-MCP's (it owns transport, tool schemas and the client surface). A protocol change its results call for comes back here as an ADR. The earlier status line follows.
 
 **Status:** OPEN (2026-11-25): a measurement design is proposed below for the owner; nothing is run. The original record has no status line; its last entry, "Remaining after this extension", leaves it open. It was removed from this register by commit `7af8108` (2026-10-30) and restored on 2026-11-24 from the version before that commit.
 
@@ -1827,6 +1830,8 @@ The committed immutable seed establishes the declared B6 ordinary-release bounda
 
 ## OI-28 — Diagnostic payload and repair-neighborhood minimum
 
+**Status:** MOVED (2026-11-28) to [MrxSiN/XAX-MCP#6](https://github.com/MrxSiN/XAX-MCP/issues/6): the measurement and its client side are XAX-MCP's (it owns transport, tool schemas and the client surface). A protocol change its results call for comes back here as an ADR. The earlier status line follows.
+
 **Status:** OPEN (2026-11-25): a measurement design for the repeated repair trials is proposed below; nothing is run. The original record has no status line; it states "OI-28 remains open pending repeated controlled repair trials".
 
 ### Summary
@@ -2658,6 +2663,8 @@ The original status record, in chronological order:
 - `bench_selfhost_closure.py`, `bench_selfhost_x86_64.py`
 
 ## OI-46 — Fixed client overhead in R5 token measurement
+
+**Status:** MOVED (2026-11-28) to [MrxSiN/XAX-MCP#7](https://github.com/MrxSiN/XAX-MCP/issues/7): the measurement and its client side are XAX-MCP's (it owns transport, tool schemas and the client surface). A protocol change its results call for comes back here as an ADR. The earlier status line follows.
 
 **Status:** OPEN (2026-11-25): a measurement design is proposed below for the owner's approval; nothing is run. Opened 2026-10-07 (ADR-195); deferred and unscheduled since 2026-10-08 (ADR-207). It was removed from this register by commit `7af8108` (2026-10-30) and restored on 2026-11-24 from the version before that commit.
 
@@ -3618,6 +3625,8 @@ Recorded on 2026-11-24 from [`docs/08_SERIALIZATION_IDENTITY.md`](docs/08_SERIAL
 - [`docs/08_SERIALIZATION_IDENTITY.md`](docs/08_SERIALIZATION_IDENTITY.md#222-index-acceleration) §22.2.
 
 ## OI-64 — Semantic rebase granularity for concurrent agents
+
+**Status:** OPEN (2026-11-28), linked to [MrxSiN/XAX-MCP#8](https://github.com/MrxSiN/XAX-MCP/issues/8), where the measurement runs. The decision on the default rebase granularity stays here as an ADR; this record closes with that ADR. The earlier status line follows.
 
 **Status:** OPEN (2026-11-25): a measurement design is proposed below; nothing is run. Recorded 2026-11-24.
 
