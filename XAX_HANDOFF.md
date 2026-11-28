@@ -3698,3 +3698,21 @@ the owner asked.
 - **Continuation prompt:** "Continue the XAX Python retirement: read the last XAX_HANDOFF.md section. Once release
   0045 is on main, port the release-needed Python tools natively one PR each, smallest first; ask the owner for the
   oracle slice 4 decision."
+
+## Native oracle slice 4 done: aggregates, sums, floats — 2026-11-28
+
+`main` after #241. Supersedes the "Slice 4: BLOCKED on design" item of "Python retirement, first pass…" above: the owner
+chose the design doc's slice 4 (aggregates, sums, floats).
+
+- **Aggregates and sums** (#239, README #240): `slice4-types.batch` and `slice4-aggregates.batch` on `xax_oracle.xax`
+  (`@op4`, an arena in the frame view, the `sum-variant` trap). EXECUTED: 10 cases agree on Windows and Linux.
+- **Floats** (#241): `slice4-floats-types.batch` and `slice4-floats.batch` (`@op5`, integer soft-float, round to nearest
+  even). XAX cannot reinterpret bits as a float (`pointer.cast` between element types is rejected, a checked load is
+  always `bits`), so the float semantics are written in integers. EXECUTED: 2,038 float cases agree on Windows and Linux
+  (NaNs compared as a class), 104 of them `float-conversion` traps.
+- `test_xax_general_language` takes all eight of its checks from `oracle_execute` (floats as their bits).
+- **Limits:** a 57,344-byte arena for aggregates and sums, never freed (past it, `decline 0`); aggregate and sum entry
+  parameters and results are not checked.
+- **Next:** the Python retirement's ports after 0045 is on `main` (the section above); the next oracle area is the one
+  `docs/proposals/native-oracle.md` §4 lists after slice 4 (none: foreign calls, target and meta operations stay
+  declined), so the remaining `reference/` executor users are the tests that need those.
