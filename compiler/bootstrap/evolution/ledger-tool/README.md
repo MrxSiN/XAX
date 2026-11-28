@@ -22,6 +22,9 @@ xax_ledger transactions <bootstrap> <out>   the ledger's transaction lines (ever
                                             or empty), as they are
 xax_ledger blob <file> <out>                the file's git blob id (SHA-1 of "blob <size>\0" and the bytes) and a
                                             newline; exit 3 when the file cannot be read
+xax_ledger after <bootstrap> <prefix> <out> the transaction lines after an earlier LEDGER: exit 1 unless the file
+                                            <prefix> is a byte prefix of the ledger that is empty or ends with a
+                                            newline; 3 when either cannot be read
 ```
 
 It replaced the Python `xax_selfhost_evolution` module (removed) and, in `evolve.sh`, the shell check loop, the awk chain lookup,
@@ -79,3 +82,20 @@ previous program's standard output and error byte for byte, with the same exit s
 build (39,936 bytes) gives the Linux build's `transactions`, `head` and `blob` output, `evolve.sh check` passes in 2 s,
 and `evolve.sh replay xax_jvm_general.xax` replays 7 of 7 transactions (54 s). `evolve.sh` still refuses a driver
 transaction and skips the request derivation there: `../request-tool` is a Linux x86-64 program.
+
+## The `after` command (ADR-433, 2026-11-28)
+
+`after.batch` on the previous `xax_ledger.xax` replaces `main` (F13) and keeps every helper. A first byte `a` is
+command 3 (five arguments). After reading the ledger, the program reads `<prefix>` into the 256 MiB view as a new read
+phase, compares it with the ledger's first bytes, checks that it ends at a line end, and then runs the `transactions`
+scan from the prefix's end. `evolve.sh replay --from <blob>` uses it for a checkpointed replay.
+
+Checked on Linux x86-64 (WSL 2, the release 0045 seed), EXECUTED:
+- `transactions`, `check`, `head` and `blob` give the previous program's output byte for byte.
+- `after` exits 0 and gives the ledger's last two lines for the ledger minus those lines, the `transactions` output for
+  an empty prefix, and nothing for the whole ledger.
+- It exits 1 for a prefix with a byte changed or added, one cut inside a line, and a file longer than the ledger; 3 for
+  a missing prefix or four arguments.
+
+The Windows build (`xax_ledger_windows.xax`, from `generate.sh`) gives the same `after` and `transactions` output on
+Windows 11.

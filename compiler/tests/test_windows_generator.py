@@ -51,11 +51,11 @@ class WindowsGeneratorTests(unittest.TestCase):
             self.assertEqual(out.read_bytes(), (tool / "xax_ledger_windows.xax").read_bytes())
 
     def test_the_ledger_tool_is_its_batches(self):
-        """xax_ledger.xax is check.batch, commands.batch, derived.batch and driver.batch on the ledger seed."""
+        """xax_ledger.xax is check.batch, commands.batch, derived.batch, driver.batch and after.batch on the ledger seed."""
         tool = BOOTSTRAP / "evolution" / "ledger-tool"
         with tempfile.TemporaryDirectory() as directory:
             store = tool / "seed.xax"
-            for k, batch in enumerate(("check", "commands", "derived", "driver")):
+            for k, batch in enumerate(("check", "commands", "derived", "driver", "after")):
                 out = Path(directory) / f"{k}.xax"
                 subprocess.run([str(SEED), "edit", str(store), str(tool / f"{batch}.batch"), str(out)], check=True, capture_output=True)
                 store = out

@@ -158,5 +158,43 @@ class WindowsLedgerTests(unittest.TestCase):
         self.assertEqual((run.returncode, run.stdout), (1, ""))
 
 
+@unittest.skipUnless(LINUX_X86_64 or WINDOWS_X86_64, "the ledger program runs where a seed runs")
+class CheckpointReplayTests(unittest.TestCase):
+    """ADR-433 (2): ``xax_ledger after`` and ``evolve.sh replay --from <blob> --jobs <n>``."""
+
+    def run_ledger(self, *arguments):
+        return subprocess.run(["sh", str(EVOLVE), "ledger", *(str(item) for item in arguments)], capture_output=True, text=True)
+
+    def test_after_lists_the_transactions_after_a_prefix(self):
+        lines = (BOOTSTRAP / "evolution" / "LEDGER").read_bytes().splitlines(keepends=True)
+        with tempfile.TemporaryDirectory() as directory:
+            prefix = Path(directory) / "prefix"
+            cases = {b"".join(lines[:-2]): (0, b"".join(lines[-2:]).decode()), b"": (0, ledger("transactions", BOOTSTRAP) + "\n"),
+                     b"".join(lines): (0, ""), b"".join(lines[:-2]) + b"x": (1, ""), b"".join(lines[:-2])[:-1]: (1, ""),
+                     b"".join(lines) * 2: (1, "")}
+            for data, expected in cases.items():
+                prefix.write_bytes(data)
+                run = self.run_ledger("after", BOOTSTRAP, prefix)
+                self.assertEqual((run.returncode, run.stdout), expected, len(data))
+            self.assertEqual(self.run_ledger("after", BOOTSTRAP, Path(directory) / "missing").returncode, 3)
+
+    def test_checkpointed_and_parallel_replays_print_the_serial_line(self):
+        store = "xax_jvm_general.xax"  # 7 transactions
+        history = subprocess.run(["git", "-C", str(BOOTSTRAP), "log", "--format=%H", "--", "evolution/LEDGER"], capture_output=True, text=True, check=True).stdout.split()
+        earlier = next(blob for blob in (subprocess.run(["git", "-C", str(BOOTSTRAP), "rev-parse", f"{commit}:compiler/bootstrap/evolution/LEDGER"],
+                                                         capture_output=True, text=True, check=True).stdout.strip() for commit in history)
+                       if 0 < subprocess.run(["git", "-C", str(BOOTSTRAP), "cat-file", "blob", blob], capture_output=True, text=True, check=True).stdout.count(f" {store} ") - 1 < 7)
+        runs = {}
+        for name, arguments in {"serial": [], "parallel": ["--jobs", "3"], "checkpoint": ["--from", earlier, "--jobs", "2"]}.items():
+            run = subprocess.run(["sh", str(EVOLVE), "replay", *arguments, store], capture_output=True, text=True, timeout=1800)
+            self.assertEqual(run.returncode, 0, run.stdout + run.stderr)
+            runs[name] = run.stdout.splitlines()
+        self.assertRegex(runs["serial"][-1], rf"^replayed 7 of 7 LEDGER=[0-9a-f]{{40}} xaxc=[0-9a-f]{{40}}$")
+        self.assertEqual(runs["parallel"], runs["serial"])
+        self.assertEqual(runs["checkpoint"][-1], runs["serial"][-1])
+        self.assertRegex(runs["checkpoint"][-2], rf"^checkpoint {earlier} [1-6] earlier transactions not replayed$")
+        self.assertLess(len(runs["checkpoint"]), len(runs["serial"]) + 1)
+
+
 if __name__ == "__main__":
     unittest.main()
