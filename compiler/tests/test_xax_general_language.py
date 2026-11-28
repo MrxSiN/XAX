@@ -10,6 +10,8 @@ from xax_compiler import (
 )
 from xax_x86_64 import compile_native
 
+from test_native_oracle import oracle_execute  # the native oracle where it runs (ADR-405)
+
 
 def reader_for(entry, objects, target=None):
     members = [entry] + ([target] if target is not None else [])
@@ -105,7 +107,7 @@ class GeneralLanguageCompletionTests(unittest.TestCase):
         graph = graph_fragment([Block((b32, b32), nodes, Terminator.return_((ValueRef.node_result(0, 4),)))])
         entry = function(graph, (b32, b32), (b32,))
         reader = reader_for(entry, [b32, pair, array, graph, entry], target)
-        self.assertEqual(execute(reader, entry.cid, (7, 11)), (18,))
+        self.assertEqual(oracle_execute(reader, entry.cid, (7, 11)), (18,))  # ADR-405 (4): slice 4
         compile_native(reader, entry.cid, target.cid)
 
     def test_sum_tag_branch_and_extract(self):
@@ -128,7 +130,7 @@ class GeneralLanguageCompletionTests(unittest.TestCase):
         graph = graph_fragment(blocks)
         entry = function(graph, (b32,), (b32,))
         reader = reader_for(entry, [b1, b32, choice, zero, graph, entry], target)
-        self.assertEqual(execute(reader, entry.cid, (99,)), (99,))
+        self.assertEqual(oracle_execute(reader, entry.cid, (99,)), (99,))  # ADR-405 (4): slice 4
         compile_native(reader, entry.cid, target.cid)
 
     def test_function_value_and_indirect_call(self):
