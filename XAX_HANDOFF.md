@@ -93,6 +93,7 @@ Dated sections (historical records; a later section supersedes an earlier one):
 - [Release 0044 open: 8 GiB workspace, offsets and clamps in; arena move waits — 2026-11-26](#release-0044-open-8-gib-workspace-offsets-and-clamps-in-arena-move-waits--2026-11-26)
 - [Release 0044 on `main`; Android items; the arena move narrowed — 2026-11-27](#release-0044-on-main-android-items-the-arena-move-narrowed--2026-11-27)
 - [Release 0045 open: x86-64 arena above 2 GiB (hanoi -O0 builds), Android leaf inlining; rotation running — 2026-11-28](#release-0045-open-x86-64-arena-above-2-gib-hanoi--o0-builds-android-leaf-inlining-rotation-running--2026-11-28)
+- [Release process speed and size: measurements, cleanup, ADR-433 — 2026-11-28](#release-process-speed-and-size-measurements-cleanup-adr-433--2026-11-28)
 
 ## Invariants that must not drift
 
@@ -3577,3 +3578,65 @@ narrowed" above. The owner asked for an unattended night with no questions; ever
   chain ran in WSL (`/root/work/logs/rel0045b.log`). If it reached POST-DONE, check the suite, open the rotation PR
   into release/0045 and the release PR into main, merge them once their gates pass, then BBC's native check on both
   Pixels and the BBC pin. If it stopped, read the log, fix and rerun from the failed step."
+
+## Release process speed and size: measurements, cleanup, ADR-433 — 2026-11-28
+
+Supersedes nothing; the "Next" of "Release 0045 open…" above still applies to release 0045 itself. Release 0045's
+chain validated `0045` at 11:21 (`evidence=103843b7…`, branch `rotation-0045` in WSL `/root/work/r45r`) and was in
+its post-validate half (`rel45b.sh`) during this work, which therefore ran only light jobs.
+
+- **ADR-433** (#225) records the owner's decisions: one replay per release (in the V2 evidence run), checkpointed
+  replay, V1 without its repeated generations, the suite once per release, derived stores stay committed for now
+  (13 readers), seeds stay in git. The same PR makes `test_xax_selfhost_evolution`'s replay test read the evidence
+  records (0.5 s instead of about 1 h 50 min when a record names the committed LEDGER blob; EXECUTED, WSL 2).
+- **Measured** (EXECUTED):
+
+  | What | Value |
+  |---|---|
+  | `D:\GitHub\XAX\.git` (`git count-objects -vH`) | 3.65 GiB in 3,349 loose objects, 437 MiB in 3 packs (4.1 GB on disk) |
+  | `git gc --aggressive` on a `--mirror --no-hardlinks` clone | NOT finished when this was written (over 40 min of CPU, 12.9 GB RSS on Windows); rerun `git count-objects -vH` in `D:GitHubscratch-gcx.git` afterwards |
+  | Store history (blobs, raw) | request 109 (5.5 GB), driver 118 (5.7 GB), `bbc.xax` 31 (2.0 GB), `bbc_request.xax` 17 (1.2 GB), Linux seed 65 (1.8 GB), Windows seed 18 (0.6 GB) |
+  | WSL VHDX `D:\WSL\Ubuntu-24.04\ext4.vhdx` | 64.9 GB file; 55 GB used inside before cleanup, 26 GB after |
+  | WSL `/root/work` | 13 GB after cleanup (r45r 5.1 GB, a5 2.9 GB, rel0045 1.3 GB) |
+  | Release 0045 chain steps | check 2 s; scratch replay 2 h 26 min; build 15 min; confirm 7 + 11 min; reference snapshot 4 min; V2 evidence 2 h 43 min (its own full replay included) |
+
+- **Cleanup** (EXECUTED): WSL `/root/XAX` (its leftovers were ledger 0026, whose three batches equal main's byte for
+  byte; a text patch is kept at `/root/work/keep/root-XAX-ledger0026-leftovers.patch`), `r43`, `r44`, `r44b`, `r44r`,
+  `campaign`, `m44`, `i216`, `r45`, `a5/arena*`, `c48`, `rel0044` and older per-release scratch (`sb0034`, `sb0035`,
+  `win0033`, `c37`, `c58`, `bbc41`, …). Their unpushed commits were checked first: all on `origin` except superseded
+  tries (`rotation-0039-try1`, an old `r44-supplied` tip, a scratch `tmp`). Windows: worktrees `XAX-r4`, `XAX-r44`,
+  `XAX-m44` and three scratchpad `wt-*` (all merged, clean), `XAX-work-bbc44`, and 45 merged local branches.
+  NOT RUN: VHDX compaction (needs a WSL shutdown; after POST-DONE).
+- **WSL memory** (written, not applied): `C:\Users\SiN\.wslconfig` (16 GB swap on `D:\WSL\swap.vhdx`,
+  `autoMemoryReclaim=gradual`, `sparseVhd=true`) and `/etc/sysctl.d/90-xax-overcommit.conf` (`vm.overcommit_memory = 1`).
+  Both take effect at the next WSL start. NOT RUN: the `test_xax_x86_64_views -n 2` rerun.
+- **V1 bench:** BLOCKED on design, not started. `bench_full_selfhost` holds three generations, a corpus run by four
+  executables and a fourth full ledger replay (its W2 `evolution` section, replayed by C1); the reference B-level
+  derivation (`xax_selfhost.linux_x86_64_status`) requires exactly three generations and the C1 replay, and
+  `test_evidence_v2` builds its V2 mutation cases from the V1 record. So dropping the generations changes
+  `linux_x86_64_status`, `test_full_selfhost_status` and `test_evidence_v2` together; since the V2 record already holds
+  the generations, the fixed point and the replay, the plan is: V1 records only C0's corpus outcomes against the
+  reference, and the reference status reads generations and replay from the V2 record.
+- **Release 0046 scripts** (scratch): `/root/work/rel46.sh` (from `rel45.sh`: no scratch replay, a `--shared` clone,
+  `XAXC46` names the candidate). `rel46b.sh` is to be written once 0046's transactions are known.
+- **Estimate for the next release** (from the measured parts): genesis replay once: build 15 + confirm 18 + snapshot 4
+  + evidence 163 + BBC and `bbc.exe` about 15 + pin 10 + V1 corpus-only about 40 + suite about 120 (3 h 54 min minus
+  the evolution replay) ≈ 6.5 h, against about 13.5 h for 0045 (two extra replays and V1's 5 h). A checkpointed
+  release (evidence about 20 min plus the new transactions) ≈ 4 h.
+- **Next:**
+  1. After `rel0045b.log` says POST-DONE: the rotation and release PRs for 0045 (see the section above); then
+     `wsl --shutdown`, `Optimize-VHD` or `diskpart compact vdisk` on the VHDX, start WSL and check that
+     `vm.overcommit_memory` is 1 and swap is 16 GB; rerun `test_xax_x86_64_views.py -n 2`.
+  2. Suite: one xdist group for the driver-sized reference tests, StoreReader caches cleared between tests; measure
+     the full suite at `-n 4`.
+  3. Tooling PRs on `main`: `xax_ledger after <bootstrap> <prefix ledger> <out>` (native batch on
+     `xax_ledger.xax`: exit 1 unless the file is a byte prefix of the LEDGER, else the transaction lines after it) and
+     `evolve.sh replay --from <LEDGER blob>` using it; a worker count for replay (transactions grouped so a chained
+     transaction stays with its predecessor); the V1 change above; evolve.sh docs (one driver blob per PR). Show a
+     checkpointed and a parallel replay give the full serial replay's `replayed` line.
+  4. Release 0046 driver sub-batches once 0045 is on `main`: MAP_NORESERVE on the two workspace reservations, arena
+     pages returned after each function, skip verifying a replay input that is a committed verified store, then a
+     design note for ADR-423 amendment 4 option 3.
+- **Continuation prompt:** "Continue the XAX release-speed work: read the last two XAX_HANDOFF.md sections. If
+  `/root/work/logs/rel0045b.log` says POST-DONE, land release 0045 first, then do the Next list of the speed section
+  in order."
