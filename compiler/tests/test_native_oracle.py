@@ -23,6 +23,7 @@ SEED = BOOTSTRAP / "seed" / "xaxc-linux-x86_64"
 LINUX_X86_64 = sys.platform.startswith("linux") and platform.machine().lower() in ("x86_64", "amd64")
 WINDOWS_X86_64 = sys.platform == "win32" and platform.machine().lower() in ("x86_64", "amd64")
 NATIVE = LINUX_X86_64 or WINDOWS_X86_64  # the hosts the native oracle runs on
+BATCHES = ("oracle.batch", "driver.batch", "slice4-types.batch", "slice4-aggregates.batch")  # xax_oracle.xax, in order
 
 
 @functools.lru_cache(maxsize=1)
@@ -81,12 +82,15 @@ class NativeOracleTests(unittest.TestCase):
     @unittest.skipUnless(LINUX_X86_64, "the pinned Linux seed")
     def test_the_store_is_its_batches(self):
         """oracle.batch on the ledger seed, then driver.batch (2026-11-28: the general driver's entry, so that
-        ``windows/generator/generate.sh`` hosts it as ``xax_oracle_windows.xax``; test_windows_generator checks that)."""
+        ``windows/generator/generate.sh`` hosts it as ``xax_oracle_windows.xax``; test_windows_generator checks that),
+        then slice 4's batches in order (README.md)."""
         with tempfile.TemporaryDirectory() as directory:
-            first, out = Path(directory) / "first.xax", Path(directory) / "oracle.xax"
-            subprocess.run([str(SEED), "edit", str(BOOTSTRAP / "evolution" / "ledger-tool" / "seed.xax"), str(ORACLE / "oracle.batch"), str(first)], check=True)
-            subprocess.run([str(SEED), "edit", str(first), str(ORACLE / "driver.batch"), str(out)], check=True)
-            self.assertEqual(out.read_bytes(), (ORACLE / "xax_oracle.xax").read_bytes())
+            store = BOOTSTRAP / "evolution" / "ledger-tool" / "seed.xax"
+            for k, batch in enumerate(BATCHES):
+                out = Path(directory) / f"{k}.xax"
+                subprocess.run([str(SEED), "edit", str(store), str(ORACLE / batch), str(out)], check=True)
+                store = out
+            self.assertEqual(store.read_bytes(), (ORACLE / "xax_oracle.xax").read_bytes())
 
     def test_arguments(self):
         """driver.batch's argument handling: too few arguments, and an argument of 4 KiB or more, exit 3."""
@@ -193,6 +197,81 @@ class NativeOracleTests(unittest.TestCase):
             with self.subTest(member=member, value=value):
                 reader, entry = recursion.program(group, member, target)
                 self.assertEqual(native_run(reader.data, entry.cid, (value,)), _reference(reader, entry.cid, (value,)))
+
+    def test_both_oracles_agree_on_aggregates_and_sums(self):
+        """Slice 4 (docs/proposals/native-oracle.md §4): tuples, arrays and sums, test_xax_general_language's programs
+        and more: nested aggregates, an aggregate returned by a callee, and the sum-variant trap."""
+        from test_xax_general_language import reader_for
+        from xax_compiler import (Block, IntCompare, Node, Operation, Terminator, ValueRef, array_type, bits_type, constant,
+                                  function, graph_fragment, sum_type, tuple_type, x86_64_windows_general_target)
+
+        P, R = ValueRef.parameter, ValueRef.node_result
+        b1, b32, b64 = bits_type(1), bits_type(32), bits_type(64)
+        pair, array, target = tuple_type((b32, b32)), array_type(b32, 2), x86_64_windows_general_target()
+        cases = []
+
+        def make(blocks, parameters, results):
+            graph = graph_fragment(blocks)
+            return function(graph, parameters, results), graph
+
+        # test_xax_general_language: a tuple and an array
+        entry, graph = make([Block((b32, b32), (
+            Node(Operation.AGGREGATE_MAKE, (P(0, 0), P(0, 1)), (pair,)),
+            Node(Operation.AGGREGATE_GET, (R(0, 0),), (b32,), attributes=(1,)),
+            Node(Operation.AGGREGATE_MAKE, (P(0, 0), R(0, 1)), (array,)),
+            Node(Operation.AGGREGATE_GET, (R(0, 2),), (b32,), attributes=(0,)),
+            Node(Operation.ADD_WRAP, (R(0, 1), R(0, 3)), (b32,)),
+        ), Terminator.return_((R(0, 4),)))], (b32, b32), (b32,))
+        reader = reader_for(entry, [b32, pair, array, graph, entry], target)
+        cases += [(reader, entry.cid, arguments) for arguments in ((7, 11), (0, 0), ((1 << 32) - 1, 5))]
+
+        # test_xax_general_language: a sum across a block edge
+        choice, zero = sum_type((b32, b1)), constant(b1, 0)
+        entry, graph = make([
+            Block((b32,), (Node(Operation.SUM_MAKE, (P(0, 0),), (choice,), attributes=(0,)),
+                           Node(Operation.SUM_TAG, (R(0, 0),), (b1,)),
+                           Node(Operation.CONSTANT, (), (b1,), entity=zero),
+                           Node(Operation.INT_COMPARE, (R(0, 1), R(0, 2)), (b1,), attributes=(IntCompare.EQ,))),
+                  Terminator.conditional_branch(R(0, 3), 1, (R(0, 0),), 2, ())),
+            Block((choice,), (Node(Operation.SUM_GET, (P(1, 0),), (b32,), attributes=(0,)),), Terminator.return_((R(1, 0),))),
+            Block((), (), Terminator.trap()),
+        ], (b32,), (b32,))
+        reader = reader_for(entry, [b1, b32, choice, zero, graph, entry], target)
+        cases += [(reader, entry.cid, (value,)) for value in (99, 0, (1 << 32) - 1)]
+
+        # the wrong variant traps (sum-variant); the tag of the right one
+        wide = sum_type((b32, b64))
+        entry, graph = make([Block((b64,), (Node(Operation.SUM_MAKE, (P(0, 0),), (wide,), attributes=(1,)),
+                                            Node(Operation.SUM_TAG, (R(0, 0),), (b1,)),
+                                            Node(Operation.SUM_GET, (R(0, 0),), (b32,), attributes=(0,))),
+                                  Terminator.return_((R(0, 2),)))], (b64,), (b32,))
+        reader = reader_for(entry, [b1, b32, b64, wide, graph, entry], target)
+        cases.append((reader, entry.cid, (5,)))
+        entry, graph = make([Block((b64,), (Node(Operation.SUM_MAKE, (P(0, 0),), (wide,), attributes=(1,)),
+                                            Node(Operation.SUM_TAG, (R(0, 0),), (b1,)),
+                                            Node(Operation.SUM_GET, (R(0, 0),), (b64,), attributes=(1,))),
+                                  Terminator.return_((R(0, 1), R(0, 2))))], (b64,), (b1, b64))
+        reader = reader_for(entry, [b1, b64, b32, wide, graph, entry], target)
+        cases.append((reader, entry.cid, ((1 << 64) - 1,)))
+
+        # nested aggregates, and an aggregate a callee returns (it outlives the callee's frame)
+        outer = tuple_type((pair, b32))
+        callee, callee_graph = make([Block((b32, b32), (Node(Operation.AGGREGATE_MAKE, (P(0, 1), P(0, 0)), (pair,)),),
+                                           Terminator.return_((R(0, 0),)))], (b32, b32), (pair,))
+        entry, graph = make([Block((b32, b32), (
+            Node(Operation.CALL_DIRECT, (P(0, 0), P(0, 1)), (pair,), entity=callee),
+            Node(Operation.AGGREGATE_MAKE, (R(0, 0), P(0, 0)), (outer,)),
+            Node(Operation.AGGREGATE_GET, (R(0, 1),), (pair,), attributes=(0,)),
+            Node(Operation.AGGREGATE_GET, (R(0, 2),), (b32,), attributes=(0,)),
+            Node(Operation.AGGREGATE_GET, (R(0, 1),), (b32,), attributes=(1,)),
+            Node(Operation.SUB_WRAP, (R(0, 3), R(0, 4)), (b32,)),
+        ), Terminator.return_((R(0, 5),)))], (b32, b32), (b32,))
+        reader = reader_for(entry, [b32, pair, outer, callee_graph, callee, graph, entry], target)
+        cases += [(reader, entry.cid, arguments) for arguments in ((3, 10), (10, 3))]
+
+        for reader, cid, arguments in cases:
+            with self.subTest(function=cid.hex()[:8], arguments=arguments):
+                self.assertEqual(native_run(reader.data, cid, arguments), _reference(reader, cid, arguments))
 
     def test_traps_compares_rotations_results_and_declines(self):
         from xax_compiler import FloatFormat, IntCompare, Operation, TrapReason, bits_type, float_type, trap_payload, x86_64_linux_exec_target
